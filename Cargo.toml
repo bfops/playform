@@ -1,0 +1,33 @@
+[package]
+
+name = "playform"
+version = "0.0.0"
+authors = [
+    "Ben Foppa <benjamin.foppa@gmail.com>",
+  ]
+
+[[bin]]
+
+name = "playform"
+path = "./src/main.rs"
+
+[dependencies.gl]
+git = "https://github.com/bjz/gl-rs"
+
+[dependencies.hgl]
+git = "https://github.com/cmr/hgl-rs"
+
+[dependencies.sdl2]
+git = "https://github.com/AngryLawyer/rust-sdl2"
+
+[dependencies.sdl2_game_window]
+git = "https://github.com/PistonDevelopers/sdl2_game_window"
+
+[dependencies.opengl_graphics]
+git = "https://github.com/PistonDevelopers/opengl_graphics"
+
+[dependencies.piston]
+git = "https://github.com/PistonDevelopers/piston"
+
+[dependencies.cgmath]
+git = "https://github.com/bjz/cgmath-rs"
