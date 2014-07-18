@@ -49,18 +49,18 @@ impl App {
 }
 
 // Vertex data
-static VERTEX_DATA: [GLfloat, ..6] = [
-     0.0,  0.5,
-     0.5, -0.5,
-    -0.5, -0.5
+static VERTEX_DATA: [GLfloat, ..9] = [
+     0.0,  0.5, 0.0,
+     0.5, -0.5, 0.0,
+    -0.5, -0.5, 0.0,
 ];
 
 // Shader sources
 static VS_SRC: &'static str =
    "#version 150\n\
-in vec2 position;\n\
+in vec3 position;\n\
 void main() {\n\
-gl_Position = vec4(position, 0.0, 1.0);\n\
+gl_Position = vec4(position, 1.0);\n\
 }";
 
 static FS_SRC: &'static str =
@@ -98,6 +98,7 @@ fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
     gl::AttachShader(program, vs);
     gl::AttachShader(program, fs);
     gl::LinkProgram(program);
+
     unsafe {
         // Get the link status
         let mut status = gl::FALSE as GLint;
@@ -130,12 +131,6 @@ fn main() {
     }
   );
 
-  // It is essential to make the context current before calling `gl::load_with`.
-  // window.make_current();
-
-  // Load the OpenGL function pointers
-  //gl::load_with(|s| glfw.get_proc_address(s));
-
   let mut app = App::new();
 
   let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
@@ -159,9 +154,9 @@ fn main() {
     "out_color".with_c_str(|ptr| gl::BindFragDataLocation(program, 0, ptr));
 
     // Specify the layout of the vertex data
-    let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(program, ptr));
-    gl::EnableVertexAttribArray(pos_attr as GLuint);
-    gl::VertexAttribPointer(pos_attr as GLuint, 2, gl::FLOAT,
+    let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(program, ptr) as u32);
+    gl::EnableVertexAttribArray(pos_attr);
+    gl::VertexAttribPointer(pos_attr, 3, gl::FLOAT,
                             gl::FALSE as GLboolean, 0, ptr::null());
   }
 
