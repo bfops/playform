@@ -16,9 +16,22 @@ use std::mem;
 use std::ptr;
 use std::str;
 
+pub struct Triangle<T> {
+  vertices: [cgmath::vector::Vector3<T>, ..3],
+}
+
+impl<T: Clone> Clone for Triangle<T> {
+  fn clone(&self) -> Triangle<T> {
+    Triangle {
+      vertices: [self.vertices[0].clone(), self.vertices[1].clone(), self.vertices[2].clone()],
+    }
+  }
+}
+
 pub struct App {
   vao: u32,
   vbo: u32,
+  vertex_data: Vec<Triangle<GLfloat>>,
   projection_matrix: cgmath::matrix::Matrix4<GLfloat>,
   shader_program: u32,
 }
@@ -30,6 +43,18 @@ pub fn translate(t: &cgmath::vector::Vector3<GLfloat>) -> cgmath::matrix::Matrix
     0.0, 0.0, 1.0, 0.0,
     t.x, t.y, t.z, 1.0,
   )
+}
+
+impl<T: Clone> Triangle<T> {
+  fn new(
+      v1: &cgmath::vector::Vector3<T>,
+      v2: &cgmath::vector::Vector3<T>,
+      v3: &cgmath::vector::Vector3<T>)
+      -> Triangle<T> {
+    Triangle {
+      vertices: [v1.clone(), v2.clone(), v3.clone()],
+    }
+  }
 }
 
 impl Game for App {
@@ -72,8 +97,8 @@ impl Game for App {
       gl::GenBuffers(1, &mut self.vbo);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
       gl::BufferData(gl::ARRAY_BUFFER,
-                      (VERTEX_DATA.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-                      mem::transmute(&VERTEX_DATA[0]),
+                      (self.vertex_data.len() * mem::size_of::<Triangle<GLfloat>>()) as GLsizeiptr,
+                      mem::transmute(&self.vertex_data.slice(0, self.vertex_data.len())[0]),
                       gl::STATIC_DRAW);
 
       gl::UseProgram(self.shader_program);
@@ -110,6 +135,13 @@ impl App {
     App {
       vao: 0,
       vbo: 0,
+      vertex_data: Vec::from_slice([
+        Triangle::new(
+          &cgmath::vector::Vector3::new( 0.0,  0.5, 0.0),
+          &cgmath::vector::Vector3::new( 0.5, -0.5, 0.0),
+          &cgmath::vector::Vector3::new(-0.5, -0.5, 0.0),
+        ),
+      ]),
       shader_program: -1 as u32,
       projection_matrix: cgmath::matrix::Matrix4::from_value(0.0),
     }
@@ -134,13 +166,6 @@ impl App {
     }
   }
 }
-
-// Vertex data
-static VERTEX_DATA: [GLfloat, ..9] = [
-     0.0,  0.5, 0.0,
-     0.5, -0.5, 0.0,
-    -0.5, -0.5, 0.0,
-];
 
 // Shader sources
 static VS_SRC: &'static str =
