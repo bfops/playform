@@ -10,29 +10,46 @@ extern crate sdl2_game_window;
 use sdl2_game_window::GameWindowSDL2;
 
 use cgmath::array::*;
-use cgmath::vector::{Vector3};
+use cgmath::vector::{Vector3, Vector4};
 use piston::*;
 use gl::types::*;
 use std::mem;
 use std::ptr;
 use std::str;
 
+pub struct Color4<T> { inner: Vector4<T>, }
+
+impl<T: Clone> Clone for Color4<T> {
+  fn clone(&self) -> Color4<T> {
+    Color4 { inner: self.inner.clone(), }
+  }
+}
+
+impl<T: Clone> Color4<T> {
+  fn new(v: &Vector4<T>) -> Color4<T> {
+    Color4 { inner: v.clone(), }
+  }
+}
+
 pub struct Vertex<T> {
   position: Vector3<T>,
+  color: Color4<T>,
 }
 
 impl<T: Clone> Clone for Vertex<T> {
   fn clone(&self) -> Vertex<T> {
     Vertex {
       position: self.position.clone(),
+      color: self.color.clone(),
     }
   }
 }
 
 impl<T: Clone> Vertex<T> {
-  fn new(v: &Vector3<T>) -> Vertex<T> {
+  fn new(v: &Vector3<T>, c: &Color4<T>) -> Vertex<T> {
     Vertex {
       position: v.clone(),
+      color: c.clone(),
     }
   }
 }
@@ -138,6 +155,8 @@ impl Game for App {
       // Specify the layout of the vertex data
       let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
       gl::EnableVertexAttribArray(pos_attr as GLuint);
+      let color_attr = "in_color".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
+      gl::EnableVertexAttribArray(color_attr as GLuint);
 
       gl::VertexAttribPointer(
           pos_attr as GLuint,
@@ -146,6 +165,14 @@ impl Game for App {
           gl::FALSE as GLboolean,
           mem::size_of::<Vertex<GLfloat>>() as i32,
           ptr::null(),
+      );
+      gl::VertexAttribPointer(
+          color_attr as GLuint,
+          (mem::size_of::<Color4<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
+          gl::FLOAT,
+          gl::FALSE as GLboolean,
+          mem::size_of::<Vertex<GLfloat>>() as i32,
+          ptr::null().offset(mem::size_of::<Vector3<GLfloat>>() as int),
       );
     }
 
@@ -167,9 +194,9 @@ impl App {
       vbo: 0,
       vertex_data: Vec::from_slice([
         Triangle::new(
-          &Vertex::new(&Vector3::new( 0.0,  0.5, 0.0)),
-          &Vertex::new(&Vector3::new( 0.5, -0.5, 0.0)),
-          &Vertex::new(&Vector3::new(-0.5, -0.5, 0.0)),
+          &Vertex::new(&Vector3::new( 0.0,  0.5, 0.0), &Color4::new(&Vector4::new(1.0, 0.0, 0.0, 1.0))),
+          &Vertex::new(&Vector3::new( 0.5, -0.5, 0.0), &Color4::new(&Vector4::new(0.0, 1.0, 0.0, 1.0))),
+          &Vertex::new(&Vector3::new(-0.5, -0.5, 0.0), &Color4::new(&Vector4::new(0.0, 0.0, 1.0, 1.0))),
         ),
       ]),
       shader_program: -1 as u32,
@@ -202,15 +229,19 @@ static VS_SRC: &'static str =
    "#version 150\n\
 uniform mat4 proj_matrix;\n\
 in vec3 position;\n\
+in vec4 in_color;\n\
+varying vec4 color;\n\
 void main() {\n\
 gl_Position = proj_matrix * vec4(position, 1.0);\n\
+color = in_color;\n\
 }";
 
 static FS_SRC: &'static str =
    "#version 150\n\
+varying vec4 color;\n\
 out vec4 out_color;\n\
 void main() {\n\
-out_color = vec4(1.0, 1.0, 1.0, 1.0);\n\
+out_color = color;\n\
 }";
 
 fn compile_shader(src: &str, ty: GLenum) -> GLuint {
