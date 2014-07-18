@@ -33,6 +33,30 @@ pub fn translate(t: &cgmath::vector::Vector3<GLfloat>) -> cgmath::matrix::Matrix
 }
 
 impl Game for App {
+  fn key_press(&mut self, _args: &KeyPressArgs) {
+    match _args.key {
+      piston::keyboard::A => {
+        self.transform_projection(&translate(&cgmath::vector::Vector3::new(0.1, 0.0, 0.0)));
+      },
+      piston::keyboard::D => {
+        self.transform_projection(&translate(&cgmath::vector::Vector3::new(-0.1, 0.0, 0.0)));
+      },
+      piston::keyboard::LShift => {
+        self.transform_projection(&translate(&cgmath::vector::Vector3::new(0.0, 0.1, 0.0)));
+      },
+      piston::keyboard::Space => {
+        self.transform_projection(&translate(&cgmath::vector::Vector3::new(0.0, -0.1, 0.0)));
+      },
+      piston::keyboard::W => {
+        self.transform_projection(&translate(&cgmath::vector::Vector3::new(0.0, 0.0, 0.1)));
+      },
+      piston::keyboard::S => {
+        self.transform_projection(&translate(&cgmath::vector::Vector3::new(0.0, 0.0, -0.1)));
+      },
+      _ => {},
+    }
+  }
+
   fn load(&mut self) {
     let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
     let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
