@@ -10,14 +10,35 @@ extern crate sdl2_game_window;
 use sdl2_game_window::GameWindowSDL2;
 
 use cgmath::array::*;
+use cgmath::vector::{Vector3};
 use piston::*;
 use gl::types::*;
 use std::mem;
 use std::ptr;
 use std::str;
 
+pub struct Vertex<T> {
+  position: Vector3<T>,
+}
+
+impl<T: Clone> Clone for Vertex<T> {
+  fn clone(&self) -> Vertex<T> {
+    Vertex {
+      position: self.position.clone(),
+    }
+  }
+}
+
+impl<T: Clone> Vertex<T> {
+  fn new(v: &Vector3<T>) -> Vertex<T> {
+    Vertex {
+      position: v.clone(),
+    }
+  }
+}
+
 pub struct Triangle<T> {
-  vertices: [cgmath::vector::Vector3<T>, ..3],
+  vertices: [Vertex<T>, ..3],
 }
 
 impl<T: Clone> Clone for Triangle<T> {
@@ -36,7 +57,7 @@ pub struct App {
   shader_program: u32,
 }
 
-pub fn translate(t: &cgmath::vector::Vector3<GLfloat>) -> cgmath::matrix::Matrix4<GLfloat> {
+pub fn translate(t: &Vector3<GLfloat>) -> cgmath::matrix::Matrix4<GLfloat> {
   cgmath::matrix::Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
     0.0, 1.0, 0.0, 0.0,
@@ -47,9 +68,9 @@ pub fn translate(t: &cgmath::vector::Vector3<GLfloat>) -> cgmath::matrix::Matrix
 
 impl<T: Clone> Triangle<T> {
   fn new(
-      v1: &cgmath::vector::Vector3<T>,
-      v2: &cgmath::vector::Vector3<T>,
-      v3: &cgmath::vector::Vector3<T>)
+      v1: &Vertex<T>,
+      v2: &Vertex<T>,
+      v3: &Vertex<T>)
       -> Triangle<T> {
     Triangle {
       vertices: [v1.clone(), v2.clone(), v3.clone()],
@@ -61,22 +82,22 @@ impl Game for App {
   fn key_press(&mut self, _args: &KeyPressArgs) {
     match _args.key {
       piston::keyboard::A => {
-        self.transform_projection(&translate(&cgmath::vector::Vector3::new(0.1, 0.0, 0.0)));
+        self.transform_projection(&translate(&Vector3::new(0.1, 0.0, 0.0)));
       },
       piston::keyboard::D => {
-        self.transform_projection(&translate(&cgmath::vector::Vector3::new(-0.1, 0.0, 0.0)));
+        self.transform_projection(&translate(&Vector3::new(-0.1, 0.0, 0.0)));
       },
       piston::keyboard::LShift => {
-        self.transform_projection(&translate(&cgmath::vector::Vector3::new(0.0, 0.1, 0.0)));
+        self.transform_projection(&translate(&Vector3::new(0.0, 0.1, 0.0)));
       },
       piston::keyboard::Space => {
-        self.transform_projection(&translate(&cgmath::vector::Vector3::new(0.0, -0.1, 0.0)));
+        self.transform_projection(&translate(&Vector3::new(0.0, -0.1, 0.0)));
       },
       piston::keyboard::W => {
-        self.transform_projection(&translate(&cgmath::vector::Vector3::new(0.0, 0.0, 0.1)));
+        self.transform_projection(&translate(&Vector3::new(0.0, 0.0, 0.1)));
       },
       piston::keyboard::S => {
-        self.transform_projection(&translate(&cgmath::vector::Vector3::new(0.0, 0.0, -0.1)));
+        self.transform_projection(&translate(&Vector3::new(0.0, 0.0, -0.1)));
       },
       _ => {},
     }
@@ -93,12 +114,14 @@ impl Game for App {
       gl::GenVertexArrays(1, &mut self.vao);
       gl::BindVertexArray(self.vao);
 
+      let raw_data = mem::transmute(&self.vertex_data.slice(0, self.vertex_data.len())[0]);
+
       // Create a Vertex Buffer Object and copy the vertex data to it
       gl::GenBuffers(1, &mut self.vbo);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
       gl::BufferData(gl::ARRAY_BUFFER,
                       (self.vertex_data.len() * mem::size_of::<Triangle<GLfloat>>()) as GLsizeiptr,
-                      mem::transmute(&self.vertex_data.slice(0, self.vertex_data.len())[0]),
+                      raw_data,
                       gl::STATIC_DRAW);
 
       gl::UseProgram(self.shader_program);
@@ -107,7 +130,7 @@ impl Game for App {
         println!("couldn't read matrix");
       } else {
         self.projection_matrix = cgmath::projection::frustum::<GLfloat>(-1.0, 1.0, -1.0, 1.0, 0.1, 2.0);
-        self.transform_projection(&translate(&cgmath::vector::Vector3::new(0.0, 0.0, -0.1)));
+        self.transform_projection(&translate(&Vector3::new(0.0, 0.0, -0.1)));
         gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(self.projection_matrix.ptr()));
       }
       "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
@@ -115,8 +138,15 @@ impl Game for App {
       // Specify the layout of the vertex data
       let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
       gl::EnableVertexAttribArray(pos_attr as GLuint);
-      gl::VertexAttribPointer(pos_attr as GLuint, 3, gl::FLOAT,
-                              gl::FALSE as GLboolean, 0, ptr::null());
+
+      gl::VertexAttribPointer(
+          pos_attr as GLuint,
+          (mem::size_of::<Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
+          gl::FLOAT,
+          gl::FALSE as GLboolean,
+          mem::size_of::<Vertex<GLfloat>>() as i32,
+          ptr::null(),
+      );
     }
 
     gl::ClearColor(0.0, 0.0, 0.0, 1.0);
@@ -137,9 +167,9 @@ impl App {
       vbo: 0,
       vertex_data: Vec::from_slice([
         Triangle::new(
-          &cgmath::vector::Vector3::new( 0.0,  0.5, 0.0),
-          &cgmath::vector::Vector3::new( 0.5, -0.5, 0.0),
-          &cgmath::vector::Vector3::new(-0.5, -0.5, 0.0),
+          &Vertex::new(&Vector3::new( 0.0,  0.5, 0.0)),
+          &Vertex::new(&Vector3::new( 0.5, -0.5, 0.0)),
+          &Vertex::new(&Vector3::new(-0.5, -0.5, 0.0)),
         ),
       ]),
       shader_program: -1 as u32,
