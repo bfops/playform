@@ -1,5 +1,6 @@
 #![feature(globs)] // Allow global imports
 
+extern crate cgmath;
 extern crate gl;
 extern crate graphics;
 extern crate native;
@@ -8,6 +9,7 @@ extern crate sdl2_game_window;
 
 use sdl2_game_window::GameWindowSDL2;
 
+use cgmath::array::*;
 use piston::*;
 use gl::types::*;
 use std::mem;
@@ -17,38 +19,58 @@ use std::str;
 pub struct App {
   vao: u32,
   vbo: u32,
+  projection_matrix: cgmath::matrix::Matrix4<GLfloat>,
+  shader_program: u32,
+}
+
+pub fn translate(t: &cgmath::vector::Vector3<GLfloat>) -> cgmath::matrix::Matrix4<GLfloat> {
+  cgmath::matrix::Matrix4::new(
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    t.x, t.y, t.z, 1.0,
+  )
 }
 
 impl Game for App {
   fn load(&mut self) {
     let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
     let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
-    let program = link_program(vs, fs);
+
+    self.shader_program = link_program(vs, fs);
 
     unsafe {
-        // Create Vertex Array Object
-        gl::GenVertexArrays(1, &mut self.vao);
-        gl::BindVertexArray(self.vao);
+      // Create Vertex Array Object
+      gl::GenVertexArrays(1, &mut self.vao);
+      gl::BindVertexArray(self.vao);
 
-        // Create a Vertex Buffer Object and copy the vertex data to it
-        gl::GenBuffers(1, &mut self.vbo);
-        gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
-        gl::BufferData(gl::ARRAY_BUFFER,
-                        (VERTEX_DATA.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-                        mem::transmute(&VERTEX_DATA[0]),
-                        gl::STATIC_DRAW);
+      // Create a Vertex Buffer Object and copy the vertex data to it
+      gl::GenBuffers(1, &mut self.vbo);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
+      gl::BufferData(gl::ARRAY_BUFFER,
+                      (VERTEX_DATA.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
+                      mem::transmute(&VERTEX_DATA[0]),
+                      gl::STATIC_DRAW);
 
-        gl::UseProgram(program);
-        "out_color".with_c_str(|ptr| gl::BindFragDataLocation(program, 0, ptr));
+      gl::UseProgram(self.shader_program);
+      let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
+      if loc == -1 {
+        println!("couldn't read matrix");
+      } else {
+        self.projection_matrix = cgmath::projection::frustum::<GLfloat>(-1.0, 1.0, -1.0, 1.0, 0.1, 2.0);
+        self.transform_projection(&translate(&cgmath::vector::Vector3::new(0.0, 0.0, -0.1)));
+        gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(self.projection_matrix.ptr()));
+      }
+      "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
 
-        // Specify the layout of the vertex data
-        let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(program, ptr) as u32);
-        gl::EnableVertexAttribArray(pos_attr);
-        gl::VertexAttribPointer(pos_attr, 3, gl::FLOAT,
-                                gl::FALSE as GLboolean, 0, ptr::null());
-
-        gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+      // Specify the layout of the vertex data
+      let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
+      gl::EnableVertexAttribArray(pos_attr as GLuint);
+      gl::VertexAttribPointer(pos_attr as GLuint, 3, gl::FLOAT,
+                              gl::FALSE as GLboolean, 0, ptr::null());
     }
+
+    gl::ClearColor(0.0, 0.0, 0.0, 1.0);
   }
 
   fn render(&mut self, _:&RenderArgs) {
@@ -64,6 +86,20 @@ impl App {
     App {
       vao: 0,
       vbo: 0,
+      shader_program: -1 as u32,
+      projection_matrix: cgmath::matrix::Matrix4::from_value(0.0),
+    }
+  }
+
+  pub fn transform_projection(&mut self, t: &cgmath::matrix::Matrix4<GLfloat>) {
+    unsafe {
+      let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
+      if loc == -1 {
+        println!("couldn't read matrix");
+      } else {
+        self.projection_matrix = self.projection_matrix * *t;
+        gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(self.projection_matrix.ptr()));
+      }
     }
   }
 
@@ -85,9 +121,10 @@ static VERTEX_DATA: [GLfloat, ..9] = [
 // Shader sources
 static VS_SRC: &'static str =
    "#version 150\n\
+uniform mat4 proj_matrix;\n\
 in vec3 position;\n\
 void main() {\n\
-gl_Position = vec4(position, 1.0);\n\
+gl_Position = proj_matrix * vec4(position, 1.0);\n\
 }";
 
 static FS_SRC: &'static str =
