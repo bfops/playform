@@ -217,7 +217,7 @@ impl App {
     }
   }
 
-  pub fn destroy(&mut self) {
+  pub fn drop(&self) {
     unsafe {
       gl::DeleteBuffers(1, &self.vbo);
       gl::DeleteVertexArrays(1, &self.vao);
