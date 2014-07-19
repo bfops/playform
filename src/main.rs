@@ -226,26 +226,31 @@ pub fn from_axis_angle<S: BaseFloat>(axis: &Vector3<S>, angle: angle::Rad<S>) ->
 
 impl Game for App {
   fn key_press(&mut self, _args: &KeyPressArgs) {
-    let y = Vector3::new(0.0, 1.0, 0.0);
     let x = Vector3::new(1.0, 0.0, 0.0);
+    let y = Vector3::new(0.0, 1.0, 0.0);
+    let z = Vector3::new(0.0, 0.0, 1.0);
     match _args.key {
       piston::keyboard::A => {
-        self.translate(&Vector3::new(1.0, 0.0, 0.0));
+        let r = self.lateral_rotation;
+        self.translate(&Matrix3::from_axis_angle(&y, r).mul_v(&x));
       },
       piston::keyboard::D => {
-        self.translate(&Vector3::new(-1.0, 0.0, 0.0));
+        let r = self.lateral_rotation;
+        self.translate(&Matrix3::from_axis_angle(&y, r).mul_v(&-x));
       },
       piston::keyboard::LShift => {
-        self.translate(&Vector3::new(0.0, 1.0, 0.0));
+        self.translate(&y);
       },
       piston::keyboard::Space => {
-        self.translate(&Vector3::new(0.0, -1.0, 0.0));
+        self.translate(&-y);
       },
       piston::keyboard::W => {
-        self.translate(&Vector3::new(0.0, 0.0, 1.0));
+        let r = self.lateral_rotation;
+        self.translate(&Matrix3::from_axis_angle(&y, r).mul_v(&z));
       },
       piston::keyboard::S => {
-        self.translate(&Vector3::new(0.0, 0.0, -1.0));
+        let r = self.lateral_rotation;
+        self.translate(&Matrix3::from_axis_angle(&y, r).mul_v(&-z));
       },
       piston::keyboard::Left => {
         let d = angle::rad(-3.14 / 12.0 as GLfloat);
