@@ -10,12 +10,11 @@ extern crate sdl2_game_window;
 use sdl2_game_window::GameWindowSDL2;
 
 use cgmath::array::*;
-use cgmath::vector::*;
+use cgmath::*;
 use piston::*;
 use gl::types::*;
-use std::mem;
-use std::ptr;
-use std::str;
+use std::vec::*;
+use std::*;
 
 pub struct Color4<T> { r: T, g: T, b: T, a: T }
 
@@ -42,7 +41,7 @@ impl<T: Clone> Color4<T> {
 }
 
 pub struct Vertex<T> {
-  position: Vector3<T>,
+  position: vector::Vector3<T>,
   color: Color4<T>,
 }
 
@@ -58,7 +57,7 @@ impl<T: Clone> Clone for Vertex<T> {
 impl<T: Clone> Vertex<T> {
   fn new(x: &T, y: &T, z: &T, c: &Color4<T>) -> Vertex<T> {
     Vertex {
-      position: Vector3::new(x.clone(), y.clone(), z.clone()),
+      position: vector::Vector3::new(x.clone(), y.clone(), z.clone()),
       color: c.clone(),
     }
   }
@@ -95,13 +94,13 @@ impl BlockType {
 
 #[deriving(Clone)]
 pub struct Block {
-  low_corner: Vector3<GLfloat>,
-  high_corner: Vector3<GLfloat>,
+  low_corner: vector::Vector3<GLfloat>,
+  high_corner: vector::Vector3<GLfloat>,
   block_type: BlockType,
 }
 
 impl Block {
-  fn new(low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) -> Block {
+  fn new(low_corner: &vector::Vector3<GLfloat>, high_corner: &vector::Vector3<GLfloat>, block_type: BlockType) -> Block {
     Block {
       low_corner: low_corner.clone(),
       high_corner: high_corner.clone(),
@@ -145,7 +144,7 @@ pub struct App {
   shader_program: u32,
 }
 
-pub fn translate(t: &Vector3<GLfloat>) -> cgmath::matrix::Matrix4<GLfloat> {
+pub fn translate(t: &vector::Vector3<GLfloat>) -> cgmath::matrix::Matrix4<GLfloat> {
   cgmath::matrix::Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
     0.0, 1.0, 0.0, 0.0,
@@ -170,22 +169,22 @@ impl Game for App {
   fn key_press(&mut self, _args: &KeyPressArgs) {
     match _args.key {
       piston::keyboard::A => {
-        self.transform_projection(&translate(&Vector3::new(0.1, 0.0, 0.0)));
+        self.transform_projection(&translate(&vector::Vector3::new(0.1, 0.0, 0.0)));
       },
       piston::keyboard::D => {
-        self.transform_projection(&translate(&Vector3::new(-0.1, 0.0, 0.0)));
+        self.transform_projection(&translate(&vector::Vector3::new(-0.1, 0.0, 0.0)));
       },
       piston::keyboard::LShift => {
-        self.transform_projection(&translate(&Vector3::new(0.0, 0.1, 0.0)));
+        self.transform_projection(&translate(&vector::Vector3::new(0.0, 0.1, 0.0)));
       },
       piston::keyboard::Space => {
-        self.transform_projection(&translate(&Vector3::new(0.0, -0.1, 0.0)));
+        self.transform_projection(&translate(&vector::Vector3::new(0.0, -0.1, 0.0)));
       },
       piston::keyboard::W => {
-        self.transform_projection(&translate(&Vector3::new(0.0, 0.0, 0.1)));
+        self.transform_projection(&translate(&vector::Vector3::new(0.0, 0.0, 0.1)));
       },
       piston::keyboard::S => {
-        self.transform_projection(&translate(&Vector3::new(0.0, 0.0, -0.1)));
+        self.transform_projection(&translate(&vector::Vector3::new(0.0, 0.0, -0.1)));
       },
       _ => {},
     }
@@ -216,7 +215,7 @@ impl Game for App {
         println!("couldn't read matrix");
       } else {
         self.projection_matrix = cgmath::projection::frustum::<GLfloat>(-1.0, 1.0, -1.0, 1.0, 0.1, 2.0);
-        self.transform_projection(&translate(&Vector3::new(0.0, 0.0, -0.1)));
+        self.transform_projection(&translate(&vector::Vector3::new(0.0, 0.0, -0.1)));
       }
       "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
 
@@ -228,7 +227,7 @@ impl Game for App {
 
       gl::VertexAttribPointer(
           pos_attr as GLuint,
-          (mem::size_of::<Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
+          (mem::size_of::<vector::Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
           gl::FLOAT,
           gl::FALSE as GLboolean,
           mem::size_of::<Vertex<GLfloat>>() as i32,
@@ -240,7 +239,7 @@ impl Game for App {
           gl::FLOAT,
           gl::FALSE as GLboolean,
           mem::size_of::<Vertex<GLfloat>>() as i32,
-          ptr::null().offset(mem::size_of::<Vector3<GLfloat>>() as int),
+          ptr::null().offset(mem::size_of::<vector::Vector3<GLfloat>>() as int),
       );
     }
 
@@ -260,7 +259,7 @@ impl App {
       vao: 0,
       vbo: 0,
       triangles: Vec::new(),
-      world_data: Vec::from_slice([Block::new(&Vector3::new(-0.5, -0.5, 0.0), &Vector3::new(0.5, 0.5, 1.0), Dirt)]),
+      world_data: Vec::from_slice([Block::new(&vector::Vector3::new(-0.5, -0.5, 0.0), &vector::Vector3::new(0.5, 0.5, 1.0), Dirt)]),
       shader_program: -1 as u32,
       projection_matrix: cgmath::matrix::Matrix4::from_value(0.0),
     };
