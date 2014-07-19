@@ -131,14 +131,12 @@ impl Game for App {
       gl::GenVertexArrays(1, &mut self.vao);
       gl::BindVertexArray(self.vao);
 
-      let raw_data = mem::transmute(&self.vertex_data.slice(0, self.vertex_data.len())[0]);
-
       // Create a Vertex Buffer Object and copy the vertex data to it
       gl::GenBuffers(1, &mut self.vbo);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
       gl::BufferData(gl::ARRAY_BUFFER,
                       (self.vertex_data.len() * mem::size_of::<Triangle<GLfloat>>()) as GLsizeiptr,
-                      raw_data,
+                      mem::transmute(self.vertex_data.get(0)),
                       gl::STATIC_DRAW);
 
       gl::UseProgram(self.shader_program);
@@ -148,7 +146,6 @@ impl Game for App {
       } else {
         self.projection_matrix = cgmath::projection::frustum::<GLfloat>(-1.0, 1.0, -1.0, 1.0, 0.1, 2.0);
         self.transform_projection(&translate(&Vector3::new(0.0, 0.0, -0.1)));
-        gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(self.projection_matrix.ptr()));
       }
       "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
 
@@ -182,8 +179,7 @@ impl Game for App {
   fn render(&mut self, _:&RenderArgs) {
     gl::Clear(gl::COLOR_BUFFER_BIT);
 
-    // Draw a triangle from the 3 vertices
-    gl::DrawArrays(gl::TRIANGLES, 0, 3);
+    gl::DrawArrays(gl::TRIANGLES, 0, 3 * self.vertex_data.len() as i32);
   }
 }
 
@@ -197,6 +193,11 @@ impl App {
           &Vertex::new(&Vector3::new( 0.0,  0.5, 0.0), &Color4::new(&Vector4::new(1.0, 0.0, 0.0, 1.0))),
           &Vertex::new(&Vector3::new( 0.5, -0.5, 0.0), &Color4::new(&Vector4::new(0.0, 1.0, 0.0, 1.0))),
           &Vertex::new(&Vector3::new(-0.5, -0.5, 0.0), &Color4::new(&Vector4::new(0.0, 0.0, 1.0, 1.0))),
+        ),
+        Triangle::new(
+          &Vertex::new(&Vector3::new( 0.0,  0.5, 0.0), &Color4::new(&Vector4::new(1.0, 0.0, 0.0, 1.0))),
+          &Vertex::new(&Vector3::new(-0.5, -0.5, 0.0), &Color4::new(&Vector4::new(0.0, 1.0, 0.0, 1.0))),
+          &Vertex::new(&Vector3::new(-1.0,  0.5, 0.0), &Color4::new(&Vector4::new(0.0, 0.0, 1.0, 1.0))),
         ),
       ]),
       shader_program: -1 as u32,
