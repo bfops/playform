@@ -133,6 +133,28 @@ impl Block {
       Vertex::new(&x1, &y1, &z2, &c), Vertex::new(&x2, &y1, &z1, &c), Vertex::new(&x2, &y1, &z2, &c),
     ]
   }
+
+  fn to_outlines(&self) -> [Vertex<GLfloat>, ..24] {
+    let (x1, y1, z1) = (self.low_corner.x, self.low_corner.y, self.low_corner.z);
+    let (x2, y2, z2) = (self.high_corner.x, self.high_corner.y, self.high_corner.z);
+    let c = Color4::new(&0.0, &0.0, &0.0, &1.0);
+    [
+      Vertex::new(&x1, &y1, &z1, &c), Vertex::new(&x2, &y1, &z1, &c),
+      Vertex::new(&x1, &y2, &z1, &c), Vertex::new(&x2, &y2, &z1, &c),
+      Vertex::new(&x1, &y1, &z2, &c), Vertex::new(&x2, &y1, &z2, &c),
+      Vertex::new(&x1, &y2, &z2, &c), Vertex::new(&x2, &y2, &z2, &c),
+
+      Vertex::new(&x1, &y1, &z1, &c), Vertex::new(&x1, &y2, &z1, &c),
+      Vertex::new(&x2, &y1, &z1, &c), Vertex::new(&x2, &y2, &z1, &c),
+      Vertex::new(&x1, &y1, &z2, &c), Vertex::new(&x1, &y2, &z2, &c),
+      Vertex::new(&x2, &y1, &z2, &c), Vertex::new(&x2, &y2, &z2, &c),
+
+      Vertex::new(&x1, &y1, &z1, &c), Vertex::new(&x1, &y1, &z2, &c),
+      Vertex::new(&x2, &y1, &z1, &c), Vertex::new(&x2, &y1, &z2, &c),
+      Vertex::new(&x1, &y2, &z1, &c), Vertex::new(&x1, &y2, &z2, &c),
+      Vertex::new(&x2, &y2, &z1, &c), Vertex::new(&x2, &y2, &z2, &c),
+    ]
+  }
 }
 
 pub struct App {
@@ -140,6 +162,7 @@ pub struct App {
   // renderable equivalent of world_data
   render_data: Vec<Vertex<GLfloat>>,
   triangles: uint, // number of triangles in render_data
+  lines: uint, // number of lines in render_data
   // OpenGL projection matrix components
   fov_matrix: matrix::Matrix4<GLfloat>,
   translation_matrix: matrix::Matrix4<GLfloat>,
@@ -313,6 +336,7 @@ impl Game for App {
     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
     gl::DrawArrays(gl::TRIANGLES, 0, self.triangles as i32);
+    gl::DrawArrays(gl::LINES, self.triangles as GLint, self.lines as i32);
   }
 }
 
@@ -396,6 +420,7 @@ impl App {
       world_data: world_data,
       render_data: Vec::new(),
       triangles: 0,
+      lines: 0,
       fov_matrix: Matrix4::identity(),
       translation_matrix: Matrix4::identity(),
       rotation_matrix: Matrix4::identity(),
@@ -409,17 +434,21 @@ impl App {
   // Update the OpenGL vertex data with the world data triangles.
   pub fn update_render_data(&mut self) {
     let mut triangles = Vec::new();
+    let mut outlines = Vec::new();
     let mut i = 0;
     while i < self.world_data.len() {
       let block = self.world_data.get(i);
       triangles.push_all(block.to_triangles());
+      outlines.push_all(block.to_outlines());
       i += 1;
     }
 
     self.triangles = triangles.len();
+    self.lines = outlines.len();
 
     self.render_data = Vec::new();
     self.render_data.push_all(triangles.as_slice());
+    self.render_data.push_all(outlines.as_slice());
 
     unsafe {
       gl::BufferData(
