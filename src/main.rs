@@ -71,18 +71,6 @@ impl<T: Clone> Vertex<T> {
   }
 }
 
-pub struct Triangle<T> {
-  vertices: [Vertex<T>, ..3],
-}
-
-impl<T: Clone> Clone for Triangle<T> {
-  fn clone(&self) -> Triangle<T> {
-    Triangle {
-      vertices: [self.vertices[0].clone(), self.vertices[1].clone(), self.vertices[2].clone()],
-    }
-  }
-}
-
 #[deriving(Clone)]
 pub enum BlockType {
   Grass,
@@ -120,29 +108,29 @@ impl Block {
   // Construct the faces of the block as triangles for rendering.
   // Triangle vertices are in clockwise order when viewed from the outside of
   // the cube, for rendering purposes.
-  fn to_triangles(&self) -> [Triangle<GLfloat>, ..12] {
+  fn to_triangles(&self) -> [Vertex<GLfloat>, ..36] {
     let (x1, y1, z1) = (self.low_corner.x, self.low_corner.y, self.low_corner.z);
     let (x2, y2, z2) = (self.high_corner.x, self.high_corner.y, self.high_corner.z);
     let c = self.block_type.to_color();
     [
       // front
-      Triangle::new(&Vertex::new(&x1, &y1, &z1, &c), &Vertex::new(&x1, &y2, &z1, &c), &Vertex::new(&x2, &y2, &z1, &c)),
-      Triangle::new(&Vertex::new(&x1, &y1, &z1, &c), &Vertex::new(&x2, &y2, &z1, &c), &Vertex::new(&x2, &y1, &z1, &c)),
+      Vertex::new(&x1, &y1, &z1, &c), Vertex::new(&x1, &y2, &z1, &c), Vertex::new(&x2, &y2, &z1, &c),
+      Vertex::new(&x1, &y1, &z1, &c), Vertex::new(&x2, &y2, &z1, &c), Vertex::new(&x2, &y1, &z1, &c),
       // left
-      Triangle::new(&Vertex::new(&x1, &y1, &z2, &c), &Vertex::new(&x1, &y2, &z2, &c), &Vertex::new(&x1, &y2, &z1, &c)),
-      Triangle::new(&Vertex::new(&x1, &y1, &z2, &c), &Vertex::new(&x1, &y2, &z1, &c), &Vertex::new(&x1, &y1, &z1, &c)),
+      Vertex::new(&x1, &y1, &z2, &c), Vertex::new(&x1, &y2, &z2, &c), Vertex::new(&x1, &y2, &z1, &c),
+      Vertex::new(&x1, &y1, &z2, &c), Vertex::new(&x1, &y2, &z1, &c), Vertex::new(&x1, &y1, &z1, &c),
       // top
-      Triangle::new(&Vertex::new(&x1, &y2, &z1, &c), &Vertex::new(&x1, &y2, &z2, &c), &Vertex::new(&x2, &y2, &z2, &c)),
-      Triangle::new(&Vertex::new(&x1, &y2, &z1, &c), &Vertex::new(&x2, &y2, &z2, &c), &Vertex::new(&x2, &y2, &z1, &c)),
+      Vertex::new(&x1, &y2, &z1, &c), Vertex::new(&x1, &y2, &z2, &c), Vertex::new(&x2, &y2, &z2, &c),
+      Vertex::new(&x1, &y2, &z1, &c), Vertex::new(&x2, &y2, &z2, &c), Vertex::new(&x2, &y2, &z1, &c),
       // back
-      Triangle::new(&Vertex::new(&x2, &y1, &z2, &c), &Vertex::new(&x2, &y2, &z2, &c), &Vertex::new(&x1, &y2, &z2, &c)),
-      Triangle::new(&Vertex::new(&x2, &y1, &z2, &c), &Vertex::new(&x1, &y2, &z2, &c), &Vertex::new(&x1, &y1, &z2, &c)),
+      Vertex::new(&x2, &y1, &z2, &c), Vertex::new(&x2, &y2, &z2, &c), Vertex::new(&x1, &y2, &z2, &c),
+      Vertex::new(&x2, &y1, &z2, &c), Vertex::new(&x1, &y2, &z2, &c), Vertex::new(&x1, &y1, &z2, &c),
       // right
-      Triangle::new(&Vertex::new(&x2, &y1, &z1, &c), &Vertex::new(&x2, &y2, &z1, &c), &Vertex::new(&x2, &y2, &z2, &c)),
-      Triangle::new(&Vertex::new(&x2, &y1, &z1, &c), &Vertex::new(&x2, &y2, &z2, &c), &Vertex::new(&x2, &y1, &z2, &c)),
+      Vertex::new(&x2, &y1, &z1, &c), Vertex::new(&x2, &y2, &z1, &c), Vertex::new(&x2, &y2, &z2, &c),
+      Vertex::new(&x2, &y1, &z1, &c), Vertex::new(&x2, &y2, &z2, &c), Vertex::new(&x2, &y1, &z2, &c),
       // bottom
-      Triangle::new(&Vertex::new(&x1, &y1, &z2, &c), &Vertex::new(&x1, &y1, &z1, &c), &Vertex::new(&x2, &y1, &z1, &c)),
-      Triangle::new(&Vertex::new(&x1, &y1, &z2, &c), &Vertex::new(&x2, &y1, &z1, &c), &Vertex::new(&x2, &y1, &z2, &c)),
+      Vertex::new(&x1, &y1, &z2, &c), Vertex::new(&x1, &y1, &z1, &c), Vertex::new(&x2, &y1, &z1, &c),
+      Vertex::new(&x1, &y1, &z2, &c), Vertex::new(&x2, &y1, &z1, &c), Vertex::new(&x2, &y1, &z2, &c),
     ]
   }
 }
@@ -150,7 +138,8 @@ impl Block {
 pub struct App {
   world_data: Vec<Block>,
   // renderable equivalent of world_data
-  triangles: Vec<Triangle<GLfloat>>,
+  render_data: Vec<Vertex<GLfloat>>,
+  triangles: uint, // number of triangles in render_data
   // OpenGL projection matrix components
   fov_matrix: matrix::Matrix4<GLfloat>,
   translation_matrix: matrix::Matrix4<GLfloat>,
@@ -182,18 +171,6 @@ pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) 
     0.0,           0.0, (near + far) / (near - far),     -1.0,
     0.0,           0.0, 2.0 * near * far / (near - far),  0.0,
   )
-}
-
-impl<T: Clone> Triangle<T> {
-  fn new(
-      v1: &Vertex<T>,
-      v2: &Vertex<T>,
-      v3: &Vertex<T>)
-      -> Triangle<T> {
-    Triangle {
-      vertices: [v1.clone(), v2.clone(), v3.clone()],
-    }
-  }
 }
 
 /// Create a matrix from a rotation around an arbitrary axis
@@ -285,7 +262,7 @@ impl Game for App {
       gl::GenVertexArrays(1, &mut self.vao);
       gl::BindVertexArray(self.vao);
 
-      // Create a Vertex Buffer Object and copy the vertex data to it
+      // Create a Vertex Buffer Object.
       gl::GenBuffers(1, &mut self.vbo);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
 
@@ -329,13 +306,13 @@ impl Game for App {
     self.translate(&Vector3::new(0.0, -8.0, -12.0));
     self.update_projection();
 
-    self.update_triangles();
+    self.update_render_data();
   }
 
   fn render(&mut self, _:&RenderArgs) {
     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-    gl::DrawArrays(gl::TRIANGLES, 0, 3 * self.triangles.len() as i32);
+    gl::DrawArrays(gl::TRIANGLES, 0, self.triangles as i32);
   }
 }
 
@@ -417,7 +394,8 @@ impl App {
     }
     App {
       world_data: world_data,
-      triangles: Vec::new(),
+      render_data: Vec::new(),
+      triangles: 0,
       fov_matrix: Matrix4::identity(),
       translation_matrix: Matrix4::identity(),
       rotation_matrix: Matrix4::identity(),
@@ -429,19 +407,25 @@ impl App {
   }
 
   // Update the OpenGL vertex data with the world data triangles.
-  pub fn update_triangles(&mut self) {
+  pub fn update_render_data(&mut self) {
+    let mut triangles = Vec::new();
     let mut i = 0;
-    self.triangles = Vec::new();
     while i < self.world_data.len() {
-      self.triangles.push_all(self.world_data.get(i).to_triangles());
+      let block = self.world_data.get(i);
+      triangles.push_all(block.to_triangles());
       i += 1;
     }
+
+    self.triangles = triangles.len();
+
+    self.render_data = Vec::new();
+    self.render_data.push_all(triangles.as_slice());
 
     unsafe {
       gl::BufferData(
         gl::ARRAY_BUFFER,
-        (self.triangles.len() * mem::size_of::<Triangle<GLfloat>>()) as GLsizeiptr,
-        mem::transmute(self.triangles.get(0)),
+        (self.render_data.len() * mem::size_of::<Vertex<GLfloat>>()) as GLsizeiptr,
+        mem::transmute(self.render_data.get(0)),
         gl::STATIC_DRAW);
     }
   }
