@@ -319,6 +319,9 @@ impl Game for App {
       );
     }
 
+    gl::Enable(gl::DEPTH_TEST);
+    gl::DepthFunc(gl::LESS);
+    gl::ClearDepth(100.0);
     gl::ClearColor(0.0, 0.0, 0.0, 1.0);
 
     // initialize the projection matrix
@@ -330,7 +333,7 @@ impl Game for App {
   }
 
   fn render(&mut self, _:&RenderArgs) {
-    gl::Clear(gl::COLOR_BUFFER_BIT);
+    gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
     gl::DrawArrays(gl::TRIANGLES, 0, 3 * self.triangles.len() as i32);
   }
@@ -341,6 +344,18 @@ impl App {
     let mut world_data = Vec::new();
     // ground
     let mut i;
+    // dirt block
+    i = -1;
+    while i <= 1 {
+      let mut j = -1i;
+      while j <= 1 {
+        let (x1, y1, z1) = (0.0 + i as GLfloat, 3.0, 0.0 + j as GLfloat);
+        let (x2, y2, z2) = (1.0 + i as GLfloat, 4.0, 1.0 + j as GLfloat);
+        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
+        j += 1;
+      }
+      i += 1;
+    }
     i = -32i;
     while i <= 32 {
       let mut j = -32i;
@@ -396,18 +411,6 @@ impl App {
         let (x1, y1, z1) = (32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
         let (x2, y2, z2) = (32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
         world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
-        j += 1;
-      }
-      i += 1;
-    }
-    // dirt block
-    i = -1;
-    while i <= 1 {
-      let mut j = -1i;
-      while j <= 1 {
-        let (x1, y1, z1) = (0.0 + i as GLfloat, 3.0, 0.0 + j as GLfloat);
-        let (x2, y2, z2) = (1.0 + i as GLfloat, 4.0, 1.0 + j as GLfloat);
-        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
         j += 1;
       }
       i += 1;
