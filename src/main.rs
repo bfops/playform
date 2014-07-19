@@ -13,12 +13,14 @@ use sdl2_game_window::GameWindowSDL2;
 use cgmath::*;
 use cgmath::array::*;
 use cgmath::matrix::*;
+use cgmath::num::{BaseFloat};
 use cgmath::vector::Vector3;
 use piston::*;
 use gl::types::*;
 use std::ptr;
 use std::mem;
 use std::str;
+use std::num::*;
 use std::vec::*;
 
 pub struct Color4<T> { r: T, g: T, b: T, a: T }
@@ -152,6 +154,8 @@ pub struct App {
   // OpenGL projection matrix components
   fov_matrix: matrix::Matrix4<GLfloat>,
   translation_matrix: matrix::Matrix4<GLfloat>,
+  rotation_matrix: matrix::Matrix4<GLfloat>,
+  lateral_rotation: angle::Rad<GLfloat>,
   // OpenGL shader "program" id.
   shader_program: u32,
   // OpenGL vertex array id
@@ -192,8 +196,38 @@ impl<T: Clone> Triangle<T> {
   }
 }
 
+/// Create a matrix from a rotation around an arbitrary axis
+pub fn from_axis_angle<S: BaseFloat>(axis: &Vector3<S>, angle: angle::Rad<S>) -> Matrix4<S> {
+    let (s, c) = angle::sin_cos(angle);
+    let _1subc = one::<S>() - c;
+
+    Matrix4::new(
+        _1subc * axis.x * axis.x + c,
+        _1subc * axis.x * axis.y + s * axis.z,
+        _1subc * axis.x * axis.z - s * axis.y,
+        zero(),
+
+        _1subc * axis.x * axis.y - s * axis.z,
+        _1subc * axis.y * axis.y + c,
+        _1subc * axis.y * axis.z + s * axis.x,
+        zero(),
+
+        _1subc * axis.x * axis.z + s * axis.y,
+        _1subc * axis.y * axis.z - s * axis.x,
+        _1subc * axis.z * axis.z + c,
+        zero(),
+
+        zero(),
+        zero(),
+        zero(),
+        one(),
+    )
+}
+
 impl Game for App {
   fn key_press(&mut self, _args: &KeyPressArgs) {
+    let up = Vector3::new(0.0, 1.0, 0.0);
+    let right = Vector3::new(1.0, 0.0, 0.0);
     match _args.key {
       piston::keyboard::A => {
         self.translate(&Vector3::new(1.0, 0.0, 0.0));
@@ -212,6 +246,24 @@ impl Game for App {
       },
       piston::keyboard::S => {
         self.translate(&Vector3::new(0.0, 0.0, -1.0));
+      },
+      piston::keyboard::Left => {
+        let d = angle::rad(-3.14 / 12.0 as GLfloat);
+        self.lateral_rotation = self.lateral_rotation + d;
+        self.rotate(&up, d);
+      },
+      piston::keyboard::Right => {
+        let d = angle::rad(3.14 / 12.0 as GLfloat);
+        self.lateral_rotation = self.lateral_rotation + d;
+        self.rotate(&up, d);
+      },
+      piston::keyboard::Up => {
+        let axis = Matrix3::from_axis_angle(&up, -self.lateral_rotation).mul_v(&right);
+        self.rotate(&axis, angle::rad(-3.14/12.0 as GLfloat));
+      },
+      piston::keyboard::Down => {
+        let axis = Matrix3::from_axis_angle(&up, -self.lateral_rotation).mul_v(&right);
+        self.rotate(&axis, angle::rad(3.14/12.0 as GLfloat));
       },
       _ => {},
     }
@@ -360,6 +412,8 @@ impl App {
       triangles: Vec::new(),
       fov_matrix: Matrix4::identity(),
       translation_matrix: Matrix4::identity(),
+      rotation_matrix: Matrix4::identity(),
+      lateral_rotation: angle::rad(0.0),
       shader_program: -1 as u32,
       vao: 0,
       vbo: 0,
@@ -390,7 +444,7 @@ impl App {
       if loc == -1 {
         println!("couldn't read matrix");
       } else {
-        let projection = self.fov_matrix * self.translation_matrix;
+        let projection = self.fov_matrix * self.rotation_matrix * self.translation_matrix;
         gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(projection.ptr()));
       }
     }
@@ -399,6 +453,13 @@ impl App {
   #[inline]
   pub fn translate(&mut self, v: &Vector3<GLfloat>) {
     self.translation_matrix = self.translation_matrix * translate(v);
+    self.update_projection();
+  }
+
+  #[inline]
+  // Rotate around an axis.
+  pub fn rotate(&mut self, v: &Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
+    self.rotation_matrix = self.rotation_matrix * from_axis_angle(v, r);
     self.update_projection();
   }
 
