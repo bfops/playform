@@ -66,10 +66,71 @@ impl<T: Clone> Clone for Triangle<T> {
   }
 }
 
+#[deriving(Clone)]
+pub enum BlockType {
+  Grass,
+  Dirt,
+  Stone,
+}
+
+impl BlockType {
+  pub fn to_color(&self) -> Color4<GLfloat> {
+    match *self {
+      Grass => Color4::new(&0.0, &0.5,  &0.0, &1.0),
+      Dirt  => Color4::new(&0.2, &0.15, &0.1, &1.0),
+      Stone => Color4::new(&0.5, &0.5,  &0.5, &1.0),
+    }
+  }
+}
+
+#[deriving(Clone)]
+pub struct Block {
+  low_corner: Vector3<GLfloat>,
+  high_corner: Vector3<GLfloat>,
+  block_type: BlockType,
+}
+
+impl Block {
+  fn new(low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) -> Block {
+    Block {
+      low_corner: low_corner.clone(),
+      high_corner: high_corner.clone(),
+      block_type: block_type,
+    }
+  }
+
+  fn to_triangles(&self) -> [Triangle<GLfloat>, ..12] {
+    let (x1, y1, z1) = (self.low_corner.x, self.low_corner.y, self.low_corner.z);
+    let (x2, y2, z2) = (self.high_corner.x, self.high_corner.y, self.high_corner.z);
+    let c = self.block_type.to_color();
+    [
+      // front
+      Triangle::new(&Vertex::new(&x1, &y1, &z1, &c), &Vertex::new(&x1, &y2, &z1, &c), &Vertex::new(&x2, &y2, &z1, &c)),
+      Triangle::new(&Vertex::new(&x1, &y1, &z1, &c), &Vertex::new(&x2, &y2, &z1, &c), &Vertex::new(&x2, &y1, &z1, &c)),
+      // left
+      Triangle::new(&Vertex::new(&x1, &y1, &z2, &c), &Vertex::new(&x1, &y2, &z2, &c), &Vertex::new(&x1, &y2, &z1, &c)),
+      Triangle::new(&Vertex::new(&x1, &y1, &z2, &c), &Vertex::new(&x1, &y2, &z1, &c), &Vertex::new(&x1, &y1, &z1, &c)),
+      // top
+      Triangle::new(&Vertex::new(&x1, &y2, &z1, &c), &Vertex::new(&x1, &y2, &z2, &c), &Vertex::new(&x2, &y2, &z2, &c)),
+      Triangle::new(&Vertex::new(&x1, &y2, &z1, &c), &Vertex::new(&x2, &y2, &z2, &c), &Vertex::new(&x2, &y2, &z1, &c)),
+      // back
+      Triangle::new(&Vertex::new(&x2, &y1, &z2, &c), &Vertex::new(&x2, &y2, &z2, &c), &Vertex::new(&x1, &y2, &z2, &c)),
+      Triangle::new(&Vertex::new(&x2, &y1, &z2, &c), &Vertex::new(&x1, &y2, &z2, &c), &Vertex::new(&x1, &y1, &z2, &c)),
+      // right
+      Triangle::new(&Vertex::new(&x2, &y1, &z1, &c), &Vertex::new(&x2, &y2, &z1, &c), &Vertex::new(&x2, &y2, &z2, &c)),
+      Triangle::new(&Vertex::new(&x2, &y1, &z1, &c), &Vertex::new(&x2, &y2, &z2, &c), &Vertex::new(&x2, &y1, &z2, &c)),
+      // bottom
+      Triangle::new(&Vertex::new(&x1, &y1, &z2, &c), &Vertex::new(&x1, &y1, &z1, &c), &Vertex::new(&x2, &y1, &z1, &c)),
+      Triangle::new(&Vertex::new(&x1, &y1, &z2, &c), &Vertex::new(&x2, &y1, &z1, &c), &Vertex::new(&x2, &y1, &z2, &c)),
+    ]
+  }
+}
+
 pub struct App {
   vao: u32,
   vbo: u32,
   triangles: Vec<Triangle<GLfloat>>,
+  world_data: Vec<Block>,
   projection_matrix: cgmath::matrix::Matrix4<GLfloat>,
   shader_program: u32,
 }
@@ -185,24 +246,17 @@ impl Game for App {
 
 impl App {
   pub fn new() -> App {
-    App {
+    let mut app = App {
       vao: 0,
       vbo: 0,
-      triangles: Vec::from_slice([
-        Triangle::new(
-          &Vertex::new(& 0.0, & 0.5, &0.0, &Color4::new(&1.0, &0.0, &0.0, &1.0)),
-          &Vertex::new(& 0.5, &-0.5, &0.0, &Color4::new(&0.0, &1.0, &0.0, &1.0)),
-          &Vertex::new(&-0.5, &-0.5, &0.0, &Color4::new(&0.0, &0.0, &1.0, &1.0)),
-        ),
-        Triangle::new(
-          &Vertex::new(& 0.0, & 0.5, &0.0, &Color4::new(&1.0, &0.0, &0.0, &1.0)),
-          &Vertex::new(&-0.5, &-0.5, &0.0, &Color4::new(&0.0, &1.0, &0.0, &1.0)),
-          &Vertex::new(&-1.0, & 0.5, &0.0, &Color4::new(&0.0, &0.0, &1.0, &1.0)),
-        ),
-      ]),
+      triangles: Vec::new(),
+      world_data: Vec::from_slice([Block::new(&Vector3::new(-0.5, -0.5, 0.0), &Vector3::new(0.5, 0.5, 1.0), Dirt)]),
       shader_program: -1 as u32,
       projection_matrix: cgmath::matrix::Matrix4::from_value(0.0),
-    }
+    };
+
+    app.update_triangles();
+    app
   }
 
   pub fn transform_projection(&mut self, t: &cgmath::matrix::Matrix4<GLfloat>) {
@@ -214,6 +268,15 @@ impl App {
         self.projection_matrix = self.projection_matrix * *t;
         gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(self.projection_matrix.ptr()));
       }
+    }
+  }
+
+  pub fn update_triangles(&mut self) {
+    let mut i = 0;
+    self.triangles = Vec::new();
+    while i < self.world_data.len() {
+      self.triangles.push_all(self.world_data.get(i).to_triangles());
+      i += 1;
     }
   }
 
