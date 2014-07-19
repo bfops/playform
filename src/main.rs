@@ -135,8 +135,9 @@ impl Block {
   }
 
   fn to_outlines(&self) -> [Vertex<GLfloat>, ..24] {
-    let (x1, y1, z1) = (self.low_corner.x, self.low_corner.y, self.low_corner.z);
-    let (x2, y2, z2) = (self.high_corner.x, self.high_corner.y, self.high_corner.z);
+    let d = 0.002;
+    let (x1, y1, z1) = (self.low_corner.x - d, self.low_corner.y - d, self.low_corner.z - d);
+    let (x2, y2, z2) = (self.high_corner.x + d, self.high_corner.y + d, self.high_corner.z + d);
     let c = Color4::new(&0.0, &0.0, &0.0, &1.0);
     [
       Vertex::new(&x1, &y1, &z1, &c), Vertex::new(&x2, &y1, &z1, &c),
@@ -318,6 +319,9 @@ impl Game for App {
           ptr::null().offset(mem::size_of::<Vector3<GLfloat>>() as int),
       );
     }
+
+    gl::Enable(gl::LINE_SMOOTH);
+    gl::LineWidth(2.5);
 
     gl::Enable(gl::DEPTH_TEST);
     gl::DepthFunc(gl::LESS);
