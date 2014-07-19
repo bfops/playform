@@ -153,6 +153,15 @@ pub fn translate(t: &vector::Vector3<GLfloat>) -> cgmath::matrix::Matrix4<GLfloa
   )
 }
 
+pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) -> cgmath::matrix::Matrix4<GLfloat> {
+  cgmath::matrix::Matrix4::new(
+    fovy / aspect, 0.0, 0.0,                              0.0,
+    0.0,          fovy, 0.0,                              0.0,
+    0.0,           0.0, (near + far) / (near - far),     -1.0,
+    0.0,           0.0, 2.0 * near * far / (near - far),  0.0,
+  )
+}
+
 impl<T: Clone> Triangle<T> {
   fn new(
       v1: &Vertex<T>,
@@ -214,8 +223,8 @@ impl Game for App {
       if loc == -1 {
         println!("couldn't read matrix");
       } else {
-        self.projection_matrix = cgmath::projection::frustum::<GLfloat>(-1.0, 1.0, -1.0, 1.0, 0.1, 100.0);
-        self.transform_projection(&translate(&vector::Vector3::new(0.0, -3.0, -0.1)));
+        self.projection_matrix = perspective(3.14/2.0, 4.0/3.0, 0.1, 100.0);
+        self.transform_projection(&translate(&vector::Vector3::new(0.0, -2.0, -12.0)));
       }
       "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
 
@@ -256,10 +265,10 @@ impl Game for App {
 impl App {
   pub fn new() -> App {
     let mut world_data = Vec::new();
-    let mut i = -8i;
-    while i <= 8 {
-      let mut j = -8i;
-      while j <= 8 {
+    let mut i = -16i;
+    while i <= 16 {
+      let mut j = -16i;
+      while j <= 16 {
         let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
         let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
         world_data.grow(1, &Block::new(&vector::Vector3::new(x1, y1, z1), &vector::Vector3::new(x2, y2, z2), Grass));
@@ -268,48 +277,48 @@ impl App {
       i += 1;
     }
     // front wall
-    i = -8i;
-    while i <= 8 {
+    i = -16i;
+    while i <= 16 {
       let mut j = 0i;
-      while j <= 16 {
-        let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -8.0 - 0.5);
-        let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -8.0 + 0.5);
+      while j <= 32 {
+        let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -16.0 - 0.5);
+        let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -16.0 + 0.5);
         world_data.grow(1, &Block::new(&vector::Vector3::new(x1, y1, z1), &vector::Vector3::new(x2, y2, z2), Stone));
         j += 1;
       }
       i += 1;
     }
     // back wall
-    i = -8i;
-    while i <= 8 {
+    i = -16i;
+    while i <= 16 {
       let mut j = 0i;
-      while j <= 16 {
-        let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 8.0 - 0.5);
-        let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 8.0 + 0.5);
+      while j <= 32 {
+        let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 16.0 - 0.5);
+        let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 16.0 + 0.5);
         world_data.grow(1, &Block::new(&vector::Vector3::new(x1, y1, z1), &vector::Vector3::new(x2, y2, z2), Stone));
         j += 1;
       }
       i += 1;
     }
     // left wall
-    i = -8i;
-    while i <= 8 {
+    i = -16i;
+    while i <= 16 {
       let mut j = 0i;
-      while j <= 16 {
-        let (x1, y1, z1) = (-8.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
-        let (x2, y2, z2) = (-8.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
+      while j <= 32 {
+        let (x1, y1, z1) = (-16.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
+        let (x2, y2, z2) = (-16.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
         world_data.grow(1, &Block::new(&vector::Vector3::new(x1, y1, z1), &vector::Vector3::new(x2, y2, z2), Stone));
         j += 1;
       }
       i += 1;
     }
     // right wall
-    i = -8i;
-    while i <= 8 {
+    i = -16i;
+    while i <= 16 {
       let mut j = 0i;
-      while j <= 16 {
-        let (x1, y1, z1) = (8.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
-        let (x2, y2, z2) = (8.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
+      while j <= 32 {
+        let (x1, y1, z1) = (16.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
+        let (x2, y2, z2) = (16.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
         world_data.grow(1, &Block::new(&vector::Vector3::new(x1, y1, z1), &vector::Vector3::new(x2, y2, z2), Stone));
         j += 1;
       }
