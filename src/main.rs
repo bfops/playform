@@ -26,8 +26,8 @@ impl<T: Clone> Clone for Color4<T> {
 }
 
 impl<T: Clone> Color4<T> {
-  fn new(v: &Vector4<T>) -> Color4<T> {
-    Color4 { inner: v.clone(), }
+  fn new(r: &T, g: &T, b: &T, a: &T) -> Color4<T> {
+    Color4 { inner: Vector4::new(r.clone(), g.clone(), b.clone(), a.clone()), }
   }
 }
 
@@ -46,9 +46,9 @@ impl<T: Clone> Clone for Vertex<T> {
 }
 
 impl<T: Clone> Vertex<T> {
-  fn new(v: &Vector3<T>, c: &Color4<T>) -> Vertex<T> {
+  fn new(x: &T, y: &T, z: &T, c: &Color4<T>) -> Vertex<T> {
     Vertex {
-      position: v.clone(),
+      position: Vector3::new(x.clone(), y.clone(), z.clone()),
       color: c.clone(),
     }
   }
@@ -69,7 +69,7 @@ impl<T: Clone> Clone for Triangle<T> {
 pub struct App {
   vao: u32,
   vbo: u32,
-  vertex_data: Vec<Triangle<GLfloat>>,
+  triangles: Vec<Triangle<GLfloat>>,
   projection_matrix: cgmath::matrix::Matrix4<GLfloat>,
   shader_program: u32,
 }
@@ -135,8 +135,8 @@ impl Game for App {
       gl::GenBuffers(1, &mut self.vbo);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
       gl::BufferData(gl::ARRAY_BUFFER,
-                      (self.vertex_data.len() * mem::size_of::<Triangle<GLfloat>>()) as GLsizeiptr,
-                      mem::transmute(self.vertex_data.get(0)),
+                      (self.triangles.len() * mem::size_of::<Triangle<GLfloat>>()) as GLsizeiptr,
+                      mem::transmute(self.triangles.get(0)),
                       gl::STATIC_DRAW);
 
       gl::UseProgram(self.shader_program);
@@ -179,7 +179,7 @@ impl Game for App {
   fn render(&mut self, _:&RenderArgs) {
     gl::Clear(gl::COLOR_BUFFER_BIT);
 
-    gl::DrawArrays(gl::TRIANGLES, 0, 3 * self.vertex_data.len() as i32);
+    gl::DrawArrays(gl::TRIANGLES, 0, 3 * self.triangles.len() as i32);
   }
 }
 
@@ -188,16 +188,16 @@ impl App {
     App {
       vao: 0,
       vbo: 0,
-      vertex_data: Vec::from_slice([
+      triangles: Vec::from_slice([
         Triangle::new(
-          &Vertex::new(&Vector3::new( 0.0,  0.5, 0.0), &Color4::new(&Vector4::new(1.0, 0.0, 0.0, 1.0))),
-          &Vertex::new(&Vector3::new( 0.5, -0.5, 0.0), &Color4::new(&Vector4::new(0.0, 1.0, 0.0, 1.0))),
-          &Vertex::new(&Vector3::new(-0.5, -0.5, 0.0), &Color4::new(&Vector4::new(0.0, 0.0, 1.0, 1.0))),
+          &Vertex::new(& 0.0, & 0.5, &0.0, &Color4::new(&1.0, &0.0, &0.0, &1.0)),
+          &Vertex::new(& 0.5, &-0.5, &0.0, &Color4::new(&0.0, &1.0, &0.0, &1.0)),
+          &Vertex::new(&-0.5, &-0.5, &0.0, &Color4::new(&0.0, &0.0, &1.0, &1.0)),
         ),
         Triangle::new(
-          &Vertex::new(&Vector3::new( 0.0,  0.5, 0.0), &Color4::new(&Vector4::new(1.0, 0.0, 0.0, 1.0))),
-          &Vertex::new(&Vector3::new(-0.5, -0.5, 0.0), &Color4::new(&Vector4::new(0.0, 1.0, 0.0, 1.0))),
-          &Vertex::new(&Vector3::new(-1.0,  0.5, 0.0), &Color4::new(&Vector4::new(0.0, 0.0, 1.0, 1.0))),
+          &Vertex::new(& 0.0, & 0.5, &0.0, &Color4::new(&1.0, &0.0, &0.0, &1.0)),
+          &Vertex::new(&-0.5, &-0.5, &0.0, &Color4::new(&0.0, &1.0, &0.0, &1.0)),
+          &Vertex::new(&-1.0, & 0.5, &0.0, &Color4::new(&0.0, &0.0, &1.0, &1.0)),
         ),
       ]),
       shader_program: -1 as u32,
