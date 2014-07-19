@@ -40,6 +40,7 @@ impl<T: Clone> Color4<T> {
   }
 }
 
+// Rendering vertex: position and color.
 pub struct Vertex<T> {
   position: vector::Vector3<T>,
   color: Color4<T>,
@@ -94,8 +95,10 @@ impl BlockType {
 
 #[deriving(Clone)]
 pub struct Block {
+  // bounds of the Block
   low_corner: vector::Vector3<GLfloat>,
   high_corner: vector::Vector3<GLfloat>,
+
   block_type: BlockType,
 }
 
@@ -108,6 +111,9 @@ impl Block {
     }
   }
 
+  // Construct the faces of the block as triangles for rendering.
+  // Triangle vertices are in clockwise order when viewed from the outside of
+  // the cube, for rendering purposes.
   fn to_triangles(&self) -> [Triangle<GLfloat>, ..12] {
     let (x1, y1, z1) = (self.low_corner.x, self.low_corner.y, self.low_corner.z);
     let (x2, y2, z2) = (self.high_corner.x, self.high_corner.y, self.high_corner.z);
@@ -136,14 +142,20 @@ impl Block {
 }
 
 pub struct App {
-  vao: u32,
-  vbo: u32,
-  triangles: Vec<Triangle<GLfloat>>,
   world_data: Vec<Block>,
+  // renderable equivalent of world_data
+  triangles: Vec<Triangle<GLfloat>>,
+  // OpenGL projection matrix
   projection_matrix: cgmath::matrix::Matrix4<GLfloat>,
+  // OpenGL shader "program" id.
   shader_program: u32,
+  // OpenGL vertex array id
+  vao: u32,
+  // OpenGL vertex buffer id
+  vbo: u32,
 }
 
+// Create a 3D translation matrix.
 pub fn translate(t: &vector::Vector3<GLfloat>) -> cgmath::matrix::Matrix4<GLfloat> {
   cgmath::matrix::Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
@@ -153,6 +165,7 @@ pub fn translate(t: &vector::Vector3<GLfloat>) -> cgmath::matrix::Matrix4<GLfloa
   )
 }
 
+// Create a 3D perspective initialization matrix.
 pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) -> cgmath::matrix::Matrix4<GLfloat> {
   cgmath::matrix::Matrix4::new(
     fovy / aspect, 0.0, 0.0,                              0.0,
@@ -213,27 +226,25 @@ impl Game for App {
       // Create a Vertex Buffer Object and copy the vertex data to it
       gl::GenBuffers(1, &mut self.vbo);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
+      // Copy the triangle data for rendering.
       gl::BufferData(gl::ARRAY_BUFFER,
                       (self.triangles.len() * mem::size_of::<Triangle<GLfloat>>()) as GLsizeiptr,
                       mem::transmute(self.triangles.get(0)),
                       gl::STATIC_DRAW);
 
       gl::UseProgram(self.shader_program);
-      let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
-      if loc == -1 {
-        println!("couldn't read matrix");
-      } else {
-        self.projection_matrix = perspective(3.14/2.0, 4.0/3.0, 0.1, 100.0);
-        self.transform_projection(&translate(&vector::Vector3::new(0.0, -2.0, -12.0)));
-      }
+      // initialize the projection matrix
+      self.projection_matrix = perspective(3.14/2.0, 4.0/3.0, 0.1, 100.0);
+      self.transform_projection(&translate(&vector::Vector3::new(0.0, -2.0, -12.0)));
       "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
 
-      // Specify the layout of the vertex data
       let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
       gl::EnableVertexAttribArray(pos_attr as GLuint);
       let color_attr = "in_color".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
       gl::EnableVertexAttribArray(color_attr as GLuint);
 
+      // Specify the layout of the vertex data:
+      // position data first
       gl::VertexAttribPointer(
           pos_attr as GLuint,
           (mem::size_of::<vector::Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
@@ -242,6 +253,7 @@ impl Game for App {
           mem::size_of::<Vertex<GLfloat>>() as i32,
           ptr::null(),
       );
+      // color data next
       gl::VertexAttribPointer(
           color_attr as GLuint,
           (mem::size_of::<Color4<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
@@ -266,6 +278,7 @@ impl App {
   pub fn new() -> App {
     let mut world_data = Vec::new();
     let mut i = -16i;
+    // ground
     while i <= 16 {
       let mut j = -16i;
       while j <= 16 {
@@ -330,13 +343,14 @@ impl App {
       triangles: Vec::new(),
       world_data: world_data,
       shader_program: -1 as u32,
-      projection_matrix: cgmath::matrix::Matrix4::from_value(0.0),
+      projection_matrix: cgmath::matrix::Matrix4::identity(),
     };
 
     app.update_triangles();
     app
   }
 
+  // apply a transformation to the OpenGL projection matrix.
   pub fn transform_projection(&mut self, t: &cgmath::matrix::Matrix4<GLfloat>) {
     unsafe {
       let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
