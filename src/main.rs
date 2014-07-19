@@ -1,5 +1,6 @@
 #![feature(globs)] // Allow global imports
 
+extern crate core;
 extern crate cgmath;
 extern crate gl;
 extern crate graphics;
@@ -9,12 +10,16 @@ extern crate sdl2_game_window;
 
 use sdl2_game_window::GameWindowSDL2;
 
-use cgmath::array::*;
 use cgmath::*;
+use cgmath::array::*;
+use cgmath::matrix::*;
+use cgmath::vector::Vector3;
 use piston::*;
 use gl::types::*;
+use std::ptr;
+use std::mem;
+use std::str;
 use std::vec::*;
-use std::*;
 
 pub struct Color4<T> { r: T, g: T, b: T, a: T }
 
@@ -42,7 +47,7 @@ impl<T: Clone> Color4<T> {
 
 // Rendering vertex: position and color.
 pub struct Vertex<T> {
-  position: vector::Vector3<T>,
+  position: Vector3<T>,
   color: Color4<T>,
 }
 
@@ -58,7 +63,7 @@ impl<T: Clone> Clone for Vertex<T> {
 impl<T: Clone> Vertex<T> {
   fn new(x: &T, y: &T, z: &T, c: &Color4<T>) -> Vertex<T> {
     Vertex {
-      position: vector::Vector3::new(x.clone(), y.clone(), z.clone()),
+      position: Vector3::new(x.clone(), y.clone(), z.clone()),
       color: c.clone(),
     }
   }
@@ -96,14 +101,13 @@ impl BlockType {
 #[deriving(Clone)]
 pub struct Block {
   // bounds of the Block
-  low_corner: vector::Vector3<GLfloat>,
-  high_corner: vector::Vector3<GLfloat>,
-
+  low_corner: Vector3<GLfloat>,
+  high_corner: Vector3<GLfloat>,
   block_type: BlockType,
 }
 
 impl Block {
-  fn new(low_corner: &vector::Vector3<GLfloat>, high_corner: &vector::Vector3<GLfloat>, block_type: BlockType) -> Block {
+  fn new(low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) -> Block {
     Block {
       low_corner: low_corner.clone(),
       high_corner: high_corner.clone(),
@@ -146,7 +150,7 @@ pub struct App {
   // renderable equivalent of world_data
   triangles: Vec<Triangle<GLfloat>>,
   // OpenGL projection matrix
-  projection_matrix: cgmath::matrix::Matrix4<GLfloat>,
+  projection_matrix: matrix::Matrix4<GLfloat>,
   // OpenGL shader "program" id.
   shader_program: u32,
   // OpenGL vertex array id
@@ -156,8 +160,8 @@ pub struct App {
 }
 
 // Create a 3D translation matrix.
-pub fn translate(t: &vector::Vector3<GLfloat>) -> cgmath::matrix::Matrix4<GLfloat> {
-  cgmath::matrix::Matrix4::new(
+pub fn translate(t: &Vector3<GLfloat>) -> matrix::Matrix4<GLfloat> {
+  matrix::Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
     0.0, 1.0, 0.0, 0.0,
     0.0, 0.0, 1.0, 0.0,
@@ -166,8 +170,8 @@ pub fn translate(t: &vector::Vector3<GLfloat>) -> cgmath::matrix::Matrix4<GLfloa
 }
 
 // Create a 3D perspective initialization matrix.
-pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) -> cgmath::matrix::Matrix4<GLfloat> {
-  cgmath::matrix::Matrix4::new(
+pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) -> matrix::Matrix4<GLfloat> {
+  matrix::Matrix4::new(
     fovy / aspect, 0.0, 0.0,                              0.0,
     0.0,          fovy, 0.0,                              0.0,
     0.0,           0.0, (near + far) / (near - far),     -1.0,
@@ -191,22 +195,22 @@ impl Game for App {
   fn key_press(&mut self, _args: &KeyPressArgs) {
     match _args.key {
       piston::keyboard::A => {
-        self.transform_projection(&translate(&vector::Vector3::new(0.1, 0.0, 0.0)));
+        self.translate(&Vector3::new(0.1, 0.0, 0.0));
       },
       piston::keyboard::D => {
-        self.transform_projection(&translate(&vector::Vector3::new(-0.1, 0.0, 0.0)));
+        self.translate(&Vector3::new(-0.1, 0.0, 0.0));
       },
       piston::keyboard::LShift => {
-        self.transform_projection(&translate(&vector::Vector3::new(0.0, 0.1, 0.0)));
+        self.translate(&Vector3::new(0.0, 0.1, 0.0));
       },
       piston::keyboard::Space => {
-        self.transform_projection(&translate(&vector::Vector3::new(0.0, -0.1, 0.0)));
+        self.translate(&Vector3::new(0.0, -0.1, 0.0));
       },
       piston::keyboard::W => {
-        self.transform_projection(&translate(&vector::Vector3::new(0.0, 0.0, 0.1)));
+        self.translate(&Vector3::new(0.0, 0.0, 0.1));
       },
       piston::keyboard::S => {
-        self.transform_projection(&translate(&vector::Vector3::new(0.0, 0.0, -0.1)));
+        self.translate(&Vector3::new(0.0, 0.0, -0.1));
       },
       _ => {},
     }
@@ -226,16 +230,12 @@ impl Game for App {
       // Create a Vertex Buffer Object and copy the vertex data to it
       gl::GenBuffers(1, &mut self.vbo);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
-      // Copy the triangle data for rendering.
-      gl::BufferData(gl::ARRAY_BUFFER,
-                      (self.triangles.len() * mem::size_of::<Triangle<GLfloat>>()) as GLsizeiptr,
-                      mem::transmute(self.triangles.get(0)),
-                      gl::STATIC_DRAW);
 
+      // Set up shaders
       gl::UseProgram(self.shader_program);
       // initialize the projection matrix
       self.projection_matrix = perspective(3.14/2.0, 4.0/3.0, 0.1, 100.0);
-      self.transform_projection(&translate(&vector::Vector3::new(0.0, -2.0, -12.0)));
+      self.translate(&Vector3::new(0.0, -8.0, -12.0));
       "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
 
       let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
@@ -247,7 +247,7 @@ impl Game for App {
       // position data first
       gl::VertexAttribPointer(
           pos_attr as GLuint,
-          (mem::size_of::<vector::Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
+          (mem::size_of::<Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
           gl::FLOAT,
           gl::FALSE as GLboolean,
           mem::size_of::<Vertex<GLfloat>>() as i32,
@@ -260,11 +260,13 @@ impl Game for App {
           gl::FLOAT,
           gl::FALSE as GLboolean,
           mem::size_of::<Vertex<GLfloat>>() as i32,
-          ptr::null().offset(mem::size_of::<vector::Vector3<GLfloat>>() as int),
+          ptr::null().offset(mem::size_of::<Vector3<GLfloat>>() as int),
       );
     }
 
     gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+
+    self.update_triangles();
   }
 
   fn render(&mut self, _:&RenderArgs) {
@@ -277,14 +279,15 @@ impl Game for App {
 impl App {
   pub fn new() -> App {
     let mut world_data = Vec::new();
-    let mut i = -16i;
     // ground
+    let mut i;
+    i = -16i;
     while i <= 16 {
       let mut j = -16i;
       while j <= 16 {
         let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
         let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
-        world_data.grow(1, &Block::new(&vector::Vector3::new(x1, y1, z1), &vector::Vector3::new(x2, y2, z2), Grass));
+        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Grass));
         j += 1;
       }
       i += 1;
@@ -296,7 +299,19 @@ impl App {
       while j <= 32 {
         let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -16.0 - 0.5);
         let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -16.0 + 0.5);
-        world_data.grow(1, &Block::new(&vector::Vector3::new(x1, y1, z1), &vector::Vector3::new(x2, y2, z2), Stone));
+        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+        j += 1;
+      }
+      i += 1;
+    }
+    // dirt block
+    i = -1;
+    while i <= 1 {
+      let mut j = -1i;
+      while j <= 1 {
+        let (x1, y1, z1) = (0.0 + i as GLfloat, 3.0, 0.0 + j as GLfloat);
+        let (x2, y2, z2) = (1.0 + i as GLfloat, 4.0, 1.0 + j as GLfloat);
+        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
         j += 1;
       }
       i += 1;
@@ -308,7 +323,7 @@ impl App {
       while j <= 32 {
         let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 16.0 - 0.5);
         let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 16.0 + 0.5);
-        world_data.grow(1, &Block::new(&vector::Vector3::new(x1, y1, z1), &vector::Vector3::new(x2, y2, z2), Stone));
+        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
         j += 1;
       }
       i += 1;
@@ -320,7 +335,7 @@ impl App {
       while j <= 32 {
         let (x1, y1, z1) = (-16.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
         let (x2, y2, z2) = (-16.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-        world_data.grow(1, &Block::new(&vector::Vector3::new(x1, y1, z1), &vector::Vector3::new(x2, y2, z2), Stone));
+        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
         j += 1;
       }
       i += 1;
@@ -332,37 +347,22 @@ impl App {
       while j <= 32 {
         let (x1, y1, z1) = (16.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
         let (x2, y2, z2) = (16.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-        world_data.grow(1, &Block::new(&vector::Vector3::new(x1, y1, z1), &vector::Vector3::new(x2, y2, z2), Stone));
+        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
         j += 1;
       }
       i += 1;
     }
-    let mut app = App {
+    App {
       vao: 0,
       vbo: 0,
-      triangles: Vec::new(),
       world_data: world_data,
+      triangles: Vec::new(),
       shader_program: -1 as u32,
       projection_matrix: cgmath::matrix::Matrix4::identity(),
-    };
-
-    app.update_triangles();
-    app
-  }
-
-  // apply a transformation to the OpenGL projection matrix.
-  pub fn transform_projection(&mut self, t: &cgmath::matrix::Matrix4<GLfloat>) {
-    unsafe {
-      let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
-      if loc == -1 {
-        println!("couldn't read matrix");
-      } else {
-        self.projection_matrix = self.projection_matrix * *t;
-        gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(self.projection_matrix.ptr()));
-      }
     }
   }
 
+  // Update the OpenGL vertex data with the world data triangles.
   pub fn update_triangles(&mut self) {
     let mut i = 0;
     self.triangles = Vec::new();
@@ -370,6 +370,31 @@ impl App {
       self.triangles.push_all(self.world_data.get(i).to_triangles());
       i += 1;
     }
+
+    unsafe {
+      gl::BufferData(
+        gl::ARRAY_BUFFER,
+        (self.triangles.len() * mem::size_of::<Triangle<GLfloat>>()) as GLsizeiptr,
+        mem::transmute(self.triangles.get(0)),
+        gl::STATIC_DRAW);
+    }
+  }
+
+  pub fn transform_projection(&mut self, m: &Matrix4<GLfloat>) {
+    unsafe {
+      let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
+      if loc == -1 {
+        println!("couldn't read matrix");
+      } else {
+        self.projection_matrix = self.projection_matrix * *m;
+        gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(self.projection_matrix.ptr()));
+      }
+    }
+  }
+
+  #[inline]
+  pub fn translate(&mut self, v: &Vector3<GLfloat>) {
+    self.transform_projection(&translate(v));
   }
 
   pub fn drop(&self) {
