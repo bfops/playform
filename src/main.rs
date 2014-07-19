@@ -149,8 +149,9 @@ pub struct App {
   world_data: Vec<Block>,
   // renderable equivalent of world_data
   triangles: Vec<Triangle<GLfloat>>,
-  // OpenGL projection matrix
-  projection_matrix: matrix::Matrix4<GLfloat>,
+  // OpenGL projection matrix components
+  fov_matrix: matrix::Matrix4<GLfloat>,
+  translation_matrix: matrix::Matrix4<GLfloat>,
   // OpenGL shader "program" id.
   shader_program: u32,
   // OpenGL vertex array id
@@ -233,9 +234,6 @@ impl Game for App {
 
       // Set up shaders
       gl::UseProgram(self.shader_program);
-      // initialize the projection matrix
-      self.projection_matrix = perspective(3.14/2.0, 4.0/3.0, 0.1, 100.0);
-      self.translate(&Vector3::new(0.0, -8.0, -12.0));
       "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
 
       let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
@@ -265,6 +263,11 @@ impl Game for App {
     }
 
     gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+
+    // initialize the projection matrix
+    self.fov_matrix = perspective(3.14/2.0, 4.0/3.0, 0.1, 100.0);
+    self.translate(&Vector3::new(0.0, -8.0, -12.0));
+    self.update_projection();
 
     self.update_triangles();
   }
@@ -355,8 +358,9 @@ impl App {
     App {
       world_data: world_data,
       triangles: Vec::new(),
+      fov_matrix: Matrix4::identity(),
+      translation_matrix: Matrix4::identity(),
       shader_program: -1 as u32,
-      projection_matrix: cgmath::matrix::Matrix4::identity(),
       vao: 0,
       vbo: 0,
     }
@@ -380,21 +384,22 @@ impl App {
     }
   }
 
-  pub fn transform_projection(&mut self, m: &Matrix4<GLfloat>) {
+  pub fn update_projection(&self) {
     unsafe {
       let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
       if loc == -1 {
         println!("couldn't read matrix");
       } else {
-        self.projection_matrix = self.projection_matrix * *m;
-        gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(self.projection_matrix.ptr()));
+        let projection = self.fov_matrix * self.translation_matrix;
+        gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(projection.ptr()));
       }
     }
   }
 
   #[inline]
   pub fn translate(&mut self, v: &Vector3<GLfloat>) {
-    self.transform_projection(&translate(v));
+    self.translation_matrix = self.translation_matrix * translate(v);
+    self.update_projection();
   }
 
   pub fn drop(&self) {
