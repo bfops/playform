@@ -10,24 +10,34 @@ extern crate sdl2_game_window;
 use sdl2_game_window::GameWindowSDL2;
 
 use cgmath::array::*;
-use cgmath::vector::{Vector3, Vector4};
+use cgmath::vector::*;
 use piston::*;
 use gl::types::*;
 use std::mem;
 use std::ptr;
 use std::str;
 
-pub struct Color4<T> { inner: Vector4<T>, }
+pub struct Color4<T> { r: T, g: T, b: T, a: T }
 
 impl<T: Clone> Clone for Color4<T> {
   fn clone(&self) -> Color4<T> {
-    Color4 { inner: self.inner.clone(), }
+    Color4 {
+      r: self.r.clone(),
+      g: self.g.clone(),
+      b: self.b.clone(),
+      a: self.a.clone(),
+    }
   }
 }
 
 impl<T: Clone> Color4<T> {
   fn new(r: &T, g: &T, b: &T, a: &T) -> Color4<T> {
-    Color4 { inner: Vector4::new(r.clone(), g.clone(), b.clone(), a.clone()), }
+    Color4 {
+      r: r.clone(),
+      g: g.clone(),
+      b: b.clone(),
+      a: a.clone(),
+    }
   }
 }
 
