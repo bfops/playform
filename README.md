@@ -1,7 +1,8 @@
 ## Introduction
 
 playform aspires to be an open-world sandbox game written in Rust.
-It is currently little more than an experiment in 3D graphics.
+Right now, it just renders a basic world and stops the player from colliding
+with it.
 
 It can be built with `cargo build`, which should grab dependencies
 automatically. `playform` can then be run from the `target` directory.
