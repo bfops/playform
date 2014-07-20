@@ -207,8 +207,11 @@ impl Block {
 
 pub struct App {
   world_data: Vec<Block>,
+  // position; world coordinates
   camera_position: Vector3<GLfloat>,
+  // speed; x/z units are relative to player facing
   camera_speed: Vector3<GLfloat>,
+  // acceleration; x/z units are relative to player facing
   camera_accel: Vector3<GLfloat>,
   // renderable equivalent of world_data
   render_data: Vec<Vertex<GLfloat>>,
@@ -279,11 +282,11 @@ impl Game for App {
   fn key_press(&mut self, args: &KeyPressArgs) {
     match args.key {
       piston::keyboard::A => {
-        let direction = -self.right();
+        let direction = -Vector3::unit_x();
         self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::D => {
-        let direction = self.right();
+        let direction = Vector3::unit_x();
         self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::LShift => {
@@ -295,11 +298,11 @@ impl Game for App {
         self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::W => {
-        let direction = self.forward();
+        let direction = -Vector3::unit_z();
         self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::S => {
-        let direction = -self.forward();
+        let direction = Vector3::unit_z();
         self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::Left => {
@@ -327,11 +330,11 @@ impl Game for App {
   fn key_release(&mut self, args: &KeyReleaseArgs) {
     match args.key {
       piston::keyboard::A => {
-        let direction = -self.right();
+        let direction = -Vector3::unit_x();
         self.camera_accel = self.camera_accel - direction.mul_s(0.2);
       },
       piston::keyboard::D => {
-        let direction = self.right();
+        let direction = Vector3::unit_x();
         self.camera_accel = self.camera_accel - direction.mul_s(0.2);
       },
       piston::keyboard::LShift => {
@@ -343,11 +346,11 @@ impl Game for App {
         self.camera_accel = self.camera_accel - direction.mul_s(0.2);
       },
       piston::keyboard::W => {
-        let direction = self.forward();
+        let direction = -Vector3::unit_z();
         self.camera_accel = self.camera_accel - direction.mul_s(0.2);
       },
       piston::keyboard::S => {
-        let direction = -self.forward();
+        let direction = Vector3::unit_z();
         self.camera_accel = self.camera_accel - direction.mul_s(0.2);
       },
       _ => { }
@@ -490,7 +493,7 @@ impl Game for App {
   }
 
   fn update(&mut self, _:&UpdateArgs) {
-    let dP = self.camera_speed;
+    let dP = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.camera_speed);
     if dP.x != 0.0 {
       self.translate(&Vector3::new(dP.x, 0.0, 0.0));
     }
