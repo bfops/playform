@@ -17,8 +17,8 @@ use cgmath::num::{BaseFloat};
 use cgmath::vector::{Vector,Vector3};
 use piston::*;
 use gl::types::*;
-use std::ptr;
 use std::mem;
+use std::ptr;
 use std::str;
 use std::num::*;
 use std::vec::*;
@@ -107,6 +107,7 @@ enum Intersect1 {
   NoIntersect1,
 }
 
+// Find whether two Blocks intersect.
 fn intersect(b1: &Block, b2: &Block) -> Intersect {
   fn intersect1(x1l: GLfloat, x1h: GLfloat, x2l: GLfloat, x2h: GLfloat) -> Intersect1 {
     if x1l > x2l && x1h <= x2h {
@@ -181,6 +182,7 @@ impl Block {
     ]
   }
 
+  // Construct outlines for this Block, to sharpen the edges.
   fn to_outlines(&self) -> [Vertex<GLfloat>, ..24] {
     let d = 0.002;
     let (x1, y1, z1) = (self.low_corner.x - d, self.low_corner.y - d, self.low_corner.z - d);
@@ -291,7 +293,7 @@ impl Game for App {
         self.walk(&-Vector3::unit_y());
       },
       piston::keyboard::Space => {
-        self.camera_accel = self.camera_accel + Vector3::unit_y().mul_s(0.4);
+        self.camera_accel.y = self.camera_accel.y + 0.4;
       },
       piston::keyboard::W => {
         self.walk(&-Vector3::unit_z());
@@ -334,7 +336,7 @@ impl Game for App {
         self.walk(&Vector3::unit_y());
       },
       piston::keyboard::Space => {
-        self.camera_accel = self.camera_accel - Vector3::unit_y().mul_s(0.4);
+        self.camera_accel.y = self.camera_accel.y - 0.4;
       },
       piston::keyboard::W => {
         self.walk(&Vector3::unit_z());
@@ -572,11 +574,15 @@ impl App {
     self.camera_accel = self.camera_accel + da.mul_s(0.2);
   }
 
-  pub fn translate(&mut self, v: &Vector3<GLfloat>) {
-    let high_corner = self.camera_position + *v;
-    let low_corner = high_corner - Vector3::new(0.5, 2.0, 1.0);
+  fn construct_player(&self, high_corner: &Vector3<GLfloat>) -> Block {
+    let low_corner = *high_corner - Vector3::new(0.5, 2.0, 1.0);
     // TODO: this really shouldn't be Stone.
-    let player = Block::new(&low_corner, &high_corner, Stone);
+    Block::new(&low_corner, high_corner, Stone)
+  }
+
+  // move the player by a vector
+  pub fn translate(&mut self, v: &Vector3<GLfloat>) {
+    let player = self.construct_player(&(self.camera_position + *v));
     let mut collided = false;
     let mut i = 0;
     while i < self.world_data.len() {
@@ -600,7 +606,7 @@ impl App {
   }
 
   #[inline]
-  // Rotate around an axis.
+  // rotate the player's view.
   pub fn rotate(&mut self, v: &Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
     self.rotation_matrix = self.rotation_matrix * from_axis_angle(v, -r);
     self.update_projection();
