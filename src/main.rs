@@ -293,7 +293,7 @@ impl Game for App {
         self.walk(&-Vector3::unit_y());
       },
       piston::keyboard::Space => {
-        self.camera_accel.y = self.camera_accel.y + 0.4;
+        self.camera_accel.y = self.camera_accel.y + 0.3;
       },
       piston::keyboard::W => {
         self.walk(&-Vector3::unit_z());
@@ -336,7 +336,7 @@ impl Game for App {
         self.walk(&Vector3::unit_y());
       },
       piston::keyboard::Space => {
-        self.camera_accel.y = self.camera_accel.y - 0.4;
+        self.camera_accel.y = self.camera_accel.y - 0.3;
       },
       piston::keyboard::W => {
         self.walk(&Vector3::unit_z());
@@ -498,7 +498,7 @@ impl Game for App {
     let dV = self.camera_accel;
     self.camera_speed = self.camera_speed + dV;
     // friction
-    self.camera_speed = self.camera_speed.mul_s(0.8);
+    self.camera_speed = self.camera_speed * Vector3::new(0.8, 0.99, 0.8);
   }
 
   fn render(&mut self, _:&RenderArgs) {
@@ -515,7 +515,7 @@ impl App {
       world_data: Vec::new(),
       camera_position: Vector3::zero(),
       camera_speed: Vector3::zero(),
-      camera_accel: Vector3::new(0.0, -0.15, 0.0),
+      camera_accel: Vector3::new(0.0, -0.1, 0.0),
       render_data: Vec::new(),
       triangles: 0,
       lines: 0,
