@@ -14,7 +14,7 @@ use cgmath::*;
 use cgmath::array::*;
 use cgmath::matrix::*;
 use cgmath::num::{BaseFloat};
-use cgmath::vector::Vector3;
+use cgmath::vector::{Vector,Vector3};
 use piston::*;
 use gl::types::*;
 use std::ptr;
@@ -96,14 +96,51 @@ pub struct Block {
   block_type: BlockType,
 }
 
-pub fn intersect(b1: &Block, b2: &Block) -> bool {
-  fn intersect_linear(x1l: GLfloat, x1h: GLfloat, x2l: GLfloat, x2h: GLfloat) -> bool {
-    (x1h > x2l && x2h > x1l)
+enum Intersect {
+  Intersect(Vector3<GLfloat>),
+  NoIntersect,
+}
+
+enum Intersect1 {
+  Within,
+  Partial,
+  NoIntersect1,
+}
+
+fn intersect(b1: &Block, b2: &Block) -> Intersect {
+  fn intersect1(x1l: GLfloat, x1h: GLfloat, x2l: GLfloat, x2h: GLfloat) -> Intersect1 {
+    if x1l > x2l && x1h <= x2h {
+      Within
+    } else if x1h > x2l && x2h > x1l {
+      Partial
+    } else {
+      NoIntersect1
+    }
   }
 
-  intersect_linear(b1.low_corner.x, b1.high_corner.x, b2.low_corner.x, b2.high_corner.x) &&
-  intersect_linear(b1.low_corner.y, b1.high_corner.y, b2.low_corner.y, b2.high_corner.y) &&
-  intersect_linear(b1.low_corner.z, b1.high_corner.z, b2.low_corner.z, b2.high_corner.z)
+  let mut ret = true;
+  let mut v = Vector3::ident();
+  match intersect1(b1.low_corner.x, b1.high_corner.x, b2.low_corner.x, b2.high_corner.x) {
+    Within => { },
+    Partial => { v.x = 0.0; },
+    NoIntersect1 => { ret = false; },
+  }
+  match intersect1(b1.low_corner.y, b1.high_corner.y, b2.low_corner.y, b2.high_corner.y) {
+    Within => { },
+    Partial => { v.y = 0.0; },
+    NoIntersect1 => { ret = false; },
+  }
+  match intersect1(b1.low_corner.z, b1.high_corner.z, b2.low_corner.z, b2.high_corner.z) {
+    Within => { },
+    Partial => { v.z = 0.0; },
+    NoIntersect1 => { ret = false; },
+  }
+
+  if ret {
+    Intersect(v)
+  } else {
+    NoIntersect
+  }
 }
 
 impl Block {
@@ -171,6 +208,8 @@ impl Block {
 pub struct App {
   world_data: Vec<Block>,
   camera_position: Vector3<GLfloat>,
+  camera_speed: Vector3<GLfloat>,
+  camera_accel: Vector3<GLfloat>,
   // renderable equivalent of world_data
   render_data: Vec<Vertex<GLfloat>>,
   triangles: uint, // number of triangles in render_data
@@ -237,31 +276,31 @@ pub fn from_axis_angle<S: BaseFloat>(axis: &Vector3<S>, angle: angle::Rad<S>) ->
 }
 
 impl Game for App {
-  fn key_press(&mut self, _args: &KeyPressArgs) {
-    match _args.key {
+  fn key_press(&mut self, args: &KeyPressArgs) {
+    match args.key {
       piston::keyboard::A => {
         let direction = -self.right();
-        self.translate(&direction);
+        self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::D => {
         let direction = self.right();
-        self.translate(&direction);
+        self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::LShift => {
         let direction = -self.y();
-        self.translate(&direction);
+        self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::Space => {
         let direction = self.y();
-        self.translate(&direction);
+        self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::W => {
         let direction = self.forward();
-        self.translate(&direction);
+        self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::S => {
         let direction = -self.forward();
-        self.translate(&direction);
+        self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::Left => {
         let d = angle::rad(3.14 / 12.0 as GLfloat);
@@ -284,6 +323,36 @@ impl Game for App {
         self.rotate(&axis, angle::rad(-3.14/12.0 as GLfloat));
       },
       _ => {},
+    }
+  }
+
+  fn key_release(&mut self, args: &KeyReleaseArgs) {
+    match args.key {
+      piston::keyboard::A => {
+        let direction = -self.right();
+        self.camera_accel = self.camera_accel - direction.mul_s(0.2);
+      },
+      piston::keyboard::D => {
+        let direction = self.right();
+        self.camera_accel = self.camera_accel - direction.mul_s(0.2);
+      },
+      piston::keyboard::LShift => {
+        let direction = -self.y();
+        self.camera_accel = self.camera_accel - direction.mul_s(0.2);
+      },
+      piston::keyboard::Space => {
+        let direction = self.y();
+        self.camera_accel = self.camera_accel - direction.mul_s(0.2);
+      },
+      piston::keyboard::W => {
+        let direction = self.forward();
+        self.camera_accel = self.camera_accel - direction.mul_s(0.2);
+      },
+      piston::keyboard::S => {
+        let direction = -self.forward();
+        self.camera_accel = self.camera_accel - direction.mul_s(0.2);
+      },
+      _ => { }
     }
   }
 
@@ -422,6 +491,24 @@ impl Game for App {
     self.update_render_data();
   }
 
+  fn update(&mut self, _:&UpdateArgs) {
+    let dP = self.camera_speed;
+    if dP.x != 0.0 {
+      self.translate(&Vector3::new(dP.x, 0.0, 0.0));
+    }
+    if dP.y != 0.0 {
+      self.translate(&Vector3::new(0.0, dP.y, 0.0));
+    }
+    if dP.z != 0.0 {
+      self.translate(&Vector3::new(0.0, 0.0, dP.z));
+    }
+
+    let dV = self.camera_accel;
+    self.camera_speed = self.camera_speed + dV;
+    // friction
+    self.camera_speed = self.camera_speed.mul_s(0.8);
+  }
+
   fn render(&mut self, _:&RenderArgs) {
     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
@@ -435,6 +522,8 @@ impl App {
     App {
       world_data: Vec::new(),
       camera_position: Vector3::zero(),
+      camera_speed: Vector3::zero(),
+      camera_accel: Vector3::new(0.0, -0.08, 0.0),
       render_data: Vec::new(),
       triangles: 0,
       lines: 0,
@@ -464,8 +553,8 @@ impl App {
     self.lines = outlines.len();
 
     self.render_data = Vec::new();
-    self.render_data.push_all(triangles.as_slice());
-    self.render_data.push_all(outlines.as_slice());
+    self.render_data.push_all(triangles.slice(0, triangles.len()));
+    self.render_data.push_all(outlines.slice(0, outlines.len()));
 
     unsafe {
       gl::BufferData(
@@ -497,9 +586,14 @@ impl App {
     let mut collided = false;
     let mut i = 0;
     while i < self.world_data.len() {
-      if intersect(self.world_data.get(i), &player) {
-        collided = true;
-        break;
+      match intersect(&player, self.world_data.get(i)) {
+        Intersect(stop) => {
+          collided = true;
+          let d = *v * stop - *v;
+          self.camera_speed = self.camera_speed + d;
+          break;
+        },
+        NoIntersect => {}
       }
       i += 1;
     }
@@ -588,7 +682,7 @@ fn compile_shader(src: &str, ty: GLenum) -> GLuint {
             gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
             let mut buf = Vec::from_elem(len as uint - 1, 0u8); // subtract 1 to skip the trailing null character
             gl::GetShaderInfoLog(shader, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
-            fail!("{}", str::from_utf8(buf.as_slice()).expect("ShaderInfoLog not valid utf8"));
+            fail!("{}", str::from_utf8(buf.slice(0, buf.len())).expect("ShaderInfoLog not valid utf8"));
         }
     }
     shader
@@ -612,7 +706,7 @@ fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
             gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
             let mut buf = Vec::from_elem(len as uint - 1, 0u8); // subtract 1 to skip the trailing null character
             gl::GetProgramInfoLog(program, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
-            fail!("{}", str::from_utf8(buf.as_slice()).expect("ProgramInfoLog not valid utf8"));
+            fail!("{}", str::from_utf8(buf.slice(0, buf.len())).expect("ProgramInfoLog not valid utf8"));
         }
     }
 
