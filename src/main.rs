@@ -96,6 +96,16 @@ pub struct Block {
   block_type: BlockType,
 }
 
+pub fn intersect(b1: &Block, b2: &Block) -> bool {
+  fn intersect_linear(x1l: GLfloat, x1h: GLfloat, x2l: GLfloat, x2h: GLfloat) -> bool {
+    (x1h > x2l && x2h > x1l)
+  }
+
+  intersect_linear(b1.low_corner.x, b1.high_corner.x, b2.low_corner.x, b2.high_corner.x) &&
+  intersect_linear(b1.low_corner.y, b1.high_corner.y, b2.low_corner.y, b2.high_corner.y) &&
+  intersect_linear(b1.low_corner.z, b1.high_corner.z, b2.low_corner.z, b2.high_corner.z)
+}
+
 impl Block {
   fn new(low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) -> Block {
     Block {
@@ -160,6 +170,7 @@ impl Block {
 
 pub struct App {
   world_data: Vec<Block>,
+  camera_position: Vector3<GLfloat>,
   // renderable equivalent of world_data
   render_data: Vec<Vertex<GLfloat>>,
   triangles: uint, // number of triangles in render_data
@@ -423,6 +434,7 @@ impl App {
   pub fn new() -> App {
     App {
       world_data: Vec::new(),
+      camera_position: Vector3::zero(),
       render_data: Vec::new(),
       triangles: 0,
       lines: 0,
@@ -478,8 +490,24 @@ impl App {
 
   #[inline]
   pub fn translate(&mut self, v: &Vector3<GLfloat>) {
-    self.translation_matrix = self.translation_matrix * translate(&-v);
-    self.update_projection();
+    let high_corner = self.camera_position + *v;
+    let low_corner = high_corner - Vector3::new(0.5, 2.0, 1.0);
+    // TODO: this really shouldn't be Stone.
+    let player = Block::new(&low_corner, &high_corner, Stone);
+    let mut collided = false;
+    let mut i = 0;
+    while i < self.world_data.len() {
+      if intersect(self.world_data.get(i), &player) {
+        collided = true;
+        break;
+      }
+      i += 1;
+    }
+
+    if !collided {
+      self.camera_position = self.camera_position + *v;
+      self.translation_matrix = self.translation_matrix * translate(&-v);
+      self.update_projection();
     }
   }
 
