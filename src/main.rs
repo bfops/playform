@@ -227,49 +227,50 @@ pub fn from_axis_angle<S: BaseFloat>(axis: &Vector3<S>, angle: angle::Rad<S>) ->
 
 impl Game for App {
   fn key_press(&mut self, _args: &KeyPressArgs) {
-    let x = Vector3::new(1.0, 0.0, 0.0);
-    let y = Vector3::new(0.0, 1.0, 0.0);
-    let z = Vector3::new(0.0, 0.0, 1.0);
     match _args.key {
       piston::keyboard::A => {
-        let r = self.lateral_rotation;
-        self.translate(&Matrix3::from_axis_angle(&y, r).mul_v(&x));
+        let axis = self.right();
+        self.translate(&-axis);
       },
       piston::keyboard::D => {
-        let r = self.lateral_rotation;
-        self.translate(&Matrix3::from_axis_angle(&y, r).mul_v(&-x));
+        let axis = self.right();
+        self.translate(&axis);
       },
       piston::keyboard::LShift => {
-        self.translate(&y);
+        let axis = self.y();
+        self.translate(&-axis);
       },
       piston::keyboard::Space => {
-        self.translate(&-y);
+        let axis = self.y();
+        self.translate(&axis);
       },
       piston::keyboard::W => {
-        let r = self.lateral_rotation;
-        self.translate(&Matrix3::from_axis_angle(&y, r).mul_v(&z));
+        let axis = self.forward();
+        self.translate(&axis);
       },
       piston::keyboard::S => {
-        let r = self.lateral_rotation;
-        self.translate(&Matrix3::from_axis_angle(&y, r).mul_v(&-z));
+        let axis = self.forward();
+        self.translate(&-axis);
       },
       piston::keyboard::Left => {
-        let d = angle::rad(-3.14 / 12.0 as GLfloat);
-        self.lateral_rotation = self.lateral_rotation - d;
-        self.rotate(&y, d);
+        let d = angle::rad(3.14 / 12.0 as GLfloat);
+        let axis = self.y();
+        self.lateral_rotation = self.lateral_rotation + d;
+        self.rotate(&axis, d);
       },
       piston::keyboard::Right => {
-        let d = angle::rad(3.14 / 12.0 as GLfloat);
-        self.lateral_rotation = self.lateral_rotation - d;
-        self.rotate(&y, d);
+        let d = angle::rad(-3.14 / 12.0 as GLfloat);
+        let axis = self.y();
+        self.lateral_rotation = self.lateral_rotation + d;
+        self.rotate(&axis, d);
       },
       piston::keyboard::Up => {
-        let axis = Matrix3::from_axis_angle(&y, self.lateral_rotation).mul_v(&x);
-        self.rotate(&axis, angle::rad(-3.14/12.0 as GLfloat));
+        let axis = self.right();
+        self.rotate(&axis, angle::rad(3.14/12.0 as GLfloat));
       },
       piston::keyboard::Down => {
-        let axis = Matrix3::from_axis_angle(&y, self.lateral_rotation).mul_v(&x);
-        self.rotate(&axis, angle::rad(3.14/12.0 as GLfloat));
+        let axis = self.right();
+        self.rotate(&axis, angle::rad(-3.14/12.0 as GLfloat));
       },
       _ => {},
     }
@@ -330,8 +331,82 @@ impl Game for App {
 
     // initialize the projection matrix
     self.fov_matrix = perspective(3.14/2.0, 4.0/3.0, 0.1, 100.0);
-    self.translate(&Vector3::new(0.0, -8.0, -12.0));
+    self.translate(&Vector3::new(0.0, 4.0, 10.0));
     self.update_projection();
+
+    let mut i;
+    // dirt block
+    i = -1;
+    while i <= 1 {
+      let mut j = -1i;
+      while j <= 1 {
+        let (x1, y1, z1) = (3.0 + i as GLfloat, 6.0, 0.0 + j as GLfloat);
+        let (x2, y2, z2) = (4.0 + i as GLfloat, 7.0, 1.0 + j as GLfloat);
+        self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
+        j += 1;
+      }
+      i += 1;
+    }
+    // ground
+    i = -32i;
+    while i <= 32 {
+      let mut j = -32i;
+      while j <= 32 {
+        let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
+        let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
+        self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Grass));
+        j += 1;
+      }
+      i += 1;
+    }
+    // front wall
+    i = -32i;
+    while i <= 32 {
+      let mut j = 0i;
+      while j <= 32 {
+        let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -32.0 - 0.5);
+        let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -32.0 + 0.5);
+        self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+        j += 1;
+      }
+      i += 1;
+    }
+    // back wall
+    i = -32i;
+    while i <= 32 {
+      let mut j = 0i;
+      while j <= 32 {
+        let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 32.0 - 0.5);
+        let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 32.0 + 0.5);
+        self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+        j += 1;
+      }
+      i += 1;
+    }
+    // left wall
+    i = -32i;
+    while i <= 32 {
+      let mut j = 0i;
+      while j <= 32 {
+        let (x1, y1, z1) = (-32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
+        let (x2, y2, z2) = (-32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
+        self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+        j += 1;
+      }
+      i += 1;
+    }
+    // right wall
+    i = -32i;
+    while i <= 32 {
+      let mut j = 0i;
+      while j <= 32 {
+        let (x1, y1, z1) = (32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
+        let (x2, y2, z2) = (32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
+        self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+        j += 1;
+      }
+      i += 1;
+    }
 
     self.update_render_data();
   }
@@ -346,82 +421,8 @@ impl Game for App {
 
 impl App {
   pub fn new() -> App {
-    let mut world_data = Vec::new();
-    // ground
-    let mut i;
-    // dirt block
-    i = -1;
-    while i <= 1 {
-      let mut j = -1i;
-      while j <= 1 {
-        let (x1, y1, z1) = (0.0 + i as GLfloat, 3.0, 0.0 + j as GLfloat);
-        let (x2, y2, z2) = (1.0 + i as GLfloat, 4.0, 1.0 + j as GLfloat);
-        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
-        j += 1;
-      }
-      i += 1;
-    }
-    i = -32i;
-    while i <= 32 {
-      let mut j = -32i;
-      while j <= 32 {
-        let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
-        let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
-        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Grass));
-        j += 1;
-      }
-      i += 1;
-    }
-    // front wall
-    i = -32i;
-    while i <= 32 {
-      let mut j = 0i;
-      while j <= 32 {
-        let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -32.0 - 0.5);
-        let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -32.0 + 0.5);
-        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
-        j += 1;
-      }
-      i += 1;
-    }
-    // back wall
-    i = -32i;
-    while i <= 32 {
-      let mut j = 0i;
-      while j <= 32 {
-        let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 32.0 - 0.5);
-        let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 32.0 + 0.5);
-        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
-        j += 1;
-      }
-      i += 1;
-    }
-    // left wall
-    i = -32i;
-    while i <= 32 {
-      let mut j = 0i;
-      while j <= 32 {
-        let (x1, y1, z1) = (-32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
-        let (x2, y2, z2) = (-32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
-        j += 1;
-      }
-      i += 1;
-    }
-    // right wall
-    i = -32i;
-    while i <= 32 {
-      let mut j = 0i;
-      while j <= 32 {
-        let (x1, y1, z1) = (32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
-        let (x2, y2, z2) = (32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-        world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
-        j += 1;
-      }
-      i += 1;
-    }
     App {
-      world_data: world_data,
+      world_data: Vec::new(),
       render_data: Vec::new(),
       triangles: 0,
       lines: 0,
@@ -477,14 +478,15 @@ impl App {
 
   #[inline]
   pub fn translate(&mut self, v: &Vector3<GLfloat>) {
-    self.translation_matrix = self.translation_matrix * translate(v);
+    self.translation_matrix = self.translation_matrix * translate(&-v);
     self.update_projection();
+    }
   }
 
   #[inline]
   // Rotate around an axis.
   pub fn rotate(&mut self, v: &Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
-    self.rotation_matrix = self.rotation_matrix * from_axis_angle(v, r);
+    self.rotation_matrix = self.rotation_matrix * from_axis_angle(v, -r);
     self.update_projection();
   }
 
@@ -494,6 +496,31 @@ impl App {
       gl::DeleteVertexArrays(1, &self.vao);
     }
   }
+
+  // axes
+
+  fn x(&self) -> Vector3<GLfloat> {
+    return Vector3::new(1.0, 0.0, 0.0);
+  }
+
+  fn y(&self) -> Vector3<GLfloat> {
+    return Vector3::new(0.0, 1.0, 0.0);
+  }
+
+  fn z(&self) -> Vector3<GLfloat> {
+    return Vector3::new(0.0, 0.0, 1.0);
+  }
+
+  // Return the "right" axis (i.e. the x-axis rotated to match you).
+  fn right(&self) -> Vector3<GLfloat> {
+    return Matrix3::from_axis_angle(&self.y(), self.lateral_rotation).mul_v(&self.x());
+  }
+
+  // Return the "forward" axis (i.e. the z-axis rotated to match you).
+  fn forward(&self) -> Vector3<GLfloat> {
+    return Matrix3::from_axis_angle(&self.y(), self.lateral_rotation).mul_v(&-self.z());
+  }
+
 }
 
 // Shader sources
