@@ -240,28 +240,28 @@ impl Game for App {
   fn key_press(&mut self, _args: &KeyPressArgs) {
     match _args.key {
       piston::keyboard::A => {
-        let axis = self.right();
-        self.translate(&-axis);
+        let direction = -self.right();
+        self.translate(&direction);
       },
       piston::keyboard::D => {
-        let axis = self.right();
-        self.translate(&axis);
+        let direction = self.right();
+        self.translate(&direction);
       },
       piston::keyboard::LShift => {
-        let axis = self.y();
-        self.translate(&-axis);
+        let direction = -self.y();
+        self.translate(&direction);
       },
       piston::keyboard::Space => {
-        let axis = self.y();
-        self.translate(&axis);
+        let direction = self.y();
+        self.translate(&direction);
       },
       piston::keyboard::W => {
-        let axis = self.forward();
-        self.translate(&axis);
+        let direction = self.forward();
+        self.translate(&direction);
       },
       piston::keyboard::S => {
-        let axis = self.forward();
-        self.translate(&-axis);
+        let direction = -self.forward();
+        self.translate(&direction);
       },
       piston::keyboard::Left => {
         let d = angle::rad(3.14 / 12.0 as GLfloat);
