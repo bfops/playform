@@ -282,28 +282,22 @@ impl Game for App {
   fn key_press(&mut self, args: &KeyPressArgs) {
     match args.key {
       piston::keyboard::A => {
-        let direction = -Vector3::unit_x();
-        self.camera_accel = self.camera_accel + direction.mul_s(0.2);
+        self.walk(&-Vector3::unit_x());
       },
       piston::keyboard::D => {
-        let direction = Vector3::unit_x();
-        self.camera_accel = self.camera_accel + direction.mul_s(0.2);
+        self.walk(&Vector3::unit_x());
       },
       piston::keyboard::LShift => {
-        let direction = -Vector3::unit_y();
-        self.camera_accel = self.camera_accel + direction.mul_s(0.2);
+        self.walk(&-Vector3::unit_y());
       },
       piston::keyboard::Space => {
-        let direction = Vector3::unit_y();
-        self.camera_accel = self.camera_accel + direction.mul_s(0.2);
+        self.camera_accel = self.camera_accel + Vector3::unit_y().mul_s(0.4);
       },
       piston::keyboard::W => {
-        let direction = -Vector3::unit_z();
-        self.camera_accel = self.camera_accel + direction.mul_s(0.2);
+        self.walk(&-Vector3::unit_z());
       },
       piston::keyboard::S => {
-        let direction = Vector3::unit_z();
-        self.camera_accel = self.camera_accel + direction.mul_s(0.2);
+        self.walk(&Vector3::unit_z());
       },
       piston::keyboard::Left => {
         let d = angle::rad(3.14 / 12.0 as GLfloat);
@@ -329,29 +323,24 @@ impl Game for App {
 
   fn key_release(&mut self, args: &KeyReleaseArgs) {
     match args.key {
+      // accelerations are negated from those in key_press.
       piston::keyboard::A => {
-        let direction = -Vector3::unit_x();
-        self.camera_accel = self.camera_accel - direction.mul_s(0.2);
+        self.walk(&Vector3::unit_x());
       },
       piston::keyboard::D => {
-        let direction = Vector3::unit_x();
-        self.camera_accel = self.camera_accel - direction.mul_s(0.2);
+        self.walk(&-Vector3::unit_x());
       },
       piston::keyboard::LShift => {
-        let direction = -Vector3::unit_y();
-        self.camera_accel = self.camera_accel - direction.mul_s(0.2);
+        self.walk(&Vector3::unit_y());
       },
       piston::keyboard::Space => {
-        let direction = Vector3::unit_y();
-        self.camera_accel = self.camera_accel - direction.mul_s(0.2);
+        self.camera_accel = self.camera_accel - Vector3::unit_y().mul_s(0.4);
       },
       piston::keyboard::W => {
-        let direction = -Vector3::unit_z();
-        self.camera_accel = self.camera_accel - direction.mul_s(0.2);
+        self.walk(&Vector3::unit_z());
       },
       piston::keyboard::S => {
-        let direction = Vector3::unit_z();
-        self.camera_accel = self.camera_accel - direction.mul_s(0.2);
+        self.walk(&-Vector3::unit_z());
       },
       _ => { }
     }
@@ -524,7 +513,7 @@ impl App {
       world_data: Vec::new(),
       camera_position: Vector3::zero(),
       camera_speed: Vector3::zero(),
-      camera_accel: Vector3::new(0.0, -0.08, 0.0),
+      camera_accel: Vector3::new(0.0, -0.15, 0.0),
       render_data: Vec::new(),
       triangles: 0,
       lines: 0,
@@ -579,6 +568,10 @@ impl App {
   }
 
   #[inline]
+  pub fn walk(&mut self, da: &Vector3<GLfloat>) {
+    self.camera_accel = self.camera_accel + da.mul_s(0.2);
+  }
+
   pub fn translate(&mut self, v: &Vector3<GLfloat>) {
     let high_corner = self.camera_position + *v;
     let low_corner = high_corner - Vector3::new(0.5, 2.0, 1.0);
