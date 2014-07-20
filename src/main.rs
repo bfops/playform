@@ -287,11 +287,11 @@ impl Game for App {
         self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::LShift => {
-        let direction = -self.y();
+        let direction = -Vector3::unit_y();
         self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::Space => {
-        let direction = self.y();
+        let direction = Vector3::unit_y();
         self.camera_accel = self.camera_accel + direction.mul_s(0.2);
       },
       piston::keyboard::W => {
@@ -304,15 +304,13 @@ impl Game for App {
       },
       piston::keyboard::Left => {
         let d = angle::rad(3.14 / 12.0 as GLfloat);
-        let axis = self.y();
         self.lateral_rotation = self.lateral_rotation + d;
-        self.rotate(&axis, d);
+        self.rotate(&Vector3::unit_y(), d);
       },
       piston::keyboard::Right => {
         let d = angle::rad(-3.14 / 12.0 as GLfloat);
-        let axis = self.y();
         self.lateral_rotation = self.lateral_rotation + d;
-        self.rotate(&axis, d);
+        self.rotate(&Vector3::unit_y(), d);
       },
       piston::keyboard::Up => {
         let axis = self.right();
@@ -337,11 +335,11 @@ impl Game for App {
         self.camera_accel = self.camera_accel - direction.mul_s(0.2);
       },
       piston::keyboard::LShift => {
-        let direction = -self.y();
+        let direction = -Vector3::unit_y();
         self.camera_accel = self.camera_accel - direction.mul_s(0.2);
       },
       piston::keyboard::Space => {
-        let direction = self.y();
+        let direction = Vector3::unit_y();
         self.camera_accel = self.camera_accel - direction.mul_s(0.2);
       },
       piston::keyboard::W => {
@@ -621,26 +619,14 @@ impl App {
 
   // axes
 
-  fn x(&self) -> Vector3<GLfloat> {
-    return Vector3::new(1.0, 0.0, 0.0);
-  }
-
-  fn y(&self) -> Vector3<GLfloat> {
-    return Vector3::new(0.0, 1.0, 0.0);
-  }
-
-  fn z(&self) -> Vector3<GLfloat> {
-    return Vector3::new(0.0, 0.0, 1.0);
-  }
-
   // Return the "right" axis (i.e. the x-axis rotated to match you).
-  fn right(&self) -> Vector3<GLfloat> {
-    return Matrix3::from_axis_angle(&self.y(), self.lateral_rotation).mul_v(&self.x());
+  pub fn right(&self) -> Vector3<GLfloat> {
+    return Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&Vector3::unit_x());
   }
 
   // Return the "forward" axis (i.e. the z-axis rotated to match you).
-  fn forward(&self) -> Vector3<GLfloat> {
-    return Matrix3::from_axis_angle(&self.y(), self.lateral_rotation).mul_v(&-self.z());
+  pub fn forward(&self) -> Vector3<GLfloat> {
+    return Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&-Vector3::unit_z());
   }
 
 }
