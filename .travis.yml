@@ -6,14 +6,16 @@ notifications:
   on_success: always
   on_failure: always
 
-install:
-  - curl -O http://static.rust-lang.org/dist/rust-nightly-x86_64-unknown-linux-gnu.tar.gz
-  - tar -zxf rust-nightly-x86_64-unknown-linux-gnu.tar.gz
-  - (cd rust-nightly-x86_64-unknown-linux-gnu/ && sudo ./install.sh)
-  - curl -O http://static.rust-lang.org/cargo-dist/cargo-nightly-linux.tar.gz
+before_install:
+  - wget http://static.rust-lang.org/dist/rust-nightly-x86_64-unknown-linux-gnu.tar.gz
+  - wget http://static.rust-lang.org/cargo-dist/cargo-nightly-linux.tar.gz
   - tar -zxf cargo-nightly-linux.tar.gz
+  - tar -zxf rust-nightly-x86_64-unknown-linux-gnu.tar.gz
   - sudo apt-add-repository --yes ppa:zoogie/sdl2-snapshots
   - sudo apt-get update -qq
+
+install:
+  - sudo ./rust-nightly-x86_64-unknown-linux-gnu/install.sh
   - sudo apt-get install -qq libportaudio-dev libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev
 
 script:
