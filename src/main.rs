@@ -1,10 +1,7 @@
 #![feature(globs)] // Allow global imports
 
-extern crate core;
 extern crate cgmath;
 extern crate gl;
-extern crate graphics;
-extern crate native;
 extern crate piston;
 extern crate sdl2_game_window;
 
@@ -376,7 +373,7 @@ impl Game for App {
       // position data first
       gl::VertexAttribPointer(
           pos_attr as GLuint,
-          (mem::size_of::<Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
+          3,
           gl::FLOAT,
           gl::FALSE as GLboolean,
           mem::size_of::<Vertex<GLfloat>>() as i32,
@@ -532,10 +529,13 @@ impl App {
   // Update the OpenGL vertex data with the world data triangles.
   pub fn update_render_data(&mut self) {
     let mut triangles = Vec::new();
+    triangles.reserve(self.world_data.len() * 36);
     let mut outlines = Vec::new();
+    triangles.reserve(self.world_data.len() * 24);
+
     let mut i = 0;
     while i < self.world_data.len() {
-      let block = self.world_data.get(i);
+      let block = self.world_data[i];
       triangles.push_all(block.to_triangles());
       outlines.push_all(block.to_outlines());
       i += 1;
@@ -552,7 +552,7 @@ impl App {
       gl::BufferData(
         gl::ARRAY_BUFFER,
         (self.render_data.len() * mem::size_of::<Vertex<GLfloat>>()) as GLsizeiptr,
-        mem::transmute(self.render_data.get(0)),
+        mem::transmute(&self.render_data[0]),
         gl::STATIC_DRAW);
     }
   }
@@ -586,7 +586,7 @@ impl App {
     let mut collided = false;
     let mut i = 0;
     while i < self.world_data.len() {
-      match intersect(&player, self.world_data.get(i)) {
+      match intersect(&player, &self.world_data[i]) {
         Intersect(stop) => {
           collided = true;
           let d = *v * stop - *v;
