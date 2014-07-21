@@ -20,18 +20,8 @@ use std::str;
 use std::num::*;
 use std::vec::*;
 
+#[deriving(Clone)]
 pub struct Color4<T> { r: T, g: T, b: T, a: T }
-
-impl<T: Clone> Clone for Color4<T> {
-  fn clone(&self) -> Color4<T> {
-    Color4 {
-      r: self.r.clone(),
-      g: self.g.clone(),
-      b: self.b.clone(),
-      a: self.a.clone(),
-    }
-  }
-}
 
 impl<T: Clone> Color4<T> {
   fn new(r: &T, g: &T, b: &T, a: &T) -> Color4<T> {
@@ -44,19 +34,11 @@ impl<T: Clone> Color4<T> {
   }
 }
 
+#[deriving(Clone)]
 // Rendering vertex: position and color.
 pub struct Vertex<T> {
   position: Vector3<T>,
   color: Color4<T>,
-}
-
-impl<T: Clone> Clone for Vertex<T> {
-  fn clone(&self) -> Vertex<T> {
-    Vertex {
-      position: self.position.clone(),
-      color: self.color.clone(),
-    }
-  }
 }
 
 impl<T: Clone> Vertex<T> {
