@@ -1,11 +1,5 @@
 language: rust
 
-notifications:
-  email:
-    - benjamin.foppa@gmail.com
-  on_success: always
-  on_failure: always
-
 before_install:
   - wget http://static.rust-lang.org/dist/rust-nightly-x86_64-unknown-linux-gnu.tar.gz
   - wget http://static.rust-lang.org/cargo-dist/cargo-nightly-linux.tar.gz
