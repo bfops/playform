@@ -961,7 +961,22 @@ fn print_stopwatch(name: &str, watch: &stopwatch::Stopwatch) {
   }
 }
 
+unsafe fn println_c_str(str: *const u8) {
+  let mut str = str;
+  loop {
+    let c = *str as char;
+    if c == '\0' {
+      println!("");
+      return;
+    }
+    print!("{:c}", c);
+    str = str.offset(1);
+  }
+}
+
 fn main() {
+  println!("starting");
+
   let mut window = GameWindowSDL2::new(
     GameWindowSettings {
       title: "playform".to_string(),
@@ -970,6 +985,14 @@ fn main() {
       exit_on_esc: false,
     }
   );
+
+  let opengl_version = gl::GetString(gl::VERSION);
+  let glsl_version = gl::GetString(gl::SHADING_LANGUAGE_VERSION);
+  print!("OpenGL version: ");
+  unsafe { println_c_str(opengl_version); }
+  print!("GLSL version: ");
+  unsafe { println_c_str(glsl_version); }
+  println!("");
 
   let mut app = App::new();
   app.run(&mut window, &GameIteratorSettings {
