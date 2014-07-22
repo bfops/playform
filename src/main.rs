@@ -20,6 +20,9 @@ use std::str;
 use std::num::*;
 use std::vec::*;
 
+static WINDOW_WIDTH: u32 = 800;
+static WINDOW_HEIGHT: u32 = 600;
+
 #[deriving(Clone)]
 pub struct Color4<T> { r: T, g: T, b: T, a: T }
 
@@ -36,13 +39,13 @@ impl<T: Clone> Color4<T> {
 
 #[deriving(Clone)]
 // Rendering vertex: position and color.
-pub struct Vertex<T> {
-  position: Vector3<T>,
-  color: Color4<T>,
+pub struct Vertex {
+  position: Vector3<GLfloat>,
+  color: Color4<GLfloat>,
 }
 
-impl<T: Clone> Vertex<T> {
-  fn new(x: &T, y: &T, z: &T, c: &Color4<T>) -> Vertex<T> {
+impl Vertex {
+  fn new(x: &GLfloat, y: &GLfloat, z: &GLfloat, c: &Color4<GLfloat>) -> Vertex {
     Vertex {
       position: Vector3::new(x.clone(), y.clone(), z.clone()),
       color: c.clone(),
@@ -135,7 +138,7 @@ impl Block {
   // Construct the faces of the block as triangles for rendering.
   // Triangle vertices are in clockwise order when viewed from the outside of
   // the cube, for rendering purposes.
-  fn to_triangles(&self) -> [Vertex<GLfloat>, ..36] {
+  fn to_triangles(&self) -> [Vertex, ..36] {
     let (x1, y1, z1) = (self.low_corner.x, self.low_corner.y, self.low_corner.z);
     let (x2, y2, z2) = (self.high_corner.x, self.high_corner.y, self.high_corner.z);
     let c = self.block_type.to_color();
@@ -162,7 +165,7 @@ impl Block {
   }
 
   // Construct outlines for this Block, to sharpen the edges.
-  fn to_outlines(&self) -> [Vertex<GLfloat>, ..24] {
+  fn to_outlines(&self) -> [Vertex, ..24] {
     let d = 0.002;
     let (x1, y1, z1) = (self.low_corner.x - d, self.low_corner.y - d, self.low_corner.z - d);
     let (x2, y2, z2) = (self.high_corner.x + d, self.high_corner.y + d, self.high_corner.z + d);
@@ -194,8 +197,8 @@ pub struct App {
   camera_speed: Vector3<GLfloat>,
   // acceleration; x/z units are relative to player facing
   camera_accel: Vector3<GLfloat>,
-  // renderable equivalent of world_data
-  render_data: Vec<Vertex<GLfloat>>,
+  // OpenGL-friendly equivalent of world_data
+  render_data: Vec<Vertex>,
   triangles: uint, // number of triangles in render_data
   lines: uint, // number of lines in render_data
   // OpenGL projection matrix components
@@ -206,9 +209,9 @@ pub struct App {
   // OpenGL shader "program" id.
   shader_program: u32,
   // OpenGL vertex array id
-  vao: u32,
+  vertex_array: u32,
   // OpenGL vertex buffer id
-  vbo: u32,
+  vertex_buffer: u32,
 }
 
 // Create a 3D translation matrix.
@@ -231,7 +234,7 @@ pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) 
   )
 }
 
-/// Create a matrix from a rotation around an arbitrary axis
+// Create a matrix from a rotation around an arbitrary axis
 pub fn from_axis_angle<S: BaseFloat>(axis: &Vector3<S>, angle: angle::Rad<S>) -> Matrix4<S> {
     let (s, c) = angle::sin_cos(angle);
     let _1subc = one::<S>() - c;
@@ -334,40 +337,48 @@ impl Game for App {
     self.shader_program = link_program(vs, fs);
 
     unsafe {
-      // Create Vertex Array Object
-      gl::GenVertexArrays(1, &mut self.vao);
-      gl::BindVertexArray(self.vao);
+      // Create Vertex Array Objects(s).
+      gl::GenVertexArrays(1, &mut self.vertex_array);
 
-      // Create a Vertex Buffer Object.
-      gl::GenBuffers(1, &mut self.vbo);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
+      // Create Vertex Buffer Object(s).
+      gl::GenBuffers(1, &mut self.vertex_buffer);
 
       // Set up shaders
       gl::UseProgram(self.shader_program);
       "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
 
       let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
-      gl::EnableVertexAttribArray(pos_attr as GLuint);
       let color_attr = "in_color".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
+
+      // Set up the rendering VAO/VBO.
+
+      gl::BindVertexArray(self.vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
+
+      gl::EnableVertexAttribArray(pos_attr as GLuint);
       gl::EnableVertexAttribArray(color_attr as GLuint);
 
-      // Specify the layout of the vertex data:
-      // position data first
+
+
+      gl::EnableVertexAttribArray(pos_attr as GLuint);
+      gl::EnableVertexAttribArray(color_attr as GLuint);
+
+      // rendered position data
       gl::VertexAttribPointer(
           pos_attr as GLuint,
-          3,
+          (mem::size_of::<Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
           gl::FLOAT,
           gl::FALSE as GLboolean,
-          mem::size_of::<Vertex<GLfloat>>() as i32,
+          mem::size_of::<Vertex>() as i32,
           ptr::null(),
       );
-      // color data next
+      // rendered color data
       gl::VertexAttribPointer(
           color_attr as GLuint,
           (mem::size_of::<Color4<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
           gl::FLOAT,
           gl::FALSE as GLboolean,
-          mem::size_of::<Vertex<GLfloat>>() as i32,
+          mem::size_of::<Vertex>() as i32,
           ptr::null().offset(mem::size_of::<Vector3<GLfloat>>() as int),
       );
     }
@@ -503,8 +514,8 @@ impl App {
       rotation_matrix: Matrix4::identity(),
       lateral_rotation: angle::rad(0.0),
       shader_program: -1 as u32,
-      vao: 0,
-      vbo: 0,
+      vertex_array: -1 as u32,
+      vertex_buffer: -1 as u32,
     }
   }
 
@@ -533,7 +544,7 @@ impl App {
     unsafe {
       gl::BufferData(
         gl::ARRAY_BUFFER,
-        (self.render_data.len() * mem::size_of::<Vertex<GLfloat>>()) as GLsizeiptr,
+        (self.render_data.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
         mem::transmute(&self.render_data[0]),
         gl::STATIC_DRAW);
     }
@@ -596,8 +607,8 @@ impl App {
 
   pub fn drop(&self) {
     unsafe {
-      gl::DeleteBuffers(1, &self.vbo);
-      gl::DeleteVertexArrays(1, &self.vao);
+      gl::DeleteBuffers(1, &self.vertex_buffer);
+      gl::DeleteVertexArrays(1, &self.vertex_array);
     }
   }
 
@@ -687,7 +698,7 @@ fn main() {
   let mut window = GameWindowSDL2::new(
     GameWindowSettings {
       title: "playform".to_string(),
-      size: [800, 600],
+      size: [WINDOW_WIDTH, WINDOW_HEIGHT],
       fullscreen: false,
       exit_on_esc: false,
     }
