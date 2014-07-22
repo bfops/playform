@@ -887,7 +887,7 @@ static VS_SRC: &'static str =
 uniform mat4 proj_matrix;\n\
 in vec3 position;\n\
 in vec4 in_color;\n\
-varying vec4 color;\n\
+out vec4 color;\n\
 void main() {\n\
 gl_Position = proj_matrix * vec4(position, 1.0);\n\
 color = in_color;\n\
@@ -895,7 +895,7 @@ color = in_color;\n\
 
 static FS_SRC: &'static str =
    "#version 150\n\
-varying vec4 color;\n\
+in vec4 color;\n\
 out vec4 out_color;\n\
 void main() {\n\
 out_color = color;\n\
