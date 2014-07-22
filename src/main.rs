@@ -11,7 +11,7 @@ use cgmath::*;
 use cgmath::array::*;
 use cgmath::matrix::*;
 use cgmath::num::{BaseFloat};
-use cgmath::vector::{Vector,Vector3};
+use cgmath::vector::{Vector,Vector2,Vector3};
 use piston::*;
 use gl::types::*;
 use std::mem;
@@ -138,30 +138,34 @@ impl Block {
   // Construct the faces of the block as triangles for rendering.
   // Triangle vertices are in clockwise order when viewed from the outside of
   // the cube, for rendering purposes.
-  fn to_triangles(&self) -> [Vertex, ..36] {
+  fn to_triangles(&self, c: &Color4<GLfloat>) -> [Vertex, ..36] {
     let (x1, y1, z1) = (self.low_corner.x, self.low_corner.y, self.low_corner.z);
     let (x2, y2, z2) = (self.high_corner.x, self.high_corner.y, self.high_corner.z);
-    let c = self.block_type.to_color();
     [
       // front
-      Vertex::new(&x1, &y1, &z1, &c), Vertex::new(&x1, &y2, &z1, &c), Vertex::new(&x2, &y2, &z1, &c),
-      Vertex::new(&x1, &y1, &z1, &c), Vertex::new(&x2, &y2, &z1, &c), Vertex::new(&x2, &y1, &z1, &c),
+      Vertex::new(&x1, &y1, &z1, c), Vertex::new(&x1, &y2, &z1, c), Vertex::new(&x2, &y2, &z1, c),
+      Vertex::new(&x1, &y1, &z1, c), Vertex::new(&x2, &y2, &z1, c), Vertex::new(&x2, &y1, &z1, c),
       // left
-      Vertex::new(&x1, &y1, &z2, &c), Vertex::new(&x1, &y2, &z2, &c), Vertex::new(&x1, &y2, &z1, &c),
-      Vertex::new(&x1, &y1, &z2, &c), Vertex::new(&x1, &y2, &z1, &c), Vertex::new(&x1, &y1, &z1, &c),
+      Vertex::new(&x1, &y1, &z2, c), Vertex::new(&x1, &y2, &z2, c), Vertex::new(&x1, &y2, &z1, c),
+      Vertex::new(&x1, &y1, &z2, c), Vertex::new(&x1, &y2, &z1, c), Vertex::new(&x1, &y1, &z1, c),
       // top
-      Vertex::new(&x1, &y2, &z1, &c), Vertex::new(&x1, &y2, &z2, &c), Vertex::new(&x2, &y2, &z2, &c),
-      Vertex::new(&x1, &y2, &z1, &c), Vertex::new(&x2, &y2, &z2, &c), Vertex::new(&x2, &y2, &z1, &c),
+      Vertex::new(&x1, &y2, &z1, c), Vertex::new(&x1, &y2, &z2, c), Vertex::new(&x2, &y2, &z2, c),
+      Vertex::new(&x1, &y2, &z1, c), Vertex::new(&x2, &y2, &z2, c), Vertex::new(&x2, &y2, &z1, c),
       // back
-      Vertex::new(&x2, &y1, &z2, &c), Vertex::new(&x2, &y2, &z2, &c), Vertex::new(&x1, &y2, &z2, &c),
-      Vertex::new(&x2, &y1, &z2, &c), Vertex::new(&x1, &y2, &z2, &c), Vertex::new(&x1, &y1, &z2, &c),
+      Vertex::new(&x2, &y1, &z2, c), Vertex::new(&x2, &y2, &z2, c), Vertex::new(&x1, &y2, &z2, c),
+      Vertex::new(&x2, &y1, &z2, c), Vertex::new(&x1, &y2, &z2, c), Vertex::new(&x1, &y1, &z2, c),
       // right
-      Vertex::new(&x2, &y1, &z1, &c), Vertex::new(&x2, &y2, &z1, &c), Vertex::new(&x2, &y2, &z2, &c),
-      Vertex::new(&x2, &y1, &z1, &c), Vertex::new(&x2, &y2, &z2, &c), Vertex::new(&x2, &y1, &z2, &c),
+      Vertex::new(&x2, &y1, &z1, c), Vertex::new(&x2, &y2, &z1, c), Vertex::new(&x2, &y2, &z2, c),
+      Vertex::new(&x2, &y1, &z1, c), Vertex::new(&x2, &y2, &z2, c), Vertex::new(&x2, &y1, &z2, c),
       // bottom
-      Vertex::new(&x1, &y1, &z2, &c), Vertex::new(&x1, &y1, &z1, &c), Vertex::new(&x2, &y1, &z1, &c),
-      Vertex::new(&x1, &y1, &z2, &c), Vertex::new(&x2, &y1, &z1, &c), Vertex::new(&x2, &y1, &z2, &c),
+      Vertex::new(&x1, &y1, &z2, c), Vertex::new(&x1, &y1, &z1, c), Vertex::new(&x2, &y1, &z1, c),
+      Vertex::new(&x1, &y1, &z2, c), Vertex::new(&x2, &y1, &z1, c), Vertex::new(&x2, &y1, &z2, c),
     ]
+  }
+
+  #[inline]
+  fn to_colored_triangles(&self) -> [Vertex, ..36] {
+    self.to_triangles(&self.block_type.to_color())
   }
 
   // Construct outlines for this Block, to sharpen the edges.
@@ -197,10 +201,13 @@ pub struct App {
   camera_speed: Vector3<GLfloat>,
   // acceleration; x/z units are relative to player facing
   camera_accel: Vector3<GLfloat>,
+  mouse_position: Vector2<f64>,
   // OpenGL-friendly equivalent of world_data
   render_data: Vec<Vertex>,
   triangles: uint, // number of triangles in render_data
   lines: uint, // number of lines in render_data
+  // OpenGL-friendly equivalent of world_data for selection/picking.
+  selection_data: Vec<Vertex>,
   // OpenGL projection matrix components
   fov_matrix: matrix::Matrix4<GLfloat>,
   translation_matrix: matrix::Matrix4<GLfloat>,
@@ -208,10 +215,12 @@ pub struct App {
   lateral_rotation: angle::Rad<GLfloat>,
   // OpenGL shader "program" id.
   shader_program: u32,
-  // OpenGL vertex array id
-  vertex_array: u32,
-  // OpenGL vertex buffer id
-  vertex_buffer: u32,
+  // OpenGL Vertex Array Object id(s).
+  render_vertex_array: u32,
+  selection_vertex_array: u32,
+  // OpenGL Vertex Buffer Object id(s).
+  render_vertex_buffer: u32,
+  selection_vertex_buffer: u32,
 }
 
 // Create a 3D translation matrix.
@@ -330,6 +339,34 @@ impl Game for App {
     }
   }
 
+  fn mouse_move(&mut self, args: &MouseMoveArgs) {
+    self.mouse_position = Vector2::new(args.x, args.y);
+  }
+
+  fn mouse_press(&mut self, _: &MousePressArgs) {
+    self.render_selection();
+
+    let pixels: Color4<u8> = Color4::new(&0, &0, &0, &0);
+    unsafe {
+      gl::ReadPixels(
+        self.mouse_position.x as i32,
+        WINDOW_HEIGHT as i32 - self.mouse_position.y as i32,
+        1,
+        1,
+        gl::RGB,
+        gl::UNSIGNED_BYTE,
+        mem::transmute(&pixels)
+      );
+    }
+
+    let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
+    if block_index > 0 {
+      let block_index = block_index - 1;
+      self.world_data.swap_remove(block_index as uint);
+      self.update_render_data();
+    }
+  }
+
   fn load(&mut self) {
     let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
     let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
@@ -338,10 +375,12 @@ impl Game for App {
 
     unsafe {
       // Create Vertex Array Objects(s).
-      gl::GenVertexArrays(1, &mut self.vertex_array);
+      gl::GenVertexArrays(1, &mut self.render_vertex_array);
+      gl::GenVertexArrays(1, &mut self.selection_vertex_array);
 
       // Create Vertex Buffer Object(s).
-      gl::GenBuffers(1, &mut self.vertex_buffer);
+      gl::GenBuffers(1, &mut self.render_vertex_buffer);
+      gl::GenBuffers(1, &mut self.selection_vertex_buffer);
 
       // Set up shaders
       gl::UseProgram(self.shader_program);
@@ -350,15 +389,37 @@ impl Game for App {
       let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
       let color_attr = "in_color".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
 
-      // Set up the rendering VAO/VBO.
+      // Set up the selection VAO/VBO.
 
-      gl::BindVertexArray(self.vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
+      gl::BindVertexArray(self.selection_vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
 
       gl::EnableVertexAttribArray(pos_attr as GLuint);
       gl::EnableVertexAttribArray(color_attr as GLuint);
 
+      // selection position data
+      gl::VertexAttribPointer(
+          pos_attr as GLuint,
+          (mem::size_of::<Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
+          gl::FLOAT,
+          gl::FALSE as GLboolean,
+          mem::size_of::<Vertex>() as i32,
+          ptr::null(),
+      );
+      // selection color data
+      gl::VertexAttribPointer(
+          color_attr as GLuint,
+          (mem::size_of::<Color4<u8>>() / mem::size_of::<u8>()) as i32,
+          gl::FLOAT,
+          gl::FALSE as GLboolean,
+          mem::size_of::<Vertex>() as i32,
+          ptr::null().offset(mem::size_of::<Vector3<GLfloat>>() as int),
+      );
 
+      // Set up the rendering VAO/VBO.
+
+      gl::BindVertexArray(self.render_vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
 
       gl::EnableVertexAttribArray(pos_attr as GLuint);
       gl::EnableVertexAttribArray(color_attr as GLuint);
@@ -502,6 +563,22 @@ impl Game for App {
   }
 }
 
+#[inline]
+fn mask(mask: u32, i: u32) -> u32 {
+  #[inline]
+  fn ctz(n: u32) -> uint {
+    let mut n = n;
+    let mut ret = 0;
+    while (n & 1) == 0 {
+      n >>= 1;
+      ret += 1;
+    }
+    ret
+  }
+
+  (i & mask) >> ctz(mask)
+}
+
 impl App {
   pub fn new() -> App {
     App {
@@ -509,21 +586,60 @@ impl App {
       camera_position: Vector3::zero(),
       camera_speed: Vector3::zero(),
       camera_accel: Vector3::new(0.0, -0.1, 0.0),
+      mouse_position: Vector2::new(0.0, 0.0),
       render_data: Vec::new(),
       triangles: 0,
       lines: 0,
+      selection_data: Vec::new(),
       fov_matrix: Matrix4::identity(),
       translation_matrix: Matrix4::identity(),
       rotation_matrix: Matrix4::identity(),
       lateral_rotation: angle::rad(0.0),
       shader_program: -1 as u32,
-      vertex_array: -1 as u32,
-      vertex_buffer: -1 as u32,
+      render_vertex_array: -1 as u32,
+      selection_vertex_array: -1 as u32,
+      render_vertex_buffer: -1 as u32,
+      selection_vertex_buffer: -1 as u32,
     }
+  }
+
+  pub fn render_selection(&self) {
+    // load the selection vertex array/buffer.
+    gl::BindVertexArray(self.selection_vertex_array);
+    gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
+
+    gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+
+    gl::DrawArrays(gl::TRIANGLES, 0, self.selection_data.len() as i32);
+
+    // reset the bound vertex array/buffer.
+    gl::BindVertexArray(self.render_vertex_array);
+    gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
   }
 
   // Update the OpenGL vertex data with the world data triangles.
   pub fn update_render_data(&mut self) {
+    fn selection_color(i: u32) -> Color4<GLfloat> {
+      assert!(i < 0xFF000000, "too many items for selection buffer");
+      let i = i + 1;
+      let ret = Color4::new(
+        &(mask(0x00FF0000, i) as GLfloat / 255.0),
+        &(mask(0x0000FF00, i) as GLfloat / 255.0),
+        &(mask(0x000000FF, i) as GLfloat / 255.0),
+        &0.0,
+      );
+      assert!(ret.r >= 0.0);
+      assert!(ret.r <= 1.0);
+      assert!(ret.g >= 0.0);
+      assert!(ret.g <= 1.0);
+      assert!(ret.b >= 0.0);
+      assert!(ret.b <= 1.0);
+      ret
+    }
+
+    self.selection_data = Vec::new();
+    self.render_data = Vec::new();
+
     let mut triangles = Vec::new();
     triangles.reserve(self.world_data.len() * 36);
     let mut outlines = Vec::new();
@@ -532,19 +648,31 @@ impl App {
     let mut i = 0;
     while i < self.world_data.len() {
       let block = self.world_data[i];
-      triangles.push_all(block.to_triangles());
+      triangles.push_all(block.to_colored_triangles());
       outlines.push_all(block.to_outlines());
+      self.selection_data.push_all(block.to_triangles(&selection_color(i as u32)));
       i += 1;
     }
 
     self.triangles = triangles.len();
     self.lines = outlines.len();
 
-    self.render_data = Vec::new();
     self.render_data.push_all(triangles.slice(0, triangles.len()));
     self.render_data.push_all(outlines.slice(0, outlines.len()));
 
     unsafe {
+      gl::BindVertexArray(self.selection_vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
+
+      gl::BufferData(
+        gl::ARRAY_BUFFER,
+        (self.selection_data.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
+        mem::transmute(&self.selection_data[0]),
+        gl::STATIC_DRAW);
+
+      gl::BindVertexArray(self.render_vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
+
       gl::BufferData(
         gl::ARRAY_BUFFER,
         (self.render_data.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
@@ -610,8 +738,10 @@ impl App {
 
   pub fn drop(&self) {
     unsafe {
-      gl::DeleteBuffers(1, &self.vertex_buffer);
-      gl::DeleteVertexArrays(1, &self.vertex_array);
+      gl::DeleteBuffers(1, &self.render_vertex_buffer);
+      gl::DeleteVertexArrays(1, &self.render_vertex_array);
+      gl::DeleteBuffers(1, &self.selection_vertex_buffer);
+      gl::DeleteVertexArrays(1, &self.selection_vertex_array);
     }
   }
 
