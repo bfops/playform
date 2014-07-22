@@ -18,6 +18,8 @@ use std::ptr;
 use std::str;
 use std::num;
 
+mod stopwatch;
+
 static WINDOW_WIDTH: u32 = 800;
 static WINDOW_HEIGHT: u32 = 600;
 
@@ -219,6 +221,22 @@ pub struct App {
   // OpenGL Vertex Buffer Object id(s).
   render_vertex_buffer: u32,
   selection_vertex_buffer: u32,
+
+  load_stopwatch: stopwatch::Stopwatch,
+  load_construct_stopwatch: stopwatch::Stopwatch,
+  key_press_stopwatch: stopwatch::Stopwatch,
+  key_release_stopwatch: stopwatch::Stopwatch,
+  mouse_move_stopwatch: stopwatch::Stopwatch,
+  mouse_press_stopwatch: stopwatch::Stopwatch,
+  update_projection_stopwatch: stopwatch::Stopwatch,
+  make_render_data_stopwatch: stopwatch::Stopwatch,
+  make_render_data_construct_stopwatch: stopwatch::Stopwatch,
+  make_render_data_buffer_stopwatch: stopwatch::Stopwatch,
+  render_selection_load_unload_stopwatch: stopwatch::Stopwatch,
+  render_selection_render_stopwatch: stopwatch::Stopwatch,
+  render_selection_stopwatch: stopwatch::Stopwatch,
+  update_stopwatch: stopwatch::Stopwatch,
+  render_stopwatch: stopwatch::Stopwatch,
 }
 
 // Create a 3D translation matrix.
@@ -271,293 +289,325 @@ pub fn from_axis_angle<S: BaseFloat>(axis: &Vector3<S>, angle: angle::Rad<S>) ->
 
 impl Game for App {
   fn key_press(&mut self, args: &KeyPressArgs) {
-    match args.key {
-      piston::keyboard::A => {
-        self.walk(&-Vector3::unit_x());
-      },
-      piston::keyboard::D => {
-        self.walk(&Vector3::unit_x());
-      },
-      piston::keyboard::LShift => {
-        self.walk(&-Vector3::unit_y());
-      },
-      piston::keyboard::Space => {
-        self.camera_accel.y = self.camera_accel.y + 0.3;
-      },
-      piston::keyboard::W => {
-        self.walk(&-Vector3::unit_z());
-      },
-      piston::keyboard::S => {
-        self.walk(&Vector3::unit_z());
-      },
-      piston::keyboard::Left => {
-        let d = angle::rad(3.14 / 12.0 as GLfloat);
-        self.lateral_rotation = self.lateral_rotation + d;
-        self.rotate(&Vector3::unit_y(), d);
-      },
-      piston::keyboard::Right => {
-        let d = angle::rad(-3.14 / 12.0 as GLfloat);
-        self.lateral_rotation = self.lateral_rotation + d;
-        self.rotate(&Vector3::unit_y(), d);
-      },
-      piston::keyboard::Up => {
-        let axis = self.right();
-        self.rotate(&axis, angle::rad(3.14/12.0 as GLfloat));
-      },
-      piston::keyboard::Down => {
-        let axis = self.right();
-        self.rotate(&axis, angle::rad(-3.14/12.0 as GLfloat));
-      },
-      _ => {},
-    }
+    let mut watch = self.key_press_stopwatch;
+    watch.timed(|| {
+      match args.key {
+        piston::keyboard::A => {
+          self.walk(&-Vector3::unit_x());
+        },
+        piston::keyboard::D => {
+          self.walk(&Vector3::unit_x());
+        },
+        piston::keyboard::LShift => {
+          self.walk(&-Vector3::unit_y());
+        },
+        piston::keyboard::Space => {
+          self.camera_accel.y = self.camera_accel.y + 0.3;
+        },
+        piston::keyboard::W => {
+          self.walk(&-Vector3::unit_z());
+        },
+        piston::keyboard::S => {
+          self.walk(&Vector3::unit_z());
+        },
+        piston::keyboard::Left => {
+          let d = angle::rad(3.14 / 12.0 as GLfloat);
+          self.lateral_rotation = self.lateral_rotation + d;
+          self.rotate(&Vector3::unit_y(), d);
+        },
+        piston::keyboard::Right => {
+          let d = angle::rad(-3.14 / 12.0 as GLfloat);
+          self.lateral_rotation = self.lateral_rotation + d;
+          self.rotate(&Vector3::unit_y(), d);
+        },
+        piston::keyboard::Up => {
+          let axis = self.right();
+          self.rotate(&axis, angle::rad(3.14/12.0 as GLfloat));
+        },
+        piston::keyboard::Down => {
+          let axis = self.right();
+          self.rotate(&axis, angle::rad(-3.14/12.0 as GLfloat));
+        },
+        _ => {},
+      }
+    });
+    self.key_press_stopwatch = watch;
   }
 
   fn key_release(&mut self, args: &KeyReleaseArgs) {
-    match args.key {
-      // accelerations are negated from those in key_press.
-      piston::keyboard::A => {
-        self.walk(&Vector3::unit_x());
-      },
-      piston::keyboard::D => {
-        self.walk(&-Vector3::unit_x());
-      },
-      piston::keyboard::LShift => {
-        self.walk(&Vector3::unit_y());
-      },
-      piston::keyboard::Space => {
-        self.camera_accel.y = self.camera_accel.y - 0.3;
-      },
-      piston::keyboard::W => {
-        self.walk(&Vector3::unit_z());
-      },
-      piston::keyboard::S => {
-        self.walk(&-Vector3::unit_z());
-      },
-      _ => { }
-    }
+    let mut watch = self.key_press_stopwatch;
+    watch.timed(|| {
+      match args.key {
+        // accelerations are negated from those in key_press.
+        piston::keyboard::A => {
+          self.walk(&Vector3::unit_x());
+        },
+        piston::keyboard::D => {
+          self.walk(&-Vector3::unit_x());
+        },
+        piston::keyboard::LShift => {
+          self.walk(&Vector3::unit_y());
+        },
+        piston::keyboard::Space => {
+          self.camera_accel.y = self.camera_accel.y - 0.3;
+        },
+        piston::keyboard::W => {
+          self.walk(&Vector3::unit_z());
+        },
+        piston::keyboard::S => {
+          self.walk(&-Vector3::unit_z());
+        },
+        _ => { }
+      }
+    });
+    self.key_release_stopwatch = watch;
   }
 
   fn mouse_move(&mut self, args: &MouseMoveArgs) {
-    self.mouse_position = Vector2::new(args.x, args.y);
+    let mut watch = self.mouse_move_stopwatch;
+    watch.timed(|| {
+      self.mouse_position = Vector2::new(args.x, args.y);
+    });
+    self.mouse_move_stopwatch = watch;
   }
 
   fn mouse_press(&mut self, _: &MousePressArgs) {
-    self.render_selection();
+    let mut watch = self.mouse_press_stopwatch;
+    watch.timed(|| {
+      self.render_selection();
 
-    let pixels: Color4<u8> = Color4::new(&0, &0, &0, &0);
-    unsafe {
-      gl::ReadPixels(
-        self.mouse_position.x as i32,
-        WINDOW_HEIGHT as i32 - self.mouse_position.y as i32,
-        1,
-        1,
-        gl::RGB,
-        gl::UNSIGNED_BYTE,
-        mem::transmute(&pixels)
-      );
-    }
+      let pixels: Color4<u8> = Color4::new(&0, &0, &0, &0);
+      unsafe {
+        gl::ReadPixels(
+          self.mouse_position.x as i32,
+          WINDOW_HEIGHT as i32 - self.mouse_position.y as i32,
+          1,
+          1,
+          gl::RGB,
+          gl::UNSIGNED_BYTE,
+          mem::transmute(&pixels)
+        );
+      }
 
-    let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
-    if block_index > 0 {
-      let block_index = block_index - 1;
-      self.world_data.swap_remove(block_index as uint);
-      self.update_render_data();
-    }
+      let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
+      if block_index > 0 {
+        let block_index = block_index - 1;
+        self.world_data.swap_remove(block_index as uint);
+        self.make_render_data();
+      }
+    });
+    self.mouse_press_stopwatch = watch;
   }
 
   fn load(&mut self) {
-    let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
-    let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
+    let mut watch = self.load_stopwatch;
+    watch.timed(|| {
+      let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
+      let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
 
-    self.shader_program = link_program(vs, fs);
+      self.shader_program = link_program(vs, fs);
 
-    unsafe {
-      // Create Vertex Array Objects(s).
-      gl::GenVertexArrays(1, &mut self.render_vertex_array);
-      gl::GenVertexArrays(1, &mut self.selection_vertex_array);
+      unsafe {
+        // Create Vertex Array Objects(s).
+        gl::GenVertexArrays(1, &mut self.render_vertex_array);
+        gl::GenVertexArrays(1, &mut self.selection_vertex_array);
 
-      // Create Vertex Buffer Object(s).
-      gl::GenBuffers(1, &mut self.render_vertex_buffer);
-      gl::GenBuffers(1, &mut self.selection_vertex_buffer);
+        // Create Vertex Buffer Object(s).
+        gl::GenBuffers(1, &mut self.render_vertex_buffer);
+        gl::GenBuffers(1, &mut self.selection_vertex_buffer);
 
-      // Set up shaders
-      gl::UseProgram(self.shader_program);
-      "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
+        // Set up shaders
+        gl::UseProgram(self.shader_program);
+        "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
 
-      let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
-      let color_attr = "in_color".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
+        let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
+        let color_attr = "in_color".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
 
-      // Set up the selection VAO/VBO.
+        // Set up the selection VAO/VBO.
 
-      gl::BindVertexArray(self.selection_vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
+        gl::BindVertexArray(self.selection_vertex_array);
+        gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
 
-      gl::EnableVertexAttribArray(pos_attr as GLuint);
-      gl::EnableVertexAttribArray(color_attr as GLuint);
+        gl::EnableVertexAttribArray(pos_attr as GLuint);
+        gl::EnableVertexAttribArray(color_attr as GLuint);
 
-      // selection position data
-      gl::VertexAttribPointer(
-          pos_attr as GLuint,
-          (mem::size_of::<Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
-          gl::FLOAT,
-          gl::FALSE as GLboolean,
-          mem::size_of::<Vertex>() as i32,
-          ptr::null(),
-      );
-      // selection color data
-      gl::VertexAttribPointer(
-          color_attr as GLuint,
-          (mem::size_of::<Color4<u8>>() / mem::size_of::<u8>()) as i32,
-          gl::FLOAT,
-          gl::FALSE as GLboolean,
-          mem::size_of::<Vertex>() as i32,
-          ptr::null().offset(mem::size_of::<Vector3<GLfloat>>() as int),
-      );
+        // selection position data
+        gl::VertexAttribPointer(
+            pos_attr as GLuint,
+            (mem::size_of::<Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
+            gl::FLOAT,
+            gl::FALSE as GLboolean,
+            mem::size_of::<Vertex>() as i32,
+            ptr::null(),
+        );
+        // selection color data
+        gl::VertexAttribPointer(
+            color_attr as GLuint,
+            (mem::size_of::<Color4<u8>>() / mem::size_of::<u8>()) as i32,
+            gl::FLOAT,
+            gl::FALSE as GLboolean,
+            mem::size_of::<Vertex>() as i32,
+            ptr::null().offset(mem::size_of::<Vector3<GLfloat>>() as int),
+        );
 
-      // Set up the rendering VAO/VBO.
+        // Set up the rendering VAO/VBO.
 
-      gl::BindVertexArray(self.render_vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
+        gl::BindVertexArray(self.render_vertex_array);
+        gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
 
-      gl::EnableVertexAttribArray(pos_attr as GLuint);
-      gl::EnableVertexAttribArray(color_attr as GLuint);
+        gl::EnableVertexAttribArray(pos_attr as GLuint);
+        gl::EnableVertexAttribArray(color_attr as GLuint);
 
-      // rendered position data
-      gl::VertexAttribPointer(
-          pos_attr as GLuint,
-          (mem::size_of::<Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
-          gl::FLOAT,
-          gl::FALSE as GLboolean,
-          mem::size_of::<Vertex>() as i32,
-          ptr::null(),
-      );
-      // rendered color data
-      gl::VertexAttribPointer(
-          color_attr as GLuint,
-          (mem::size_of::<Color4<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
-          gl::FLOAT,
-          gl::FALSE as GLboolean,
-          mem::size_of::<Vertex>() as i32,
-          ptr::null().offset(mem::size_of::<Vector3<GLfloat>>() as int),
-      );
-    }
-
-    gl::Enable(gl::DEPTH_TEST);
-    gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
-
-    gl::Enable(gl::LINE_SMOOTH);
-    gl::LineWidth(2.5);
-
-    gl::Enable(gl::DEPTH_TEST);
-    gl::DepthFunc(gl::LESS);
-    gl::ClearDepth(100.0);
-    gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-
-    // initialize the projection matrix
-    self.fov_matrix = perspective(3.14/2.0, 4.0/3.0, 0.1, 100.0);
-    self.translate(&Vector3::new(0.0, 4.0, 10.0));
-    self.update_projection();
-
-    let mut i;
-    // dirt block
-    i = -1;
-    while i <= 1 {
-      let mut j = -1i;
-      while j <= 1 {
-        let (x1, y1, z1) = (3.0 + i as GLfloat, 6.0, 0.0 + j as GLfloat);
-        let (x2, y2, z2) = (4.0 + i as GLfloat, 7.0, 1.0 + j as GLfloat);
-        self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
-        j += 1;
+        // rendered position data
+        gl::VertexAttribPointer(
+            pos_attr as GLuint,
+            (mem::size_of::<Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
+            gl::FLOAT,
+            gl::FALSE as GLboolean,
+            mem::size_of::<Vertex>() as i32,
+            ptr::null(),
+        );
+        // rendered color data
+        gl::VertexAttribPointer(
+            color_attr as GLuint,
+            (mem::size_of::<Color4<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
+            gl::FLOAT,
+            gl::FALSE as GLboolean,
+            mem::size_of::<Vertex>() as i32,
+            ptr::null().offset(mem::size_of::<Vector3<GLfloat>>() as int),
+        );
       }
-      i += 1;
-    }
-    // ground
-    i = -32i;
-    while i <= 32 {
-      let mut j = -32i;
-      while j <= 32 {
-        let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
-        let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
-        self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Grass));
-        j += 1;
-      }
-      i += 1;
-    }
-    // front wall
-    i = -32i;
-    while i <= 32 {
-      let mut j = 0i;
-      while j <= 32 {
-        let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -32.0 - 0.5);
-        let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -32.0 + 0.5);
-        self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
-        j += 1;
-      }
-      i += 1;
-    }
-    // back wall
-    i = -32i;
-    while i <= 32 {
-      let mut j = 0i;
-      while j <= 32 {
-        let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 32.0 - 0.5);
-        let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 32.0 + 0.5);
-        self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
-        j += 1;
-      }
-      i += 1;
-    }
-    // left wall
-    i = -32i;
-    while i <= 32 {
-      let mut j = 0i;
-      while j <= 32 {
-        let (x1, y1, z1) = (-32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
-        let (x2, y2, z2) = (-32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-        self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
-        j += 1;
-      }
-      i += 1;
-    }
-    // right wall
-    i = -32i;
-    while i <= 32 {
-      let mut j = 0i;
-      while j <= 32 {
-        let (x1, y1, z1) = (32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
-        let (x2, y2, z2) = (32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-        self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
-        j += 1;
-      }
-      i += 1;
-    }
 
-    self.update_render_data();
+      gl::Enable(gl::DEPTH_TEST);
+      gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+
+      gl::Enable(gl::LINE_SMOOTH);
+      gl::LineWidth(2.5);
+
+      gl::Enable(gl::DEPTH_TEST);
+      gl::DepthFunc(gl::LESS);
+      gl::ClearDepth(100.0);
+      gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+
+      // initialize the projection matrix
+      self.fov_matrix = perspective(3.14/2.0, 4.0/3.0, 0.1, 100.0);
+      self.translate(&Vector3::new(0.0, 4.0, 10.0));
+      self.update_projection();
+
+      let mut watch = self.load_construct_stopwatch;
+      watch.timed(|| {
+        let mut i;
+        // dirt block
+        i = -1;
+        while i <= 1 {
+          let mut j = -1i;
+          while j <= 1 {
+            let (x1, y1, z1) = (3.0 + i as GLfloat, 6.0, 0.0 + j as GLfloat);
+            let (x2, y2, z2) = (4.0 + i as GLfloat, 7.0, 1.0 + j as GLfloat);
+            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
+            j += 1;
+          }
+          i += 1;
+        }
+        // ground
+        i = -32i;
+        while i <= 32 {
+          let mut j = -32i;
+          while j <= 32 {
+            let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
+            let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
+            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Grass));
+            j += 1;
+          }
+          i += 1;
+        }
+        // front wall
+        i = -32i;
+        while i <= 32 {
+          let mut j = 0i;
+          while j <= 32 {
+            let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -32.0 - 0.5);
+            let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -32.0 + 0.5);
+            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+            j += 1;
+          }
+          i += 1;
+        }
+        // back wall
+        i = -32i;
+        while i <= 32 {
+          let mut j = 0i;
+          while j <= 32 {
+            let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 32.0 - 0.5);
+            let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 32.0 + 0.5);
+            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+            j += 1;
+          }
+          i += 1;
+        }
+        // left wall
+        i = -32i;
+        while i <= 32 {
+          let mut j = 0i;
+          while j <= 32 {
+            let (x1, y1, z1) = (-32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
+            let (x2, y2, z2) = (-32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
+            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+            j += 1;
+          }
+          i += 1;
+        }
+        // right wall
+        i = -32i;
+        while i <= 32 {
+          let mut j = 0i;
+          while j <= 32 {
+            let (x1, y1, z1) = (32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
+            let (x2, y2, z2) = (32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
+            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+            j += 1;
+          }
+          i += 1;
+        }
+      });
+      self.load_construct_stopwatch = watch;
+
+      self.make_render_data();
+    });
+    self.load_stopwatch = watch;
   }
 
   fn update(&mut self, _:&UpdateArgs) {
-    let dP = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.camera_speed);
-    if dP.x != 0.0 {
-      self.translate(&Vector3::new(dP.x, 0.0, 0.0));
-    }
-    if dP.y != 0.0 {
-      self.translate(&Vector3::new(0.0, dP.y, 0.0));
-    }
-    if dP.z != 0.0 {
-      self.translate(&Vector3::new(0.0, 0.0, dP.z));
-    }
+    let mut watch = self.update_stopwatch;
+    watch.timed(|| {
+      let dP = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.camera_speed);
+      if dP.x != 0.0 {
+        self.translate(&Vector3::new(dP.x, 0.0, 0.0));
+      }
+      if dP.y != 0.0 {
+        self.translate(&Vector3::new(0.0, dP.y, 0.0));
+      }
+      if dP.z != 0.0 {
+        self.translate(&Vector3::new(0.0, 0.0, dP.z));
+      }
 
-    let dV = self.camera_accel;
-    self.camera_speed = self.camera_speed + dV;
-    // friction
-    self.camera_speed = self.camera_speed * Vector3::new(0.8, 0.99, 0.8);
+      let dV = self.camera_accel;
+      self.camera_speed = self.camera_speed + dV;
+      // friction
+      self.camera_speed = self.camera_speed * Vector3::new(0.8, 0.99, 0.8);
+    });
+    self.update_stopwatch = watch;
   }
 
   fn render(&mut self, _:&RenderArgs) {
-    gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+    let mut watch = self.render_stopwatch;
+    watch.timed(|| {
+      gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-    gl::DrawArrays(gl::TRIANGLES, 0, self.triangles as i32);
-    gl::DrawArrays(gl::LINES, self.triangles as GLint, self.lines as i32);
+      gl::DrawArrays(gl::TRIANGLES, 0, self.triangles as i32);
+      gl::DrawArrays(gl::LINES, self.triangles as GLint, self.lines as i32);
+    });
+    self.render_stopwatch = watch;
   }
 }
 
@@ -598,25 +648,55 @@ impl App {
       selection_vertex_array: -1 as u32,
       render_vertex_buffer: -1 as u32,
       selection_vertex_buffer: -1 as u32,
+      load_stopwatch: stopwatch::Stopwatch::new(),
+      load_construct_stopwatch: stopwatch::Stopwatch::new(),
+      key_press_stopwatch: stopwatch::Stopwatch::new(),
+      key_release_stopwatch: stopwatch::Stopwatch::new(),
+      mouse_move_stopwatch: stopwatch::Stopwatch::new(),
+      mouse_press_stopwatch: stopwatch::Stopwatch::new(),
+      update_projection_stopwatch: stopwatch::Stopwatch::new(),
+      make_render_data_stopwatch: stopwatch::Stopwatch::new(),
+      make_render_data_construct_stopwatch: stopwatch::Stopwatch::new(),
+      make_render_data_buffer_stopwatch: stopwatch::Stopwatch::new(),
+      render_selection_stopwatch: stopwatch::Stopwatch::new(),
+      render_selection_load_unload_stopwatch: stopwatch::Stopwatch::new(),
+      render_selection_render_stopwatch: stopwatch::Stopwatch::new(),
+      update_stopwatch: stopwatch::Stopwatch::new(),
+      render_stopwatch: stopwatch::Stopwatch::new(),
     }
   }
 
-  pub fn render_selection(&self) {
-    // load the selection vertex array/buffer.
-    gl::BindVertexArray(self.selection_vertex_array);
-    gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
+  pub fn render_selection(&mut self) {
+    let mut watch = self.render_selection_stopwatch;
+    watch.timed(|| {
+      let mut watch = self.render_selection_load_unload_stopwatch;
+      watch.timed(|| {
+        // load the selection vertex array/buffer.
+        gl::BindVertexArray(self.selection_vertex_array);
+        gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
+      });
+      self.render_selection_load_unload_stopwatch = watch;
 
-    gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+      let mut watch = self.render_selection_render_stopwatch;
+      watch.timed(|| {
+        gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+        gl::DrawArrays(gl::TRIANGLES, 0, self.selection_data.len() as i32);
+      });
+      self.render_selection_render_stopwatch = watch;
 
-    gl::DrawArrays(gl::TRIANGLES, 0, self.selection_data.len() as i32);
-
-    // reset the bound vertex array/buffer.
-    gl::BindVertexArray(self.render_vertex_array);
-    gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
+      let mut watch = self.render_selection_load_unload_stopwatch;
+      watch.timed(|| {
+        // reset the bound vertex array/buffer.
+        gl::BindVertexArray(self.render_vertex_array);
+        gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
+      });
+      self.render_selection_load_unload_stopwatch = watch;
+    });
+    self.render_selection_stopwatch = watch;
   }
 
   // Update the OpenGL vertex data with the world data triangles.
-  pub fn update_render_data(&mut self) {
+  pub fn make_render_data(&mut self) {
     fn selection_color(i: u32) -> Color4<GLfloat> {
       assert!(i < 0xFF000000, "too many items for selection buffer");
       let i = i + 1;
@@ -635,60 +715,76 @@ impl App {
       ret
     }
 
-    self.selection_data = Vec::new();
-    self.render_data = Vec::new();
+    let mut watch = self.make_render_data_stopwatch;
+    watch.timed(|| {
+      let mut watch = self.make_render_data_construct_stopwatch;
+      watch.timed(|| {
+        self.selection_data = Vec::new();
+        self.render_data = Vec::new();
 
-    let mut triangles = Vec::new();
-    triangles.reserve(self.world_data.len() * 36);
-    let mut outlines = Vec::new();
-    triangles.reserve(self.world_data.len() * 24);
+        let mut triangles = Vec::new();
+        triangles.reserve(self.world_data.len() * 36);
+        let mut outlines = Vec::new();
+        outlines.reserve(self.world_data.len() * 24);
 
-    let mut i = 0;
-    while i < self.world_data.len() {
-      let block = self.world_data[i];
-      triangles.push_all(block.to_colored_triangles());
-      outlines.push_all(block.to_outlines());
-      self.selection_data.push_all(block.to_triangles(&selection_color(i as u32)));
-      i += 1;
-    }
+        let mut i = 0;
+        while i < self.world_data.len() {
+          let block = self.world_data[i];
+          triangles.push_all(block.to_colored_triangles());
+          outlines.push_all(block.to_outlines());
+          self.selection_data.push_all(block.to_triangles(&selection_color(i as u32)));
+          i += 1;
+        }
 
-    self.triangles = triangles.len();
-    self.lines = outlines.len();
+        self.triangles = triangles.len();
+        self.lines = outlines.len();
 
-    self.render_data.push_all(triangles.slice(0, triangles.len()));
-    self.render_data.push_all(outlines.slice(0, outlines.len()));
+        self.render_data.push_all(triangles.slice(0, triangles.len()));
+        self.render_data.push_all(outlines.slice(0, outlines.len()));
+      });
+      self.make_render_data_construct_stopwatch = watch;
 
-    unsafe {
-      gl::BindVertexArray(self.selection_vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
+      let mut watch = self.make_render_data_buffer_stopwatch;
+      watch.timed(|| {
+        unsafe {
+          gl::BindVertexArray(self.selection_vertex_array);
+          gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
 
-      gl::BufferData(
-        gl::ARRAY_BUFFER,
-        (self.selection_data.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
-        mem::transmute(&self.selection_data[0]),
-        gl::STATIC_DRAW);
+          gl::BufferData(
+            gl::ARRAY_BUFFER,
+            (self.selection_data.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
+            mem::transmute(&self.selection_data[0]),
+            gl::STATIC_DRAW);
 
-      gl::BindVertexArray(self.render_vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
+          gl::BindVertexArray(self.render_vertex_array);
+          gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
 
-      gl::BufferData(
-        gl::ARRAY_BUFFER,
-        (self.render_data.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
-        mem::transmute(&self.render_data[0]),
-        gl::STATIC_DRAW);
-    }
+          gl::BufferData(
+            gl::ARRAY_BUFFER,
+            (self.render_data.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
+            mem::transmute(&self.render_data[0]),
+            gl::STATIC_DRAW);
+        }
+      });
+      self.make_render_data_buffer_stopwatch = watch;
+    });
+    self.make_render_data_stopwatch = watch;
   }
 
-  pub fn update_projection(&self) {
-    unsafe {
-      let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
-      if loc == -1 {
-        println!("couldn't read matrix");
-      } else {
-        let projection = self.fov_matrix * self.rotation_matrix * self.translation_matrix;
-        gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(projection.ptr()));
+  pub fn update_projection(&mut self) {
+    let mut watch = self.update_projection_stopwatch;
+    watch.timed(|| {
+      unsafe {
+        let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
+        if loc == -1 {
+          println!("couldn't read matrix");
+        } else {
+          let projection = self.fov_matrix * self.rotation_matrix * self.translation_matrix;
+          gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(projection.ptr()));
+        }
       }
-    }
+    });
+    self.update_projection_stopwatch = watch;
   }
 
   #[inline]
@@ -825,6 +921,18 @@ fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
     program
 }
 
+fn print_stopwatch(name: &str, watch: &stopwatch::Stopwatch) {
+  if watch.number_of_windows == 0 {
+    println!("{} never ran", name);
+  } else {
+    println!(
+      "{} avg {}ms over {} samples", name,
+      (watch.total_time / watch.number_of_windows / 1000000),
+      watch.number_of_windows
+    );
+  }
+}
+
 fn main() {
   let mut window = GameWindowSDL2::new(
     GameWindowSettings {
@@ -835,8 +943,28 @@ fn main() {
     }
   );
 
-  App::new().run(&mut window, &GameIteratorSettings {
+  let mut app = App::new();
+  app.run(&mut window, &GameIteratorSettings {
     updates_per_second: 30,
     max_frames_per_second: 30,
   });
+
+  println!("finished!");
+  println!("");
+  println!("runtime stats:");
+  print_stopwatch("load_stopwatch", &app.load_stopwatch);
+  print_stopwatch("load_construct_stopwatch", &app.load_construct_stopwatch);
+  print_stopwatch("key_press_stopwatch", &app.key_press_stopwatch);
+  print_stopwatch("key_release_stopwatch", &app.key_release_stopwatch);
+  print_stopwatch("mouse_move_stopwatch", &app.mouse_move_stopwatch);
+  print_stopwatch("mouse_press_stopwatch", &app.mouse_press_stopwatch);
+  print_stopwatch("update_projection_stopwatch", &app.update_projection_stopwatch);
+  print_stopwatch("make_render_data_stopwatch", &app.make_render_data_stopwatch);
+  print_stopwatch("make_render_data_construct_stopwatch", &app.make_render_data_construct_stopwatch);
+  print_stopwatch("make_render_data_buffer_stopwatch", &app.make_render_data_buffer_stopwatch);
+  print_stopwatch("render_selection_stopwatch", &app.render_selection_stopwatch);
+  print_stopwatch("render_selection_load_unload_stopwatch", &app.render_selection_load_unload_stopwatch);
+  print_stopwatch("render_selection_render_stopwatch", &app.render_selection_render_stopwatch);
+  print_stopwatch("update_stopwatch", &app.update_stopwatch);
+  print_stopwatch("render_stopwatch", &app.render_stopwatch);
 }
