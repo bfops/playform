@@ -383,6 +383,9 @@ impl Game for App {
       );
     }
 
+    gl::Enable(gl::DEPTH_TEST);
+    gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+
     gl::Enable(gl::LINE_SMOOTH);
     gl::LineWidth(2.5);
 
