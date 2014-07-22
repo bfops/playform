@@ -23,6 +23,11 @@ mod stopwatch;
 static WINDOW_WIDTH: u32 = 800;
 static WINDOW_HEIGHT: u32 = 600;
 
+static TRIANGLES_PER_BLOCK: uint = 12;
+static LINES_PER_BLOCK: uint = 12;
+static VERTICES_PER_TRIANGLE: uint = 3;
+static VERTICES_PER_LINE: uint = 2;
+
 #[deriving(Clone)]
 pub struct Color4<T> { r: T, g: T, b: T, a: T }
 
@@ -138,7 +143,7 @@ impl Block {
   // Construct the faces of the block as triangles for rendering.
   // Triangle vertices are in clockwise order when viewed from the outside of
   // the cube, for rendering purposes.
-  fn to_triangles(&self, c: &Color4<GLfloat>) -> [Vertex, ..36] {
+  fn to_triangles(&self, c: &Color4<GLfloat>) -> [Vertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
     let (x1, y1, z1) = (self.low_corner.x, self.low_corner.y, self.low_corner.z);
     let (x2, y2, z2) = (self.high_corner.x, self.high_corner.y, self.high_corner.z);
     [
@@ -164,12 +169,12 @@ impl Block {
   }
 
   #[inline]
-  fn to_colored_triangles(&self) -> [Vertex, ..36] {
+  fn to_colored_triangles(&self) -> [Vertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
     self.to_triangles(&self.block_type.to_color())
   }
 
   // Construct outlines for this Block, to sharpen the edges.
-  fn to_outlines(&self) -> [Vertex, ..24] {
+  fn to_outlines(&self) -> [Vertex, ..VERTICES_PER_LINE * LINES_PER_BLOCK] {
     let d = 0.002;
     let (x1, y1, z1) = (self.low_corner.x - d, self.low_corner.y - d, self.low_corner.z - d);
     let (x2, y2, z2) = (self.high_corner.x + d, self.high_corner.y + d, self.high_corner.z + d);
@@ -202,12 +207,11 @@ pub struct App {
   // acceleration; x/z units are relative to player facing
   camera_accel: Vector3<GLfloat>,
   mouse_position: Vector2<f64>,
-  // OpenGL-friendly equivalent of world_data
-  render_data: Vec<Vertex>,
-  triangles: uint, // number of triangles in render_data
-  lines: uint, // number of lines in render_data
+  // OpenGL render-ready equivalent of world_data
+  triangles: Vec<Vertex>,
+  outlines: Vec<Vertex>,
   // OpenGL-friendly equivalent of world_data for selection/picking.
-  selection_data: Vec<Vertex>,
+  selection_triangles: Vec<Vertex>,
   // OpenGL projection matrix components
   fov_matrix: Matrix4<GLfloat>,
   translation_matrix: Matrix4<GLfloat>,
@@ -230,8 +234,9 @@ pub struct App {
   mouse_press_stopwatch: stopwatch::Stopwatch,
   update_projection_stopwatch: stopwatch::Stopwatch,
   make_render_data_stopwatch: stopwatch::Stopwatch,
-  make_render_data_construct_stopwatch: stopwatch::Stopwatch,
-  make_render_data_buffer_stopwatch: stopwatch::Stopwatch,
+  update_render_data_stopwatch: stopwatch::Stopwatch,
+  update_render_data_construct_stopwatch: stopwatch::Stopwatch,
+  update_render_data_buffer_stopwatch: stopwatch::Stopwatch,
   render_selection_load_unload_stopwatch: stopwatch::Stopwatch,
   render_selection_render_stopwatch: stopwatch::Stopwatch,
   render_selection_stopwatch: stopwatch::Stopwatch,
@@ -285,6 +290,18 @@ pub fn from_axis_angle<S: BaseFloat>(axis: &Vector3<S>, angle: angle::Rad<S>) ->
         num::zero(),
         num::one(),
     )
+}
+
+#[inline]
+// treat a vector as though every `span` elements are a contiguous block,
+// and swap_remove the `i`th block.
+pub fn swap_remove_block<T>(v: &mut Vec<T>, span: uint, i: uint) {
+  let dest = i * span;
+  let mut i = dest + span;
+  while i > dest {
+    v.swap_remove(i - 1);
+    i -= 1;
+  }
 }
 
 impl Game for App {
@@ -392,8 +409,13 @@ impl Game for App {
       let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
       if block_index > 0 {
         let block_index = block_index - 1;
-        self.world_data.swap_remove(block_index as uint);
-        self.make_render_data();
+        self.world_data.swap_remove(block_index);
+        
+        swap_remove_block(&mut self.triangles, TRIANGLES_PER_BLOCK * VERTICES_PER_TRIANGLE, block_index);
+        swap_remove_block(&mut self.outlines, LINES_PER_BLOCK * VERTICES_PER_LINE, block_index);
+        swap_remove_block(&mut self.selection_triangles, TRIANGLES_PER_BLOCK * VERTICES_PER_TRIANGLE, block_index);
+        
+        self.update_render_data();
       }
     });
     self.mouse_press_stopwatch = watch;
@@ -443,7 +465,7 @@ impl Game for App {
         // selection color data
         gl::VertexAttribPointer(
             color_attr as GLuint,
-            (mem::size_of::<Color4<u8>>() / mem::size_of::<u8>()) as i32,
+            (mem::size_of::<Color4<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
             gl::FLOAT,
             gl::FALSE as GLboolean,
             mem::size_of::<Vertex>() as i32,
@@ -573,6 +595,7 @@ impl Game for App {
       self.load_construct_stopwatch = watch;
 
       self.make_render_data();
+      self.update_render_data();
     });
     self.load_stopwatch = watch;
   }
@@ -604,8 +627,8 @@ impl Game for App {
     watch.timed(|| {
       gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-      gl::DrawArrays(gl::TRIANGLES, 0, self.triangles as i32);
-      gl::DrawArrays(gl::LINES, self.triangles as GLint, self.lines as i32);
+      gl::DrawArrays(gl::TRIANGLES, 0, self.triangles.len() as i32);
+      gl::DrawArrays(gl::LINES, self.triangles.len() as GLint, self.outlines.len() as i32);
     });
     self.render_stopwatch = watch;
   }
@@ -635,10 +658,9 @@ impl App {
       camera_speed: Vector3::zero(),
       camera_accel: Vector3::new(0.0, -0.1, 0.0),
       mouse_position: Vector2::new(0.0, 0.0),
-      render_data: Vec::new(),
-      triangles: 0,
-      lines: 0,
-      selection_data: Vec::new(),
+      triangles: Vec::new(),
+      outlines: Vec::new(),
+      selection_triangles: Vec::new(),
       fov_matrix: Matrix4::identity(),
       translation_matrix: Matrix4::identity(),
       rotation_matrix: Matrix4::identity(),
@@ -656,8 +678,9 @@ impl App {
       mouse_press_stopwatch: stopwatch::Stopwatch::new(),
       update_projection_stopwatch: stopwatch::Stopwatch::new(),
       make_render_data_stopwatch: stopwatch::Stopwatch::new(),
-      make_render_data_construct_stopwatch: stopwatch::Stopwatch::new(),
-      make_render_data_buffer_stopwatch: stopwatch::Stopwatch::new(),
+      update_render_data_stopwatch: stopwatch::Stopwatch::new(),
+      update_render_data_construct_stopwatch: stopwatch::Stopwatch::new(),
+      update_render_data_buffer_stopwatch: stopwatch::Stopwatch::new(),
       render_selection_stopwatch: stopwatch::Stopwatch::new(),
       render_selection_load_unload_stopwatch: stopwatch::Stopwatch::new(),
       render_selection_render_stopwatch: stopwatch::Stopwatch::new(),
@@ -680,7 +703,7 @@ impl App {
       let mut watch = self.render_selection_render_stopwatch;
       watch.timed(|| {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        gl::DrawArrays(gl::TRIANGLES, 0, self.selection_data.len() as i32);
+        gl::DrawArrays(gl::TRIANGLES, 0, self.selection_triangles.len() as i32);
       });
       self.render_selection_render_stopwatch = watch;
 
@@ -717,34 +740,38 @@ impl App {
 
     let mut watch = self.make_render_data_stopwatch;
     watch.timed(|| {
-      let mut watch = self.make_render_data_construct_stopwatch;
+      self.selection_triangles = Vec::new();
+
+      self.triangles = Vec::new();
+      self.triangles.reserve(self.world_data.len() * VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK);
+
+      self.outlines = Vec::new();
+      self.outlines.reserve(self.world_data.len() * VERTICES_PER_LINE * LINES_PER_BLOCK);
+
+      let mut i = 0;
+      while i < self.world_data.len() {
+        let block = self.world_data[i];
+        self.triangles.push_all(block.to_colored_triangles());
+        self.outlines.push_all(block.to_outlines());
+        self.selection_triangles.push_all(block.to_triangles(&selection_color(i as u32)));
+        i += 1;
+      }
+    });
+    self.make_render_data_stopwatch = watch;
+  }
+
+  fn update_render_data(&mut self) {
+    let mut watch = self.update_render_data_stopwatch;
+    watch.timed(|| {
+      let mut render_data = Vec::new();
+      let mut watch = self.update_render_data_construct_stopwatch;
       watch.timed(|| {
-        self.selection_data = Vec::new();
-        self.render_data = Vec::new();
-
-        let mut triangles = Vec::new();
-        triangles.reserve(self.world_data.len() * 36);
-        let mut outlines = Vec::new();
-        outlines.reserve(self.world_data.len() * 24);
-
-        let mut i = 0;
-        while i < self.world_data.len() {
-          let block = self.world_data[i];
-          triangles.push_all(block.to_colored_triangles());
-          outlines.push_all(block.to_outlines());
-          self.selection_data.push_all(block.to_triangles(&selection_color(i as u32)));
-          i += 1;
-        }
-
-        self.triangles = triangles.len();
-        self.lines = outlines.len();
-
-        self.render_data.push_all(triangles.slice(0, triangles.len()));
-        self.render_data.push_all(outlines.slice(0, outlines.len()));
+        render_data.push_all(self.triangles.slice(0, self.triangles.len()));
+        render_data.push_all(self.outlines.slice(0, self.outlines.len()));
       });
-      self.make_render_data_construct_stopwatch = watch;
+      self.update_render_data_construct_stopwatch = watch;
 
-      let mut watch = self.make_render_data_buffer_stopwatch;
+      let mut watch = self.update_render_data_buffer_stopwatch;
       watch.timed(|| {
         unsafe {
           gl::BindVertexArray(self.selection_vertex_array);
@@ -752,8 +779,8 @@ impl App {
 
           gl::BufferData(
             gl::ARRAY_BUFFER,
-            (self.selection_data.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
-            mem::transmute(&self.selection_data[0]),
+            (self.selection_triangles.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
+            mem::transmute(&self.selection_triangles[0]),
             gl::STATIC_DRAW);
 
           gl::BindVertexArray(self.render_vertex_array);
@@ -761,14 +788,15 @@ impl App {
 
           gl::BufferData(
             gl::ARRAY_BUFFER,
-            (self.render_data.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
-            mem::transmute(&self.render_data[0]),
-            gl::STATIC_DRAW);
+            (render_data.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
+            mem::transmute(&render_data[0]),
+            gl::STATIC_DRAW
+          );
         }
       });
-      self.make_render_data_buffer_stopwatch = watch;
+      self.update_render_data_buffer_stopwatch = watch;
     });
-    self.make_render_data_stopwatch = watch;
+    self.update_render_data_stopwatch = watch;
   }
 
   pub fn update_projection(&mut self) {
@@ -960,8 +988,9 @@ fn main() {
   print_stopwatch("mouse_press_stopwatch", &app.mouse_press_stopwatch);
   print_stopwatch("update_projection_stopwatch", &app.update_projection_stopwatch);
   print_stopwatch("make_render_data_stopwatch", &app.make_render_data_stopwatch);
-  print_stopwatch("make_render_data_construct_stopwatch", &app.make_render_data_construct_stopwatch);
-  print_stopwatch("make_render_data_buffer_stopwatch", &app.make_render_data_buffer_stopwatch);
+  print_stopwatch("update_render_data_stopwatch", &app.update_render_data_stopwatch);
+  print_stopwatch("update_render_data_construct_stopwatch", &app.update_render_data_construct_stopwatch);
+  print_stopwatch("update_render_data_buffer_stopwatch", &app.update_render_data_buffer_stopwatch);
   print_stopwatch("render_selection_stopwatch", &app.render_selection_stopwatch);
   print_stopwatch("render_selection_load_unload_stopwatch", &app.render_selection_load_unload_stopwatch);
   print_stopwatch("render_selection_render_stopwatch", &app.render_selection_render_stopwatch);
