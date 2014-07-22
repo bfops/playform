@@ -5,20 +5,18 @@ extern crate gl;
 extern crate piston;
 extern crate sdl2_game_window;
 
-use sdl2_game_window::GameWindowSDL2;
-
-use cgmath::*;
-use cgmath::array::*;
-use cgmath::matrix::*;
+use cgmath::angle;
+use cgmath::array::Array2;
+use cgmath::matrix::{Matrix, Matrix3, Matrix4};
 use cgmath::num::{BaseFloat};
-use cgmath::vector::{Vector,Vector2,Vector3};
+use cgmath::vector::{Vector, Vector2, Vector3};
 use piston::*;
 use gl::types::*;
+use sdl2_game_window::GameWindowSDL2;
 use std::mem;
 use std::ptr;
 use std::str;
-use std::num::*;
-use std::vec::*;
+use std::num;
 
 static WINDOW_WIDTH: u32 = 800;
 static WINDOW_HEIGHT: u32 = 600;
@@ -209,9 +207,9 @@ pub struct App {
   // OpenGL-friendly equivalent of world_data for selection/picking.
   selection_data: Vec<Vertex>,
   // OpenGL projection matrix components
-  fov_matrix: matrix::Matrix4<GLfloat>,
-  translation_matrix: matrix::Matrix4<GLfloat>,
-  rotation_matrix: matrix::Matrix4<GLfloat>,
+  fov_matrix: Matrix4<GLfloat>,
+  translation_matrix: Matrix4<GLfloat>,
+  rotation_matrix: Matrix4<GLfloat>,
   lateral_rotation: angle::Rad<GLfloat>,
   // OpenGL shader "program" id.
   shader_program: u32,
@@ -224,8 +222,8 @@ pub struct App {
 }
 
 // Create a 3D translation matrix.
-pub fn translate(t: &Vector3<GLfloat>) -> matrix::Matrix4<GLfloat> {
-  matrix::Matrix4::new(
+pub fn translate(t: &Vector3<GLfloat>) -> Matrix4<GLfloat> {
+  Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
     0.0, 1.0, 0.0, 0.0,
     0.0, 0.0, 1.0, 0.0,
@@ -234,8 +232,8 @@ pub fn translate(t: &Vector3<GLfloat>) -> matrix::Matrix4<GLfloat> {
 }
 
 // Create a 3D perspective initialization matrix.
-pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) -> matrix::Matrix4<GLfloat> {
-  matrix::Matrix4::new(
+pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) -> Matrix4<GLfloat> {
+  Matrix4::new(
     fovy / aspect, 0.0, 0.0,                              0.0,
     0.0,          fovy, 0.0,                              0.0,
     0.0,           0.0, (near + far) / (near - far),     -1.0,
@@ -246,28 +244,28 @@ pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) 
 // Create a matrix from a rotation around an arbitrary axis
 pub fn from_axis_angle<S: BaseFloat>(axis: &Vector3<S>, angle: angle::Rad<S>) -> Matrix4<S> {
     let (s, c) = angle::sin_cos(angle);
-    let _1subc = one::<S>() - c;
+    let _1subc = num::one::<S>() - c;
 
     Matrix4::new(
         _1subc * axis.x * axis.x + c,
         _1subc * axis.x * axis.y + s * axis.z,
         _1subc * axis.x * axis.z - s * axis.y,
-        zero(),
+        num::zero(),
 
         _1subc * axis.x * axis.y - s * axis.z,
         _1subc * axis.y * axis.y + c,
         _1subc * axis.y * axis.z + s * axis.x,
-        zero(),
+        num::zero(),
 
         _1subc * axis.x * axis.z + s * axis.y,
         _1subc * axis.y * axis.z - s * axis.x,
         _1subc * axis.z * axis.z + c,
-        zero(),
+        num::zero(),
 
-        zero(),
-        zero(),
-        zero(),
-        one(),
+        num::zero(),
+        num::zero(),
+        num::zero(),
+        num::one(),
     )
 }
 
