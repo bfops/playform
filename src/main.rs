@@ -744,18 +744,7 @@ impl Game<GameWindowSDL2> for App {
 
 #[inline]
 fn mask(mask: u32, i: u32) -> u32 {
-  #[inline]
-  fn ctz(n: u32) -> uint {
-    let mut n = n;
-    let mut ret = 0;
-    while (n & 1) == 0 {
-      n >>= 1;
-      ret += 1;
-    }
-    ret
-  }
-
-  (i & mask) >> ctz(mask)
+  (i & mask) >> (mask as uint).trailing_zeros()
 }
 
 impl App {
