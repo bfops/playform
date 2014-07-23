@@ -1,4 +1,5 @@
 #![feature(globs)] // Allow global imports
+#![feature(macro_rules)]
 
 extern crate cgmath;
 extern crate gl;
@@ -19,6 +20,13 @@ use std::str;
 use std::num;
 
 mod stopwatch;
+
+// TODO(cgaebel): How the hell do I get this to be exported from `mod stopwatch`?
+macro_rules! time(
+  ($timers:expr, $name:expr, $f:expr) => (
+    unsafe { ($timers as *const stopwatch::TimerSet).to_option() }.unwrap().time($name, $f)
+  );
+)
 
 static WINDOW_WIDTH: u32 = 800;
 static WINDOW_HEIGHT: u32 = 600;
@@ -313,18 +321,7 @@ pub struct App {
   // OpenGL Vertex Buffer Object id(s).
   render_vertex_buffer: u32,
   selection_vertex_buffer: u32,
-
-  load_stopwatch: stopwatch::Stopwatch,
-  load_construct_stopwatch: stopwatch::Stopwatch,
-  key_press_stopwatch: stopwatch::Stopwatch,
-  key_release_stopwatch: stopwatch::Stopwatch,
-  mouse_move_stopwatch: stopwatch::Stopwatch,
-  mouse_press_stopwatch: stopwatch::Stopwatch,
-  update_projection_stopwatch: stopwatch::Stopwatch,
-  make_render_data_stopwatch: stopwatch::Stopwatch,
-  render_selection_stopwatch: stopwatch::Stopwatch,
-  update_stopwatch: stopwatch::Stopwatch,
-  render_stopwatch: stopwatch::Stopwatch,
+  timers: stopwatch::TimerSet,
 }
 
 // Create a 3D translation matrix.
@@ -381,8 +378,7 @@ pub unsafe fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
 
 impl Game for App {
   fn key_press(&mut self, args: &KeyPressArgs) {
-    let mut watch = self.key_press_stopwatch;
-    watch.timed(|| {
+    time!(&self.timers, "event.key_press", || {
       match args.key {
         piston::keyboard::A => {
           self.walk(&-Vector3::unit_x());
@@ -421,14 +417,12 @@ impl Game for App {
           self.rotate(&axis, angle::rad(-3.14/12.0 as GLfloat));
         },
         _ => {},
-      }
-    });
-    self.key_press_stopwatch = watch;
+      };
+    })
   }
 
   fn key_release(&mut self, args: &KeyReleaseArgs) {
-    let mut watch = self.key_press_stopwatch;
-    watch.timed(|| {
+    time!(&self.timers, "event.key_release", || {
       match args.key {
         // accelerations are negated from those in key_press.
         piston::keyboard::A => {
@@ -451,21 +445,17 @@ impl Game for App {
         },
         _ => { }
       }
-    });
-    self.key_release_stopwatch = watch;
+    })
   }
 
   fn mouse_move(&mut self, args: &MouseMoveArgs) {
-    let mut watch = self.mouse_move_stopwatch;
-    watch.timed(|| {
+    time!(&self.timers, "event.mouse_move", || {
       self.mouse_position = Vector2::new(args.x, args.y);
-    });
-    self.mouse_move_stopwatch = watch;
+    })
   }
 
   fn mouse_press(&mut self, _: &MousePressArgs) {
-    let mut watch = self.mouse_press_stopwatch;
-    watch.timed(|| {
+    time!(&self.timers, "event.mouse_press", || {
       self.render_selection();
 
       let pixels: Color4<u8> = Color4::new(&0, &0, &0, &0);
@@ -491,13 +481,11 @@ impl Game for App {
           self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
         }
       }
-    });
-    self.mouse_press_stopwatch = watch;
+    })
   }
 
   fn load(&mut self) {
-    let mut watch = self.load_stopwatch;
-    watch.timed(|| {
+    time!(&self.timers, "load", || {
       unsafe {
         self.set_up_shaders();
 
@@ -583,8 +571,9 @@ impl Game for App {
       self.translate(&Vector3::new(0.0, 4.0, 10.0));
       self.update_projection();
 
-      let mut watch = self.load_construct_stopwatch;
-      watch.timed(|| {
+      let timers = &self.timers;
+
+      timers.time("load.construct", || {
         let mut i;
         // dirt block
         i = -1;
@@ -659,7 +648,6 @@ impl Game for App {
           i += 1;
         }
       });
-      self.load_construct_stopwatch = watch;
 
       gl::BindVertexArray(self.selection_vertex_array);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
@@ -707,13 +695,11 @@ impl Game for App {
       );
 
       self.make_render_data();
-    });
-    self.load_stopwatch = watch;
+    })
   }
 
   fn update(&mut self, _:&UpdateArgs) {
-    let mut watch = self.update_stopwatch;
-    watch.timed(|| {
+    time!(&self.timers, "update", || {
       let dP = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.camera_speed);
       if dP.x != 0.0 {
         self.translate(&Vector3::new(dP.x, 0.0, 0.0));
@@ -729,21 +715,19 @@ impl Game for App {
       self.camera_speed = self.camera_speed + dV;
       // friction
       self.camera_speed = self.camera_speed * Vector3::new(0.8, 0.99, 0.8);
-    });
-    self.update_stopwatch = watch;
+    })
   }
 
   fn render(&mut self, _:&RenderArgs) {
-    let mut watch = self.render_stopwatch;
-    watch.timed(|| {
+    let timers = &self.timers;
+    timers.time("render", || {
       gl::BindVertexArray(self.render_vertex_array);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
       gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
       gl::DrawArrays(gl::TRIANGLES, 0, self.triangles.length as i32);
       gl::DrawArrays(gl::LINES, self.outlines.offset, self.outlines.length as i32);
-    });
-    self.render_stopwatch = watch;
+    })
   }
 }
 
@@ -783,17 +767,7 @@ impl App {
       selection_vertex_array: -1 as u32,
       render_vertex_buffer: -1 as u32,
       selection_vertex_buffer: -1 as u32,
-      load_stopwatch: stopwatch::Stopwatch::new(),
-      load_construct_stopwatch: stopwatch::Stopwatch::new(),
-      key_press_stopwatch: stopwatch::Stopwatch::new(),
-      key_release_stopwatch: stopwatch::Stopwatch::new(),
-      mouse_move_stopwatch: stopwatch::Stopwatch::new(),
-      mouse_press_stopwatch: stopwatch::Stopwatch::new(),
-      update_projection_stopwatch: stopwatch::Stopwatch::new(),
-      make_render_data_stopwatch: stopwatch::Stopwatch::new(),
-      render_selection_stopwatch: stopwatch::Stopwatch::new(),
-      update_stopwatch: stopwatch::Stopwatch::new(),
-      render_stopwatch: stopwatch::Stopwatch::new(),
+      timers: stopwatch::TimerSet::new(),
     }
   }
 
@@ -807,16 +781,15 @@ impl App {
   }
 
   pub fn render_selection(&mut self) {
-    let mut watch = self.render_selection_stopwatch;
-    watch.timed(|| {
+    let timers = &self.timers;
+    timers.time("render.render_selection", || {
       // load the selection vertex array/buffer.
       gl::BindVertexArray(self.selection_vertex_array);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
 
       gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
       gl::DrawArrays(gl::TRIANGLES, 0, self.selection_triangles.length as i32);
-    });
-    self.render_selection_stopwatch = watch;
+    })
   }
 
   // Update the OpenGL vertex data with the world data triangles.
@@ -839,8 +812,7 @@ impl App {
       ret
     }
 
-    let mut watch = self.make_render_data_stopwatch;
-    watch.timed(|| {
+    time!(&self.timers, "render.make_data", || {
       let mut i = 0;
       while i < self.world_data.len() {
         let block = self.world_data[i];
@@ -851,13 +823,11 @@ impl App {
         }
         i += 1;
       }
-    });
-    self.make_render_data_stopwatch = watch;
+    })
   }
 
   pub fn update_projection(&mut self) {
-    let mut watch = self.update_projection_stopwatch;
-    watch.timed(|| {
+    time!(&self.timers, "update.projection", || {
       unsafe {
         let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
         if loc == -1 {
@@ -867,8 +837,7 @@ impl App {
           gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(projection.ptr()));
         }
       }
-    });
-    self.update_projection_stopwatch = watch;
+    })
   }
 
   #[inline]
@@ -1005,18 +974,6 @@ fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
     program
 }
 
-fn print_stopwatch(name: &str, watch: &stopwatch::Stopwatch) {
-  if watch.number_of_windows == 0 {
-    println!("{} never ran", name);
-  } else {
-    println!(
-      "{} avg {}ms over {} samples", name,
-      (watch.total_time / watch.number_of_windows / 1000000),
-      watch.number_of_windows
-    );
-  }
-}
-
 unsafe fn println_c_str(str: *const u8) {
   let mut str = str;
   loop {
@@ -1059,15 +1016,6 @@ fn main() {
   println!("finished!");
   println!("");
   println!("runtime stats:");
-  print_stopwatch("load_stopwatch", &app.load_stopwatch);
-  print_stopwatch("load_construct_stopwatch", &app.load_construct_stopwatch);
-  print_stopwatch("key_press_stopwatch", &app.key_press_stopwatch);
-  print_stopwatch("key_release_stopwatch", &app.key_release_stopwatch);
-  print_stopwatch("mouse_move_stopwatch", &app.mouse_move_stopwatch);
-  print_stopwatch("mouse_press_stopwatch", &app.mouse_press_stopwatch);
-  print_stopwatch("update_projection_stopwatch", &app.update_projection_stopwatch);
-  print_stopwatch("make_render_data_stopwatch", &app.make_render_data_stopwatch);
-  print_stopwatch("render_selection_stopwatch", &app.render_selection_stopwatch);
-  print_stopwatch("update_stopwatch", &app.update_stopwatch);
-  print_stopwatch("render_stopwatch", &app.render_stopwatch);
+
+  app.timers.print();
 }
