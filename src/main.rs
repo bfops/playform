@@ -13,7 +13,6 @@ use cgmath::vector::{Vector, Vector2, Vector3};
 use piston::*;
 use gl::types::*;
 use sdl2_game_window::GameWindowSDL2;
-use std::collections::HashMap;
 use std::mem;
 use std::ptr;
 use std::str;
@@ -31,7 +30,6 @@ static VERTICES_PER_LINE: uint = 2;
 static TRIANGLE_VERTICES_PER_BLOCK: uint = TRIANGLES_PER_BLOCK * VERTICES_PER_TRIANGLE;
 static LINE_VERTICES_PER_BLOCK: uint = LINES_PER_BLOCK * VERTICES_PER_LINE;
 static RENDER_VERTICES_PER_BLOCK: uint = TRIANGLE_VERTICES_PER_BLOCK + LINE_VERTICES_PER_BLOCK;
-
 
 #[deriving(Clone)]
 pub struct Color4<T> { r: T, g: T, b: T, a: T }
@@ -170,7 +168,6 @@ pub struct Block {
   low_corner: Vector3<GLfloat>,
   high_corner: Vector3<GLfloat>,
   block_type: BlockType,
-  id: u32,
 }
 
 enum Intersect {
@@ -222,17 +219,11 @@ fn intersect(b1: &Block, b2: &Block) -> Intersect {
 }
 
 impl Block {
-  fn new(low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType, block_count: &mut u32) -> Block {
-    unsafe {
-      let block = Block {
-        low_corner: low_corner.clone(),
-        high_corner: high_corner.clone(),
-        block_type: block_type,
-        id: *block_count
-      };
-      *block_count += 1;
-      println!("{}", *block_count);
-      block
+  fn new(low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) -> Block {
+    Block {
+      low_corner: low_corner.clone(),
+      high_corner: high_corner.clone(),
+      block_type: block_type,
     }
   }
 
@@ -297,12 +288,6 @@ impl Block {
 
 pub struct App {
   world_data: Vec<Block>,
-  // total number of blocks that have been created.
-  // Used to assign block.id
-  block_count: u32,
-  // a mapping of block.id to the block's location
-  // in GLBuffer vertices
-  block_id_to_index: HashMap<uint, uint>,
   // position; world coordinates
   camera_position: Vector3<GLfloat>,
   // speed; x/z units are relative to player facing
@@ -510,12 +495,13 @@ impl Game for App {
                 if block_index > 0 { 
                   let block = self.world_data[block_index];
                   // Vector3::unit_y()
-                  let new_block = &Block::new(&(block.low_corner + Vector3::unit_y()), &(block.high_corner + Vector3::unit_y()), Dirt, &mut self.block_count);
+                  let new_block = &Block::new(&(block.low_corner + Vector3::unit_y()), &(block.high_corner + Vector3::unit_y()), Dirt);
                   self.world_data.grow(1, new_block);
                   // TODO: lines from make_render_data. Factor these lines out
                   self.triangles.push(new_block.to_colored_triangles());
                   self.outlines.push(new_block.to_outlines());
-                  self.selection_triangles.push(new_block.to_triangles(&selection_color(new_block.id)));
+                  self.selection_triangles.push(new_block.to_triangles(&selection_color((self.world_data.len() + 1) as u32)));
+
                 }
               }
             }
@@ -625,7 +611,7 @@ impl Game for App {
           while j <= 1 {
             let (x1, y1, z1) = (3.0 + i as GLfloat, 6.0, 0.0 + j as GLfloat);
             let (x2, y2, z2) = (4.0 + i as GLfloat, 7.0, 1.0 + j as GLfloat);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt, &mut self.block_count));
+            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
             j += 1;
           }
           i += 1;
@@ -637,7 +623,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Grass, &mut self.block_count));
+            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Grass));
             j += 1;
           }
           i += 1;
@@ -649,7 +635,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -32.0 - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -32.0 + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone, &mut self.block_count));
+            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
             j += 1;
           }
           i += 1;
@@ -661,7 +647,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 32.0 - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 32.0 + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone, &mut self.block_count));
+            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
             j += 1;
           }
           i += 1;
@@ -673,7 +659,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (-32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
             let (x2, y2, z2) = (-32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone, &mut self.block_count));
+            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
             j += 1;
           }
           i += 1;
@@ -685,7 +671,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
             let (x2, y2, z2) = (32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone, &mut self.block_count));
+            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
             j += 1;
           }
           i += 1;
@@ -734,7 +720,7 @@ impl Game for App {
       self.outlines = GLBuffer::new(
         self.render_vertex_array,
         self.render_vertex_buffer,
-        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK + 400,
+        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
         (self.world_data.len() * LINE_VERTICES_PER_BLOCK) + 400,
       );
 
@@ -797,6 +783,7 @@ fn mask(mask: u32, i: u32) -> u32 {
 
 fn selection_color(i: u32) -> Color4<GLfloat> {
   assert!(i < 0xFF000000, "too many items for selection buffer");
+  let i = i + 1;
   let ret = Color4::new(
     &(mask(0x00FF0000, i) as GLfloat / 255.0),
     &(mask(0x0000FF00, i) as GLfloat / 255.0),
@@ -817,8 +804,6 @@ impl App {
   pub unsafe fn new() -> App {
     App {
       world_data: Vec::new(),
-      block_count: 0 as u32,
-      block_id_to_index: HashMap::<uint, uint>::new(),
       camera_position: Vector3::zero(),
       camera_speed: Vector3::zero(),
       camera_accel: Vector3::new(0.0, -0.1, 0.0),
@@ -870,7 +855,7 @@ impl App {
         unsafe {
           self.triangles.push(block.to_colored_triangles());
           self.outlines.push(block.to_outlines());
-          self.selection_triangles.push(block.to_triangles(&selection_color(block.id)));
+          self.selection_triangles.push(block.to_triangles(&selection_color(i as u32)));
         }
         i += 1;
       }
@@ -913,11 +898,11 @@ impl App {
       let pixels: Color4<u8> = Color4::new(&0, &0, &0, &0);
       gl::ReadPixels(x, y, 1, 1, gl::RGB, gl::UNSIGNED_BYTE, mem::transmute(&pixels));
 
-      let block_id = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
-      if block_id == 0 {
+      let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
+      if block_index == 0 {
         None
       } else {
-        Some(block_id - 1)
+        Some(block_index - 1)
       }
   }
 
@@ -926,16 +911,15 @@ impl App {
     self.camera_accel = self.camera_accel + da.mul_s(0.2);
   }
 
-  fn construct_player(&mut self, high_corner: &Vector3<GLfloat>) -> Block {
+  fn construct_player(&self, high_corner: &Vector3<GLfloat>) -> Block {
     let low_corner = *high_corner - Vector3::new(0.5, 2.0, 1.0);
     // TODO: this really shouldn't be Stone.
-    Block::new(&low_corner, high_corner, Stone, &mut self.block_count)
+    Block::new(&low_corner, high_corner, Stone)
   }
 
   // move the player by a vector
   pub fn translate(&mut self, v: &Vector3<GLfloat>) {
-    let construct_player_vector = self.camera_position + *v;
-    let player = self.construct_player(&(construct_player_vector));
+    let player = self.construct_player(&(self.camera_position + *v));
     let mut collided = false;
     let mut i = 0;
     while i < self.world_data.len() {
