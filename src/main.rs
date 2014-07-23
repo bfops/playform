@@ -17,6 +17,7 @@ use std::mem;
 use std::ptr;
 use std::str;
 use std::num;
+use std::collections::HashMap;
 
 mod stopwatch;
 
@@ -290,6 +291,10 @@ impl Block {
 
 pub struct App {
   world_data: Vec<Block>,
+  // number of blocks that have been created. Used to assing block ids
+  block_count: u32,
+  // mapping of block_id to the block's index in OpenGL buffers
+  block_id_to_index: HashMap<u32, uint>,
   // position; world coordinates
   camera_position: Vector3<GLfloat>,
   // speed; x/z units are relative to player facing
@@ -326,8 +331,6 @@ pub struct App {
   render_selection_stopwatch: stopwatch::Stopwatch,
   update_stopwatch: stopwatch::Stopwatch,
   render_stopwatch: stopwatch::Stopwatch,
-  // number of blocks that have been created. Used to assing block ids
-  block_count: u32,
 }
 
 // Create a 3D translation matrix.
@@ -480,10 +483,7 @@ impl Game for App {
               None => { },
               Some(block_index) => {
                 if block_index > 0 {
-                  self.world_data.swap_remove(block_index);
-                  self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
-                  self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
-                  self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+                  self.remove_block(block_index);
                 }
               }
             }
@@ -802,6 +802,7 @@ impl App {
     App {
       world_data: Vec::new(),
       block_count: 0 as u32,
+      block_id_to_index: HashMap::<u32, uint>::new(),
       camera_position: Vector3::zero(),
       camera_speed: Vector3::zero(),
       camera_accel: Vector3::new(0.0, -0.1, 0.0),
@@ -875,15 +876,12 @@ impl App {
       let pixels: Color4<u8> = Color4::new(&0, &0, &0, &0);
       gl::ReadPixels(x, y, 1, 1, gl::RGB, gl::UNSIGNED_BYTE, mem::transmute(&pixels));
 
-      let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
-      if block_index == 0 {
-        None
-      } else {
-        Some(block_index - 1)
-      }
+      let block_id = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
+      // TODO: check if id not in hashmap
+      self.block_id_to_index.find(&(block_id as u32)).map(|&x| x)
   }
   
-  pub fn place_block(&mut self, low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) {
+  fn place_block(&mut self, low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) {
     unsafe {
       let block = Block::new(low_corner, high_corner, block_type, self.block_count);
       self.world_data.grow(1, &block);
@@ -891,6 +889,16 @@ impl App {
       self.outlines.push(block.to_outlines());
       self.selection_triangles.push(block.to_triangles(&selection_color(self.block_count)));
       self.block_count += 1;
+      self.block_id_to_index.insert(self.block_count, self.world_data.len() - 1);
+    }
+  }
+
+  fn remove_block(&mut self, block_index: uint) {
+    unsafe {
+      self.world_data.swap_remove(block_index);
+      self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+      self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
+      self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
     }
   }
 
@@ -903,7 +911,7 @@ impl App {
     let low_corner = *high_corner - Vector3::new(0.5, 2.0, 1.0);
     // TODO: this really shouldn't be Stone.
     // TODO: should the ID of this block be -1?
-    Block::new(&low_corner, high_corner, Stone, -1)
+    Block::new(&low_corner, high_corner, Stone, -1 as u32)
   }
 
   // move the player by a vector
