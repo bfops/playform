@@ -460,17 +460,15 @@ impl Game<GameWindowSDL2> for App {
     time!(&self.timers, "event.mouse_press", || {
       match args.button {
         piston::mouse::Left => unsafe {
-          match self.block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2) {
-            None => { }
-            Some(block_index) => {
-              if block_index > 0 {
-                self.world_data.swap_remove(block_index);
-                self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
-                self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
-                self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
-              }
-            }
-          }
+          self
+            .block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2)
+            .map(|block_index| {
+              if block_index == 0 { return }
+              self.world_data.swap_remove(block_index);
+              self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+              self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
+              self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+            });
         },
         _ => { }
       }
