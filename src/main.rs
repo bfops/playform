@@ -825,7 +825,6 @@ impl App {
       mouse_move_stopwatch: stopwatch::Stopwatch::new(),
       mouse_press_stopwatch: stopwatch::Stopwatch::new(),
       update_projection_stopwatch: stopwatch::Stopwatch::new(),
-      make_render_data_stopwatch: stopwatch::Stopwatch::new(),
       render_selection_stopwatch: stopwatch::Stopwatch::new(),
       update_stopwatch: stopwatch::Stopwatch::new(),
       render_stopwatch: stopwatch::Stopwatch::new(),
