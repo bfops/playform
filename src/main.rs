@@ -293,7 +293,7 @@ impl Block {
 
 pub struct App {
   world_data: Vec<Block>,
-  // number of blocks that have been created. Used to assing block ids
+  // number of blocks that have been created. Used to assign block ids
   block_count: u32,
   // mapping of block_id to the block's index in OpenGL buffers
   block_id_to_index: HashMap<u32, uint>,
@@ -896,6 +896,7 @@ impl App {
 
   fn remove_block(&mut self, block_index: uint) {
     let block_id = self.world_data[block_index].id;
+    // block that will be swapped into block_index in GL buffers after removal
     let swapped_block_id = self.world_data[self.world_data.len() - 1].id;
     unsafe {
       self.world_data.swap_remove(block_index);
@@ -904,7 +905,7 @@ impl App {
       self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
     }
     self.block_id_to_index.remove(&block_id);
-    if block_id != swapped_block_id { // if it isn't the last block in the GL buffers
+    if block_id != swapped_block_id {
       self.block_id_to_index.insert(swapped_block_id, block_index);
     }
   }
