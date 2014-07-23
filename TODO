@@ -1,0 +1,19 @@
+less glitchy physics
+
+better friction
+
+octree
+
+2D rendering overlay (i.e. HUD)
+
+text
+
+incorporate https://github.com/rlane/cubeland
+
+shader loader
+
+general code cleanups
+
+block placing/picking
+
+NPCs
