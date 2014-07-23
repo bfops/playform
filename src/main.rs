@@ -949,22 +949,24 @@ impl App {
 
 // Shader sources
 static VS_SRC: &'static str =
-   "#version 150\n\
-uniform mat4 proj_matrix;\n\
-in vec3 position;\n\
-in vec4 in_color;\n\
-out vec4 color;\n\
-void main() {\n\
-gl_Position = proj_matrix * vec4(position, 1.0);\n\
-color = in_color;\n\
+r"#version 150
+uniform mat4 proj_matrix;
+
+in  vec3 position;
+in  vec4 in_color;
+out vec4 color;
+
+void main() {
+  gl_Position = proj_matrix * vec4(position, 1.0);
+  color = in_color;
 }";
 
 static FS_SRC: &'static str =
-   "#version 150\n\
-in vec4 color;\n\
-out vec4 out_color;\n\
-void main() {\n\
-out_color = color;\n\
+r"#version 150
+in  vec4 color;
+out vec4 out_color;
+void main() {
+  out_color = color;
 }";
 
 fn compile_shader(src: &str, ty: GLenum) -> GLuint {
