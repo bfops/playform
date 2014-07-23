@@ -27,6 +27,9 @@ static TRIANGLES_PER_BLOCK: uint = 12;
 static LINES_PER_BLOCK: uint = 12;
 static VERTICES_PER_TRIANGLE: uint = 3;
 static VERTICES_PER_LINE: uint = 2;
+static TRIANGLE_VERTICES_PER_BLOCK: uint = TRIANGLES_PER_BLOCK * VERTICES_PER_TRIANGLE;
+static LINE_VERTICES_PER_BLOCK: uint = LINES_PER_BLOCK * VERTICES_PER_LINE;
+static RENDER_VERTICES_PER_BLOCK: uint = TRIANGLE_VERTICES_PER_BLOCK + LINE_VERTICES_PER_BLOCK;
 
 #[deriving(Clone)]
 pub struct Color4<T> { r: T, g: T, b: T, a: T }
@@ -55,6 +58,90 @@ impl Vertex {
       position: Vector3::new(x.clone(), y.clone(), z.clone()),
       color: c.clone(),
     }
+  }
+}
+
+#[inline]
+pub unsafe fn read_mut<T>(p: *mut T) -> T {
+  ptr::read(mem::transmute(p))
+}
+
+pub struct GLBuffer<T> {
+  vertex_array: u32,
+  vertex_buffer: u32,
+  // offset from the beginning of the OpenGL buffer where this buffer starts.
+  offset: i32,
+  byte_offset: i64,
+  length: uint,
+  capacity: uint,
+}
+
+impl<T: Clone> GLBuffer<T> {
+  #[inline]
+  pub unsafe fn null() -> GLBuffer<T> {
+    GLBuffer {
+      vertex_array: -1 as u32,
+      vertex_buffer: -1 as u32,
+      offset: 0,
+      byte_offset: 0,
+      length: 0,
+      capacity: 0,
+    }
+  }
+
+  #[inline]
+  pub fn new(vertex_array: u32, vertex_buffer: u32, offset: uint, capacity: uint) -> GLBuffer<T> {
+    GLBuffer {
+      vertex_array: vertex_array,
+      vertex_buffer: vertex_buffer,
+      offset: offset as i32,
+      byte_offset: offset as i64 * mem::size_of::<T>() as i64,
+      length: 0,
+      capacity: capacity,
+    }
+  }
+
+  pub unsafe fn swap_remove(&mut self, span: uint, i: uint) {
+    gl::BindVertexArray(self.vertex_array);
+    gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
+
+    self.length -= span;
+    let size = mem::size_of::<T>();
+    let copy_size = (size * span) as i64;
+    // TODO: don't bother initializing
+    let mut bytes: Vec<u8> = Vec::from_elem(copy_size as uint, 0);
+    gl::GetBufferSubData(
+      gl::ARRAY_BUFFER,
+      self.byte_offset + (self.length * size) as i64,
+      copy_size,
+      mem::transmute(&bytes.as_mut_slice()[0]),
+    );
+    gl::BufferSubData(
+      gl::ARRAY_BUFFER,
+      self.byte_offset + (i * span * size) as i64,
+      copy_size,
+      mem::transmute(&bytes.slice(0, bytes.len())[0]),
+    );
+  }
+
+  #[inline]
+  pub unsafe fn push(&mut self, vs: &[T]) {
+    if self.length >= self.capacity {
+      fail!("Overfilled GLBuffer: {} out of {}", self.length, self.capacity);
+    }
+
+    gl::BindVertexArray(self.vertex_array);
+    gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
+
+    let size = mem::size_of::<T>() as i64;
+    gl::BufferSubData(
+      gl::ARRAY_BUFFER,
+      self.byte_offset + size * self.length as i64,
+      size * vs.len() as i64,
+      mem::transmute(&vs[0]),
+    );
+
+    self.length += vs.len();
   }
 }
 
@@ -175,6 +262,7 @@ impl Block {
 
   // Construct outlines for this Block, to sharpen the edges.
   fn to_outlines(&self) -> [Vertex, ..VERTICES_PER_LINE * LINES_PER_BLOCK] {
+    // distance from the block to construct the bounding outlines.
     let d = 0.002;
     let (x1, y1, z1) = (self.low_corner.x - d, self.low_corner.y - d, self.low_corner.z - d);
     let (x2, y2, z2) = (self.high_corner.x + d, self.high_corner.y + d, self.high_corner.z + d);
@@ -207,11 +295,11 @@ pub struct App {
   // acceleration; x/z units are relative to player facing
   camera_accel: Vector3<GLfloat>,
   mouse_position: Vector2<f64>,
-  // OpenGL render-ready equivalent of world_data
-  triangles: Vec<Vertex>,
-  outlines: Vec<Vertex>,
+  // OpenGL buffer fill counts.
+  triangles: GLBuffer<Vertex>,
+  outlines: GLBuffer<Vertex>,
   // OpenGL-friendly equivalent of world_data for selection/picking.
-  selection_triangles: Vec<Vertex>,
+  selection_triangles: GLBuffer<Vertex>,
   // OpenGL projection matrix components
   fov_matrix: Matrix4<GLfloat>,
   translation_matrix: Matrix4<GLfloat>,
@@ -234,11 +322,6 @@ pub struct App {
   mouse_press_stopwatch: stopwatch::Stopwatch,
   update_projection_stopwatch: stopwatch::Stopwatch,
   make_render_data_stopwatch: stopwatch::Stopwatch,
-  update_render_data_stopwatch: stopwatch::Stopwatch,
-  update_render_data_construct_stopwatch: stopwatch::Stopwatch,
-  update_render_data_buffer_stopwatch: stopwatch::Stopwatch,
-  render_selection_load_unload_stopwatch: stopwatch::Stopwatch,
-  render_selection_render_stopwatch: stopwatch::Stopwatch,
   render_selection_stopwatch: stopwatch::Stopwatch,
   update_stopwatch: stopwatch::Stopwatch,
   render_stopwatch: stopwatch::Stopwatch,
@@ -292,16 +375,8 @@ pub fn from_axis_angle<S: BaseFloat>(axis: &Vector3<S>, angle: angle::Rad<S>) ->
     )
 }
 
-#[inline]
-// treat a vector as though every `span` elements are a contiguous block,
-// and swap_remove the `i`th block.
-pub fn swap_remove_block<T>(v: &mut Vec<T>, span: uint, i: uint) {
-  let dest = i * span;
-  let mut i = dest + span;
-  while i > dest {
-    v.swap_remove(i - 1);
-    i -= 1;
-  }
+pub unsafe fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
+  name.with_c_str(|ptr| gl::GetAttribLocation(shader_program, ptr))
 }
 
 impl Game for App {
@@ -409,13 +484,12 @@ impl Game for App {
       let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
       if block_index > 0 {
         let block_index = block_index - 1;
-        self.world_data.swap_remove(block_index);
-        
-        swap_remove_block(&mut self.triangles, TRIANGLES_PER_BLOCK * VERTICES_PER_TRIANGLE, block_index);
-        swap_remove_block(&mut self.outlines, LINES_PER_BLOCK * VERTICES_PER_LINE, block_index);
-        swap_remove_block(&mut self.selection_triangles, TRIANGLES_PER_BLOCK * VERTICES_PER_TRIANGLE, block_index);
-        
-        self.update_render_data();
+        unsafe {
+          self.world_data.swap_remove(block_index);
+          self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+          self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
+          self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+        }
       }
     });
     self.mouse_press_stopwatch = watch;
@@ -424,12 +498,12 @@ impl Game for App {
   fn load(&mut self) {
     let mut watch = self.load_stopwatch;
     watch.timed(|| {
-      let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
-      let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
-
-      self.shader_program = link_program(vs, fs);
-
       unsafe {
+        self.set_up_shaders();
+
+        let pos_attr = glGetAttribLocation(self.shader_program, "position");
+        let color_attr = glGetAttribLocation(self.shader_program, "in_color");
+
         // Create Vertex Array Objects(s).
         gl::GenVertexArrays(1, &mut self.render_vertex_array);
         gl::GenVertexArrays(1, &mut self.selection_vertex_array);
@@ -437,13 +511,6 @@ impl Game for App {
         // Create Vertex Buffer Object(s).
         gl::GenBuffers(1, &mut self.render_vertex_buffer);
         gl::GenBuffers(1, &mut self.selection_vertex_buffer);
-
-        // Set up shaders
-        gl::UseProgram(self.shader_program);
-        "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
-
-        let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
-        let color_attr = "in_color".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
 
         // Set up the selection VAO/VBO.
 
@@ -594,8 +661,52 @@ impl Game for App {
       });
       self.load_construct_stopwatch = watch;
 
+      gl::BindVertexArray(self.selection_vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
+
+      unsafe {
+        gl::BufferData(
+          gl::ARRAY_BUFFER,
+          (self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK * mem::size_of::<Vertex>()) as GLsizeiptr,
+          ptr::null(),
+          gl::DYNAMIC_DRAW,
+        );
+      }
+
+      self.selection_triangles = GLBuffer::new(
+        self.selection_vertex_array,
+        self.selection_vertex_buffer,
+        0,
+        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
+      );
+
+      gl::BindVertexArray(self.render_vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
+
+      unsafe {
+        gl::BufferData(
+          gl::ARRAY_BUFFER,
+          (self.world_data.len() * RENDER_VERTICES_PER_BLOCK * mem::size_of::<Vertex>()) as GLsizeiptr,
+          ptr::null(),
+          gl::DYNAMIC_DRAW,
+        );
+      }
+
+      self.triangles = GLBuffer::new(
+        self.render_vertex_array,
+        self.render_vertex_buffer,
+        0,
+        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
+      );
+
+      self.outlines = GLBuffer::new(
+        self.render_vertex_array,
+        self.render_vertex_buffer,
+        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
+        (self.world_data.len() * LINE_VERTICES_PER_BLOCK),
+      );
+
       self.make_render_data();
-      self.update_render_data();
     });
     self.load_stopwatch = watch;
   }
@@ -625,10 +736,12 @@ impl Game for App {
   fn render(&mut self, _:&RenderArgs) {
     let mut watch = self.render_stopwatch;
     watch.timed(|| {
+      gl::BindVertexArray(self.render_vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
       gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-      gl::DrawArrays(gl::TRIANGLES, 0, self.triangles.len() as i32);
-      gl::DrawArrays(gl::LINES, self.triangles.len() as GLint, self.outlines.len() as i32);
+      gl::DrawArrays(gl::TRIANGLES, 0, self.triangles.length as i32);
+      gl::DrawArrays(gl::LINES, self.outlines.offset, self.outlines.length as i32);
     });
     self.render_stopwatch = watch;
   }
@@ -651,16 +764,16 @@ fn mask(mask: u32, i: u32) -> u32 {
 }
 
 impl App {
-  pub fn new() -> App {
+  pub unsafe fn new() -> App {
     App {
       world_data: Vec::new(),
       camera_position: Vector3::zero(),
       camera_speed: Vector3::zero(),
       camera_accel: Vector3::new(0.0, -0.1, 0.0),
       mouse_position: Vector2::new(0.0, 0.0),
-      triangles: Vec::new(),
-      outlines: Vec::new(),
-      selection_triangles: Vec::new(),
+      triangles: GLBuffer::null(),
+      outlines: GLBuffer::null(),
+      selection_triangles: GLBuffer::null(),
       fov_matrix: Matrix4::identity(),
       translation_matrix: Matrix4::identity(),
       rotation_matrix: Matrix4::identity(),
@@ -678,42 +791,30 @@ impl App {
       mouse_press_stopwatch: stopwatch::Stopwatch::new(),
       update_projection_stopwatch: stopwatch::Stopwatch::new(),
       make_render_data_stopwatch: stopwatch::Stopwatch::new(),
-      update_render_data_stopwatch: stopwatch::Stopwatch::new(),
-      update_render_data_construct_stopwatch: stopwatch::Stopwatch::new(),
-      update_render_data_buffer_stopwatch: stopwatch::Stopwatch::new(),
       render_selection_stopwatch: stopwatch::Stopwatch::new(),
-      render_selection_load_unload_stopwatch: stopwatch::Stopwatch::new(),
-      render_selection_render_stopwatch: stopwatch::Stopwatch::new(),
       update_stopwatch: stopwatch::Stopwatch::new(),
       render_stopwatch: stopwatch::Stopwatch::new(),
     }
   }
 
+  pub unsafe fn set_up_shaders(&mut self) {
+    let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
+    let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
+
+    self.shader_program = link_program(vs, fs);
+    gl::UseProgram(self.shader_program);
+    "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
+  }
+
   pub fn render_selection(&mut self) {
     let mut watch = self.render_selection_stopwatch;
     watch.timed(|| {
-      let mut watch = self.render_selection_load_unload_stopwatch;
-      watch.timed(|| {
-        // load the selection vertex array/buffer.
-        gl::BindVertexArray(self.selection_vertex_array);
-        gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
-      });
-      self.render_selection_load_unload_stopwatch = watch;
+      // load the selection vertex array/buffer.
+      gl::BindVertexArray(self.selection_vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
 
-      let mut watch = self.render_selection_render_stopwatch;
-      watch.timed(|| {
-        gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        gl::DrawArrays(gl::TRIANGLES, 0, self.selection_triangles.len() as i32);
-      });
-      self.render_selection_render_stopwatch = watch;
-
-      let mut watch = self.render_selection_load_unload_stopwatch;
-      watch.timed(|| {
-        // reset the bound vertex array/buffer.
-        gl::BindVertexArray(self.render_vertex_array);
-        gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
-      });
-      self.render_selection_load_unload_stopwatch = watch;
+      gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+      gl::DrawArrays(gl::TRIANGLES, 0, self.selection_triangles.length as i32);
     });
     self.render_selection_stopwatch = watch;
   }
@@ -740,63 +841,18 @@ impl App {
 
     let mut watch = self.make_render_data_stopwatch;
     watch.timed(|| {
-      self.selection_triangles = Vec::new();
-
-      self.triangles = Vec::new();
-      self.triangles.reserve(self.world_data.len() * VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK);
-
-      self.outlines = Vec::new();
-      self.outlines.reserve(self.world_data.len() * VERTICES_PER_LINE * LINES_PER_BLOCK);
-
       let mut i = 0;
       while i < self.world_data.len() {
         let block = self.world_data[i];
-        self.triangles.push_all(block.to_colored_triangles());
-        self.outlines.push_all(block.to_outlines());
-        self.selection_triangles.push_all(block.to_triangles(&selection_color(i as u32)));
+        unsafe {
+          self.triangles.push(block.to_colored_triangles());
+          self.outlines.push(block.to_outlines());
+          self.selection_triangles.push(block.to_triangles(&selection_color(i as u32)));
+        }
         i += 1;
       }
     });
     self.make_render_data_stopwatch = watch;
-  }
-
-  fn update_render_data(&mut self) {
-    let mut watch = self.update_render_data_stopwatch;
-    watch.timed(|| {
-      let mut render_data = Vec::new();
-      let mut watch = self.update_render_data_construct_stopwatch;
-      watch.timed(|| {
-        render_data.push_all(self.triangles.slice(0, self.triangles.len()));
-        render_data.push_all(self.outlines.slice(0, self.outlines.len()));
-      });
-      self.update_render_data_construct_stopwatch = watch;
-
-      let mut watch = self.update_render_data_buffer_stopwatch;
-      watch.timed(|| {
-        unsafe {
-          gl::BindVertexArray(self.selection_vertex_array);
-          gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
-
-          gl::BufferData(
-            gl::ARRAY_BUFFER,
-            (self.selection_triangles.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
-            mem::transmute(&self.selection_triangles[0]),
-            gl::STATIC_DRAW);
-
-          gl::BindVertexArray(self.render_vertex_array);
-          gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
-
-          gl::BufferData(
-            gl::ARRAY_BUFFER,
-            (render_data.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
-            mem::transmute(&render_data[0]),
-            gl::STATIC_DRAW
-          );
-        }
-      });
-      self.update_render_data_buffer_stopwatch = watch;
-    });
-    self.update_render_data_stopwatch = watch;
   }
 
   pub fn update_projection(&mut self) {
@@ -994,7 +1050,7 @@ fn main() {
   unsafe { println_c_str(glsl_version); }
   println!("");
 
-  let mut app = App::new();
+  let mut app = unsafe { App::new() };
   app.run(&mut window, &GameIteratorSettings {
     updates_per_second: 30,
     max_frames_per_second: 30,
@@ -1011,12 +1067,7 @@ fn main() {
   print_stopwatch("mouse_press_stopwatch", &app.mouse_press_stopwatch);
   print_stopwatch("update_projection_stopwatch", &app.update_projection_stopwatch);
   print_stopwatch("make_render_data_stopwatch", &app.make_render_data_stopwatch);
-  print_stopwatch("update_render_data_stopwatch", &app.update_render_data_stopwatch);
-  print_stopwatch("update_render_data_construct_stopwatch", &app.update_render_data_construct_stopwatch);
-  print_stopwatch("update_render_data_buffer_stopwatch", &app.update_render_data_buffer_stopwatch);
   print_stopwatch("render_selection_stopwatch", &app.render_selection_stopwatch);
-  print_stopwatch("render_selection_load_unload_stopwatch", &app.render_selection_load_unload_stopwatch);
-  print_stopwatch("render_selection_render_stopwatch", &app.render_selection_render_stopwatch);
   print_stopwatch("update_stopwatch", &app.update_stopwatch);
   print_stopwatch("render_stopwatch", &app.render_stopwatch);
 }
