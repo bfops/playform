@@ -455,6 +455,7 @@ impl Game for App {
     self.key_release_stopwatch = watch;
   }
 
+  #[inline]
   fn mouse_move(&mut self, args: &MouseMoveArgs) {
     let mut watch = self.mouse_move_stopwatch;
     watch.timed(|| {
@@ -463,36 +464,32 @@ impl Game for App {
     self.mouse_move_stopwatch = watch;
   }
 
-  fn mouse_press(&mut self, _: &MousePressArgs) {
-    let mut watch = self.mouse_press_stopwatch;
-    watch.timed(|| {
-      self.render_selection();
-
-      let pixels: Color4<u8> = Color4::new(&0, &0, &0, &0);
-      unsafe {
-        gl::ReadPixels(
-          self.mouse_position.x as i32,
-          WINDOW_HEIGHT as i32 - self.mouse_position.y as i32,
-          1,
-          1,
-          gl::RGB,
-          gl::UNSIGNED_BYTE,
-          mem::transmute(&pixels)
-        );
-      }
-
-      let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
-      if block_index > 0 {
-        let block_index = block_index - 1;
-        unsafe {
-          self.world_data.swap_remove(block_index);
-          self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
-          self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
-          self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+  fn mouse_press(&mut self, args: &MousePressArgs) {
+    unsafe {
+      let mut watch = self.mouse_press_stopwatch;
+      watch.timed(|| {
+        match args.button {
+          piston::mouse::Left => {
+            match self.block_at_screen(
+                    self.mouse_position.x as i32,
+                    (WINDOW_HEIGHT as f64 - self.mouse_position.y) as i32
+                  ) {
+              None => { }
+              Some(block_index) => {
+                if block_index > 0 {
+                  self.world_data.swap_remove(block_index);
+                  self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+                  self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
+                  self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+                }
+              }
+            }
+          },
+          _ => { }
         }
-      }
-    });
-    self.mouse_press_stopwatch = watch;
+      });
+      self.mouse_press_stopwatch = watch;
+    }
   }
 
   fn load(&mut self) {
@@ -806,19 +803,6 @@ impl App {
     "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
   }
 
-  pub fn render_selection(&mut self) {
-    let mut watch = self.render_selection_stopwatch;
-    watch.timed(|| {
-      // load the selection vertex array/buffer.
-      gl::BindVertexArray(self.selection_vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
-
-      gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-      gl::DrawArrays(gl::TRIANGLES, 0, self.selection_triangles.length as i32);
-    });
-    self.render_selection_stopwatch = watch;
-  }
-
   // Update the OpenGL vertex data with the world data triangles.
   pub fn make_render_data(&mut self) {
     fn selection_color(i: u32) -> Color4<GLfloat> {
@@ -869,6 +853,33 @@ impl App {
       }
     });
     self.update_projection_stopwatch = watch;
+  }
+
+  pub fn render_selection(&mut self) {
+    let mut watch = self.render_selection_stopwatch;
+    watch.timed(|| {
+      // load the selection vertex array/buffer.
+      gl::BindVertexArray(self.selection_vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
+
+      gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+      gl::DrawArrays(gl::TRIANGLES, 0, self.selection_triangles.length as i32);
+    });
+    self.render_selection_stopwatch = watch;
+  }
+
+  pub unsafe fn block_at_screen(&mut self, x: i32, y: i32) -> Option<uint> {
+      self.render_selection();
+
+      let pixels: Color4<u8> = Color4::new(&0, &0, &0, &0);
+      gl::ReadPixels(x, y, 1, 1, gl::RGB, gl::UNSIGNED_BYTE, mem::transmute(&pixels));
+
+      let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
+      if block_index == 0 {
+        None
+      } else {
+        Some(block_index - 1)
+      }
   }
 
   #[inline]
@@ -934,7 +945,6 @@ impl App {
   pub fn forward(&self) -> Vector3<GLfloat> {
     return Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&-Vector3::unit_z());
   }
-
 }
 
 // Shader sources
