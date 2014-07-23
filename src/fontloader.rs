@@ -9,7 +9,7 @@ pub struct FontLoader {
 impl FontLoader {
   pub fn new() -> FontLoader {
     FontLoader {
-      sans : ttf::Font::new(&Path::new("fonts/Open_Sans/OpenSans-Regular.ttf"), 11)  ,
+      sans : ttf::Font::new(&Path::new("fonts/Open_Sans/OpenSans-Regular.ttf"), 11),
       mono : ttf::Font::new(&Path::new("fonts/Ubuntu_Mono/UbuntuMono-Regular.ttf"), 11),
     }
   }
