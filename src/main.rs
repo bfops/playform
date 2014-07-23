@@ -296,7 +296,6 @@ pub struct App {
   camera_speed: Vector3<GLfloat>,
   // acceleration; x/z units are relative to player facing
   camera_accel: Vector3<GLfloat>,
-  mouse_position: Vector2<f64>,
   // OpenGL buffer fill counts.
   triangles: GLBuffer<Vertex>,
   outlines: GLBuffer<Vertex>,
@@ -471,10 +470,7 @@ impl Game<GameWindowSDL2> for App {
       watch.timed(|| {
         match args.button {
           piston::mouse::Left => {
-            match self.block_at_screen(
-                    self.mouse_position.x as i32,
-                    (WINDOW_HEIGHT as f64 - self.mouse_position.y) as i32
-                  ) {
+            match self.block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2) {
               None => { }
               Some(block_index) => {
                 if block_index > 0 {
@@ -768,7 +764,6 @@ impl App {
       camera_position: Vector3::zero(),
       camera_speed: Vector3::zero(),
       camera_accel: Vector3::new(0.0, -0.1, 0.0),
-      mouse_position: Vector2::new(0.0, 0.0),
       triangles: GLBuffer::null(),
       outlines: GLBuffer::null(),
       selection_triangles: GLBuffer::null(),
