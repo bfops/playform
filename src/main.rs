@@ -117,19 +117,19 @@ impl<T: Clone> GLBuffer<T> {
 
     self.length -= span;
     let size = mem::size_of::<T>();
-    let copy_size = (size * span) as i64;
-    // TODO: don't bother initializing
-    let mut bytes: Vec<u8> = Vec::from_elem(copy_size as uint, 0);
+    let copy_size = (size * span) as uint;
+    let mut bytes: Vec<u8> = Vec::with_capacity(copy_size);
+    bytes.set_len(copy_size);
     gl::GetBufferSubData(
       gl::ARRAY_BUFFER,
       self.byte_offset + (self.length * size) as i64,
-      copy_size,
+      copy_size as i64,
       mem::transmute(&bytes.as_mut_slice()[0]),
     );
     gl::BufferSubData(
       gl::ARRAY_BUFFER,
       self.byte_offset + (i * span * size) as i64,
-      copy_size,
+      copy_size as i64,
       mem::transmute(&bytes.slice(0, bytes.len())[0]),
     );
   }
@@ -322,6 +322,10 @@ pub struct App {
   // OpenGL Vertex Buffer Object id(s).
   render_vertex_buffer: u32,
   selection_vertex_buffer: u32,
+
+  // Is LMB pressed?
+  is_mouse_pressed: bool,
+
   timers: stopwatch::TimerSet,
 }
 
@@ -459,20 +463,21 @@ impl Game<GameWindowSDL2> for App {
   fn mouse_press(&mut self, _: &mut GameWindowSDL2, args: &MousePressArgs) {
     time!(&self.timers, "event.mouse_press", || {
       match args.button {
-        piston::mouse::Left => unsafe {
-          self
-            .block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2)
-            .map(|block_index| {
-              if block_index == 0 { return }
-              self.world_data.swap_remove(block_index);
-              self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
-              self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
-              self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
-            });
+        piston::mouse::Left => {
+          self.is_mouse_pressed = true;
         },
         _ => { }
       }
     })
+  }
+
+  fn mouse_release(&mut self, _: &mut GameWindowSDL2, args: &MouseReleaseArgs) {
+    match args.button {
+      piston::mouse::Left => {
+        self.is_mouse_pressed = false;
+      },
+      _ => {}
+    }
   }
 
   fn load(&mut self) {
@@ -690,6 +695,7 @@ impl Game<GameWindowSDL2> for App {
   }
 
   fn update(&mut self, _: &mut GameWindowSDL2, _: &UpdateArgs) {
+
     time!(&self.timers, "update", || {
       let dP = self.camera_speed;
       if dP.x != 0.0 {
@@ -706,6 +712,21 @@ impl Game<GameWindowSDL2> for App {
       self.camera_speed = self.camera_speed + dV;
       // friction
       self.camera_speed = self.camera_speed * Vector3::new(0.8, 0.99, 0.8);
+
+      // Block deletion
+      if self.is_mouse_pressed {
+        time!(&self.timers, "update.delete_block", || unsafe {
+          self
+            .block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2)
+            .map(|block_index| {
+              if block_index == 0 { return }
+              self.world_data.swap_remove(block_index);
+              self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+              self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
+              self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+            });
+        })
+      }
     })
   }
 
@@ -756,6 +777,7 @@ impl App {
       selection_vertex_array: -1 as u32,
       render_vertex_buffer: -1 as u32,
       selection_vertex_buffer: -1 as u32,
+      is_mouse_pressed: false,
       timers: stopwatch::TimerSet::new(),
     }
   }
