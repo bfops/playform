@@ -17,6 +17,7 @@ use gl::types::*;
 use sdl2_game_window::GameWindowSDL2;
 use sdl2::mouse;
 use std::mem;
+use std::iter::range_inclusive;
 use std::ptr;
 use std::str;
 use std::num;
@@ -590,90 +591,61 @@ impl Game<GameWindowSDL2> for App {
       let timers = &self.timers;
 
       timers.time("load.construct", || {
-        let mut i;
         // high dirt block
-        i = -1;
-        while i <= 1 {
-          let mut j = -1i;
-          while j <= 1 {
+        for i in range_inclusive(-1i, 1) {
+          for j in range_inclusive(-1i, 1) {
             let (x1, y1, z1) = (3.0 + i as GLfloat, 6.0, 0.0 + j as GLfloat);
             let (x2, y2, z2) = (4.0 + i as GLfloat, 7.0, 1.0 + j as GLfloat);
             self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
-            j += 1;
           }
-          i += 1;
         }
         // low dirt block
-        i = -1;
-        while i <= 1 {
-          let mut j = -1i;
-          while j <= 1 {
+        for i in range_inclusive(-1i, 1) {
+          for j in range_inclusive(-1i, 1) {
             let (x1, y1, z1) = (3.0 + i as GLfloat, 4.0, 5.0 + j as GLfloat);
             let (x2, y2, z2) = (4.0 + i as GLfloat, 5.0, 6.0 + j as GLfloat);
             self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
-            j += 1;
           }
-          i += 1;
         }
         // ground
-        i = -32i;
-        while i <= 32 {
-          let mut j = -32i;
-          while j <= 32 {
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(-32i, 32) {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
             self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Grass));
-            j += 1;
           }
-          i += 1;
         }
         // front wall
-        i = -32i;
-        while i <= 32 {
-          let mut j = 0i;
-          while j <= 32 {
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(0i, 32) {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -32.0 - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -32.0 + 0.5);
             self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
-            j += 1;
           }
-          i += 1;
         }
         // back wall
-        i = -32i;
-        while i <= 32 {
-          let mut j = 0i;
-          while j <= 32 {
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(0i, 32) {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 32.0 - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 32.0 + 0.5);
             self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
-            j += 1;
           }
-          i += 1;
         }
         // left wall
-        i = -32i;
-        while i <= 32 {
-          let mut j = 0i;
-          while j <= 32 {
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(0i, 32) {
             let (x1, y1, z1) = (-32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
             let (x2, y2, z2) = (-32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
             self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
-            j += 1;
           }
-          i += 1;
         }
         // right wall
-        i = -32i;
-        while i <= 32 {
-          let mut j = 0i;
-          while j <= 32 {
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(0i, 32) {
             let (x1, y1, z1) = (32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
             let (x2, y2, z2) = (32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
             self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
-            j += 1;
           }
-          i += 1;
         }
       });
 
@@ -907,9 +879,8 @@ impl App {
   pub fn translate(&mut self, v: &Vector3<GLfloat>) {
     let player = self.construct_player(&(self.camera_position + *v));
     let mut collided = false;
-    let mut i = 0;
-    while i < self.world_data.len() {
-      match intersect(&player, &self.world_data[i]) {
+    for block in self.world_data.iter() {
+      match intersect(&player, block) {
         Intersect(stop) => {
           collided = true;
           let d = *v * stop - *v;
@@ -918,7 +889,6 @@ impl App {
         },
         NoIntersect => {}
       }
-      i += 1;
     }
 
     if collided {
