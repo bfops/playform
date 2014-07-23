@@ -290,8 +290,6 @@ impl Block {
 
 pub struct App {
   world_data: Vec<Block>,
-  // number of blocks that have been created. Used to assing block ids
-  block_count: u32,
   // position; world coordinates
   camera_position: Vector3<GLfloat>,
   // speed; x/z units are relative to player facing
@@ -329,6 +327,8 @@ pub struct App {
   render_selection_stopwatch: stopwatch::Stopwatch,
   update_stopwatch: stopwatch::Stopwatch,
   render_stopwatch: stopwatch::Stopwatch,
+  // number of blocks that have been created. Used to assing block ids
+  block_count: u32,
 }
 
 // Create a 3D translation matrix.
@@ -499,7 +499,7 @@ impl Game for App {
                 if block_index > 0 { 
                   let block = self.world_data[block_index];
                   // Vector3::unit_y()
-                  let new_block = &self.place_block(&(block.low_corner + Vector3::unit_y()), &(block.high_corner + Vector3::unit_y()), Dirt);
+                  let new_block = self.place_block(&(block.low_corner + Vector3::unit_y()), &(block.high_corner + Vector3::unit_y()), Dirt);
                   // TODO: lines from make_render_data. Factor these lines out
                   self.triangles.push(new_block.to_colored_triangles());
                   self.outlines.push(new_block.to_outlines());
@@ -910,11 +910,11 @@ impl App {
       }
   }
   
-  pub fn place_block(&mut self, low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) -> Block {
+  pub fn place_block(&mut self, low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) -> &Block {
     let block = Block::new(low_corner, high_corner, block_type, self.block_count);
     self.world_data.grow(1, &block);
     self.block_count += 1;
-    block
+    &self.world_data[self.world_data.len() - 1]
   }
 
   #[inline]
@@ -925,7 +925,7 @@ impl App {
   fn construct_player(&mut self, high_corner: &Vector3<GLfloat>) -> Block {
     let low_corner = *high_corner - Vector3::new(0.5, 2.0, 1.0);
     // TODO: this really shouldn't be Stone.
-    self.place_block(&low_corner, high_corner, Stone)
+    *self.place_block(&low_corner, high_corner, Stone)
   }
 
   // move the player by a vector
