@@ -171,6 +171,7 @@ pub struct Block {
   low_corner: Vector3<GLfloat>,
   high_corner: Vector3<GLfloat>,
   block_type: BlockType,
+  id: u32,
 }
 
 enum Intersect {
@@ -227,6 +228,7 @@ impl Block {
       low_corner: low_corner.clone(),
       high_corner: high_corner.clone(),
       block_type: block_type,
+      id: id,
     }
   }
 
@@ -780,7 +782,6 @@ fn mask(mask: u32, i: u32) -> u32 {
 
 fn selection_color(i: u32) -> Color4<GLfloat> {
   assert!(i < 0xFF000000, "too many items for selection buffer");
-  let i = i + 1;
   let ret = Color4::new(
     &(mask(0x00FF0000, i) as GLfloat / 255.0),
     &(mask(0x0000FF00, i) as GLfloat / 255.0),
@@ -888,17 +889,23 @@ impl App {
       self.triangles.push(block.to_colored_triangles());
       self.outlines.push(block.to_outlines());
       self.selection_triangles.push(block.to_triangles(&selection_color(self.block_count)));
+      self.block_id_to_index.insert(block.id, self.world_data.len() - 1);
       self.block_count += 1;
-      self.block_id_to_index.insert(self.block_count, self.world_data.len() - 1);
     }
   }
 
   fn remove_block(&mut self, block_index: uint) {
+    let block_id = self.world_data[block_index].id;
+    let swapped_block_id = self.world_data[self.world_data.len() - 1].id;
     unsafe {
       self.world_data.swap_remove(block_index);
       self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
       self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
       self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+    }
+    self.block_id_to_index.remove(&block_id);
+    if block_id != swapped_block_id { // if it isn't the last block in the GL buffers
+      self.block_id_to_index.insert(swapped_block_id, block_index);
     }
   }
 
