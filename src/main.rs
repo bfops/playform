@@ -3,6 +3,7 @@
 extern crate cgmath;
 extern crate gl;
 extern crate piston;
+extern crate sdl2;
 extern crate sdl2_game_window;
 
 use cgmath::angle;
@@ -13,6 +14,7 @@ use cgmath::vector::{Vector, Vector2, Vector3};
 use piston::*;
 use gl::types::*;
 use sdl2_game_window::GameWindowSDL2;
+use sdl2::mouse;
 use std::mem;
 use std::ptr;
 use std::str;
@@ -379,8 +381,8 @@ pub unsafe fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
   name.with_c_str(|ptr| gl::GetAttribLocation(shader_program, ptr))
 }
 
-impl Game for App {
-  fn key_press(&mut self, args: &KeyPressArgs) {
+impl Game<GameWindowSDL2> for App {
+  fn key_press(&mut self, _: &mut GameWindowSDL2, args: &KeyPressArgs) {
     let mut watch = self.key_press_stopwatch;
     watch.timed(|| {
       match args.key {
@@ -402,31 +404,21 @@ impl Game for App {
         piston::keyboard::S => {
           self.walk(&Vector3::unit_z());
         },
-        piston::keyboard::Left => {
-          let d = angle::rad(3.14 / 12.0 as GLfloat);
-          self.lateral_rotation = self.lateral_rotation + d;
-          self.rotate(&Vector3::unit_y(), d);
-        },
-        piston::keyboard::Right => {
-          let d = angle::rad(-3.14 / 12.0 as GLfloat);
-          self.lateral_rotation = self.lateral_rotation + d;
-          self.rotate(&Vector3::unit_y(), d);
-        },
-        piston::keyboard::Up => {
-          let axis = self.right();
-          self.rotate(&axis, angle::rad(3.14/12.0 as GLfloat));
-        },
-        piston::keyboard::Down => {
-          let axis = self.right();
-          self.rotate(&axis, angle::rad(-3.14/12.0 as GLfloat));
-        },
+        piston::keyboard::Left =>
+          self.rotate_lateral(angle::rad(3.14 / 12.0 as GLfloat)),
+        piston::keyboard::Right =>
+          self.rotate_lateral(angle::rad(-3.14 / 12.0 as GLfloat)),
+        piston::keyboard::Up =>
+          self.rotate_vertical(angle::rad(3.14/12.0 as GLfloat)),
+        piston::keyboard::Down =>
+          self.rotate_vertical(angle::rad(-3.14/12.0 as GLfloat)),
         _ => {},
       }
     });
     self.key_press_stopwatch = watch;
   }
 
-  fn key_release(&mut self, args: &KeyReleaseArgs) {
+  fn key_release(&mut self, _: &mut GameWindowSDL2, args: &KeyReleaseArgs) {
     let mut watch = self.key_press_stopwatch;
     watch.timed(|| {
       match args.key {
@@ -456,15 +448,24 @@ impl Game for App {
   }
 
   #[inline]
-  fn mouse_move(&mut self, args: &MouseMoveArgs) {
+  fn mouse_move(&mut self, w: &mut GameWindowSDL2, args: &MouseMoveArgs) {
     let mut watch = self.mouse_move_stopwatch;
     watch.timed(|| {
-      self.mouse_position = Vector2::new(args.x, args.y);
+      let (cx, cy) = (WINDOW_WIDTH as f32 / 2.0, WINDOW_HEIGHT as f32 / 2.0);
+      // args.y = h - args.y;
+      // dy = args.y - cy;
+      //  => dy = cy - args.y;
+      let (dx, dy) = (args.x as f32 - cx, cy - args.y as f32);
+      let (rx, ry) = (dx * -3.14 / 1024.0, dy * 3.14 / 1024.0);
+      self.rotate_lateral(angle::rad(rx));
+      self.rotate_vertical(angle::rad(ry));
+
+      mouse::warp_mouse_in_window(&w.render_window.window, WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2);
     });
     self.mouse_move_stopwatch = watch;
   }
 
-  fn mouse_press(&mut self, args: &MousePressArgs) {
+  fn mouse_press(&mut self, _: &mut GameWindowSDL2, args: &MousePressArgs) {
     unsafe {
       let mut watch = self.mouse_press_stopwatch;
       watch.timed(|| {
@@ -708,7 +709,7 @@ impl Game for App {
     self.load_stopwatch = watch;
   }
 
-  fn update(&mut self, _:&UpdateArgs) {
+  fn update(&mut self, _: &mut GameWindowSDL2, _: &UpdateArgs) {
     let mut watch = self.update_stopwatch;
     watch.timed(|| {
       let dP = self.camera_speed;
@@ -730,7 +731,7 @@ impl Game for App {
     self.update_stopwatch = watch;
   }
 
-  fn render(&mut self, _:&RenderArgs) {
+  fn render(&mut self, _: &mut GameWindowSDL2, _: &RenderArgs) {
     let mut watch = self.render_stopwatch;
     watch.timed(|| {
       gl::BindVertexArray(self.render_vertex_array);
@@ -923,6 +924,18 @@ impl App {
   pub fn rotate(&mut self, v: &Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
     self.rotation_matrix = self.rotation_matrix * from_axis_angle(v, -r);
     self.update_projection();
+  }
+
+  #[inline]
+  pub fn rotate_lateral(&mut self, r: angle::Rad<GLfloat>) {
+    self.lateral_rotation = self.lateral_rotation + r;
+    self.rotate(&Vector3::unit_y(), r);
+  }
+
+  #[inline]
+  pub fn rotate_vertical(&mut self, r: angle::Rad<GLfloat>) {
+    let axis = self.right();
+    self.rotate(&axis, r);
   }
 
   pub fn drop(&self) {
