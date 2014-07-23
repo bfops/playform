@@ -168,7 +168,6 @@ pub struct Block {
   low_corner: Vector3<GLfloat>,
   high_corner: Vector3<GLfloat>,
   block_type: BlockType,
-  id: u32,
 }
 
 enum Intersect {
@@ -225,7 +224,6 @@ impl Block {
       low_corner: low_corner.clone(),
       high_corner: high_corner.clone(),
       block_type: block_type,
-      id: id,
     }
   }
 
@@ -925,7 +923,8 @@ impl App {
   fn construct_player(&mut self, high_corner: &Vector3<GLfloat>) -> Block {
     let low_corner = *high_corner - Vector3::new(0.5, 2.0, 1.0);
     // TODO: this really shouldn't be Stone.
-    *self.place_block(&low_corner, high_corner, Stone)
+    // TODO: should the ID of this block be -1?
+    Block::new(&low_corner, high_corner, Stone, -1)
   }
 
   // move the player by a vector
