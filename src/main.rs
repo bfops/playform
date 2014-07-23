@@ -4,6 +4,7 @@
 extern crate cgmath;
 extern crate gl;
 extern crate piston;
+extern crate sdl2;
 extern crate sdl2_game_window;
 
 use cgmath::angle;
@@ -14,6 +15,7 @@ use cgmath::vector::{Vector, Vector2, Vector3};
 use piston::*;
 use gl::types::*;
 use sdl2_game_window::GameWindowSDL2;
+use sdl2::mouse;
 use std::mem;
 use std::ptr;
 use std::str;
@@ -296,13 +298,12 @@ impl Block {
 
 pub struct App {
   world_data: Vec<Block>,
-  // position; world coordinates
+  // position; units are world coordinates
   camera_position: Vector3<GLfloat>,
-  // speed; x/z units are relative to player facing
+  // speed; units are world coordinates
   camera_speed: Vector3<GLfloat>,
   // acceleration; x/z units are relative to player facing
   camera_accel: Vector3<GLfloat>,
-  mouse_position: Vector2<f64>,
   // OpenGL buffer fill counts.
   triangles: GLBuffer<Vertex>,
   outlines: GLBuffer<Vertex>,
@@ -376,8 +377,8 @@ pub unsafe fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
   name.with_c_str(|ptr| gl::GetAttribLocation(shader_program, ptr))
 }
 
-impl Game for App {
-  fn key_press(&mut self, args: &KeyPressArgs) {
+impl Game<GameWindowSDL2> for App {
+  fn key_press(&mut self, _: &mut GameWindowSDL2, args: &KeyPressArgs) {
     time!(&self.timers, "event.key_press", || {
       match args.key {
         piston::keyboard::A => {
@@ -398,30 +399,20 @@ impl Game for App {
         piston::keyboard::S => {
           self.walk(&Vector3::unit_z());
         },
-        piston::keyboard::Left => {
-          let d = angle::rad(3.14 / 12.0 as GLfloat);
-          self.lateral_rotation = self.lateral_rotation + d;
-          self.rotate(&Vector3::unit_y(), d);
-        },
-        piston::keyboard::Right => {
-          let d = angle::rad(-3.14 / 12.0 as GLfloat);
-          self.lateral_rotation = self.lateral_rotation + d;
-          self.rotate(&Vector3::unit_y(), d);
-        },
-        piston::keyboard::Up => {
-          let axis = self.right();
-          self.rotate(&axis, angle::rad(3.14/12.0 as GLfloat));
-        },
-        piston::keyboard::Down => {
-          let axis = self.right();
-          self.rotate(&axis, angle::rad(-3.14/12.0 as GLfloat));
-        },
+        piston::keyboard::Left =>
+          self.rotate_lateral(angle::rad(3.14 / 12.0 as GLfloat)),
+        piston::keyboard::Right =>
+          self.rotate_lateral(angle::rad(-3.14 / 12.0 as GLfloat)),
+        piston::keyboard::Up =>
+          self.rotate_vertical(angle::rad(3.14/12.0 as GLfloat)),
+        piston::keyboard::Down =>
+          self.rotate_vertical(angle::rad(-3.14/12.0 as GLfloat)),
         _ => {},
-      };
+      }
     })
   }
 
-  fn key_release(&mut self, args: &KeyReleaseArgs) {
+  fn key_release(&mut self, _: &mut GameWindowSDL2, args: &KeyReleaseArgs) {
     time!(&self.timers, "event.key_release", || {
       match args.key {
         // accelerations are negated from those in key_press.
@@ -448,38 +439,39 @@ impl Game for App {
     })
   }
 
-  fn mouse_move(&mut self, args: &MouseMoveArgs) {
+  #[inline]
+  fn mouse_move(&mut self, w: &mut GameWindowSDL2, args: &MouseMoveArgs) {
     time!(&self.timers, "event.mouse_move", || {
-      self.mouse_position = Vector2::new(args.x, args.y);
+      let (cx, cy) = (WINDOW_WIDTH as f32 / 2.0, WINDOW_HEIGHT as f32 / 2.0);
+      // args.y = h - args.y;
+      // dy = args.y - cy;
+      //  => dy = cy - args.y;
+      let (dx, dy) = (args.x as f32 - cx, cy - args.y as f32);
+      let (rx, ry) = (dx * -3.14 / 1024.0, dy * 3.14 / 1024.0);
+      self.rotate_lateral(angle::rad(rx));
+      self.rotate_vertical(angle::rad(ry));
+
+      mouse::warp_mouse_in_window(&w.render_window.window, WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2);
     })
   }
 
-  fn mouse_press(&mut self, _: &MousePressArgs) {
+  fn mouse_press(&mut self, _: &mut GameWindowSDL2, args: &MousePressArgs) {
     time!(&self.timers, "event.mouse_press", || {
-      self.render_selection();
-
-      let pixels: Color4<u8> = Color4::new(&0, &0, &0, &0);
-      unsafe {
-        gl::ReadPixels(
-          self.mouse_position.x as i32,
-          WINDOW_HEIGHT as i32 - self.mouse_position.y as i32,
-          1,
-          1,
-          gl::RGB,
-          gl::UNSIGNED_BYTE,
-          mem::transmute(&pixels)
-        );
-      }
-
-      let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
-      if block_index > 0 {
-        let block_index = block_index - 1;
-        unsafe {
-          self.world_data.swap_remove(block_index);
-          self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
-          self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
-          self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
-        }
+      match args.button {
+        piston::mouse::Left => unsafe {
+          match self.block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2) {
+            None => { }
+            Some(block_index) => {
+              if block_index > 0 {
+                self.world_data.swap_remove(block_index);
+                self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+                self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
+                self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+              }
+            }
+          }
+        },
+        _ => { }
       }
     })
   }
@@ -698,9 +690,9 @@ impl Game for App {
     })
   }
 
-  fn update(&mut self, _:&UpdateArgs) {
+  fn update(&mut self, _: &mut GameWindowSDL2, _: &UpdateArgs) {
     time!(&self.timers, "update", || {
-      let dP = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.camera_speed);
+      let dP = self.camera_speed;
       if dP.x != 0.0 {
         self.translate(&Vector3::new(dP.x, 0.0, 0.0));
       }
@@ -711,16 +703,15 @@ impl Game for App {
         self.translate(&Vector3::new(0.0, 0.0, dP.z));
       }
 
-      let dV = self.camera_accel;
+      let dV = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.camera_accel);
       self.camera_speed = self.camera_speed + dV;
       // friction
       self.camera_speed = self.camera_speed * Vector3::new(0.8, 0.99, 0.8);
     })
   }
 
-  fn render(&mut self, _:&RenderArgs) {
-    let timers = &self.timers;
-    timers.time("render", || {
+  fn render(&mut self, _: &mut GameWindowSDL2, _: &RenderArgs) {
+    time!(&self.timers, "render", || {
       gl::BindVertexArray(self.render_vertex_array);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
       gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
@@ -754,7 +745,6 @@ impl App {
       camera_position: Vector3::zero(),
       camera_speed: Vector3::zero(),
       camera_accel: Vector3::new(0.0, -0.1, 0.0),
-      mouse_position: Vector2::new(0.0, 0.0),
       triangles: GLBuffer::null(),
       outlines: GLBuffer::null(),
       selection_triangles: GLBuffer::null(),
@@ -778,18 +768,6 @@ impl App {
     self.shader_program = link_program(vs, fs);
     gl::UseProgram(self.shader_program);
     "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
-  }
-
-  pub fn render_selection(&mut self) {
-    let timers = &self.timers;
-    timers.time("render.render_selection", || {
-      // load the selection vertex array/buffer.
-      gl::BindVertexArray(self.selection_vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
-
-      gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-      gl::DrawArrays(gl::TRIANGLES, 0, self.selection_triangles.length as i32);
-    })
   }
 
   // Update the OpenGL vertex data with the world data triangles.
@@ -840,6 +818,31 @@ impl App {
     })
   }
 
+  pub fn render_selection(&mut self) {
+    time!(&self.timers, "render.render_selection", || {
+      // load the selection vertex array/buffer.
+      gl::BindVertexArray(self.selection_vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
+
+      gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+      gl::DrawArrays(gl::TRIANGLES, 0, self.selection_triangles.length as i32);
+    })
+  }
+
+  pub unsafe fn block_at_screen(&mut self, x: i32, y: i32) -> Option<uint> {
+      self.render_selection();
+
+      let pixels: Color4<u8> = Color4::new(&0, &0, &0, &0);
+      gl::ReadPixels(x, y, 1, 1, gl::RGB, gl::UNSIGNED_BYTE, mem::transmute(&pixels));
+
+      let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
+      if block_index == 0 {
+        None
+      } else {
+        Some(block_index - 1)
+      }
+  }
+
   #[inline]
   pub fn walk(&mut self, da: &Vector3<GLfloat>) {
     self.camera_accel = self.camera_accel + da.mul_s(0.2);
@@ -883,6 +886,18 @@ impl App {
     self.update_projection();
   }
 
+  #[inline]
+  pub fn rotate_lateral(&mut self, r: angle::Rad<GLfloat>) {
+    self.lateral_rotation = self.lateral_rotation + r;
+    self.rotate(&Vector3::unit_y(), r);
+  }
+
+  #[inline]
+  pub fn rotate_vertical(&mut self, r: angle::Rad<GLfloat>) {
+    let axis = self.right();
+    self.rotate(&axis, r);
+  }
+
   pub fn drop(&self) {
     unsafe {
       gl::DeleteBuffers(1, &self.render_vertex_buffer);
@@ -903,7 +918,6 @@ impl App {
   pub fn forward(&self) -> Vector3<GLfloat> {
     return Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&-Vector3::unit_z());
   }
-
 }
 
 // Shader sources
