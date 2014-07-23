@@ -4,6 +4,8 @@ name = "playform"
 version = "0.0.0"
 authors = [
     "Ben Foppa <benjamin.foppa@gmail.com>",
+    "Clark Gaebel <cg.wowus.cg@gmail.com>",
+    "Elijah Andrews <elijahcandrews@gmail.com>",
   ]
 
 [[bin]]
