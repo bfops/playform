@@ -12,7 +12,7 @@ use cgmath::angle;
 use cgmath::array::Array2;
 use cgmath::matrix::{Matrix, Matrix3, Matrix4};
 use cgmath::num::{BaseFloat};
-use cgmath::vector::{Vector, Vector3};
+use cgmath::vector::{Vector, Vector2, Vector3};
 use piston::*;
 use gl::types::*;
 use sdl2_game_window::GameWindowSDL2;
@@ -59,6 +59,22 @@ impl Vertex {
     Vertex {
       position: Vector3::new(x, y, z),
       color:    c,
+    }
+  }
+}
+
+#[deriving(Clone)]
+pub struct TextureVertex {
+  position: Vector2<GLfloat>,
+  texture_position: Vector2<GLfloat>,
+}
+
+impl TextureVertex {
+  #[inline]
+  pub fn new(x: GLfloat, y: GLfloat, tx: GLfloat, ty: GLfloat) -> TextureVertex {
+    TextureVertex {
+      position: Vector2::new(x, y),
+      texture_position: Vector2::new(tx, ty),
     }
   }
 }
@@ -124,6 +140,10 @@ impl<T: Clone> GLBuffer<T> {
       offset += (attrib.span * mem::size_of::<GLfloat>()) as int;
     }
 
+    if offset != mem::size_of::<T>() as int {
+      fail!("attribs are incorrectly sized!");
+    }
+
     gl::BufferData(
       gl::ARRAY_BUFFER,
       (capacity * mem::size_of::<T>()) as GLsizeiptr,
@@ -184,10 +204,14 @@ impl<T: Clone> GLBuffer<T> {
 
   #[inline]
   pub fn draw(&self, mode: GLenum) {
+    self.draw_slice(mode, 0, self.length);
+  }
+
+  pub fn draw_slice(&self, mode: GLenum, start: uint, len: uint) {
     gl::BindVertexArray(self.vertex_array);
     gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
 
-    gl::DrawArrays(mode, 0, self.length as i32);
+    gl::DrawArrays(mode, start as i32, len as i32);
   }
 
   #[inline]
@@ -288,29 +312,29 @@ impl Block {
     let (x1, y1, z1) = (self.low_corner.x, self.low_corner.y, self.low_corner.z);
     let (x2, y2, z2) = (self.high_corner.x, self.high_corner.y, self.high_corner.z);
 
-    fn vtx(x: GLfloat, y: GLfloat, z: GLfloat, a: Color4<GLfloat>) -> Vertex {
-      Vertex::new(x, y, z, a)
-    }
+    let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> Vertex {
+      Vertex::new(x, y, z, c)
+    };
 
     [
       // front
-      vtx(x1, y1, z1, c), vtx(x1, y2, z1, c), vtx(x2, y2, z1, c),
-      vtx(x1, y1, z1, c), vtx(x2, y2, z1, c), vtx(x2, y1, z1, c),
+      vtx(x1, y1, z1), vtx(x1, y2, z1), vtx(x2, y2, z1),
+      vtx(x1, y1, z1), vtx(x2, y2, z1), vtx(x2, y1, z1),
       // left
-      vtx(x1, y1, z2, c), vtx(x1, y2, z2, c), vtx(x1, y2, z1, c),
-      vtx(x1, y1, z2, c), vtx(x1, y2, z1, c), vtx(x1, y1, z1, c),
+      vtx(x1, y1, z2), vtx(x1, y2, z2), vtx(x1, y2, z1),
+      vtx(x1, y1, z2), vtx(x1, y2, z1), vtx(x1, y1, z1),
       // top
-      vtx(x1, y2, z1, c), vtx(x1, y2, z2, c), vtx(x2, y2, z2, c),
-      vtx(x1, y2, z1, c), vtx(x2, y2, z2, c), vtx(x2, y2, z1, c),
+      vtx(x1, y2, z1), vtx(x1, y2, z2), vtx(x2, y2, z2),
+      vtx(x1, y2, z1), vtx(x2, y2, z2), vtx(x2, y2, z1),
       // back
-      vtx(x2, y1, z2, c), vtx(x2, y2, z2, c), vtx(x1, y2, z2, c),
-      vtx(x2, y1, z2, c), vtx(x1, y2, z2, c), vtx(x1, y1, z2, c),
+      vtx(x2, y1, z2), vtx(x2, y2, z2), vtx(x1, y2, z2),
+      vtx(x2, y1, z2), vtx(x1, y2, z2), vtx(x1, y1, z2),
       // right
-      vtx(x2, y1, z1, c), vtx(x2, y2, z1, c), vtx(x2, y2, z2, c),
-      vtx(x2, y1, z1, c), vtx(x2, y2, z2, c), vtx(x2, y1, z2, c),
+      vtx(x2, y1, z1), vtx(x2, y2, z1), vtx(x2, y2, z2),
+      vtx(x2, y1, z1), vtx(x2, y2, z2), vtx(x2, y1, z2),
       // bottom
-      vtx(x1, y1, z2, c), vtx(x1, y1, z1, c), vtx(x2, y1, z1, c),
-      vtx(x1, y1, z2, c), vtx(x2, y1, z1, c), vtx(x2, y1, z2, c),
+      vtx(x1, y1, z2), vtx(x1, y1, z1), vtx(x2, y1, z1),
+      vtx(x1, y1, z2), vtx(x2, y1, z1), vtx(x2, y1, z2),
     ]
   }
 
@@ -365,6 +389,8 @@ pub struct App {
   // OpenGL buffers
   triangles: GLBuffer<Vertex>,
   outlines: GLBuffer<Vertex>,
+  texture_triangles: GLBuffer<TextureVertex>,
+  textures: Vec<GLuint>,
   // OpenGL-friendly equivalent of world_data for selection/picking.
   selection_triangles: GLBuffer<Vertex>,
   // OpenGL projection matrix components
@@ -374,6 +400,7 @@ pub struct App {
   lateral_rotation: angle::Rad<GLfloat>,
   // OpenGL shader "program" id.
   shader_program: u32,
+  texture_shader: u32,
 
   // Is LMB pressed?
   is_mouse_pressed: bool,
@@ -653,6 +680,16 @@ impl Game<GameWindowSDL2> for App {
           ],
           self.world_data.len() * LINE_VERTICES_PER_BLOCK,
         );
+
+        self.texture_triangles = GLBuffer::new(
+          self.texture_shader,
+          [ VertexAttribData::new("position", 2),
+            VertexAttribData::new("texture_position", 2),
+          ],
+          8 * VERTICES_PER_TRIANGLE,
+        );
+
+        self.make_textures();
       }
 
       self.make_render_data();
@@ -709,6 +746,14 @@ impl Game<GameWindowSDL2> for App {
       gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
       self.triangles.draw(gl::TRIANGLES);
       self.outlines.draw(gl::LINES);
+      gl::UseProgram(self.texture_shader);
+      let mut i = 0u;
+      for tex in self.textures.iter() {
+        gl::BindTexture(gl::TEXTURE_2D, *tex);
+        self.texture_triangles.draw_slice(gl::TRIANGLES, i * 6, 6);
+        i += 1;
+      }
+      gl::UseProgram(self.shader_program);
     })
   }
 }
@@ -730,11 +775,14 @@ impl App {
       triangles: GLBuffer::null(),
       outlines: GLBuffer::null(),
       selection_triangles: GLBuffer::null(),
+      texture_triangles: GLBuffer::null(),
+      textures: Vec::new(),
       fov_matrix: Matrix4::identity(),
       translation_matrix: Matrix4::identity(),
       rotation_matrix: Matrix4::identity(),
       lateral_rotation: angle::rad(0.0),
       shader_program: -1 as u32,
+      texture_shader: -1 as u32,
       is_mouse_pressed: false,
       font: fontloader::FontLoader::new(),
       timers: stopwatch::TimerSet::new(),
@@ -742,10 +790,41 @@ impl App {
   }
 
   pub unsafe fn set_up_shaders(&mut self) {
+    let ivs = compile_shader(ID_VS_SRC, gl::VERTEX_SHADER);
+    let txs = compile_shader(TX_SRC, gl::FRAGMENT_SHADER);
+    self.texture_shader = link_program(ivs, txs);
+    gl::UseProgram(self.texture_shader);
+
     let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
     let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
     self.shader_program = link_program(vs, fs);
     gl::UseProgram(self.shader_program);
+  }
+
+  pub unsafe fn make_textures(&mut self) {
+    let instructions = Vec::from_slice([
+            "Use WASD to move, and spacebar to jump.",
+            "Use the mouse to look around, and click to remove blocks."
+        ]);
+
+    let mut y = 0.99;
+
+    for line in instructions.iter() {
+      self.textures.push(ttf::Font::new(&Path::new("fonts/Open_Sans/OpenSans-Regular.ttf"), 16).red(*line));
+
+      let (x1, y1) = (-0.97, y - 0.2);
+      let (x2, y2) = (0.0, y);
+      self.texture_triangles.push([
+        TextureVertex::new(x1, y1, 0.0, 0.0),
+        TextureVertex::new(x2, y2, 1.0, 1.0),
+        TextureVertex::new(x1, y2, 0.0, 1.0),
+
+        TextureVertex::new(x1, y1, 0.0, 0.0),
+        TextureVertex::new(x2, y1, 1.0, 0.0),
+        TextureVertex::new(x2, y2, 1.0, 1.0),
+      ]);
+      y -= 0.2;
+    }
   }
 
   // Update the OpenGL vertex data with the world data triangles.
@@ -784,11 +863,10 @@ impl App {
       unsafe {
         let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
         if loc == -1 {
-          println!("couldn't read matrix");
-        } else {
-          let projection = self.fov_matrix * self.rotation_matrix * self.translation_matrix;
-          gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(projection.ptr()));
+          fail!("couldn't read matrix");
         }
+        let projection = self.fov_matrix * self.rotation_matrix * self.translation_matrix;
+        gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(projection.ptr()));
       }
     })
   }
@@ -893,6 +971,12 @@ impl App {
   pub fn forward(&self) -> Vector3<GLfloat> {
     return Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&-Vector3::unit_z());
   }
+
+  pub unsafe fn drop(&mut self) {
+    if self.textures.len() > 0 {
+      gl::DeleteTextures(self.textures.len() as i32, &self.textures[0]);
+    }
+  }
 }
 
 // Shader sources
@@ -915,6 +999,27 @@ in  vec4 color;
 void main() {
   gl_FragColor = color;
 }";
+
+static ID_VS_SRC: &'static str =
+r"#version 150
+in  vec2 position;
+in  vec2 texture_position;
+out vec2 tex_position;
+void main() {
+  tex_position = texture_position;
+  gl_Position = vec4(position, -1.0, 1.0);
+}";
+
+static TX_SRC: &'static str =
+r"#version 150
+in vec2 tex_position;
+
+uniform sampler2D texture_in;
+
+void main(){
+  gl_FragColor = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
+}
+";
 
 fn compile_shader(src: &str, ty: GLenum) -> GLuint {
     let shader = gl::CreateShader(ty);

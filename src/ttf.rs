@@ -1,7 +1,7 @@
 extern crate gl;
 
 use color::Color4;
-use sdl2::pixels::ll::SDL_Color;
+use sdl2::pixels::ll::{SDL_Color,SDL_PIXELFORMAT_ARGB8888};
 use sdl2::surface::ll::SDL_Surface;
 use sdl2::surface;
 
@@ -85,11 +85,13 @@ impl Font {
     let c_path = font.to_c_str();
     let p = unsafe { ffi::TTF_OpenFont(c_path.as_ptr(), point_size as ffi::c_int) };
 
+    assert!(p.is_not_null());
+
     Font { p: p }
   }
 
   /// Color is rgba
-  pub fn render(&self, txt: &str, color: Color4<u8>) {
+  pub fn render(&self, txt: &str, color: Color4<u8>) -> gl::types::GLuint {
     unsafe {
       let sdl_color = SDL_Color {
         r: color.r,
@@ -104,29 +106,32 @@ impl Font {
 
       let tex = surface_ptr.to_option().expect("Cannot render text.");
 
+      assert!((*tex.format).format == SDL_PIXELFORMAT_ARGB8888, "pixel format was unexpected 0x{:x}", (*tex.format).format);
+
       let mut texture = 0;
       gl::GenTextures(1, &mut texture);
       gl::BindTexture(gl::TEXTURE_2D, texture);
-      gl::TexImage2D(gl::TEXTURE_2D, 0, 3, tex.w, tex.h, 0, gl::BGR, gl::UNSIGNED_BYTE, tex.pixels);
+      gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, tex.w, tex.h, 0, gl::BGRA, gl::UNSIGNED_INT_8_8_8_8_REV, tex.pixels);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
       surface::ll::SDL_FreeSurface(surface_ptr as *const SDL_Surface);
+      texture
     }
   }
 
-  pub fn red(&self, txt: &str) {
-    self.render(txt, Color4::new(0xFF, 0x00, 0x00, 250))
+  pub fn red(&self, txt: &str) -> gl::types::GLuint {
+    self.render(txt, Color4::new(0xFF, 0x00, 0x00, 0xFF))
   }
 
   /// dark black #333
-  pub fn dark(&self, txt: &str) {
-    self.render(txt, Color4::new(0x33, 0x33, 0x33, 250))
+  pub fn dark(&self, txt: &str) -> gl::types::GLuint {
+    self.render(txt, Color4::new(0x33, 0x33, 0x33, 0xFF))
   }
 
   /// light black #555
-  pub fn light(&self, txt: &str) {
-    self.render(txt, Color4::new(0x55, 0x55, 0x55, 250))
+  pub fn light(&self, txt: &str) -> gl::types::GLuint {
+    self.render(txt, Color4::new(0x55, 0x55, 0x55, 0xFF))
   }
 }
 
