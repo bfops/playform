@@ -7,6 +7,7 @@ extern crate piston;
 extern crate sdl2;
 extern crate sdl2_game_window;
 
+use color::Color4;
 use cgmath::angle;
 use cgmath::array::Array2;
 use cgmath::matrix::{Matrix, Matrix3, Matrix4};
@@ -22,7 +23,10 @@ use std::ptr;
 use std::str;
 use std::num;
 
+mod color;
+mod fontloader;
 mod stopwatch;
+mod ttf;
 
 // TODO(cgaebel): How the hell do I get this to be exported from `mod stopwatch`?
 macro_rules! time(
@@ -42,15 +46,6 @@ static TRIANGLE_VERTICES_PER_BLOCK: uint = TRIANGLES_PER_BLOCK * VERTICES_PER_TR
 static LINE_VERTICES_PER_BLOCK: uint = LINES_PER_BLOCK * VERTICES_PER_LINE;
 
 static MAX_FUEL: uint = 4;
-
-#[deriving(Clone, Copy)]
-pub struct Color4<T> { r: T, g: T, b: T, a: T }
-
-impl<T: Copy> Color4<T> {
-  fn new(r: T, g: T, b: T, a: T) -> Color4<T> {
-    Color4 { r: r, g: g, b: b, a: a }
-  }
-}
 
 #[deriving(Clone)]
 // Rendering vertex: position and color.
@@ -212,7 +207,7 @@ pub enum BlockType {
 }
 
 impl BlockType {
-  pub fn to_color(&self) -> Color4<GLfloat> {
+  fn to_color(&self) -> Color4<GLfloat> {
     match *self {
       Grass => Color4::new(0.0, 0.5,  0.0, 1.0),
       Dirt  => Color4::new(0.2, 0.15, 0.1, 1.0),
@@ -382,6 +377,8 @@ pub struct App {
 
   // Is LMB pressed?
   is_mouse_pressed: bool,
+
+  font: fontloader::FontLoader,
 
   timers: stopwatch::TimerSet,
 }
@@ -734,6 +731,7 @@ impl App {
       lateral_rotation: angle::rad(0.0),
       shader_program: -1 as u32,
       is_mouse_pressed: false,
+      font: fontloader::FontLoader::new(),
       timers: stopwatch::TimerSet::new(),
     }
   }
