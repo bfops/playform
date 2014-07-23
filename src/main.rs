@@ -41,6 +41,8 @@ static TRIANGLE_VERTICES_PER_BLOCK: uint = TRIANGLES_PER_BLOCK * VERTICES_PER_TR
 static LINE_VERTICES_PER_BLOCK: uint = LINES_PER_BLOCK * VERTICES_PER_LINE;
 static RENDER_VERTICES_PER_BLOCK: uint = TRIANGLE_VERTICES_PER_BLOCK + LINE_VERTICES_PER_BLOCK;
 
+static MAX_FUEL: uint = 4;
+
 #[deriving(Clone, Copy)]
 pub struct Color4<T> { r: T, g: T, b: T, a: T }
 
@@ -310,6 +312,10 @@ pub struct App {
   camera_speed: Vector3<GLfloat>,
   // acceleration; x/z units are relative to player facing
   camera_accel: Vector3<GLfloat>,
+  // this is depleted as we jump and replenished as we stand.
+  jump_fuel: uint,
+  // are we currently trying to jump? (e.g. holding the key).
+  jumping: bool,
   // OpenGL buffer fill counts.
   triangles: GLBuffer<Vertex>,
   outlines: GLBuffer<Vertex>,
@@ -402,7 +408,11 @@ impl Game<GameWindowSDL2> for App {
           self.walk(&-Vector3::unit_y());
         },
         piston::keyboard::Space => {
-          self.camera_accel.y = self.camera_accel.y + 0.3;
+          if self.jump_fuel > 0 {
+            self.jumping = true;
+            // this 0.3 is duplicated in a few places
+            self.camera_accel.y = self.camera_accel.y + 0.3;
+          }
         },
         piston::keyboard::W => {
           self.walk(&-Vector3::unit_z());
@@ -437,7 +447,11 @@ impl Game<GameWindowSDL2> for App {
           self.walk(&Vector3::unit_y());
         },
         piston::keyboard::Space => {
-          self.camera_accel.y = self.camera_accel.y - 0.3;
+          if self.jumping {
+            self.jumping = false;
+            // this 0.3 is duplicated in a few places
+            self.camera_accel.y = self.camera_accel.y - 0.3;
+          }
         },
         piston::keyboard::W => {
           self.walk(&Vector3::unit_z());
@@ -577,13 +591,25 @@ impl Game<GameWindowSDL2> for App {
 
       timers.time("load.construct", || {
         let mut i;
-        // dirt block
+        // high dirt block
         i = -1;
         while i <= 1 {
           let mut j = -1i;
           while j <= 1 {
             let (x1, y1, z1) = (3.0 + i as GLfloat, 6.0, 0.0 + j as GLfloat);
             let (x2, y2, z2) = (4.0 + i as GLfloat, 7.0, 1.0 + j as GLfloat);
+            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
+            j += 1;
+          }
+          i += 1;
+        }
+        // low dirt block
+        i = -1;
+        while i <= 1 {
+          let mut j = -1i;
+          while j <= 1 {
+            let (x1, y1, z1) = (3.0 + i as GLfloat, 4.0, 5.0 + j as GLfloat);
+            let (x2, y2, z2) = (4.0 + i as GLfloat, 5.0, 6.0 + j as GLfloat);
             self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
             j += 1;
           }
@@ -732,6 +758,15 @@ impl Game<GameWindowSDL2> for App {
             });
         })
       }
+
+      if self.jumping && self.jump_fuel > 0 {
+        self.jump_fuel -= 1;
+        if self.jump_fuel == 0 {
+          // this code is duplicated in a few places
+          self.jumping = false;
+          self.camera_accel.y = self.camera_accel.y - 0.3;
+        }
+      }
     })
   }
 
@@ -759,6 +794,8 @@ impl App {
       camera_position: Vector3::zero(),
       camera_speed: Vector3::zero(),
       camera_accel: Vector3::new(0.0, -0.1, 0.0),
+      jump_fuel: 0,
+      jumping: false,
       triangles: GLBuffer::null(),
       outlines: GLBuffer::null(),
       selection_triangles: GLBuffer::null(),
@@ -884,10 +921,18 @@ impl App {
       i += 1;
     }
 
-    if !collided {
+    if collided {
+      if v.y < 0.0 {
+        self.jump_fuel = MAX_FUEL;
+      }
+    } else {
       self.camera_position = self.camera_position + *v;
       self.translation_matrix = self.translation_matrix * translate(&-v);
       self.update_projection();
+
+      if v.y < 0.0 {
+        self.jump_fuel = 0;
+      }
     }
   }
 
