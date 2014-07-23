@@ -31,6 +31,8 @@ static TRIANGLE_VERTICES_PER_BLOCK: uint = TRIANGLES_PER_BLOCK * VERTICES_PER_TR
 static LINE_VERTICES_PER_BLOCK: uint = LINES_PER_BLOCK * VERTICES_PER_LINE;
 static RENDER_VERTICES_PER_BLOCK: uint = TRIANGLE_VERTICES_PER_BLOCK + LINE_VERTICES_PER_BLOCK;
 
+static MAX_WORLD_SIZE: uint = 100000;
+
 #[deriving(Clone)]
 pub struct Color4<T> { r: T, g: T, b: T, a: T }
 
@@ -321,7 +323,6 @@ pub struct App {
   mouse_move_stopwatch: stopwatch::Stopwatch,
   mouse_press_stopwatch: stopwatch::Stopwatch,
   update_projection_stopwatch: stopwatch::Stopwatch,
-  make_render_data_stopwatch: stopwatch::Stopwatch,
   render_selection_stopwatch: stopwatch::Stopwatch,
   update_stopwatch: stopwatch::Stopwatch,
   render_stopwatch: stopwatch::Stopwatch,
@@ -476,7 +477,7 @@ impl Game for App {
                     self.mouse_position.x as i32,
                     (WINDOW_HEIGHT as f64 - self.mouse_position.y) as i32
                   ) {
-              None => { }
+              None => { },
               Some(block_index) => {
                 if block_index > 0 {
                   self.world_data.swap_remove(block_index);
@@ -492,17 +493,11 @@ impl Game for App {
                     self.mouse_position.x as i32,
                     (WINDOW_HEIGHT as f64 - self.mouse_position.y) as i32
                   ) {
-              None => { }
+              None => { },
               Some(block_index) => {
                 if block_index > 0 { 
                   let block = self.world_data[block_index];
-                  // Vector3::unit_y()
-                  let new_block = self.place_block(&(block.low_corner + Vector3::unit_y()), &(block.high_corner + Vector3::unit_y()), Dirt);
-                  // TODO: lines from make_render_data. Factor these lines out
-                  self.triangles.push(new_block.to_colored_triangles());
-                  self.outlines.push(new_block.to_outlines());
-                  self.selection_triangles.push(new_block.to_triangles(&selection_color((self.world_data.len() + 1) as u32)));
-
+                  self.place_block(&(block.low_corner + Vector3::unit_y()), &(block.high_corner + Vector3::unit_y()), Dirt);
                 }
               }
             }
@@ -602,7 +597,57 @@ impl Game for App {
       self.translate(&Vector3::new(0.0, 4.0, 10.0));
       self.update_projection();
 
-      let mut watch = self.load_construct_stopwatch;
+
+
+      gl::BindVertexArray(self.selection_vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
+
+      unsafe {
+        gl::BufferData(
+          gl::ARRAY_BUFFER,
+          (MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BLOCK * mem::size_of::<Vertex>()) as GLsizeiptr,
+          ptr::null(),
+          gl::DYNAMIC_DRAW,
+        );
+      }
+
+      self.selection_triangles = GLBuffer::new(
+        self.selection_vertex_array,
+        self.selection_vertex_buffer,
+        0,
+        MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BLOCK
+      );
+
+      gl::BindVertexArray(self.render_vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
+
+      unsafe {
+        gl::BufferData(
+          gl::ARRAY_BUFFER,
+          (MAX_WORLD_SIZE * RENDER_VERTICES_PER_BLOCK * mem::size_of::<Vertex>()) as GLsizeiptr,
+          ptr::null(),
+          gl::DYNAMIC_DRAW,
+        );
+      }
+
+      self.triangles = GLBuffer::new(
+        self.render_vertex_array,
+        self.render_vertex_buffer,
+        0,
+        MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BLOCK,
+      );
+
+      self.outlines = GLBuffer::new(
+        self.render_vertex_array,
+        self.render_vertex_buffer,
+        MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BLOCK,
+        (MAX_WORLD_SIZE * LINE_VERTICES_PER_BLOCK),
+      );
+
+    });
+    self.load_stopwatch = watch;
+
+          let mut watch = self.load_construct_stopwatch;
       watch.timed(|| {
         let mut i;
         // dirt block
@@ -679,55 +724,6 @@ impl Game for App {
         }
       });
       self.load_construct_stopwatch = watch;
-
-      gl::BindVertexArray(self.selection_vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
-
-      unsafe {
-        gl::BufferData(
-          gl::ARRAY_BUFFER,
-          (self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK * mem::size_of::<Vertex>()) as GLsizeiptr,
-          ptr::null(),
-          gl::DYNAMIC_DRAW,
-        );
-      }
-
-      self.selection_triangles = GLBuffer::new(
-        self.selection_vertex_array,
-        self.selection_vertex_buffer,
-        0,
-        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK + 400,
-      );
-
-      gl::BindVertexArray(self.render_vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
-
-      unsafe {
-        gl::BufferData(
-          gl::ARRAY_BUFFER,
-          (self.world_data.len() * RENDER_VERTICES_PER_BLOCK * mem::size_of::<Vertex>()) as GLsizeiptr,
-          ptr::null(),
-          gl::DYNAMIC_DRAW,
-        );
-      }
-
-      self.triangles = GLBuffer::new(
-        self.render_vertex_array,
-        self.render_vertex_buffer,
-        0,
-        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK + 400,
-      );
-
-      self.outlines = GLBuffer::new(
-        self.render_vertex_array,
-        self.render_vertex_buffer,
-        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
-        (self.world_data.len() * LINE_VERTICES_PER_BLOCK) + 400,
-      );
-
-      self.make_render_data();
-    });
-    self.load_stopwatch = watch;
   }
 
   fn update(&mut self, _:&UpdateArgs) {
@@ -845,26 +841,6 @@ impl App {
     "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
   }
 
-
-  // Update the OpenGL vertex data with the world data triangles.
-  pub fn make_render_data(&mut self) {
-
-    let mut watch = self.make_render_data_stopwatch;
-    watch.timed(|| {
-      let mut i = 0;
-      while i < self.world_data.len() {
-        let block = self.world_data[i];
-        unsafe {
-          self.triangles.push(block.to_colored_triangles());
-          self.outlines.push(block.to_outlines());
-          self.selection_triangles.push(block.to_triangles(&selection_color(i as u32)));
-        }
-        i += 1;
-      }
-    });
-    self.make_render_data_stopwatch = watch;
-  }
-
   pub fn update_projection(&mut self) {
     let mut watch = self.update_projection_stopwatch;
     watch.timed(|| {
@@ -908,11 +884,15 @@ impl App {
       }
   }
   
-  pub fn place_block(&mut self, low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) -> &Block {
-    let block = Block::new(low_corner, high_corner, block_type, self.block_count);
-    self.world_data.grow(1, &block);
-    self.block_count += 1;
-    &self.world_data[self.world_data.len() - 1]
+  pub fn place_block(&mut self, low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) {
+    unsafe {
+      let block = Block::new(low_corner, high_corner, block_type, self.block_count);
+      self.world_data.grow(1, &block);
+      self.triangles.push(block.to_colored_triangles());
+      self.outlines.push(block.to_outlines());
+      self.selection_triangles.push(block.to_triangles(&selection_color(self.block_count)));
+      self.block_count += 1;
+    }
   }
 
   #[inline]
@@ -1111,7 +1091,6 @@ fn main() {
   print_stopwatch("mouse_move_stopwatch", &app.mouse_move_stopwatch);
   print_stopwatch("mouse_press_stopwatch", &app.mouse_press_stopwatch);
   print_stopwatch("update_projection_stopwatch", &app.update_projection_stopwatch);
-  print_stopwatch("make_render_data_stopwatch", &app.make_render_data_stopwatch);
   print_stopwatch("render_selection_stopwatch", &app.render_selection_stopwatch);
   print_stopwatch("update_stopwatch", &app.update_stopwatch);
   print_stopwatch("render_stopwatch", &app.render_stopwatch);
