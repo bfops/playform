@@ -168,6 +168,7 @@ pub struct Block {
   low_corner: Vector3<GLfloat>,
   high_corner: Vector3<GLfloat>,
   block_type: BlockType,
+  id: u32,
 }
 
 enum Intersect {
@@ -219,11 +220,12 @@ fn intersect(b1: &Block, b2: &Block) -> Intersect {
 }
 
 impl Block {
-  fn new(low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) -> Block {
+  fn new(low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType, id: u32) -> Block {
     Block {
       low_corner: low_corner.clone(),
       high_corner: high_corner.clone(),
       block_type: block_type,
+      id: id,
     }
   }
 
@@ -288,6 +290,8 @@ impl Block {
 
 pub struct App {
   world_data: Vec<Block>,
+  // number of blocks that have been created. Used to assing block ids
+  block_count: u32,
   // position; world coordinates
   camera_position: Vector3<GLfloat>,
   // speed; x/z units are relative to player facing
@@ -495,8 +499,7 @@ impl Game for App {
                 if block_index > 0 { 
                   let block = self.world_data[block_index];
                   // Vector3::unit_y()
-                  let new_block = &Block::new(&(block.low_corner + Vector3::unit_y()), &(block.high_corner + Vector3::unit_y()), Dirt);
-                  self.world_data.grow(1, new_block);
+                  let new_block = &self.place_block(&(block.low_corner + Vector3::unit_y()), &(block.high_corner + Vector3::unit_y()), Dirt);
                   // TODO: lines from make_render_data. Factor these lines out
                   self.triangles.push(new_block.to_colored_triangles());
                   self.outlines.push(new_block.to_outlines());
@@ -611,7 +614,7 @@ impl Game for App {
           while j <= 1 {
             let (x1, y1, z1) = (3.0 + i as GLfloat, 6.0, 0.0 + j as GLfloat);
             let (x2, y2, z2) = (4.0 + i as GLfloat, 7.0, 1.0 + j as GLfloat);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
+            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt);
             j += 1;
           }
           i += 1;
@@ -623,7 +626,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Grass));
+            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Grass);
             j += 1;
           }
           i += 1;
@@ -635,7 +638,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -32.0 - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -32.0 + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone);
             j += 1;
           }
           i += 1;
@@ -647,7 +650,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 32.0 - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 32.0 + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone);
             j += 1;
           }
           i += 1;
@@ -659,7 +662,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (-32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
             let (x2, y2, z2) = (-32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone);
             j += 1;
           }
           i += 1;
@@ -671,7 +674,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
             let (x2, y2, z2) = (32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone);
             j += 1;
           }
           i += 1;
@@ -804,6 +807,7 @@ impl App {
   pub unsafe fn new() -> App {
     App {
       world_data: Vec::new(),
+      block_count: 0 as u32,
       camera_position: Vector3::zero(),
       camera_speed: Vector3::zero(),
       camera_accel: Vector3::new(0.0, -0.1, 0.0),
@@ -905,21 +909,29 @@ impl App {
         Some(block_index - 1)
       }
   }
+  
+  pub fn place_block(&mut self, low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) -> Block {
+    let block = Block::new(low_corner, high_corner, block_type, self.block_count);
+    self.world_data.grow(1, &block);
+    self.block_count += 1;
+    block
+  }
 
   #[inline]
   pub fn walk(&mut self, da: &Vector3<GLfloat>) {
     self.camera_accel = self.camera_accel + da.mul_s(0.2);
   }
 
-  fn construct_player(&self, high_corner: &Vector3<GLfloat>) -> Block {
+  fn construct_player(&mut self, high_corner: &Vector3<GLfloat>) -> Block {
     let low_corner = *high_corner - Vector3::new(0.5, 2.0, 1.0);
     // TODO: this really shouldn't be Stone.
-    Block::new(&low_corner, high_corner, Stone)
+    self.place_block(&low_corner, high_corner, Stone)
   }
 
   // move the player by a vector
   pub fn translate(&mut self, v: &Vector3<GLfloat>) {
-    let player = self.construct_player(&(self.camera_position + *v));
+    let constuct_player_high_corner = self.camera_position + *v;
+    let player = self.construct_player(&(constuct_player_high_corner));
     let mut collided = false;
     let mut i = 0;
     while i < self.world_data.len() {
