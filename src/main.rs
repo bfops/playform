@@ -878,18 +878,24 @@ impl App {
   // move the player by a vector
   pub fn translate(&mut self, v: Vector3<GLfloat>) {
     let player = self.construct_player(self.camera_position + v);
-    let mut collided = false;
-    for block in self.world_data.iter() {
-      match intersect(&player, block) {
-        Intersect(stop) => {
-          collided = true;
-          let d = v * stop - v;
-          self.camera_speed = self.camera_speed + d;
-          break;
-        },
-        NoIntersect => {}
-      }
-    }
+
+    let mut d_camera_speed : Vector3<GLfloat> = Vector3::new(0.0, 0.0, 0.0);
+
+    let collided =
+      self
+        .world_data
+        .iter()
+        .any(|block|
+          match intersect(&player, block) {
+            Intersect(stop) => {
+              d_camera_speed = v*stop - v;
+              true
+            }
+            NoIntersect => false,
+          }
+        );
+
+    self.camera_speed = self.camera_speed + d_camera_speed;
 
     if collided {
       if v.y < 0.0 {
