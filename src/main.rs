@@ -226,7 +226,7 @@ fn intersect(b1: &Block, b2: &Block) -> Intersect {
 }
 
 impl Block {
-  fn new(low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) -> Block {
+  fn new(low_corner: Vector3<GLfloat>, high_corner: Vector3<GLfloat>, block_type: BlockType) -> Block {
     Block {
       low_corner: low_corner.clone(),
       high_corner: high_corner.clone(),
@@ -337,7 +337,7 @@ pub struct App {
 }
 
 // Create a 3D translation matrix.
-pub fn translate(t: &Vector3<GLfloat>) -> Matrix4<GLfloat> {
+pub fn translate(t: Vector3<GLfloat>) -> Matrix4<GLfloat> {
   Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
     0.0, 1.0, 0.0, 0.0,
@@ -357,7 +357,7 @@ pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) 
 }
 
 // Create a matrix from a rotation around an arbitrary axis
-pub fn from_axis_angle<S: BaseFloat>(axis: &Vector3<S>, angle: angle::Rad<S>) -> Matrix4<S> {
+pub fn from_axis_angle<S: BaseFloat>(axis: Vector3<S>, angle: angle::Rad<S>) -> Matrix4<S> {
     let (s, c) = angle::sin_cos(angle);
     let _1subc = num::one::<S>() - c;
 
@@ -394,22 +394,22 @@ impl Game<GameWindowSDL2> for App {
     time!(&self.timers, "event.key_press", || {
       match args.key {
         piston::keyboard::A => {
-          self.walk(&-Vector3::unit_x());
+          self.walk(-Vector3::unit_x());
         },
         piston::keyboard::D => {
-          self.walk(&Vector3::unit_x());
+          self.walk(Vector3::unit_x());
         },
         piston::keyboard::LShift => {
-          self.walk(&-Vector3::unit_y());
+          self.walk(-Vector3::unit_y());
         },
         piston::keyboard::Space => {
           self.camera_accel.y = self.camera_accel.y + 0.3;
         },
         piston::keyboard::W => {
-          self.walk(&-Vector3::unit_z());
+          self.walk(-Vector3::unit_z());
         },
         piston::keyboard::S => {
-          self.walk(&Vector3::unit_z());
+          self.walk(Vector3::unit_z());
         },
         piston::keyboard::Left =>
           self.rotate_lateral(angle::rad(3.14 / 12.0 as GLfloat)),
@@ -429,22 +429,22 @@ impl Game<GameWindowSDL2> for App {
       match args.key {
         // accelerations are negated from those in key_press.
         piston::keyboard::A => {
-          self.walk(&Vector3::unit_x());
+          self.walk(Vector3::unit_x());
         },
         piston::keyboard::D => {
-          self.walk(&-Vector3::unit_x());
+          self.walk(-Vector3::unit_x());
         },
         piston::keyboard::LShift => {
-          self.walk(&Vector3::unit_y());
+          self.walk(Vector3::unit_y());
         },
         piston::keyboard::Space => {
           self.camera_accel.y = self.camera_accel.y - 0.3;
         },
         piston::keyboard::W => {
-          self.walk(&Vector3::unit_z());
+          self.walk(Vector3::unit_z());
         },
         piston::keyboard::S => {
-          self.walk(&-Vector3::unit_z());
+          self.walk(-Vector3::unit_z());
         },
         _ => { }
       }
@@ -571,7 +571,7 @@ impl Game<GameWindowSDL2> for App {
 
       // initialize the projection matrix
       self.fov_matrix = perspective(3.14/2.0, 4.0/3.0, 0.1, 100.0);
-      self.translate(&Vector3::new(0.0, 4.0, 10.0));
+      self.translate(Vector3::new(0.0, 4.0, 10.0));
       self.update_projection();
 
       let timers = &self.timers;
@@ -582,7 +582,7 @@ impl Game<GameWindowSDL2> for App {
           for j in range_inclusive(-1i, 1) {
             let (x1, y1, z1) = (3.0 + i as GLfloat, 6.0, 0.0 + j as GLfloat);
             let (x2, y2, z2) = (4.0 + i as GLfloat, 7.0, 1.0 + j as GLfloat);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt));
+            self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt));
           }
         }
         // ground
@@ -590,7 +590,7 @@ impl Game<GameWindowSDL2> for App {
           for j in range_inclusive(0i, 32) {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Grass));
+            self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Grass));
           }
         }
         // front wall
@@ -598,7 +598,7 @@ impl Game<GameWindowSDL2> for App {
           for j in range_inclusive(0i, 32) {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -32.0 - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -32.0 + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+            self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone));
           }
         }
         // back wall
@@ -606,7 +606,7 @@ impl Game<GameWindowSDL2> for App {
           for j in range_inclusive(0i, 32) {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 32.0 - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 32.0 + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+            self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone));
           }
         }
         // left wall
@@ -614,7 +614,7 @@ impl Game<GameWindowSDL2> for App {
           for j in range_inclusive(0i, 32) {
             let (x1, y1, z1) = (-32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
             let (x2, y2, z2) = (-32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+            self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone));
           }
         }
         // right wall
@@ -622,7 +622,7 @@ impl Game<GameWindowSDL2> for App {
           for j in range_inclusive(0i, 32) {
             let (x1, y1, z1) = (32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
             let (x2, y2, z2) = (32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-            self.world_data.grow(1, &Block::new(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone));
+            self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone));
           }
         }
       });
@@ -681,13 +681,13 @@ impl Game<GameWindowSDL2> for App {
     time!(&self.timers, "update", || {
       let dP = self.camera_speed;
       if dP.x != 0.0 {
-        self.translate(&Vector3::new(dP.x, 0.0, 0.0));
+        self.translate(Vector3::new(dP.x, 0.0, 0.0));
       }
       if dP.y != 0.0 {
-        self.translate(&Vector3::new(0.0, dP.y, 0.0));
+        self.translate(Vector3::new(0.0, dP.y, 0.0));
       }
       if dP.z != 0.0 {
-        self.translate(&Vector3::new(0.0, 0.0, dP.z));
+        self.translate(Vector3::new(0.0, 0.0, dP.z));
       }
 
       let dV = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.camera_accel);
@@ -832,25 +832,25 @@ impl App {
   }
 
   #[inline]
-  pub fn walk(&mut self, da: &Vector3<GLfloat>) {
+  pub fn walk(&mut self, da: Vector3<GLfloat>) {
     self.camera_accel = self.camera_accel + da.mul_s(0.2);
   }
 
-  fn construct_player(&self, high_corner: &Vector3<GLfloat>) -> Block {
-    let low_corner = *high_corner - Vector3::new(0.5, 2.0, 1.0);
+  fn construct_player(&self, high_corner: Vector3<GLfloat>) -> Block {
+    let low_corner = high_corner - Vector3::new(0.5, 2.0, 1.0);
     // TODO: this really shouldn't be Stone.
-    Block::new(&low_corner, high_corner, Stone)
+    Block::new(low_corner, high_corner, Stone)
   }
 
   // move the player by a vector
-  pub fn translate(&mut self, v: &Vector3<GLfloat>) {
-    let player = self.construct_player(&(self.camera_position + *v));
+  pub fn translate(&mut self, v: Vector3<GLfloat>) {
+    let player = self.construct_player(self.camera_position + v);
     let mut collided = false;
     for block in self.world_data.iter() {
       match intersect(&player, block) {
         Intersect(stop) => {
           collided = true;
-          let d = *v * stop - *v;
+          let d = v * stop - v;
           self.camera_speed = self.camera_speed + d;
           break;
         },
@@ -859,15 +859,15 @@ impl App {
     }
 
     if !collided {
-      self.camera_position = self.camera_position + *v;
-      self.translation_matrix = self.translation_matrix * translate(&-v);
+      self.camera_position = self.camera_position + v;
+      self.translation_matrix = self.translation_matrix * translate(-v);
       self.update_projection();
     }
   }
 
   #[inline]
   // rotate the player's view.
-  pub fn rotate(&mut self, v: &Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
+  pub fn rotate(&mut self, v: Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
     self.rotation_matrix = self.rotation_matrix * from_axis_angle(v, -r);
     self.update_projection();
   }
@@ -875,13 +875,13 @@ impl App {
   #[inline]
   pub fn rotate_lateral(&mut self, r: angle::Rad<GLfloat>) {
     self.lateral_rotation = self.lateral_rotation + r;
-    self.rotate(&Vector3::unit_y(), r);
+    self.rotate(Vector3::unit_y(), r);
   }
 
   #[inline]
   pub fn rotate_vertical(&mut self, r: angle::Rad<GLfloat>) {
     let axis = self.right();
-    self.rotate(&axis, r);
+    self.rotate(axis, r);
   }
 
   pub fn drop(&self) {
