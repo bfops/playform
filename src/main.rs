@@ -288,9 +288,9 @@ impl Block {
 
 pub struct App {
   world_data: Vec<Block>,
-  // position; world coordinates
+  // position; units are world coordinates
   camera_position: Vector3<GLfloat>,
-  // speed; x/z units are relative to player facing
+  // speed; units are world coordinates
   camera_speed: Vector3<GLfloat>,
   // acceleration; x/z units are relative to player facing
   camera_accel: Vector3<GLfloat>,
@@ -711,7 +711,7 @@ impl Game for App {
   fn update(&mut self, _:&UpdateArgs) {
     let mut watch = self.update_stopwatch;
     watch.timed(|| {
-      let dP = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.camera_speed);
+      let dP = self.camera_speed;
       if dP.x != 0.0 {
         self.translate(&Vector3::new(dP.x, 0.0, 0.0));
       }
@@ -722,7 +722,7 @@ impl Game for App {
         self.translate(&Vector3::new(0.0, 0.0, dP.z));
       }
 
-      let dV = self.camera_accel;
+      let dV = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.camera_accel);
       self.camera_speed = self.camera_speed + dV;
       // friction
       self.camera_speed = self.camera_speed * Vector3::new(0.8, 0.99, 0.8);
