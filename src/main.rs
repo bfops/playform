@@ -40,7 +40,6 @@ static VERTICES_PER_TRIANGLE: uint = 3;
 static VERTICES_PER_LINE: uint = 2;
 static TRIANGLE_VERTICES_PER_BLOCK: uint = TRIANGLES_PER_BLOCK * VERTICES_PER_TRIANGLE;
 static LINE_VERTICES_PER_BLOCK: uint = LINES_PER_BLOCK * VERTICES_PER_LINE;
-static RENDER_VERTICES_PER_BLOCK: uint = TRIANGLE_VERTICES_PER_BLOCK + LINE_VERTICES_PER_BLOCK;
 
 static MAX_FUEL: uint = 4;
 
@@ -69,12 +68,23 @@ impl Vertex {
   }
 }
 
+pub struct VertexAttribData<'a> {
+  name: &'a str,
+  span: uint,
+}
+
+impl<'a> VertexAttribData<'a> {
+  pub fn new(name: &'a str, span: uint) -> VertexAttribData<'a> {
+    VertexAttribData {
+      name: name,
+      span: span,
+    }
+  }
+}
+
 pub struct GLBuffer<T> {
   vertex_array: u32,
   vertex_buffer: u32,
-  // offset from the beginning of the OpenGL buffer where this buffer starts.
-  offset: i32,
-  byte_offset: i64,
   length: uint,
   capacity: uint,
 }
@@ -85,20 +95,50 @@ impl<T: Clone> GLBuffer<T> {
     GLBuffer {
       vertex_array: -1 as u32,
       vertex_buffer: -1 as u32,
-      offset: 0,
-      byte_offset: 0,
       length: 0,
       capacity: 0,
     }
   }
 
   #[inline]
-  pub fn new(vertex_array: u32, vertex_buffer: u32, offset: uint, capacity: uint) -> GLBuffer<T> {
+  pub unsafe fn new(shader_program: GLuint, attribs: &[VertexAttribData], capacity: uint) -> GLBuffer<T> {
+    let mut vertex_array = 0;
+    let mut vertex_buffer = 0;
+    gl::GenVertexArrays(1, &mut vertex_array);
+    gl::GenBuffers(1, &mut vertex_buffer);
+
+    gl::BindVertexArray(vertex_array);
+    gl::BindBuffer(gl::ARRAY_BUFFER, vertex_buffer);
+
+    let mut offset = 0;
+    for attrib in attribs.iter() {
+      let shader_attrib = glGetAttribLocation(shader_program, attrib.name) as GLuint;
+      if shader_attrib == -1 {
+        fail!("shader attribute \"{}\" not found", attrib.name);
+      }
+
+      gl::EnableVertexAttribArray(shader_attrib);
+      gl::VertexAttribPointer(
+          shader_attrib,
+          attrib.span as i32,
+          gl::FLOAT,
+          gl::FALSE as GLboolean,
+          mem::size_of::<T>() as i32,
+          ptr::null().offset(offset),
+      );
+      offset += (attrib.span * mem::size_of::<GLfloat>()) as int;
+    }
+
+    gl::BufferData(
+      gl::ARRAY_BUFFER,
+      (capacity * mem::size_of::<T>()) as GLsizeiptr,
+      ptr::null(),
+      gl::DYNAMIC_DRAW,
+    );
+
     GLBuffer {
       vertex_array: vertex_array,
       vertex_buffer: vertex_buffer,
-      offset: offset as i32,
-      byte_offset: offset as i64 * mem::size_of::<T>() as i64,
       length: 0,
       capacity: capacity,
     }
@@ -115,13 +155,13 @@ impl<T: Clone> GLBuffer<T> {
     bytes.set_len(copy_size);
     gl::GetBufferSubData(
       gl::ARRAY_BUFFER,
-      self.byte_offset + (self.length * size) as i64,
+      (self.length * size) as i64,
       copy_size as i64,
       mem::transmute(&bytes.as_mut_slice()[0]),
     );
     gl::BufferSubData(
       gl::ARRAY_BUFFER,
-      self.byte_offset + (i * span * size) as i64,
+      (i * span * size) as i64,
       copy_size as i64,
       mem::transmute(&bytes.slice(0, bytes.len())[0]),
     );
@@ -139,12 +179,28 @@ impl<T: Clone> GLBuffer<T> {
     let size = mem::size_of::<T>() as i64;
     gl::BufferSubData(
       gl::ARRAY_BUFFER,
-      self.byte_offset + size * self.length as i64,
+      size * self.length as i64,
       size * vs.len() as i64,
       mem::transmute(&vs[0]),
     );
 
     self.length += vs.len();
+  }
+
+  #[inline]
+  pub fn draw(&self, mode: GLenum) {
+    gl::BindVertexArray(self.vertex_array);
+    gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
+
+    gl::DrawArrays(mode, 0, self.length as i32);
+  }
+
+  #[inline]
+  pub fn drop(&self) {
+    unsafe {
+      gl::DeleteBuffers(1, &self.vertex_buffer);
+      gl::DeleteVertexArrays(1, &self.vertex_array);
+    }
   }
 }
 
@@ -323,12 +379,6 @@ pub struct App {
   lateral_rotation: angle::Rad<GLfloat>,
   // OpenGL shader "program" id.
   shader_program: u32,
-  // OpenGL Vertex Array Object id(s).
-  render_vertex_array: u32,
-  selection_vertex_array: u32,
-  // OpenGL Vertex Buffer Object id(s).
-  render_vertex_buffer: u32,
-  selection_vertex_buffer: u32,
 
   // Is LMB pressed?
   is_mouse_pressed: bool,
@@ -497,75 +547,6 @@ impl Game<GameWindowSDL2> for App {
 
   fn load(&mut self) {
     time!(&self.timers, "load", || {
-      unsafe {
-        self.set_up_shaders();
-
-        let pos_attr = glGetAttribLocation(self.shader_program, "position");
-        let color_attr = glGetAttribLocation(self.shader_program, "in_color");
-
-        // Create Vertex Array Objects(s).
-        gl::GenVertexArrays(1, &mut self.render_vertex_array);
-        gl::GenVertexArrays(1, &mut self.selection_vertex_array);
-
-        // Create Vertex Buffer Object(s).
-        gl::GenBuffers(1, &mut self.render_vertex_buffer);
-        gl::GenBuffers(1, &mut self.selection_vertex_buffer);
-
-        // Set up the selection VAO/VBO.
-
-        gl::BindVertexArray(self.selection_vertex_array);
-        gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
-
-        gl::EnableVertexAttribArray(pos_attr as GLuint);
-        gl::EnableVertexAttribArray(color_attr as GLuint);
-
-        // selection position data
-        gl::VertexAttribPointer(
-            pos_attr as GLuint,
-            (mem::size_of::<Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
-            gl::FLOAT,
-            gl::FALSE as GLboolean,
-            mem::size_of::<Vertex>() as i32,
-            ptr::null(),
-        );
-        // selection color data
-        gl::VertexAttribPointer(
-            color_attr as GLuint,
-            (mem::size_of::<Color4<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
-            gl::FLOAT,
-            gl::FALSE as GLboolean,
-            mem::size_of::<Vertex>() as i32,
-            ptr::null().offset(mem::size_of::<Vector3<GLfloat>>() as int),
-        );
-
-        // Set up the rendering VAO/VBO.
-
-        gl::BindVertexArray(self.render_vertex_array);
-        gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
-
-        gl::EnableVertexAttribArray(pos_attr as GLuint);
-        gl::EnableVertexAttribArray(color_attr as GLuint);
-
-        // rendered position data
-        gl::VertexAttribPointer(
-            pos_attr as GLuint,
-            (mem::size_of::<Vector3<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
-            gl::FLOAT,
-            gl::FALSE as GLboolean,
-            mem::size_of::<Vertex>() as i32,
-            ptr::null(),
-        );
-        // rendered color data
-        gl::VertexAttribPointer(
-            color_attr as GLuint,
-            (mem::size_of::<Color4<GLfloat>>() / mem::size_of::<GLfloat>()) as i32,
-            gl::FLOAT,
-            gl::FALSE as GLboolean,
-            mem::size_of::<Vertex>() as i32,
-            ptr::null().offset(mem::size_of::<Vector3<GLfloat>>() as int),
-        );
-      }
-
       gl::Enable(gl::DEPTH_TEST);
       gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
 
@@ -576,6 +557,10 @@ impl Game<GameWindowSDL2> for App {
       gl::DepthFunc(gl::LESS);
       gl::ClearDepth(100.0);
       gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+
+      unsafe {
+        self.set_up_shaders();
+      }
 
       // initialize the projection matrix
       self.fov_matrix = perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
@@ -643,50 +628,31 @@ impl Game<GameWindowSDL2> for App {
         }
       });
 
-      gl::BindVertexArray(self.selection_vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
-
       unsafe {
-        gl::BufferData(
-          gl::ARRAY_BUFFER,
-          (self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK * mem::size_of::<Vertex>()) as GLsizeiptr,
-          ptr::null(),
-          gl::DYNAMIC_DRAW,
+        self.selection_triangles = GLBuffer::new(
+          self.shader_program,
+          [ VertexAttribData::new("position", 3),
+            VertexAttribData::new("in_color", 4),
+          ],
+          self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
+        );
+
+        self.triangles = GLBuffer::new(
+          self.shader_program,
+          [ VertexAttribData::new("position", 3),
+            VertexAttribData::new("in_color", 4),
+          ],
+          self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
+        );
+
+        self.outlines = GLBuffer::new(
+          self.shader_program,
+          [ VertexAttribData::new("position", 3),
+            VertexAttribData::new("in_color", 4),
+          ],
+          self.world_data.len() * LINE_VERTICES_PER_BLOCK,
         );
       }
-
-      self.selection_triangles = GLBuffer::new(
-        self.selection_vertex_array,
-        self.selection_vertex_buffer,
-        0,
-        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
-      );
-
-      gl::BindVertexArray(self.render_vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
-
-      unsafe {
-        gl::BufferData(
-          gl::ARRAY_BUFFER,
-          (self.world_data.len() * RENDER_VERTICES_PER_BLOCK * mem::size_of::<Vertex>()) as GLsizeiptr,
-          ptr::null(),
-          gl::DYNAMIC_DRAW,
-        );
-      }
-
-      self.triangles = GLBuffer::new(
-        self.render_vertex_array,
-        self.render_vertex_buffer,
-        0,
-        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
-      );
-
-      self.outlines = GLBuffer::new(
-        self.render_vertex_array,
-        self.render_vertex_buffer,
-        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
-        (self.world_data.len() * LINE_VERTICES_PER_BLOCK),
-      );
 
       self.make_render_data();
     })
@@ -738,12 +704,9 @@ impl Game<GameWindowSDL2> for App {
 
   fn render(&mut self, _: &mut GameWindowSDL2, _: &RenderArgs) {
     time!(&self.timers, "render", || {
-      gl::BindVertexArray(self.render_vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.render_vertex_buffer);
       gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-
-      gl::DrawArrays(gl::TRIANGLES, 0, self.triangles.length as i32);
-      gl::DrawArrays(gl::LINES, self.outlines.offset, self.outlines.length as i32);
+      self.triangles.draw(gl::TRIANGLES);
+      self.outlines.draw(gl::LINES);
     })
   }
 }
@@ -770,10 +733,6 @@ impl App {
       rotation_matrix: Matrix4::identity(),
       lateral_rotation: angle::rad(0.0),
       shader_program: -1 as u32,
-      render_vertex_array: -1 as u32,
-      selection_vertex_array: -1 as u32,
-      render_vertex_buffer: -1 as u32,
-      selection_vertex_buffer: -1 as u32,
       is_mouse_pressed: false,
       timers: stopwatch::TimerSet::new(),
     }
@@ -833,14 +792,11 @@ impl App {
     })
   }
 
+  #[inline]
   pub fn render_selection(&mut self) {
     time!(&self.timers, "render.render_selection", || {
-      // load the selection vertex array/buffer.
-      gl::BindVertexArray(self.selection_vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.selection_vertex_buffer);
-
       gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-      gl::DrawArrays(gl::TRIANGLES, 0, self.selection_triangles.length as i32);
+      self.selection_triangles.draw(gl::TRIANGLES);
     })
   }
 
@@ -923,15 +879,6 @@ impl App {
   pub fn rotate_vertical(&mut self, r: angle::Rad<GLfloat>) {
     let axis = self.right();
     self.rotate(axis, r);
-  }
-
-  pub fn drop(&self) {
-    unsafe {
-      gl::DeleteBuffers(1, &self.render_vertex_buffer);
-      gl::DeleteVertexArrays(1, &self.render_vertex_array);
-      gl::DeleteBuffers(1, &self.selection_vertex_buffer);
-      gl::DeleteVertexArrays(1, &self.selection_vertex_array);
-    }
   }
 
   // axes
