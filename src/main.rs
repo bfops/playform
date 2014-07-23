@@ -304,6 +304,10 @@ pub fn swap_remove_block<T>(v: &mut Vec<T>, span: uint, i: uint) {
   }
 }
 
+pub unsafe fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
+  name.with_c_str(|ptr| gl::GetAttribLocation(shader_program, ptr))
+}
+
 impl Game for App {
   fn key_press(&mut self, args: &KeyPressArgs) {
     let mut watch = self.key_press_stopwatch;
@@ -424,12 +428,12 @@ impl Game for App {
   fn load(&mut self) {
     let mut watch = self.load_stopwatch;
     watch.timed(|| {
-      let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
-      let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
-
-      self.shader_program = link_program(vs, fs);
-
       unsafe {
+        self.set_up_shaders();
+
+        let pos_attr = glGetAttribLocation(self.shader_program, "position");
+        let color_attr = glGetAttribLocation(self.shader_program, "in_color");
+
         // Create Vertex Array Objects(s).
         gl::GenVertexArrays(1, &mut self.render_vertex_array);
         gl::GenVertexArrays(1, &mut self.selection_vertex_array);
@@ -437,13 +441,6 @@ impl Game for App {
         // Create Vertex Buffer Object(s).
         gl::GenBuffers(1, &mut self.render_vertex_buffer);
         gl::GenBuffers(1, &mut self.selection_vertex_buffer);
-
-        // Set up shaders
-        gl::UseProgram(self.shader_program);
-        "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
-
-        let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
-        let color_attr = "in_color".with_c_str(|ptr| gl::GetAttribLocation(self.shader_program, ptr));
 
         // Set up the selection VAO/VBO.
 
@@ -687,6 +684,15 @@ impl App {
       update_stopwatch: stopwatch::Stopwatch::new(),
       render_stopwatch: stopwatch::Stopwatch::new(),
     }
+  }
+
+  pub unsafe fn set_up_shaders(&mut self) {
+    let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
+    let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
+
+    self.shader_program = link_program(vs, fs);
+    gl::UseProgram(self.shader_program);
+    "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
   }
 
   pub fn render_selection(&mut self) {
