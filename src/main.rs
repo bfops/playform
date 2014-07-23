@@ -69,12 +69,6 @@ impl Vertex {
   }
 }
 
-
-#[inline]
-pub unsafe fn read_mut<T>(p: *mut T) -> T {
-  ptr::read(mem::transmute(p))
-}
-
 pub struct GLBuffer<T> {
   vertex_array: u32,
   vertex_buffer: u32,
