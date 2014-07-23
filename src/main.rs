@@ -41,17 +41,12 @@ static TRIANGLE_VERTICES_PER_BLOCK: uint = TRIANGLES_PER_BLOCK * VERTICES_PER_TR
 static LINE_VERTICES_PER_BLOCK: uint = LINES_PER_BLOCK * VERTICES_PER_LINE;
 static RENDER_VERTICES_PER_BLOCK: uint = TRIANGLE_VERTICES_PER_BLOCK + LINE_VERTICES_PER_BLOCK;
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct Color4<T> { r: T, g: T, b: T, a: T }
 
-impl<T: Clone> Color4<T> {
-  fn new(r: &T, g: &T, b: &T, a: &T) -> Color4<T> {
-    Color4 {
-      r: r.clone(),
-      g: g.clone(),
-      b: b.clone(),
-      a: a.clone(),
-    }
+impl<T: Copy> Color4<T> {
+  fn new(r: T, g: T, b: T, a: T) -> Color4<T> {
+    Color4 { r: r, g: g, b: b, a: a }
   }
 }
 
@@ -59,17 +54,18 @@ impl<T: Clone> Color4<T> {
 // Rendering vertex: position and color.
 pub struct Vertex {
   position: Vector3<GLfloat>,
-  color: Color4<GLfloat>,
+  color:    Color4<GLfloat>,
 }
 
 impl Vertex {
-  fn new(x: &GLfloat, y: &GLfloat, z: &GLfloat, c: &Color4<GLfloat>) -> Vertex {
+  fn new(x: GLfloat, y: GLfloat, z: GLfloat, c: Color4<GLfloat>) -> Vertex {
     Vertex {
-      position: Vector3::new(x.clone(), y.clone(), z.clone()),
-      color: c.clone(),
+      position: Vector3::new(x, y, z),
+      color:    c,
     }
   }
 }
+
 
 #[inline]
 pub unsafe fn read_mut<T>(p: *mut T) -> T {
@@ -165,9 +161,9 @@ pub enum BlockType {
 impl BlockType {
   pub fn to_color(&self) -> Color4<GLfloat> {
     match *self {
-      Grass => Color4::new(&0.0, &0.5,  &0.0, &1.0),
-      Dirt  => Color4::new(&0.2, &0.15, &0.1, &1.0),
-      Stone => Color4::new(&0.5, &0.5,  &0.5, &1.0),
+      Grass => Color4::new(0.0, 0.5,  0.0, 1.0),
+      Dirt  => Color4::new(0.2, 0.15, 0.1, 1.0),
+      Stone => Color4::new(0.5, 0.5,  0.5, 1.0),
     }
   }
 }
@@ -240,34 +236,39 @@ impl Block {
   // Construct the faces of the block as triangles for rendering.
   // Triangle vertices are in clockwise order when viewed from the outside of
   // the cube, for rendering purposes.
-  fn to_triangles(&self, c: &Color4<GLfloat>) -> [Vertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
+  fn to_triangles(&self, c: Color4<GLfloat>) -> [Vertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
     let (x1, y1, z1) = (self.low_corner.x, self.low_corner.y, self.low_corner.z);
     let (x2, y2, z2) = (self.high_corner.x, self.high_corner.y, self.high_corner.z);
+
+    fn vtx(x: GLfloat, y: GLfloat, z: GLfloat, a: Color4<GLfloat>) -> Vertex {
+      Vertex::new(x, y, z, a)
+    }
+
     [
       // front
-      Vertex::new(&x1, &y1, &z1, c), Vertex::new(&x1, &y2, &z1, c), Vertex::new(&x2, &y2, &z1, c),
-      Vertex::new(&x1, &y1, &z1, c), Vertex::new(&x2, &y2, &z1, c), Vertex::new(&x2, &y1, &z1, c),
+      vtx(x1, y1, z1, c), vtx(x1, y2, z1, c), vtx(x2, y2, z1, c),
+      vtx(x1, y1, z1, c), vtx(x2, y2, z1, c), vtx(x2, y1, z1, c),
       // left
-      Vertex::new(&x1, &y1, &z2, c), Vertex::new(&x1, &y2, &z2, c), Vertex::new(&x1, &y2, &z1, c),
-      Vertex::new(&x1, &y1, &z2, c), Vertex::new(&x1, &y2, &z1, c), Vertex::new(&x1, &y1, &z1, c),
+      vtx(x1, y1, z2, c), vtx(x1, y2, z2, c), vtx(x1, y2, z1, c),
+      vtx(x1, y1, z2, c), vtx(x1, y2, z1, c), vtx(x1, y1, z1, c),
       // top
-      Vertex::new(&x1, &y2, &z1, c), Vertex::new(&x1, &y2, &z2, c), Vertex::new(&x2, &y2, &z2, c),
-      Vertex::new(&x1, &y2, &z1, c), Vertex::new(&x2, &y2, &z2, c), Vertex::new(&x2, &y2, &z1, c),
+      vtx(x1, y2, z1, c), vtx(x1, y2, z2, c), vtx(x2, y2, z2, c),
+      vtx(x1, y2, z1, c), vtx(x2, y2, z2, c), vtx(x2, y2, z1, c),
       // back
-      Vertex::new(&x2, &y1, &z2, c), Vertex::new(&x2, &y2, &z2, c), Vertex::new(&x1, &y2, &z2, c),
-      Vertex::new(&x2, &y1, &z2, c), Vertex::new(&x1, &y2, &z2, c), Vertex::new(&x1, &y1, &z2, c),
+      vtx(x2, y1, z2, c), vtx(x2, y2, z2, c), vtx(x1, y2, z2, c),
+      vtx(x2, y1, z2, c), vtx(x1, y2, z2, c), vtx(x1, y1, z2, c),
       // right
-      Vertex::new(&x2, &y1, &z1, c), Vertex::new(&x2, &y2, &z1, c), Vertex::new(&x2, &y2, &z2, c),
-      Vertex::new(&x2, &y1, &z1, c), Vertex::new(&x2, &y2, &z2, c), Vertex::new(&x2, &y1, &z2, c),
+      vtx(x2, y1, z1, c), vtx(x2, y2, z1, c), vtx(x2, y2, z2, c),
+      vtx(x2, y1, z1, c), vtx(x2, y2, z2, c), vtx(x2, y1, z2, c),
       // bottom
-      Vertex::new(&x1, &y1, &z2, c), Vertex::new(&x1, &y1, &z1, c), Vertex::new(&x2, &y1, &z1, c),
-      Vertex::new(&x1, &y1, &z2, c), Vertex::new(&x2, &y1, &z1, c), Vertex::new(&x2, &y1, &z2, c),
+      vtx(x1, y1, z2, c), vtx(x1, y1, z1, c), vtx(x2, y1, z1, c),
+      vtx(x1, y1, z2, c), vtx(x2, y1, z1, c), vtx(x2, y1, z2, c),
     ]
   }
 
   #[inline]
   fn to_colored_triangles(&self) -> [Vertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
-    self.to_triangles(&self.block_type.to_color())
+    self.to_triangles(self.block_type.to_color())
   }
 
   // Construct outlines for this Block, to sharpen the edges.
@@ -276,22 +277,27 @@ impl Block {
     let d = 0.002;
     let (x1, y1, z1) = (self.low_corner.x - d, self.low_corner.y - d, self.low_corner.z - d);
     let (x2, y2, z2) = (self.high_corner.x + d, self.high_corner.y + d, self.high_corner.z + d);
-    let c = Color4::new(&0.0, &0.0, &0.0, &1.0);
+    let c = Color4::new(0.0, 0.0, 0.0, 1.0);
+
+    fn vtx(x: GLfloat, y: GLfloat, z: GLfloat, a: Color4<GLfloat>) -> Vertex {
+      Vertex::new(x, y, z, a)
+    }
+
     [
-      Vertex::new(&x1, &y1, &z1, &c), Vertex::new(&x2, &y1, &z1, &c),
-      Vertex::new(&x1, &y2, &z1, &c), Vertex::new(&x2, &y2, &z1, &c),
-      Vertex::new(&x1, &y1, &z2, &c), Vertex::new(&x2, &y1, &z2, &c),
-      Vertex::new(&x1, &y2, &z2, &c), Vertex::new(&x2, &y2, &z2, &c),
+      vtx(x1, y1, z1, c), vtx(x2, y1, z1, c),
+      vtx(x1, y2, z1, c), vtx(x2, y2, z1, c),
+      vtx(x1, y1, z2, c), vtx(x2, y1, z2, c),
+      vtx(x1, y2, z2, c), vtx(x2, y2, z2, c),
 
-      Vertex::new(&x1, &y1, &z1, &c), Vertex::new(&x1, &y2, &z1, &c),
-      Vertex::new(&x2, &y1, &z1, &c), Vertex::new(&x2, &y2, &z1, &c),
-      Vertex::new(&x1, &y1, &z2, &c), Vertex::new(&x1, &y2, &z2, &c),
-      Vertex::new(&x2, &y1, &z2, &c), Vertex::new(&x2, &y2, &z2, &c),
+      vtx(x1, y1, z1, c), vtx(x1, y2, z1, c),
+      vtx(x2, y1, z1, c), vtx(x2, y2, z1, c),
+      vtx(x1, y1, z2, c), vtx(x1, y2, z2, c),
+      vtx(x2, y1, z2, c), vtx(x2, y2, z2, c),
 
-      Vertex::new(&x1, &y1, &z1, &c), Vertex::new(&x1, &y1, &z2, &c),
-      Vertex::new(&x2, &y1, &z1, &c), Vertex::new(&x2, &y1, &z2, &c),
-      Vertex::new(&x1, &y2, &z1, &c), Vertex::new(&x1, &y2, &z2, &c),
-      Vertex::new(&x2, &y2, &z1, &c), Vertex::new(&x2, &y2, &z2, &c),
+      vtx(x1, y1, z1, c), vtx(x1, y1, z2, c),
+      vtx(x2, y1, z1, c), vtx(x2, y1, z2, c),
+      vtx(x1, y2, z1, c), vtx(x1, y2, z2, c),
+      vtx(x2, y2, z1, c), vtx(x2, y2, z2, c),
     ]
   }
 }
@@ -786,10 +792,10 @@ impl App {
       assert!(i < 0xFF000000, "too many items for selection buffer");
       let i = i + 1;
       let ret = Color4::new(
-        &(mask(0x00FF0000, i) as GLfloat / 255.0),
-        &(mask(0x0000FF00, i) as GLfloat / 255.0),
-        &(mask(0x000000FF, i) as GLfloat / 255.0),
-        &0.0,
+        (mask(0x00FF0000, i) as GLfloat / 255.0),
+        (mask(0x0000FF00, i) as GLfloat / 255.0),
+        (mask(0x000000FF, i) as GLfloat / 255.0),
+        0.0,
       );
       assert!(ret.r >= 0.0);
       assert!(ret.r <= 1.0);
@@ -801,15 +807,12 @@ impl App {
     }
 
     time!(&self.timers, "render.make_data", || {
-      let mut i = 0;
-      while i < self.world_data.len() {
-        let block = self.world_data[i];
+      for (i, block) in self.world_data.iter().enumerate() {
         unsafe {
           self.triangles.push(block.to_colored_triangles());
           self.outlines.push(block.to_outlines());
-          self.selection_triangles.push(block.to_triangles(&selection_color(i as u32)));
+          self.selection_triangles.push(block.to_triangles(selection_color(i as u32)));
         }
-        i += 1;
       }
     })
   }
@@ -842,7 +845,7 @@ impl App {
   pub unsafe fn block_at_screen(&mut self, x: i32, y: i32) -> Option<uint> {
       self.render_selection();
 
-      let pixels: Color4<u8> = Color4::new(&0, &0, &0, &0);
+      let pixels: Color4<u8> = Color4::new(0, 0, 0, 0);
       gl::ReadPixels(x, y, 1, 1, gl::RGB, gl::UNSIGNED_BYTE, mem::transmute(&pixels));
 
       let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
