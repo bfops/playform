@@ -485,6 +485,27 @@ impl Game for App {
               }
             }
           },
+          piston::mouse::Right => {
+            match self.block_at_screen(
+                    self.mouse_position.x as i32,
+                    (WINDOW_HEIGHT as f64 - self.mouse_position.y) as i32
+                  ) {
+              None => { }
+              Some(block_index) => {
+                if block_index > 0 { 
+                  let block = self.world_data[block_index];
+                  // Vector3::unit_y()
+                  let new_block = &Block::new(&(block.low_corner + Vector3::unit_y()), &(block.high_corner + Vector3::unit_y()), Dirt);
+                  self.world_data.grow(1, new_block);
+                  // TODO: lines from make_render_data. Factor these lines out
+                  self.triangles.push(new_block.to_colored_triangles());
+                  self.outlines.push(new_block.to_outlines());
+                  self.selection_triangles.push(new_block.to_triangles(&selection_color((self.world_data.len() + 1) as u32)));
+
+                }
+              }
+            }
+          },
           _ => { }
         }
       });
@@ -674,7 +695,7 @@ impl Game for App {
         self.selection_vertex_array,
         self.selection_vertex_buffer,
         0,
-        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
+        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK + 400,
       );
 
       gl::BindVertexArray(self.render_vertex_array);
@@ -693,14 +714,14 @@ impl Game for App {
         self.render_vertex_array,
         self.render_vertex_buffer,
         0,
-        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
+        self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK + 400,
       );
 
       self.outlines = GLBuffer::new(
         self.render_vertex_array,
         self.render_vertex_buffer,
         self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
-        (self.world_data.len() * LINE_VERTICES_PER_BLOCK),
+        (self.world_data.len() * LINE_VERTICES_PER_BLOCK) + 400,
       );
 
       self.make_render_data();
@@ -760,6 +781,25 @@ fn mask(mask: u32, i: u32) -> u32 {
   (i & mask) >> ctz(mask)
 }
 
+fn selection_color(i: u32) -> Color4<GLfloat> {
+  assert!(i < 0xFF000000, "too many items for selection buffer");
+  let i = i + 1;
+  let ret = Color4::new(
+    &(mask(0x00FF0000, i) as GLfloat / 255.0),
+    &(mask(0x0000FF00, i) as GLfloat / 255.0),
+    &(mask(0x000000FF, i) as GLfloat / 255.0),
+    &0.0,
+  );
+  assert!(ret.r >= 0.0);
+  assert!(ret.r <= 1.0);
+  assert!(ret.g >= 0.0);
+  assert!(ret.g <= 1.0);
+  assert!(ret.b >= 0.0);
+  assert!(ret.b <= 1.0);
+  ret
+}
+
+
 impl App {
   pub unsafe fn new() -> App {
     App {
@@ -803,25 +843,9 @@ impl App {
     "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
   }
 
+
   // Update the OpenGL vertex data with the world data triangles.
   pub fn make_render_data(&mut self) {
-    fn selection_color(i: u32) -> Color4<GLfloat> {
-      assert!(i < 0xFF000000, "too many items for selection buffer");
-      let i = i + 1;
-      let ret = Color4::new(
-        &(mask(0x00FF0000, i) as GLfloat / 255.0),
-        &(mask(0x0000FF00, i) as GLfloat / 255.0),
-        &(mask(0x000000FF, i) as GLfloat / 255.0),
-        &0.0,
-      );
-      assert!(ret.r >= 0.0);
-      assert!(ret.r <= 1.0);
-      assert!(ret.g >= 0.0);
-      assert!(ret.g <= 1.0);
-      assert!(ret.b >= 0.0);
-      assert!(ret.b <= 1.0);
-      ret
-    }
 
     let mut watch = self.make_render_data_stopwatch;
     watch.timed(|| {
