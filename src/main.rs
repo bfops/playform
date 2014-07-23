@@ -585,7 +585,7 @@ impl Game<GameWindowSDL2> for App {
 
       // initialize the projection matrix
       self.fov_matrix = perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
-      self.translate(&Vector3::new(0.0, 4.0, 10.0));
+      self.translate(Vector3::new(0.0, 4.0, 10.0));
       self.update_projection();
 
       let timers = &self.timers;
