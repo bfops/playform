@@ -11,7 +11,7 @@ use cgmath::angle;
 use cgmath::array::Array2;
 use cgmath::matrix::{Matrix, Matrix3, Matrix4};
 use cgmath::num::{BaseFloat};
-use cgmath::vector::{Vector, Vector2, Vector3};
+use cgmath::vector::{Vector, Vector3};
 use piston::*;
 use gl::types::*;
 use sdl2_game_window::GameWindowSDL2;
@@ -373,6 +373,7 @@ pub fn from_axis_angle<S: BaseFloat>(axis: &Vector3<S>, angle: angle::Rad<S>) ->
     )
 }
 
+#[allow(non_snake_case_functions)]
 pub unsafe fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
   name.with_c_str(|ptr| gl::GetAttribLocation(shader_program, ptr))
 }
