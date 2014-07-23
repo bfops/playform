@@ -715,7 +715,7 @@ impl Game<GameWindowSDL2> for App {
       let dV = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.camera_accel);
       self.camera_speed = self.camera_speed + dV;
       // friction
-      self.camera_speed = self.camera_speed * Vector3::new(0.8, 0.99, 0.8);
+      self.camera_speed = self.camera_speed * Vector3::new(0.7, 0.99, 0.7);
 
       // Block deletion
       if self.is_mouse_pressed {
