@@ -45,7 +45,7 @@ static VERTICES_PER_LINE: uint = 2;
 static TRIANGLE_VERTICES_PER_BLOCK: uint = TRIANGLES_PER_BLOCK * VERTICES_PER_TRIANGLE;
 static LINE_VERTICES_PER_BLOCK: uint = LINES_PER_BLOCK * VERTICES_PER_LINE;
 
-static MAX_FUEL: uint = 4;
+static MAX_JUMP_FUEL: uint = 4;
 
 #[deriving(Clone)]
 // Rendering vertex: position and color.
@@ -362,7 +362,7 @@ pub struct App {
   jump_fuel: uint,
   // are we currently trying to jump? (e.g. holding the key).
   jumping: bool,
-  // OpenGL buffer fill counts.
+  // OpenGL buffers
   triangles: GLBuffer<Vertex>,
   outlines: GLBuffer<Vertex>,
   // OpenGL-friendly equivalent of world_data for selection/picking.
@@ -450,7 +450,7 @@ impl Game<GameWindowSDL2> for App {
           self.walk(-Vector3::unit_y());
         },
         piston::keyboard::Space => {
-          if self.jump_fuel > 0 {
+          if !self.jumping {
             self.jumping = true;
             // this 0.3 is duplicated in a few places
             self.camera_accel.y = self.camera_accel.y + 0.3;
@@ -544,7 +544,11 @@ impl Game<GameWindowSDL2> for App {
 
   fn load(&mut self) {
     time!(&self.timers, "load", || {
-      gl::Enable(gl::DEPTH_TEST);
+      gl::FrontFace(gl::CCW);
+      gl::CullFace(gl::BACK);
+      gl::Enable(gl::CULL_FACE);
+
+      gl::Enable(gl::BLEND);
       gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
 
       gl::Enable(gl::LINE_SMOOTH);
@@ -658,6 +662,16 @@ impl Game<GameWindowSDL2> for App {
   fn update(&mut self, _: &mut GameWindowSDL2, _: &UpdateArgs) {
 
     time!(&self.timers, "update", || {
+      if self.jumping {
+        if self.jump_fuel > 0 {
+          self.jump_fuel -= 1;
+        } else {
+          // this code is duplicated in a few places
+          self.jumping = false;
+          self.camera_accel.y = self.camera_accel.y - 0.3;
+        }
+      }
+
       let dP = self.camera_speed;
       if dP.x != 0.0 {
         self.translate(Vector3::new(dP.x, 0.0, 0.0));
@@ -686,15 +700,6 @@ impl Game<GameWindowSDL2> for App {
               self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
             });
         })
-      }
-
-      if self.jumping && self.jump_fuel > 0 {
-        self.jump_fuel -= 1;
-        if self.jump_fuel == 0 {
-          // this code is duplicated in a few places
-          self.jumping = false;
-          self.camera_accel.y = self.camera_accel.y - 0.3;
-        }
       }
     })
   }
@@ -739,10 +744,8 @@ impl App {
   pub unsafe fn set_up_shaders(&mut self) {
     let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
     let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
-
     self.shader_program = link_program(vs, fs);
     gl::UseProgram(self.shader_program);
-    "out_color".with_c_str(|ptr| gl::BindFragDataLocation(self.shader_program, 0, ptr));
   }
 
   // Update the OpenGL vertex data with the world data triangles.
@@ -754,7 +757,7 @@ impl App {
         (mask(0x00FF0000, i) as GLfloat / 255.0),
         (mask(0x0000FF00, i) as GLfloat / 255.0),
         (mask(0x000000FF, i) as GLfloat / 255.0),
-        0.0,
+        1.0,
       );
       assert!(ret.r >= 0.0);
       assert!(ret.r <= 1.0);
@@ -847,7 +850,7 @@ impl App {
 
     if collided {
       if v.y < 0.0 {
-        self.jump_fuel = MAX_FUEL;
+        self.jump_fuel = MAX_JUMP_FUEL;
       }
     } else {
       self.camera_position = self.camera_position + v;
@@ -909,9 +912,8 @@ void main() {
 static FS_SRC: &'static str =
 r"#version 150
 in  vec4 color;
-out vec4 out_color;
 void main() {
-  out_color = color;
+  gl_FragColor = color;
 }";
 
 fn compile_shader(src: &str, ty: GLenum) -> GLuint {
