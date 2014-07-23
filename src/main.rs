@@ -499,7 +499,7 @@ impl Game for App {
               Some(block_index) => {
                 if block_index > 0 { 
                   let block = self.world_data[block_index];
-                  self.place_block(&(block.low_corner + Vector3::unit_y()), &(block.high_corner + Vector3::unit_y()), Dirt);
+                  self.place_block(&(block.low_corner + Vector3::unit_y()), &(block.high_corner + Vector3::unit_y()), Dirt, true);
                 }
               }
             }
@@ -659,7 +659,7 @@ impl Game for App {
           while j <= 1 {
             let (x1, y1, z1) = (3.0 + i as GLfloat, 6.0, 0.0 + j as GLfloat);
             let (x2, y2, z2) = (4.0 + i as GLfloat, 7.0, 1.0 + j as GLfloat);
-            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt);
+            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Dirt, false);
             j += 1;
           }
           i += 1;
@@ -671,7 +671,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
-            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Grass);
+            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Grass, false);
             j += 1;
           }
           i += 1;
@@ -683,7 +683,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -32.0 - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -32.0 + 0.5);
-            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone);
+            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone, false);
             j += 1;
           }
           i += 1;
@@ -695,7 +695,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 32.0 - 0.5);
             let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 32.0 + 0.5);
-            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone);
+            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone, false);
             j += 1;
           }
           i += 1;
@@ -707,7 +707,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (-32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
             let (x2, y2, z2) = (-32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone);
+            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone, false);
             j += 1;
           }
           i += 1;
@@ -719,7 +719,7 @@ impl Game for App {
           while j <= 32 {
             let (x1, y1, z1) = (32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
             let (x2, y2, z2) = (32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone);
+            self.place_block(&Vector3::new(x1, y1, z1), &Vector3::new(x2, y2, z2), Stone, false);
             j += 1;
           }
           i += 1;
@@ -882,15 +882,31 @@ impl App {
       self.block_id_to_index.find(&(block_id as u32)).map(|&x| x)
   }
   
-  fn place_block(&mut self, low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType) {
-    unsafe {
-      let block = Block::new(low_corner, high_corner, block_type, self.block_count);
-      self.world_data.grow(1, &block);
-      self.triangles.push(block.to_colored_triangles());
-      self.outlines.push(block.to_outlines());
-      self.selection_triangles.push(block.to_triangles(&selection_color(self.block_count)));
-      self.block_id_to_index.insert(block.id, self.world_data.len() - 1);
-      self.block_count += 1;
+  fn place_block(&mut self, low_corner: &Vector3<GLfloat>, high_corner: &Vector3<GLfloat>, block_type: BlockType, check_collisions: bool) {
+    let block = Block::new(low_corner, high_corner, block_type, self.block_count);
+    let collided =
+      check_collisions &&
+      self
+        .world_data
+        .iter()
+        .any(|other_block|
+          match intersect(&block, other_block) {
+            Intersect(_) => {
+              true
+            }
+            NoIntersect => false,
+          }
+        );
+
+    if !collided {
+      unsafe {
+        self.world_data.grow(1, &block);
+        self.triangles.push(block.to_colored_triangles());
+        self.outlines.push(block.to_outlines());
+        self.selection_triangles.push(block.to_triangles(&selection_color(self.block_count)));
+        self.block_id_to_index.insert(block.id, self.world_data.len() - 1);
+        self.block_count += 1;
+      }
     }
   }
 
