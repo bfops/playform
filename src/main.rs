@@ -598,7 +598,7 @@ impl Game<GameWindowSDL2> for App {
       let timers = &self.timers;
 
       timers.time("load.construct", || {
-        // high dirt block
+        // low dirt block
         for i in range_inclusive(-1i, 1) {
           for j in range_inclusive(-1i, 1) {
             let (x1, y1, z1) = (3.0 + i as GLfloat, 6.0, 0.0 + j as GLfloat);
@@ -606,11 +606,11 @@ impl Game<GameWindowSDL2> for App {
             self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt));
           }
         }
-        // low dirt block
+        // high dirt block
         for i in range_inclusive(-1i, 1) {
           for j in range_inclusive(-1i, 1) {
-            let (x1, y1, z1) = (3.0 + i as GLfloat, 4.0, 5.0 + j as GLfloat);
-            let (x2, y2, z2) = (4.0 + i as GLfloat, 5.0, 6.0 + j as GLfloat);
+            let (x1, y1, z1) = (0.0 + i as GLfloat, 12.0, 5.0 + j as GLfloat);
+            let (x2, y2, z2) = (1.0 + i as GLfloat, 13.0, 6.0 + j as GLfloat);
             self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt));
           }
         }
@@ -731,6 +731,7 @@ impl Game<GameWindowSDL2> for App {
           self
             .block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2)
             .map(|block_index| {
+              assert!(block_index < self.world_data.len());
               self.world_data.swap_remove(block_index);
               self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
               self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
@@ -838,6 +839,7 @@ impl App {
         (mask(0x000000FF, i) as GLfloat / 255.0),
         1.0,
       );
+
       assert!(ret.r >= 0.0);
       assert!(ret.r <= 1.0);
       assert!(ret.g >= 0.0);
