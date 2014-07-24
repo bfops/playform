@@ -571,6 +571,8 @@ impl Game<GameWindowSDL2> for App {
 
   fn load(&mut self) {
     time!(&self.timers, "load", || {
+      mouse::show_cursor(false);
+
       gl::FrontFace(gl::CCW);
       gl::CullFace(gl::BACK);
       gl::Enable(gl::CULL_FACE);
