@@ -27,11 +27,11 @@ use cgmath::num::{BaseFloat};
 use cgmath::point::{Point2, Point3};
 use cgmath::vector::{Vector, Vector3};
 use cgmath::projection;
+use cstr_cache::CStringCache;
 use piston::*;
 use gl::types::*;
 use sdl2_game_window::GameWindowSDL2;
 use sdl2::mouse;
-use std::c_str::CString;
 use std::mem;
 use std::iter::range_inclusive;
 use std::ptr;
@@ -39,9 +39,9 @@ use std::str;
 use std::num;
 
 mod color;
+mod cstr_cache;
 mod fontloader;
 mod stopwatch;
-mod tex;
 mod ttf;
 
 // TODO(cgaebel): How the hell do I get this to be exported from `mod stopwatch`?
@@ -436,6 +436,7 @@ pub struct App {
   is_mouse_pressed: bool,
 
   font: fontloader::FontLoader,
+  scache: CStringCache,
 
   timers: stopwatch::TimerSet,
 }
@@ -843,6 +844,7 @@ impl App {
       texture_shader: -1 as u32,
       is_mouse_pressed: false,
       font: fontloader::FontLoader::new(),
+      scache: CStringCache::new(),
       timers: stopwatch::TimerSet::new(),
     }
   }
@@ -960,18 +962,8 @@ impl App {
 
   /// Sets the opengl projection matrix.
   pub unsafe fn set_projection(&mut self, m: &Matrix4<GLfloat>) {
-    local_data_key!(proj_matrix_name: CString);
-
-    let mat_name =
-      match proj_matrix_name.get() {
-        None => {
-          proj_matrix_name.replace(Some("proj_matrix".to_c_str()));
-          proj_matrix_name.get().unwrap()
-        },
-        Some(s) => s
-      };
-
-    let loc = gl::GetUniformLocation(self.shader_program, mat_name.as_ptr());
+    let var_name = self.scache.convert("proj_matrix").as_ptr();
+    let loc = gl::GetUniformLocation(self.shader_program, var_name);
     assert!(loc != -1, "couldn't read matrix");
     gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(m.ptr()));
   }
