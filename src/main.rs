@@ -896,25 +896,6 @@ impl App {
 
   // Update the OpenGL vertex data with the world data world_triangles.
   pub unsafe fn make_world_render_data(&mut self) {
-    fn selection_color(i: u32) -> Color4<GLfloat> {
-      assert!(i < 0xFF000000, "too many items for selection buffer");
-      let i = i + 1;
-      let ret = Color4::new(
-        (mask(0x00FF0000, i) as GLfloat / 255.0),
-        (mask(0x0000FF00, i) as GLfloat / 255.0),
-        (mask(0x000000FF, i) as GLfloat / 255.0),
-        1.0,
-      );
-
-      assert!(ret.r >= 0.0);
-      assert!(ret.r <= 1.0);
-      assert!(ret.g >= 0.0);
-      assert!(ret.g <= 1.0);
-      assert!(ret.b >= 0.0);
-      assert!(ret.b <= 1.0);
-      ret
-    }
-
     time!(&self.timers, "render.make_data", || {
       for (i, block) in self.world_data.iter().enumerate() {
         self.world_triangles.push(block.to_colored_triangles());
