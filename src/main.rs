@@ -811,7 +811,7 @@ impl App {
     let mut y = 0.99;
 
     for line in instructions.iter() {
-      self.textures.push(ttf::Font::new(&Path::new("fonts/Open_Sans/OpenSans-Regular.ttf"), 16).red(*line));
+      self.textures.push(self.font.sans.red(*line));
 
       let (x1, y1) = (-0.97, y - 0.2);
       let (x2, y2) = (0.0, y);

@@ -106,7 +106,7 @@ impl Font {
 
       let tex = surface_ptr.to_option().expect("Cannot render text.");
 
-      assert!((*tex.format).format == SDL_PIXELFORMAT_ARGB8888, "pixel format was unexpected 0x{:x}", (*tex.format).format);
+      assert_eq!((*tex.format).format, SDL_PIXELFORMAT_ARGB8888);
 
       let mut texture = 0;
       gl::GenTextures(1, &mut texture);
