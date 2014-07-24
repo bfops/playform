@@ -387,7 +387,7 @@ pub struct App {
   // are we currently trying to jump? (e.g. holding the key).
   jumping: bool,
   // OpenGL buffers
-  triangles: GLBuffer<Vertex>,
+  world_triangles: GLBuffer<Vertex>,
   outlines: GLBuffer<Vertex>,
   texture_triangles: GLBuffer<TextureVertex>,
   textures: Vec<GLuint>,
@@ -465,7 +465,7 @@ pub unsafe fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
 
 impl Game<GameWindowSDL2> for App {
   fn key_press(&mut self, _: &mut GameWindowSDL2, args: &KeyPressArgs) {
-    time!(&self.timers, "event.key_press", || {
+    time!(&self.timers, "event.key_press", || unsafe {
       match args.key {
         piston::keyboard::A => {
           self.walk(-Vector3::unit_x());
@@ -535,7 +535,7 @@ impl Game<GameWindowSDL2> for App {
 
   #[inline]
   fn mouse_move(&mut self, w: &mut GameWindowSDL2, args: &MouseMoveArgs) {
-    time!(&self.timers, "event.mouse_move", || {
+    time!(&self.timers, "event.mouse_move", || unsafe {
       let (cx, cy) = (WINDOW_WIDTH as f32 / 2.0, WINDOW_HEIGHT as f32 / 2.0);
       // args.y = h - args.y;
       // dy = args.y - cy;
@@ -590,12 +590,12 @@ impl Game<GameWindowSDL2> for App {
 
       unsafe {
         self.set_up_shaders();
-      }
 
-      // initialize the projection matrix
-      self.fov_matrix = perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
-      self.translate(Vector3::new(0.0, 4.0, 10.0));
-      self.update_projection();
+        // initialize the projection matrix
+        self.fov_matrix = perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
+        self.translate(Vector3::new(0.0, 4.0, 10.0));
+        self.update_projection();
+      }
 
       let timers = &self.timers;
 
@@ -667,7 +667,7 @@ impl Game<GameWindowSDL2> for App {
           self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
         );
 
-        self.triangles = GLBuffer::new(
+        self.world_triangles = GLBuffer::new(
           self.shader_program,
           [ VertexAttribData::new("position", 3),
             VertexAttribData::new("in_color", 4),
@@ -692,15 +692,13 @@ impl Game<GameWindowSDL2> for App {
         );
 
         self.make_textures();
+        self.make_world_render_data();
       }
-
-      self.make_render_data();
     })
   }
 
   fn update(&mut self, _: &mut GameWindowSDL2, _: &UpdateArgs) {
-
-    time!(&self.timers, "update", || {
+    time!(&self.timers, "update", || unsafe {
       if self.jumping {
         if self.jump_fuel > 0 {
           self.jump_fuel -= 1;
@@ -735,7 +733,7 @@ impl Game<GameWindowSDL2> for App {
             .map(|block_index| {
               assert!(block_index < self.world_data.len());
               self.world_data.swap_remove(block_index);
-              self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+              self.world_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
               self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
               self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
             });
@@ -745,10 +743,13 @@ impl Game<GameWindowSDL2> for App {
   }
 
   fn render(&mut self, _: &mut GameWindowSDL2, _: &RenderArgs) {
-    time!(&self.timers, "render", || {
+    time!(&self.timers, "render", || unsafe {
+      // draw the world
       gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-      self.triangles.draw(gl::TRIANGLES);
+      self.world_triangles.draw(gl::TRIANGLES);
       self.outlines.draw(gl::LINES);
+
+      // draw textures
       gl::UseProgram(self.texture_shader);
       let mut i = 0u;
       for tex in self.textures.iter() {
@@ -775,7 +776,7 @@ impl App {
       camera_accel: Vector3::new(0.0, -0.1, 0.0),
       jump_fuel: 0,
       jumping: false,
-      triangles: GLBuffer::null(),
+      world_triangles: GLBuffer::null(),
       outlines: GLBuffer::null(),
       selection_triangles: GLBuffer::null(),
       texture_triangles: GLBuffer::null(),
@@ -830,8 +831,8 @@ impl App {
     }
   }
 
-  // Update the OpenGL vertex data with the world data triangles.
-  pub fn make_render_data(&mut self) {
+  // Update the OpenGL vertex data with the world data world_triangles.
+  pub unsafe fn make_world_render_data(&mut self) {
     fn selection_color(i: u32) -> Color4<GLfloat> {
       assert!(i < 0xFF000000, "too many items for selection buffer");
       let i = i + 1;
@@ -853,25 +854,25 @@ impl App {
 
     time!(&self.timers, "render.make_data", || {
       for (i, block) in self.world_data.iter().enumerate() {
-        unsafe {
-          self.triangles.push(block.to_colored_triangles());
-          self.outlines.push(block.to_outlines());
-          self.selection_triangles.push(block.to_triangles(selection_color(i as u32)));
-        }
+        self.world_triangles.push(block.to_colored_triangles());
+        self.outlines.push(block.to_outlines());
+        self.selection_triangles.push(block.to_triangles(selection_color(i as u32)));
       }
     })
   }
 
-  pub fn update_projection(&mut self) {
+  pub unsafe fn set_projection(&mut self, m: &Matrix4<GLfloat>) {
+    let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
+    if loc == -1 {
+      fail!("couldn't read matrix");
+    }
+    gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(m.ptr()));
+  }
+
+  #[inline]
+  pub unsafe fn update_projection(&mut self) {
     time!(&self.timers, "update.projection", || {
-      unsafe {
-        let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
-        if loc == -1 {
-          fail!("couldn't read matrix");
-        }
-        let projection = self.fov_matrix * self.rotation_matrix * self.translation_matrix;
-        gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(projection.ptr()));
-      }
+      self.set_projection(&(self.fov_matrix * self.rotation_matrix * self.translation_matrix));
     })
   }
 
@@ -909,7 +910,7 @@ impl App {
   }
 
   // move the player by a vector
-  pub fn translate(&mut self, v: Vector3<GLfloat>) {
+  pub unsafe fn translate(&mut self, v: Vector3<GLfloat>) {
     let player = self.construct_player(self.camera_position + v);
 
     let mut d_camera_speed : Vector3<GLfloat> = Vector3::new(0.0, 0.0, 0.0);
@@ -947,19 +948,19 @@ impl App {
 
   #[inline]
   // rotate the player's view.
-  pub fn rotate(&mut self, v: Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
+  pub unsafe fn rotate(&mut self, v: Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
     self.rotation_matrix = self.rotation_matrix * from_axis_angle(v, -r);
     self.update_projection();
   }
 
   #[inline]
-  pub fn rotate_lateral(&mut self, r: angle::Rad<GLfloat>) {
+  pub unsafe fn rotate_lateral(&mut self, r: angle::Rad<GLfloat>) {
     self.lateral_rotation = self.lateral_rotation + r;
     self.rotate(Vector3::unit_y(), r);
   }
 
   #[inline]
-  pub fn rotate_vertical(&mut self, r: angle::Rad<GLfloat>) {
+  pub unsafe fn rotate_vertical(&mut self, r: angle::Rad<GLfloat>) {
     let axis = self.right();
     self.rotate(axis, r);
   }
@@ -1111,7 +1112,7 @@ fn main() {
   let mut app = unsafe { App::new() };
   app.run(&mut window, &GameIteratorSettings {
     updates_per_second: 30,
-    max_frames_per_second: 30,
+    max_frames_per_second: 60,
   });
 
   println!("finished!");
