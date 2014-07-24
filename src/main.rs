@@ -427,13 +427,6 @@ pub struct App {
   lateral_rotation: angle::Rad<GLfloat>,
   // OpenGL shader "program" id.
   shader_program: u32,
-  // OpenGL Vertex Array Object id(s).
-  render_vertex_array: u32,
-  selection_vertex_array: u32,
-  // OpenGL Vertex Buffer Object id(s).
-  render_vertex_buffer: u32,
-  selection_vertex_buffer: u32,
-
   texture_shader: u32,
 
   // Is LMB pressed?
@@ -596,12 +589,14 @@ impl Game<GameWindowSDL2> for App {
           self.is_mouse_pressed = true;
         },
         piston::mouse::Right => {
-          match self.block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2) {
-            None => { },
-            Some(block_index) => {
-              if block_index > 0 { 
-                let block = self.world_data[block_index];
-                self.place_block(block.low_corner + Vector3::unit_y(), block.high_corner + Vector3::unit_y(), Dirt, true);
+          unsafe{
+            match self.block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2) {
+              None => { },
+              Some(block_index) => {
+                if block_index > 0 { 
+                  let block = self.world_data[block_index];
+                  self.place_block(block.low_corner + Vector3::unit_y(), block.high_corner + Vector3::unit_y(), Dirt, true);
+                }
               }
             }
           }
@@ -834,17 +829,17 @@ fn mask(mask: u32, i: u32) -> u32 {
 fn selection_color(i: u32) -> Color4<GLfloat> {
   assert!(i < 0xFF000000, "too many items for selection buffer");
   let ret = Color4::new(
-    &(mask(0x00FF0000, i) as GLfloat / 255.0),
-    &(mask(0x0000FF00, i) as GLfloat / 255.0),
-    &(mask(0x000000FF, i) as GLfloat / 255.0),
-    &0.0,
+    (mask(0x00FF0000, i) as GLfloat / 255.0),
+    (mask(0x0000FF00, i) as GLfloat / 255.0),
+    (mask(0x000000FF, i) as GLfloat / 255.0),
+    1.0,
   );
   assert!(ret.r >= 0.0);
-  assert!(ret.r <= 1.0);
-  assert!(ret.g >= 0.0);
-  assert!(ret.g <= 1.0);
-  assert!(ret.b >= 0.0);
-  assert!(ret.b <= 1.0);
+  assert!(ret.r <= 1.0 as f32);
+  assert!(ret.g >= 0.0 as f32);
+  assert!(ret.g <= 1.0 as f32);
+  assert!(ret.b >= 0.0 as f32);
+  assert!(ret.b <= 1.0 as f32);
   ret
 }
 
@@ -1013,9 +1008,9 @@ impl App {
     if !collided {
       unsafe {
         self.world_data.grow(1, &block);
-        self.triangles.push(block.to_colored_triangles());
+        self.world_triangles.push(block.to_colored_triangles());
         self.outlines.push(block.to_outlines());
-        self.selection_triangles.push(block.to_triangles(&selection_color(self.block_count)));
+        self.selection_triangles.push(block.to_triangles(selection_color(self.block_count)));
         self.block_id_to_index.insert(block.id, self.world_data.len() - 1);
         self.block_count += 1;
       }
@@ -1028,7 +1023,7 @@ impl App {
     let swapped_block_id = self.world_data[self.world_data.len() - 1].id;
     unsafe {
       self.world_data.swap_remove(block_index);
-      self.triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+      self.world_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
       self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
       self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
     }
