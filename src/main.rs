@@ -578,7 +578,7 @@ impl Game<GameWindowSDL2> for App {
     }
   }
 
-  fn load(&mut self) {
+  fn load(&mut self, _: &mut GameWindowSDL2) {
     time!(&self.timers, "load", || {
       mouse::show_cursor(false);
 
