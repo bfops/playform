@@ -1,5 +1,17 @@
-#![feature(globs)] // Allow global imports
+//! Ties together all the other modules in playform, and defines the entry
+//! point.
+//!
+//! Ben: "This be entry point, bitch."
+#![crate_type = "bin"]
+#![deny(warnings)]
+#![deny(missing_doc)]
+#![feature(globs)]
 #![feature(macro_rules)]
+#![feature(unsafe_destructor)]
+
+// TODO(cgaebel): This is just to make the `time` macro work. I'm not sure how
+// to disable warnings only in a macro.
+#![allow(unused_unsafe)]
 
 extern crate cgmath;
 extern crate gl;
@@ -7,17 +19,19 @@ extern crate piston;
 extern crate sdl2;
 extern crate sdl2_game_window;
 
-use color::Color4;
+pub use color::Color4;
 use cgmath::angle;
 use cgmath::array::Array2;
 use cgmath::matrix::{Matrix, Matrix3, Matrix4};
 use cgmath::num::{BaseFloat};
-use cgmath::vector::{Vector, Vector2, Vector3};
+use cgmath::point::{Point2, Point3};
+use cgmath::vector::{Vector, Vector3};
 use cgmath::projection;
 use piston::*;
 use gl::types::*;
 use sdl2_game_window::GameWindowSDL2;
 use sdl2::mouse;
+use std::c_str::CString;
 use std::mem;
 use std::iter::range_inclusive;
 use std::ptr;
@@ -49,51 +63,42 @@ static LINE_VERTICES_PER_BLOCK: uint = LINES_PER_BLOCK * VERTICES_PER_LINE;
 static MAX_JUMP_FUEL: uint = 4;
 
 #[deriving(Clone)]
-// Rendering vertex: position and color.
+/// An untextured rendering vertex, with position and color.
 pub struct Vertex {
-  position: Vector3<GLfloat>,
-  color:    Color4<GLfloat>,
-}
-
-impl Vertex {
-  fn new(x: GLfloat, y: GLfloat, z: GLfloat, c: Color4<GLfloat>) -> Vertex {
-    Vertex {
-      position: Vector3::new(x, y, z),
-      color:    c,
-    }
-  }
+  /// The 3-d position of this vertex in world space.
+  pub position: Point3<GLfloat>,
+  /// The color to apply to this vertex, in lieu of a texture.
+  pub color:    Color4<GLfloat>,
 }
 
 #[deriving(Clone)]
+/// A point on a texture, with both a screen position and a texture position.
+///
+/// The screen position is from [-1, 1], and the texture position is [0, 1].
+/// This is opengl's fault, not mine. Don't shoot the messenger.
 pub struct TextureVertex {
-  position: Vector2<GLfloat>,
-  texture_position: Vector2<GLfloat>,
+  /// The position of this vertex on the screen. The range of valid values
+  /// in each dimension is [-1, 1].
+  pub screen_position:  Point2<GLfloat>,
+
+  /// The position of this vertex on a texture. The range of valid values
+  /// in each dimension is [0, 1].
+  pub texture_position: Point2<GLfloat>,
 }
 
 impl TextureVertex {
-  #[inline]
-  pub fn new(x: GLfloat, y: GLfloat, tx: GLfloat, ty: GLfloat) -> TextureVertex {
-    TextureVertex {
-      position: Vector2::new(x, y),
-      texture_position: Vector2::new(tx, ty),
-    }
-  }
 }
 
+/// A data structure which specifies how to pass data from opengl to the vertex
+/// shaders.
 pub struct VertexAttribData<'a> {
-  name: &'a str,
-  span: uint,
+  /// Cooresponds to the shader's `input variable`.
+  pub name: &'a str,
+  /// The size (in floats) of this attribute.
+  pub size: uint,
 }
 
-impl<'a> VertexAttribData<'a> {
-  pub fn new(name: &'a str, span: uint) -> VertexAttribData<'a> {
-    VertexAttribData {
-      name: name,
-      span: span,
-    }
-  }
-}
-
+/// An opengl array, of shit on the GPU.
 pub struct GLBuffer<T> {
   vertex_array: u32,
   vertex_buffer: u32,
@@ -103,6 +108,7 @@ pub struct GLBuffer<T> {
 
 impl<T: Clone> GLBuffer<T> {
   #[inline]
+  /// An empty `GLBuffer`.
   pub unsafe fn null() -> GLBuffer<T> {
     GLBuffer {
       vertex_array: -1 as u32,
@@ -113,6 +119,7 @@ impl<T: Clone> GLBuffer<T> {
   }
 
   #[inline]
+  /// Creates a new array of objects on the GPU.
   pub unsafe fn new(shader_program: GLuint, attribs: &[VertexAttribData], capacity: uint) -> GLBuffer<T> {
     let mut vertex_array = 0;
     let mut vertex_buffer = 0;
@@ -132,13 +139,13 @@ impl<T: Clone> GLBuffer<T> {
       gl::EnableVertexAttribArray(shader_attrib);
       gl::VertexAttribPointer(
           shader_attrib,
-          attrib.span as i32,
+          attrib.size as i32,
           gl::FLOAT,
           gl::FALSE as GLboolean,
           mem::size_of::<T>() as i32,
           ptr::null().offset(offset),
       );
-      offset += (attrib.span * mem::size_of::<GLfloat>()) as int;
+      offset += (attrib.size * mem::size_of::<GLfloat>()) as int;
     }
 
     if offset != mem::size_of::<T>() as int {
@@ -160,6 +167,7 @@ impl<T: Clone> GLBuffer<T> {
     }
   }
 
+  /// Analog of vec::Vector::swap_remove`, but for triangle data.
   pub unsafe fn swap_remove(&mut self, span: uint, i: uint) {
     gl::BindVertexArray(self.vertex_array);
     gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
@@ -184,6 +192,7 @@ impl<T: Clone> GLBuffer<T> {
   }
 
   #[inline]
+  /// Add a set of triangles to the set of triangles to render.
   pub unsafe fn push(&mut self, vs: &[T]) {
     if self.length >= self.capacity {
       fail!("Overfilled GLBuffer: {} out of {}", self.length, self.capacity);
@@ -204,19 +213,24 @@ impl<T: Clone> GLBuffer<T> {
   }
 
   #[inline]
+  /// Draws all the queued triangles to the screen.
   pub fn draw(&self, mode: GLenum) {
     self.draw_slice(mode, 0, self.length);
   }
 
+  /// Draw some subset of the triangle array.
   pub fn draw_slice(&self, mode: GLenum, start: uint, len: uint) {
     gl::BindVertexArray(self.vertex_array);
     gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
 
     gl::DrawArrays(mode, start as i32, len as i32);
   }
+}
 
+#[unsafe_destructor]
+impl<T> Drop for GLBuffer<T> {
   #[inline]
-  pub fn drop(&self) {
+  fn drop(&mut self) {
     unsafe {
       gl::DeleteBuffers(1, &self.vertex_buffer);
       gl::DeleteVertexArrays(1, &self.vertex_array);
@@ -224,7 +238,9 @@ impl<T: Clone> GLBuffer<T> {
   }
 }
 
+/// Similar to a block in minecraft.
 #[deriving(Clone)]
+#[allow(missing_doc)]
 pub enum BlockType {
   Grass,
   Dirt,
@@ -234,14 +250,17 @@ pub enum BlockType {
 impl BlockType {
   fn to_color(&self) -> Color4<GLfloat> {
     match *self {
-      Grass => Color4::new(0.0, 0.5,  0.0, 1.0),
-      Dirt  => Color4::new(0.2, 0.15, 0.1, 1.0),
-      Stone => Color4::new(0.5, 0.5,  0.5, 1.0),
+      Grass => Color4::of_rgba(0.0, 0.5,  0.0, 1.0),
+      Dirt  => Color4::of_rgba(0.2, 0.15, 0.1, 1.0),
+      Stone => Color4::of_rgba(0.5, 0.5,  0.5, 1.0),
     }
   }
 }
 
+// TODO(cgaebel): Shold `Block` just be a `cgmath::Aabb`?
+
 #[deriving(Clone)]
+/// A minecraft-y block in the game world.
 pub struct Block {
   // bounds of the Block
   low_corner: Vector3<GLfloat>,
@@ -314,7 +333,10 @@ impl Block {
     let (x2, y2, z2) = (self.high_corner.x, self.high_corner.y, self.high_corner.z);
 
     let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> Vertex {
-      Vertex::new(x, y, z, c)
+      Vertex {
+        position: Point3 { x: x, y: y, z: z },
+        color: c
+      }
     };
 
     [
@@ -350,31 +372,35 @@ impl Block {
     let d = 0.002;
     let (x1, y1, z1) = (self.low_corner.x - d, self.low_corner.y - d, self.low_corner.z - d);
     let (x2, y2, z2) = (self.high_corner.x + d, self.high_corner.y + d, self.high_corner.z + d);
-    let c = Color4::new(0.0, 0.0, 0.0, 1.0);
+    let c = Color4::of_rgba(0.0, 0.0, 0.0, 1.0);
 
-    fn vtx(x: GLfloat, y: GLfloat, z: GLfloat, a: Color4<GLfloat>) -> Vertex {
-      Vertex::new(x, y, z, a)
-    }
+    let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> Vertex {
+      Vertex {
+        position: Point3 { x: x, y: y, z: z },
+        color: c
+      }
+    };
 
     [
-      vtx(x1, y1, z1, c), vtx(x2, y1, z1, c),
-      vtx(x1, y2, z1, c), vtx(x2, y2, z1, c),
-      vtx(x1, y1, z2, c), vtx(x2, y1, z2, c),
-      vtx(x1, y2, z2, c), vtx(x2, y2, z2, c),
+      vtx(x1, y1, z1), vtx(x2, y1, z1),
+      vtx(x1, y2, z1), vtx(x2, y2, z1),
+      vtx(x1, y1, z2), vtx(x2, y1, z2),
+      vtx(x1, y2, z2), vtx(x2, y2, z2),
 
-      vtx(x1, y1, z1, c), vtx(x1, y2, z1, c),
-      vtx(x2, y1, z1, c), vtx(x2, y2, z1, c),
-      vtx(x1, y1, z2, c), vtx(x1, y2, z2, c),
-      vtx(x2, y1, z2, c), vtx(x2, y2, z2, c),
+      vtx(x1, y1, z1), vtx(x1, y2, z1),
+      vtx(x2, y1, z1), vtx(x2, y2, z1),
+      vtx(x1, y1, z2), vtx(x1, y2, z2),
+      vtx(x2, y1, z2), vtx(x2, y2, z2),
 
-      vtx(x1, y1, z1, c), vtx(x1, y1, z2, c),
-      vtx(x2, y1, z1, c), vtx(x2, y1, z2, c),
-      vtx(x1, y2, z1, c), vtx(x1, y2, z2, c),
-      vtx(x2, y2, z1, c), vtx(x2, y2, z2, c),
+      vtx(x1, y1, z1), vtx(x1, y1, z2),
+      vtx(x2, y1, z1), vtx(x2, y1, z2),
+      vtx(x1, y2, z1), vtx(x1, y2, z2),
+      vtx(x2, y2, z1), vtx(x2, y2, z2),
     ]
   }
 }
 
+/// The whole application. Wrapped up in a nice frameworky struct for SDL.
 pub struct App {
   world_data: Vec<Block>,
   // position; units are world coordinates
@@ -413,7 +439,7 @@ pub struct App {
   timers: stopwatch::TimerSet,
 }
 
-// Create a 3D translation matrix.
+/// Create a 3D translation matrix.
 pub fn translate(t: Vector3<GLfloat>) -> Matrix4<GLfloat> {
   Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
@@ -423,7 +449,7 @@ pub fn translate(t: Vector3<GLfloat>) -> Matrix4<GLfloat> {
   )
 }
 
-// Create a 3D perspective initialization matrix.
+/// Create a 3D perspective initialization matrix.
 pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) -> Matrix4<GLfloat> {
   Matrix4::new(
     fovy / aspect, 0.0, 0.0,                              0.0,
@@ -434,12 +460,12 @@ pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) 
 }
 
 #[inline]
-// Create a XY symmetric ortho matrix.
+/// Create a XY symmetric ortho matrix.
 pub fn sortho(dx: GLfloat, dy: GLfloat, near: GLfloat, far: GLfloat) -> Matrix4<GLfloat> {
   projection::ortho(-dx, dx, -dy, dy, near, far)
 }
 
-// Create a matrix from a rotation around an arbitrary axis
+/// Create a matrix from a rotation around an arbitrary axis.
 pub fn from_axis_angle<S: BaseFloat>(axis: Vector3<S>, angle: angle::Rad<S>) -> Matrix4<S> {
     let (s, c) = angle::sin_cos(angle);
     let _1subc = num::one::<S>() - c;
@@ -467,6 +493,7 @@ pub fn from_axis_angle<S: BaseFloat>(axis: Vector3<S>, angle: angle::Rad<S>) -> 
     )
 }
 
+/// Gets the id number for a given input of the shader program.
 #[allow(non_snake_case_functions)]
 pub unsafe fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
   name.with_c_str(|ptr| gl::GetAttribLocation(shader_program, ptr))
@@ -670,40 +697,40 @@ impl Game<GameWindowSDL2> for App {
       unsafe {
         self.selection_triangles = GLBuffer::new(
           self.shader_program,
-          [ VertexAttribData::new("position", 3),
-            VertexAttribData::new("in_color", 4),
+          [ VertexAttribData { name: "position", size: 3 },
+            VertexAttribData { name: "in_color", size: 4 },
           ],
           self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
         );
 
         self.world_triangles = GLBuffer::new(
           self.shader_program,
-          [ VertexAttribData::new("position", 3),
-            VertexAttribData::new("in_color", 4),
+          [ VertexAttribData { name: "position", size: 3 },
+            VertexAttribData { name: "in_color", size: 4 },
           ],
           self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
         );
 
         self.outlines = GLBuffer::new(
           self.shader_program,
-          [ VertexAttribData::new("position", 3),
-            VertexAttribData::new("in_color", 4),
+          [ VertexAttribData { name: "position", size: 3 },
+            VertexAttribData { name: "in_color", size: 4 },
           ],
           self.world_data.len() * LINE_VERTICES_PER_BLOCK,
         );
 
         self.hud_triangles = GLBuffer::new(
           self.shader_program,
-          [ VertexAttribData::new("position", 3),
-            VertexAttribData::new("in_color", 4),
+          [ VertexAttribData { name: "position", size: 3 },
+            VertexAttribData { name: "in_color", size: 4 },
           ],
           16 * VERTICES_PER_TRIANGLE,
         );
 
         self.texture_triangles = GLBuffer::new(
           self.texture_shader,
-          [ VertexAttribData::new("position", 2),
-            VertexAttribData::new("texture_position", 2),
+          [ VertexAttribData { name: "position", size: 2 },
+            VertexAttribData { name: "texture_position", size: 2 },
           ],
           8 * VERTICES_PER_TRIANGLE,
         );
@@ -791,6 +818,7 @@ fn mask(mask: u32, i: u32) -> u32 {
 }
 
 impl App {
+  /// Initializes an empty app.
   pub unsafe fn new() -> App {
     App {
       world_data: Vec::new(),
@@ -818,6 +846,7 @@ impl App {
     }
   }
 
+  /// Build all of our program's shaders.
   pub unsafe fn set_up_shaders(&mut self) {
     let ivs = compile_shader(ID_VS_SRC, gl::VERTEX_SHADER);
     let txs = compile_shader(TX_SRC, gl::FRAGMENT_SHADER);
@@ -830,6 +859,7 @@ impl App {
     gl::UseProgram(self.shader_program);
   }
 
+  /// Makes some basic textures in the world.
   pub unsafe fn make_textures(&mut self) {
     let instructions = Vec::from_slice([
             "Use WASD to move, and spacebar to jump.",
@@ -844,24 +874,42 @@ impl App {
       let (x1, y1) = (-0.97, y - 0.2);
       let (x2, y2) = (0.0, y);
       self.texture_triangles.push([
-        TextureVertex::new(x1, y1, 0.0, 0.0),
-        TextureVertex::new(x2, y2, 1.0, 1.0),
-        TextureVertex::new(x1, y2, 0.0, 1.0),
+        TextureVertex {
+          screen_position:  Point2 { x: x1,  y: y1  },
+          texture_position: Point2 { x: 0.0, y: 0.0 },
+        },
+        TextureVertex {
+          screen_position:  Point2 { x: x2,  y: y2  },
+          texture_position: Point2 { x: 1.0, y: 1.0 },
+        },
+         TextureVertex {
+          screen_position:  Point2 { x: x1,  y: y2  },
+          texture_position: Point2 { x: 0.0, y: 1.0 },
+        },
 
-        TextureVertex::new(x1, y1, 0.0, 0.0),
-        TextureVertex::new(x2, y1, 1.0, 0.0),
-        TextureVertex::new(x2, y2, 1.0, 1.0),
+        TextureVertex {
+          screen_position:  Point2 { x: x1,  y: y1  },
+          texture_position: Point2 { x: 0.0, y: 0.0 },
+        },
+        TextureVertex {
+          screen_position:  Point2 { x: x2,  y: y1  },
+          texture_position: Point2 { x: 1.0, y: 0.0 },
+        },
+        TextureVertex {
+          screen_position:  Point2 { x: x2,  y: y2  },
+          texture_position: Point2 { x: 1.0, y: 1.0 },
+        },
       ]);
       y -= 0.2;
     }
   }
 
-  // Update the OpenGL vertex data with the world data world_triangles.
+  /// Update the OpenGL vertex data with the world data world_triangles.
   pub unsafe fn make_world_render_data(&mut self) {
     fn selection_color(i: u32) -> Color4<GLfloat> {
       assert!(i < 0xFF000000, "too many items for selection buffer");
       let i = i + 1;
-      let ret = Color4::new(
+      let ret = Color4::of_rgba(
         (mask(0x00FF0000, i) as GLfloat / 255.0),
         (mask(0x0000FF00, i) as GLfloat / 255.0),
         (mask(0x000000FF, i) as GLfloat / 255.0),
@@ -886,28 +934,49 @@ impl App {
     })
   }
 
+  /// Creates the HUD.
   pub unsafe fn make_hud(&mut self) {
-    let cursor_color = Color4::new(0.0, 0.0, 0.0, 0.75);
-    self.hud_triangles.push([
-      Vertex::new(-0.02, -0.02, 0.0, cursor_color),
-      Vertex::new(0.02, 0.02, 0.0, cursor_color),
-      Vertex::new(-0.02, 0.02, 0.0, cursor_color),
+    let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
 
-      Vertex::new(-0.02, -0.02, 0.0, cursor_color),
-      Vertex::new(0.02, -0.02, 0.0, cursor_color),
-      Vertex::new(0.02, 0.02, 0.0, cursor_color),
+    let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> Vertex {
+      Vertex {
+        position: Point3 { x: x, y: y, z: z },
+        color: cursor_color
+      }
+    };
+
+    self.hud_triangles.push([
+      vtx(-0.02, -0.02, 0.0),
+      vtx(0.02, 0.02, 0.0),
+      vtx(-0.02, 0.02, 0.0),
+
+      vtx(-0.02, -0.02, 0.0),
+      vtx(0.02, -0.02, 0.0),
+      vtx(0.02, 0.02, 0.0),
     ]);
   }
 
+
+  /// Sets the opengl projection matrix.
   pub unsafe fn set_projection(&mut self, m: &Matrix4<GLfloat>) {
-    let loc = gl::GetUniformLocation(self.shader_program, "proj_matrix".to_c_str().unwrap());
-    if loc == -1 {
-      fail!("couldn't read matrix");
-    }
+    local_data_key!(proj_matrix_name: CString);
+
+    let mat_name =
+      match proj_matrix_name.get() {
+        None => {
+          proj_matrix_name.replace(Some("proj_matrix".to_c_str()));
+          proj_matrix_name.get().unwrap()
+        },
+        Some(s) => s
+      };
+
+    let loc = gl::GetUniformLocation(self.shader_program, mat_name.as_ptr());
+    assert!(loc != -1, "couldn't read matrix");
     gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(m.ptr()));
   }
 
   #[inline]
+  /// Updates the projetion matrix with all our movements.
   pub unsafe fn update_projection(&mut self) {
     time!(&self.timers, "update.projection", || {
       self.set_projection(&(self.fov_matrix * self.rotation_matrix * self.translation_matrix));
@@ -915,6 +984,7 @@ impl App {
   }
 
   #[inline]
+  /// Renders the selection buffer.
   pub fn render_selection(&mut self) {
     time!(&self.timers, "render.render_selection", || {
       gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
@@ -922,10 +992,12 @@ impl App {
     })
   }
 
-  pub unsafe fn block_at_screen(&mut self, x: i32, y: i32) -> Option<uint> {
+  /// Returns the index of the block at the given (x, y) coordinate on the screen.
+  /// The pixel coordinates are in the range [(0.0, 0.0), (1.0, 1.0)].
+  unsafe fn block_at_screen(&mut self, x: i32, y: i32) -> Option<uint> {
       self.render_selection();
 
-      let pixels: Color4<u8> = Color4::new(0, 0, 0, 0);
+      let pixels: Color4<u8> = Color4::of_rgba(0, 0, 0, 0);
       gl::ReadPixels(x, y, 1, 1, gl::RGB, gl::UNSIGNED_BYTE, mem::transmute(&pixels));
 
       let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
@@ -937,17 +1009,22 @@ impl App {
   }
 
   #[inline]
+  /// Changes the camera's acceleration by the given `da`.
   pub fn walk(&mut self, da: Vector3<GLfloat>) {
     self.camera_accel = self.camera_accel + da.mul_s(0.2);
   }
 
+
+  /// Constructs a new player block, given the highest x, highest y, and
+  /// highest z corner. The size of the player is hardcoded.
   fn construct_player(&self, high_corner: Vector3<GLfloat>) -> Block {
+    // TODO(cgaebel): We should be using a `cgmath::Aabb` for this.
     let low_corner = high_corner - Vector3::new(0.5, 2.0, 1.0);
     // TODO: this really shouldn't be Stone.
     Block::new(low_corner, high_corner, Stone)
   }
 
-  // move the player by a vector
+  /// Translates the camera by a vector.
   pub unsafe fn translate(&mut self, v: Vector3<GLfloat>) {
     let player = self.construct_player(self.camera_position + v);
 
@@ -985,19 +1062,22 @@ impl App {
   }
 
   #[inline]
-  // rotate the player's view.
+  /// Rotate the player's view about a given vector, by `r` radians.
   pub unsafe fn rotate(&mut self, v: Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
     self.rotation_matrix = self.rotation_matrix * from_axis_angle(v, -r);
     self.update_projection();
   }
 
   #[inline]
+  /// Rotate the camera around the y axis, by `r` radians. Positive is
+  /// counterclockwise.
   pub unsafe fn rotate_lateral(&mut self, r: angle::Rad<GLfloat>) {
     self.lateral_rotation = self.lateral_rotation + r;
     self.rotate(Vector3::unit_y(), r);
   }
 
   #[inline]
+  /// Changes the camera pitch by `r` radians. Positive is up.
   pub unsafe fn rotate_vertical(&mut self, r: angle::Rad<GLfloat>) {
     let axis = self.right();
     self.rotate(axis, r);
@@ -1005,20 +1085,23 @@ impl App {
 
   // axes
 
-  // Return the "right" axis (i.e. the x-axis rotated to match you).
+  /// Return the "right" axis (i.e. the x-axis rotated to match you).
   pub fn right(&self) -> Vector3<GLfloat> {
     return Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&Vector3::unit_x());
   }
 
-  // Return the "forward" axis (i.e. the z-axis rotated to match you).
+  /// Return the "forward" axis (i.e. the z-axis rotated to match you).
   pub fn forward(&self) -> Vector3<GLfloat> {
     return Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&-Vector3::unit_z());
   }
+}
 
-  pub unsafe fn drop(&mut self) {
-    if self.textures.len() > 0 {
-      gl::DeleteTextures(self.textures.len() as i32, &self.textures[0]);
-    }
+// TODO(cgabeel): This should be removed when rustc bug #8861 is patched.
+#[unsafe_destructor]
+impl Drop for App {
+  fn drop(&mut self) {
+    if self.textures.len() == 0 { return }
+    unsafe { gl::DeleteTextures(self.textures.len() as i32, &self.textures[0]); }
   }
 }
 
