@@ -672,7 +672,6 @@ impl Game<GameWindowSDL2> for App {
         );
 
         self.make_textures();
-        self.make_world_render_data();
         self.make_hud();
       }
 
@@ -830,7 +829,9 @@ impl App {
   pub unsafe fn new() -> App {
     App {
       world_data: Vec::new(),
-      block_count: 0 as u32,
+      // Start assigning block_ids at 1.
+      // block_id 0 corresponds to no block.
+      block_count: 1 as u32,
       block_id_to_index: HashMap::<u32, uint>::new(),
       camera_position: Vector3::zero(),
       camera_speed: Vector3::zero(),
@@ -892,17 +893,6 @@ impl App {
       ]);
       y -= 0.2;
     }
-  }
-
-  // Update the OpenGL vertex data with the world data world_triangles.
-  pub unsafe fn make_world_render_data(&mut self) {
-    time!(&self.timers, "render.make_data", || {
-      for (i, block) in self.world_data.iter().enumerate() {
-        self.world_triangles.push(block.to_colored_triangles());
-        self.outlines.push(block.to_outlines());
-        self.selection_triangles.push(block.to_triangles(selection_color(i as u32)));
-      }
-    })
   }
 
   pub unsafe fn make_hud(&mut self) {
