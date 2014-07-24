@@ -41,6 +41,7 @@ use std::num;
 mod color;
 mod fontloader;
 mod stopwatch;
+mod tex;
 mod ttf;
 
 // TODO(cgaebel): How the hell do I get this to be exported from `mod stopwatch`?
