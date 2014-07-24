@@ -645,6 +645,52 @@ impl Game<GameWindowSDL2> for App {
 
       let timers = &self.timers;
 
+      unsafe {
+        self.selection_triangles = GLBuffer::new(
+          self.shader_program,
+          [ VertexAttribData::new("position", 3),
+            VertexAttribData::new("in_color", 4),
+          ],
+          MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BLOCK,
+        );
+
+        self.world_triangles = GLBuffer::new(
+          self.shader_program,
+          [ VertexAttribData::new("position", 3),
+            VertexAttribData::new("in_color", 4),
+          ],
+          MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BLOCK,
+        );
+
+        self.outlines = GLBuffer::new(
+          self.shader_program,
+          [ VertexAttribData::new("position", 3),
+            VertexAttribData::new("in_color", 4),
+          ],
+          MAX_WORLD_SIZE * LINE_VERTICES_PER_BLOCK,
+        );
+
+        self.hud_triangles = GLBuffer::new(
+          self.shader_program,
+          [ VertexAttribData::new("position", 3),
+            VertexAttribData::new("in_color", 4),
+          ],
+          16 * VERTICES_PER_TRIANGLE,
+        );
+
+        self.texture_triangles = GLBuffer::new(
+          self.texture_shader,
+          [ VertexAttribData::new("position", 2),
+            VertexAttribData::new("texture_position", 2),
+          ],
+          8 * VERTICES_PER_TRIANGLE,
+        );
+
+        self.make_textures();
+        self.make_world_render_data();
+        self.make_hud();
+      }
+
       timers.time("load.construct", || {
         // low dirt block
         for i in range_inclusive(-1i, 1) {
@@ -703,51 +749,6 @@ impl Game<GameWindowSDL2> for App {
           }
         }
       });
-      unsafe {
-        self.selection_triangles = GLBuffer::new(
-          self.shader_program,
-          [ VertexAttribData::new("position", 3),
-            VertexAttribData::new("in_color", 4),
-          ],
-          self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
-        );
-
-        self.world_triangles = GLBuffer::new(
-          self.shader_program,
-          [ VertexAttribData::new("position", 3),
-            VertexAttribData::new("in_color", 4),
-          ],
-          self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
-        );
-
-        self.outlines = GLBuffer::new(
-          self.shader_program,
-          [ VertexAttribData::new("position", 3),
-            VertexAttribData::new("in_color", 4),
-          ],
-          self.world_data.len() * LINE_VERTICES_PER_BLOCK,
-        );
-
-        self.hud_triangles = GLBuffer::new(
-          self.shader_program,
-          [ VertexAttribData::new("position", 3),
-            VertexAttribData::new("in_color", 4),
-          ],
-          16 * VERTICES_PER_TRIANGLE,
-        );
-
-        self.texture_triangles = GLBuffer::new(
-          self.texture_shader,
-          [ VertexAttribData::new("position", 2),
-            VertexAttribData::new("texture_position", 2),
-          ],
-          8 * VERTICES_PER_TRIANGLE,
-        );
-
-        self.make_textures();
-        self.make_world_render_data();
-        self.make_hud();
-      }
     })
   }
 
@@ -1136,8 +1137,9 @@ void main() {
 static FS_SRC: &'static str =
 r"#version 150
 in  vec4 color;
+out vec4 out_color;
 void main() {
-  gl_FragColor = color;
+  out_color = color;
 }";
 
 static ID_VS_SRC: &'static str =
@@ -1153,11 +1155,12 @@ void main() {
 static TX_SRC: &'static str =
 r"#version 150
 in vec2 tex_position;
+out vec4 color;
 
 uniform sampler2D texture_in;
 
 void main(){
-  gl_FragColor = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
+  color = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
 }
 ";
 
