@@ -4,6 +4,8 @@ name = "playform"
 version = "0.0.0"
 authors = [
     "Ben Foppa <benjamin.foppa@gmail.com>",
+    "Clark Gaebel <cg.wowus.cg@gmail.com>",
+    "Elijah Andrews <elijahcandrews@gmail.com>",
   ]
 
 [[bin]]
@@ -19,7 +21,7 @@ git = "https://github.com/bjz/gl-rs"
 git = "https://github.com/RobotGymnast/sdl2_game_window"
 
 [dependencies.piston]
-git = "https://github.com/PistonDevelopers/piston"
+git = "https://github.com/RobotGymnast/piston"
 
 [dependencies.cgmath]
 # until https://github.com/bjz/cgmath-rs/pull/101 is resolved.

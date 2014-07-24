@@ -14,8 +14,8 @@ It can be built with `cargo build`, which should grab dependencies
 automatically. `playform` can then be run from the `target` directory.
 
 The camera can be moved using `WASD` controls, as well as `Space` and `LShift`,
-and it can be rotated using the arrow keys. Using the mouse to click on a block
-will cause it to disappear (this is noticeably laggy).
+and the view can be rotated using the camera or the arrow keys.
+Using the mouse to click on a block will cause it to disappear.
 
 ## Screenshots
 
