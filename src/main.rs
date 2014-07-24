@@ -1024,7 +1024,7 @@ impl App {
 
 // Shader sources
 static VS_SRC: &'static str =
-r"#version 150
+r"#version 330 core
 uniform mat4 proj_matrix;
 
 in  vec3 position;
@@ -1037,14 +1037,15 @@ void main() {
 }";
 
 static FS_SRC: &'static str =
-r"#version 150
+r"#version 330 core
 in  vec4 color;
+out vec4 frag_color;
 void main() {
-  gl_FragColor = color;
+  frag_color = color;
 }";
 
 static ID_VS_SRC: &'static str =
-r"#version 150
+r"#version 330 core
 in  vec2 position;
 in  vec2 texture_position;
 out vec2 tex_position;
@@ -1054,13 +1055,14 @@ void main() {
 }";
 
 static TX_SRC: &'static str =
-r"#version 150
-in vec2 tex_position;
+r"#version 330 core
+in  vec2 tex_position;
+out vec4 frag_color;
 
 uniform sampler2D texture_in;
 
 void main(){
-  gl_FragColor = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
+  frag_color = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
 }
 ";
 
