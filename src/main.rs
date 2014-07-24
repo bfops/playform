@@ -20,6 +20,7 @@ use std::iter::range_inclusive;
 use std::ptr;
 use std::str;
 use std::num;
+use vertex::{ColoredVertex,TextureVertex};
 
 // TODO(cgaebel): How the hell do I get this to be exported from `mod stopwatch`?
 macro_rules! time(
@@ -39,33 +40,6 @@ static TRIANGLE_VERTICES_PER_BLOCK: uint = TRIANGLES_PER_BLOCK * VERTICES_PER_TR
 static LINE_VERTICES_PER_BLOCK: uint = LINES_PER_BLOCK * VERTICES_PER_LINE;
 
 static MAX_JUMP_FUEL: uint = 4;
-
-#[deriving(Clone)]
-/// An untextured rendering vertex, with position and color.
-pub struct Vertex {
-  /// The 3-d position of this vertex in world space.
-  pub position: Point3<GLfloat>,
-  /// The color to apply to this vertex, in lieu of a texture.
-  pub color:    Color4<GLfloat>,
-}
-
-#[deriving(Clone)]
-/// A point on a texture, with both a screen position and a texture position.
-///
-/// The screen position is from [-1, 1], and the texture position is [0, 1].
-/// This is opengl's fault, not mine. Don't shoot the messenger.
-pub struct TextureVertex {
-  /// The position of this vertex on the screen. The range of valid values
-  /// in each dimension is [-1, 1].
-  pub screen_position:  Point2<GLfloat>,
-
-  /// The position of this vertex on a texture. The range of valid values
-  /// in each dimension is [0, 1].
-  pub texture_position: Point2<GLfloat>,
-}
-
-impl TextureVertex {
-}
 
 /// A data structure which specifies how to pass data from opengl to the vertex
 /// shaders.
@@ -306,12 +280,12 @@ impl Block {
   // Construct the faces of the block as triangles for rendering.
   // Triangle vertices are in clockwise order when viewed from the outside of
   // the cube, for rendering purposes.
-  fn to_triangles(&self, c: Color4<GLfloat>) -> [Vertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
+  fn to_triangles(&self, c: Color4<GLfloat>) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
     let (x1, y1, z1) = (self.low_corner.x, self.low_corner.y, self.low_corner.z);
     let (x2, y2, z2) = (self.high_corner.x, self.high_corner.y, self.high_corner.z);
 
-    let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> Vertex {
-      Vertex {
+    let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> ColoredVertex {
+      ColoredVertex {
         position: Point3 { x: x, y: y, z: z },
         color: c
       }
@@ -340,20 +314,20 @@ impl Block {
   }
 
   #[inline]
-  fn to_colored_triangles(&self) -> [Vertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
+  fn to_colored_triangles(&self) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
     self.to_triangles(self.block_type.to_color())
   }
 
   // Construct outlines for this Block, to sharpen the edges.
-  fn to_outlines(&self) -> [Vertex, ..VERTICES_PER_LINE * LINES_PER_BLOCK] {
+  fn to_outlines(&self) -> [ColoredVertex, ..VERTICES_PER_LINE * LINES_PER_BLOCK] {
     // distance from the block to construct the bounding outlines.
     let d = 0.002;
     let (x1, y1, z1) = (self.low_corner.x - d, self.low_corner.y - d, self.low_corner.z - d);
     let (x2, y2, z2) = (self.high_corner.x + d, self.high_corner.y + d, self.high_corner.z + d);
     let c = Color4::of_rgba(0.0, 0.0, 0.0, 1.0);
 
-    let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> Vertex {
-      Vertex {
+    let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> ColoredVertex {
+      ColoredVertex {
         position: Point3 { x: x, y: y, z: z },
         color: c
       }
@@ -392,13 +366,13 @@ pub struct App {
   // are we currently trying to jump? (e.g. holding the key).
   jumping: bool,
   // OpenGL buffers
-  world_triangles: GLBuffer<Vertex>,
-  outlines: GLBuffer<Vertex>,
-  hud_triangles: GLBuffer<Vertex>,
+  world_triangles: GLBuffer<ColoredVertex>,
+  outlines: GLBuffer<ColoredVertex>,
+  hud_triangles: GLBuffer<ColoredVertex>,
   texture_triangles: GLBuffer<TextureVertex>,
   textures: Vec<GLuint>,
   // OpenGL-friendly equivalent of world_data for selection/picking.
-  selection_triangles: GLBuffer<Vertex>,
+  selection_triangles: GLBuffer<ColoredVertex>,
   // OpenGL projection matrix components
   hud_matrix: Matrix4<GLfloat>,
   fov_matrix: Matrix4<GLfloat>,
@@ -918,8 +892,8 @@ impl App {
   pub unsafe fn make_hud(&mut self) {
     let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
 
-    let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> Vertex {
-      Vertex {
+    let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> ColoredVertex {
+      ColoredVertex {
         position: Point3 { x: x, y: y, z: z },
         color: cursor_color
       }

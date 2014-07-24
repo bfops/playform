@@ -22,6 +22,7 @@ mod main;
 mod fontloader;
 mod stopwatch;
 mod ttf;
+mod vertex;
 
 fn main() {
   return main::main();
