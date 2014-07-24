@@ -1,24 +1,3 @@
-//! Ties together all the other modules in playform, and defines the entry
-//! point.
-//!
-//! Ben: "This be entry point, bitch."
-#![crate_type = "bin"]
-#![deny(warnings)]
-#![deny(missing_doc)]
-#![feature(globs)]
-#![feature(macro_rules)]
-#![feature(unsafe_destructor)]
-
-// TODO(cgaebel): This is just to make the `time` macro work. I'm not sure how
-// to disable warnings only in a macro.
-#![allow(unused_unsafe)]
-
-extern crate cgmath;
-extern crate gl;
-extern crate piston;
-extern crate sdl2;
-extern crate sdl2_game_window;
-
 pub use color::Color4;
 use cgmath::angle;
 use cgmath::array::Array2;
@@ -28,21 +7,19 @@ use cgmath::point::{Point2, Point3};
 use cgmath::vector::{Vector, Vector3};
 use cgmath::projection;
 use cstr_cache::CStringCache;
+use fontloader;
+use piston;
 use piston::*;
+use gl;
 use gl::types::*;
 use sdl2_game_window::GameWindowSDL2;
 use sdl2::mouse;
+use stopwatch;
 use std::mem;
 use std::iter::range_inclusive;
 use std::ptr;
 use std::str;
 use std::num;
-
-mod color;
-mod cstr_cache;
-mod fontloader;
-mod stopwatch;
-mod ttf;
 
 // TODO(cgaebel): How the hell do I get this to be exported from `mod stopwatch`?
 macro_rules! time(
@@ -1084,6 +1061,7 @@ impl App {
   }
 
   /// Return the "forward" axis (i.e. the z-axis rotated to match you).
+  #[allow(dead_code)]
   pub fn forward(&self) -> Vector3<GLfloat> {
     return Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&-Vector3::unit_z());
   }
@@ -1204,8 +1182,7 @@ unsafe fn println_c_str(str: *const u8) {
   }
 }
 
-#[allow(dead_code)]
-fn main() {
+pub fn main() {
   println!("starting");
 
   let mut window = GameWindowSDL2::new(

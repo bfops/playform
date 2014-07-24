@@ -11,7 +11,7 @@ authors = [
 [[bin]]
 
 name = "playform"
-path = "./src/main.rs"
+path = "./src/playform.rs"
 
 [dependencies.gl]
 git = "https://github.com/bjz/gl-rs"
