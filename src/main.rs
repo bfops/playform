@@ -13,6 +13,7 @@ use cgmath::array::Array2;
 use cgmath::matrix::{Matrix, Matrix3, Matrix4};
 use cgmath::num::{BaseFloat};
 use cgmath::vector::{Vector, Vector2, Vector3};
+use cgmath::projection;
 use piston::*;
 use gl::types::*;
 use sdl2_game_window::GameWindowSDL2;
@@ -389,11 +390,13 @@ pub struct App {
   // OpenGL buffers
   world_triangles: GLBuffer<Vertex>,
   outlines: GLBuffer<Vertex>,
+  hud_triangles: GLBuffer<Vertex>,
   texture_triangles: GLBuffer<TextureVertex>,
   textures: Vec<GLuint>,
   // OpenGL-friendly equivalent of world_data for selection/picking.
   selection_triangles: GLBuffer<Vertex>,
   // OpenGL projection matrix components
+  hud_matrix: Matrix4<GLfloat>,
   fov_matrix: Matrix4<GLfloat>,
   translation_matrix: Matrix4<GLfloat>,
   rotation_matrix: Matrix4<GLfloat>,
@@ -428,6 +431,12 @@ pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) 
     0.0,           0.0, (near + far) / (near - far),     -1.0,
     0.0,           0.0, 2.0 * near * far / (near - far),  0.0,
   )
+}
+
+#[inline]
+// Create a XY symmetric ortho matrix.
+pub fn sortho(dx: GLfloat, dy: GLfloat, near: GLfloat, far: GLfloat) -> Matrix4<GLfloat> {
+  projection::ortho(-dx, dx, -dy, dy, near, far)
 }
 
 // Create a matrix from a rotation around an arbitrary axis
@@ -683,6 +692,14 @@ impl Game<GameWindowSDL2> for App {
           self.world_data.len() * LINE_VERTICES_PER_BLOCK,
         );
 
+        self.hud_triangles = GLBuffer::new(
+          self.shader_program,
+          [ VertexAttribData::new("position", 3),
+            VertexAttribData::new("in_color", 4),
+          ],
+          16 * VERTICES_PER_TRIANGLE,
+        );
+
         self.texture_triangles = GLBuffer::new(
           self.texture_shader,
           [ VertexAttribData::new("position", 2),
@@ -693,6 +710,7 @@ impl Game<GameWindowSDL2> for App {
 
         self.make_textures();
         self.make_world_render_data();
+        self.make_hud();
       }
     })
   }
@@ -749,6 +767,11 @@ impl Game<GameWindowSDL2> for App {
       self.world_triangles.draw(gl::TRIANGLES);
       self.outlines.draw(gl::LINES);
 
+      // draw the hud
+      self.set_projection(&self.hud_matrix);
+      self.hud_triangles.draw(gl::TRIANGLES);
+      self.update_projection();
+
       // draw textures
       gl::UseProgram(self.texture_shader);
       let mut i = 0u;
@@ -778,9 +801,11 @@ impl App {
       jumping: false,
       world_triangles: GLBuffer::null(),
       outlines: GLBuffer::null(),
+      hud_triangles: GLBuffer::null(),
       selection_triangles: GLBuffer::null(),
       texture_triangles: GLBuffer::null(),
       textures: Vec::new(),
+      hud_matrix: translate(Vector3::new(0.0, 0.0, -1.0)) * sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0),
       fov_matrix: Matrix4::identity(),
       translation_matrix: Matrix4::identity(),
       rotation_matrix: Matrix4::identity(),
@@ -859,6 +884,19 @@ impl App {
         self.selection_triangles.push(block.to_triangles(selection_color(i as u32)));
       }
     })
+  }
+
+  pub unsafe fn make_hud(&mut self) {
+    let cursor_color = Color4::new(0.0, 0.0, 0.0, 0.75);
+    self.hud_triangles.push([
+      Vertex::new(-0.02, -0.02, 0.0, cursor_color),
+      Vertex::new(0.02, 0.02, 0.0, cursor_color),
+      Vertex::new(-0.02, 0.02, 0.0, cursor_color),
+
+      Vertex::new(-0.02, -0.02, 0.0, cursor_color),
+      Vertex::new(0.02, -0.02, 0.0, cursor_color),
+      Vertex::new(0.02, 0.02, 0.0, cursor_color),
+    ]);
   }
 
   pub unsafe fn set_projection(&mut self, m: &Matrix4<GLfloat>) {
