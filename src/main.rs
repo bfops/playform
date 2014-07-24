@@ -786,11 +786,7 @@ impl Game<GameWindowSDL2> for App {
           self
             .block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2)
             .map(|block_index| {
-              assert!(block_index < self.world_data.len());
-              self.world_data.swap_remove(block_index);
-              self.world_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
-              self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
-              self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+              self.remove_block(block_index);
             });
         })
       }
