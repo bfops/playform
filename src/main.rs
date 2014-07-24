@@ -51,21 +51,6 @@ static MAX_WORLD_SIZE: uint = 100000;
 
 static MAX_JUMP_FUEL: uint = 4;
 
-// #[deriving(Clone)]
-// pub struct Color4<T> { r: T, g: T, b: T, a: T }
-
-// impl<T: Clone> Color4<T> {
-//   fn new(r: &T, g: &T, b: &T, a: &T) -> Color4<T> {
-//     Color4 {
-//       r: r.clone(),
-//       g: g.clone(),
-//       b: b.clone(),
-//       a: a.clone(),
-//     }
-//   }
-// }
-
-
 #[deriving(Clone)]
 // Rendering vertex: position and color.
 pub struct Vertex {
