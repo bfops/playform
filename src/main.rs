@@ -225,51 +225,47 @@ pub struct Block {
   id: u32,
 }
 
-enum Intersect {
-  Intersect(Vector3<GLfloat>),
-  NoIntersect,
-}
+type Intersect = Vector3<GLfloat>;
 
 enum Intersect1 {
   Within,
   Partial,
-  NoIntersect1,
 }
 
 // Find whether two Blocks intersect.
-fn intersect(b1: &BoundingBox, b2: &BoundingBox) -> Intersect {
-  fn intersect1(x1l: GLfloat, x1h: GLfloat, x2l: GLfloat, x2h: GLfloat) -> Intersect1 {
+fn intersect(b1: &BoundingBox, b2: &BoundingBox) -> Option<Intersect> {
+  fn intersect1(x1l: GLfloat, x1h: GLfloat, x2l: GLfloat, x2h: GLfloat) -> Option<Intersect1> {
     if x1l > x2l && x1h <= x2h {
-      Within
+      Some(Within)
     } else if x1h > x2l && x2h > x1l {
-      Partial
+      Some(Partial)
     } else {
-      NoIntersect1
+      None
     }
   }
 
   let mut ret = true;
   let mut v = Vector3::ident();
   match intersect1(b1.low_corner.x, b1.high_corner.x, b2.low_corner.x, b2.high_corner.x) {
-    Within => { },
-    Partial => { v.x = 0.0; },
-    NoIntersect1 => { ret = false; },
+    Some(Within) => { },
+    Some(Partial) => { v.x = 0.0; },
+    None => { ret = false; },
   }
   match intersect1(b1.low_corner.y, b1.high_corner.y, b2.low_corner.y, b2.high_corner.y) {
-    Within => { },
-    Partial => { v.y = 0.0; },
-    NoIntersect1 => { ret = false; },
+    Some(Within) => { },
+    Some(Partial) => { v.y = 0.0; },
+    None => { ret = false; },
   }
   match intersect1(b1.low_corner.z, b1.high_corner.z, b2.low_corner.z, b2.high_corner.z) {
-    Within => { },
-    Partial => { v.z = 0.0; },
-    NoIntersect1 => { ret = false; },
+    Some(Within) => { },
+    Some(Partial) => { v.z = 0.0; },
+    None => { ret = false; },
   }
 
   if ret {
-    Intersect(v)
+    Some(v)
   } else {
-    NoIntersect
+    None
   }
 }
 
@@ -656,7 +652,7 @@ impl Game<GameWindowSDL2> for App {
         self.make_hud();
       }
 
-      timers.time("load.construct", || {
+      timers.time("load.construct", || unsafe {
         // low dirt block
         for i in range_inclusive(-1i, 1) {
           for j in range_inclusive(-1i, 1) {
@@ -923,25 +919,30 @@ impl App {
       let block_id = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
       self.block_id_to_index.find(&(block_id as u32)).map(|&x| x)
   }
-  
-  fn place_block(&mut self, low_corner: Vector3<GLfloat>, high_corner: Vector3<GLfloat>, block_type: BlockType, check_collisions: bool) {
-    let block = Block::new(low_corner, high_corner, block_type, self.block_count);
-    let collided =
-      check_collisions &&
-      self
-        .world_data
-        .iter()
-        .any(|other_block|
-          match intersect(&block.bounds, &other_block.bounds) {
-            Intersect(_) => {
-              true
-            }
-            NoIntersect => false,
-          }
-        );
 
-    if !collided {
-      unsafe {
+  #[inline]
+  fn collision(&self, b: &BoundingBox) -> Option<Intersect> {
+    for block in self.world_data.iter() {
+      let i = intersect(b, &block.bounds);
+      match i {
+        None => { },
+        Some(_) => { return i; },
+      }
+    }
+
+    None
+  }
+
+  unsafe fn place_block(&mut self, low_corner: Vector3<GLfloat>, high_corner: Vector3<GLfloat>, block_type: BlockType, check_collisions: bool) {
+    time!(&self.timers, "place_block", || {
+      let block = Block::new(low_corner, high_corner, block_type, self.block_count);
+      let collided = check_collisions &&
+        match self.collision(&block.bounds) {
+          None => false,
+          Some(_) => true,
+        };
+
+      if !collided {
         self.world_data.grow(1, &block);
         self.world_triangles.push(block.to_colored_triangles());
         self.outlines.push(block.to_outlines());
@@ -949,7 +950,7 @@ impl App {
         self.block_id_to_index.insert(block.id, self.world_data.len() - 1);
         self.block_count += 1;
       }
-    }
+    })
   }
 
   fn remove_block(&mut self, block_index: uint) {
@@ -993,11 +994,11 @@ impl App {
         .iter()
         .any(|block|
           match intersect(&player, &block.bounds) {
-            Intersect(stop) => {
+            Some(stop) => {
               d_camera_speed = v*stop - v;
               true
             }
-            NoIntersect => false,
+            None => false,
           }
         );
 
