@@ -120,18 +120,22 @@ impl Font {
     }
   }
 
+  /// Color the text red.
+  #[allow(dead_code)]
   pub fn red(&self, txt: &str) -> gl::types::GLuint {
-    self.render(txt, Color4::new(0xFF, 0x00, 0x00, 0xFF))
+    self.render(txt, Color4::of_rgba(0xFF, 0x00, 0x00, 0xFF))
   }
 
   /// dark black #333
+  #[allow(dead_code)]
   pub fn dark(&self, txt: &str) -> gl::types::GLuint {
-    self.render(txt, Color4::new(0x33, 0x33, 0x33, 0xFF))
+    self.render(txt, Color4::of_rgba(0x33, 0x33, 0x33, 0xFF))
   }
 
   /// light black #555
+  #[allow(dead_code)]
   pub fn light(&self, txt: &str) -> gl::types::GLuint {
-    self.render(txt, Color4::new(0x55, 0x55, 0x55, 0xFF))
+    self.render(txt, Color4::of_rgba(0x55, 0x55, 0x55, 0xFF))
   }
 }
 
