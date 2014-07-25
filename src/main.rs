@@ -22,6 +22,7 @@ use std::iter::range_inclusive;
 use std::ptr;
 use std::str;
 use std::num;
+use std::collections::HashMap;
 use vertex::{ColoredVertex,TextureVertex};
 
 // TODO(cgaebel): How the hell do I get this to be exported from `mod stopwatch`?
@@ -40,6 +41,8 @@ static VERTICES_PER_TRIANGLE: uint = 3;
 static VERTICES_PER_LINE: uint = 2;
 static TRIANGLE_VERTICES_PER_BLOCK: uint = TRIANGLES_PER_BLOCK * VERTICES_PER_TRIANGLE;
 static LINE_VERTICES_PER_BLOCK: uint = LINES_PER_BLOCK * VERTICES_PER_LINE;
+
+static MAX_WORLD_SIZE: uint = 100000;
 
 static MAX_JUMP_FUEL: uint = 4;
 
@@ -219,6 +222,7 @@ pub struct Block {
   bounds: BoundingBox,
   // bounds of the Block
   block_type: BlockType,
+  id: u32,
 }
 
 enum Intersect {
@@ -270,10 +274,11 @@ fn intersect(b1: &BoundingBox, b2: &BoundingBox) -> Intersect {
 }
 
 impl Block {
-  fn new(low_corner: Vector3<GLfloat>, high_corner: Vector3<GLfloat>, block_type: BlockType) -> Block {
+  fn new(low_corner: Vector3<GLfloat>, high_corner: Vector3<GLfloat>, block_type: BlockType, id: u32) -> Block {
     Block {
       bounds: BoundingBox { low_corner: low_corner, high_corner: high_corner },
       block_type: block_type,
+      id: id,
     }
   }
 
@@ -355,6 +360,10 @@ impl Block {
 /// The whole application. Wrapped up in a nice frameworky struct for SDL.
 pub struct App {
   world_data: Vec<Block>,
+  // number of blocks that have been created. Used to assign block ids
+  block_count: u32,
+  // mapping of block_id to the block's index in OpenGL buffers
+  block_id_to_index: HashMap<u32, uint>,
   // position; units are world coordinates
   camera_position: Vector3<GLfloat>,
   // speed; units are world coordinates
@@ -544,6 +553,19 @@ impl Game<GameWindowSDL2> for App {
         piston::mouse::Left => {
           self.is_mouse_pressed = true;
         },
+        piston::mouse::Right => {
+          unsafe{
+            match self.block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2) {
+              None => { },
+              Some(block_index) => {
+                if block_index > 0 { 
+                  let block = self.world_data[block_index];
+                  self.place_block(block.bounds.low_corner + Vector3::unit_y(), block.bounds.high_corner + Vector3::unit_y(), Dirt, true);
+                }
+              }
+            }
+          }
+        }
         _ => { }
       }
     })
@@ -588,72 +610,13 @@ impl Game<GameWindowSDL2> for App {
 
       let timers = &self.timers;
 
-      timers.time("load.construct", || {
-        // low dirt block
-        for i in range_inclusive(-1i, 1) {
-          for j in range_inclusive(-1i, 1) {
-            let (x1, y1, z1) = (3.0 + i as GLfloat, 6.0, 0.0 + j as GLfloat);
-            let (x2, y2, z2) = (4.0 + i as GLfloat, 7.0, 1.0 + j as GLfloat);
-            self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt));
-          }
-        }
-        // high dirt block
-        for i in range_inclusive(-1i, 1) {
-          for j in range_inclusive(-1i, 1) {
-            let (x1, y1, z1) = (0.0 + i as GLfloat, 12.0, 5.0 + j as GLfloat);
-            let (x2, y2, z2) = (1.0 + i as GLfloat, 13.0, 6.0 + j as GLfloat);
-            self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt));
-          }
-        }
-        // ground
-        for i in range_inclusive(-32i, 32) {
-          for j in range_inclusive(-32i, 32) {
-            let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
-            let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
-            self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Grass));
-          }
-        }
-        // front wall
-        for i in range_inclusive(-32i, 32) {
-          for j in range_inclusive(0i, 32) {
-            let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -32.0 - 0.5);
-            let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -32.0 + 0.5);
-            self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone));
-          }
-        }
-        // back wall
-        for i in range_inclusive(-32i, 32) {
-          for j in range_inclusive(0i, 32) {
-            let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 32.0 - 0.5);
-            let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 32.0 + 0.5);
-            self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone));
-          }
-        }
-        // left wall
-        for i in range_inclusive(-32i, 32) {
-          for j in range_inclusive(0i, 32) {
-            let (x1, y1, z1) = (-32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
-            let (x2, y2, z2) = (-32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-            self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone));
-          }
-        }
-        // right wall
-        for i in range_inclusive(-32i, 32) {
-          for j in range_inclusive(0i, 32) {
-            let (x1, y1, z1) = (32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
-            let (x2, y2, z2) = (32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
-            self.world_data.grow(1, &Block::new(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone));
-          }
-        }
-      });
-
       unsafe {
         self.selection_triangles = GLBuffer::new(
           self.shader_program,
           [ VertexAttribData { name: "position", size: 3 },
             VertexAttribData { name: "in_color", size: 4 },
           ],
-          self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
+          MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BLOCK,
         );
 
         self.world_triangles = GLBuffer::new(
@@ -661,7 +624,7 @@ impl Game<GameWindowSDL2> for App {
           [ VertexAttribData { name: "position", size: 3 },
             VertexAttribData { name: "in_color", size: 4 },
           ],
-          self.world_data.len() * TRIANGLE_VERTICES_PER_BLOCK,
+          MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BLOCK,
         );
 
         self.outlines = GLBuffer::new(
@@ -669,7 +632,7 @@ impl Game<GameWindowSDL2> for App {
           [ VertexAttribData { name: "position", size: 3 },
             VertexAttribData { name: "in_color", size: 4 },
           ],
-          self.world_data.len() * LINE_VERTICES_PER_BLOCK,
+          MAX_WORLD_SIZE * LINE_VERTICES_PER_BLOCK,
         );
 
         self.hud_triangles = GLBuffer::new(
@@ -688,10 +651,69 @@ impl Game<GameWindowSDL2> for App {
           8 * VERTICES_PER_TRIANGLE,
         );
 
+
         self.make_textures();
-        self.make_world_render_data();
         self.make_hud();
       }
+
+      timers.time("load.construct", || {
+        // low dirt block
+        for i in range_inclusive(-1i, 1) {
+          for j in range_inclusive(-1i, 1) {
+            let (x1, y1, z1) = (3.0 + i as GLfloat, 6.0, 0.0 + j as GLfloat);
+            let (x2, y2, z2) = (4.0 + i as GLfloat, 7.0, 1.0 + j as GLfloat);
+            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt, false);
+          }
+        }
+        // high dirt block
+        for i in range_inclusive(-1i, 1) {
+          for j in range_inclusive(-1i, 1) {
+            let (x1, y1, z1) = (0.0 + i as GLfloat, 12.0, 5.0 + j as GLfloat);
+            let (x2, y2, z2) = (1.0 + i as GLfloat, 13.0, 6.0 + j as GLfloat);
+            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt, false);
+          }
+        }
+        // ground
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(-32i, 32) {
+            let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
+            let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
+            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Grass, false);
+          }
+        }
+        // front wall
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(0i, 32) {
+            let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -32.0 - 0.5);
+            let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -32.0 + 0.5);
+            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
+          }
+        }
+        // back wall
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(0i, 32) {
+            let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 32.0 - 0.5);
+            let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 32.0 + 0.5);
+            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
+          }
+        }
+        // left wall
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(0i, 32) {
+            let (x1, y1, z1) = (-32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
+            let (x2, y2, z2) = (-32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
+            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
+          }
+        }
+        // right wall
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(0i, 32) {
+            let (x1, y1, z1) = (32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
+            let (x2, y2, z2) = (32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
+            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
+          }
+        }
+      });
     })
   }
 
@@ -729,11 +751,7 @@ impl Game<GameWindowSDL2> for App {
           self
             .block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2)
             .map(|block_index| {
-              assert!(block_index < self.world_data.len());
-              self.world_data.swap_remove(block_index);
-              self.world_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
-              self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
-              self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+              self.remove_block(block_index);
             });
         })
       }
@@ -770,11 +788,33 @@ fn mask(mask: u32, i: u32) -> u32 {
   (i & mask) >> (mask as uint).trailing_zeros()
 }
 
+fn selection_color(block_id: u32) -> Color4<GLfloat> {
+  assert!(block_id < 0xFF000000, "too many items for selection buffer");
+  let ret = Color4::of_rgba(
+    (mask(0x00FF0000, block_id) as GLfloat / 255.0),
+    (mask(0x0000FF00, block_id) as GLfloat / 255.0),
+    (mask(0x000000FF, block_id) as GLfloat / 255.0),
+    1.0,
+  );
+  assert!(ret.r >= 0.0);
+  assert!(ret.r <= 1.0 as f32);
+  assert!(ret.g >= 0.0 as f32);
+  assert!(ret.g <= 1.0 as f32);
+  assert!(ret.b >= 0.0 as f32);
+  assert!(ret.b <= 1.0 as f32);
+  ret
+}
+
+
 impl App {
   /// Initializes an empty app.
   pub unsafe fn new() -> App {
     App {
       world_data: Vec::new(),
+      // Start assigning block_ids at 1.
+      // block_id 0 corresponds to no block.
+      block_count: 1 as u32,
+      block_id_to_index: HashMap::<u32, uint>::new(),
       camera_position: Vector3::zero(),
       camera_speed: Vector3::zero(),
       camera_accel: Vector3::new(0.0, -0.1, 0.0),
@@ -835,37 +875,6 @@ impl App {
     }
   }
 
-  /// Update the OpenGL vertex data with the world data world_triangles.
-  pub unsafe fn make_world_render_data(&mut self) {
-    fn selection_color(i: u32) -> Color4<GLfloat> {
-      assert!(i < 0xFF000000, "too many items for selection buffer");
-      let i = i + 1;
-      let ret = Color4::of_rgba(
-        (mask(0x00FF0000, i) as GLfloat / 255.0),
-        (mask(0x0000FF00, i) as GLfloat / 255.0),
-        (mask(0x000000FF, i) as GLfloat / 255.0),
-        1.0,
-      );
-
-      assert!(ret.r >= 0.0);
-      assert!(ret.r <= 1.0);
-      assert!(ret.g >= 0.0);
-      assert!(ret.g <= 1.0);
-      assert!(ret.b >= 0.0);
-      assert!(ret.b <= 1.0);
-      ret
-    }
-
-    time!(&self.timers, "render.make_data", || {
-      for (i, block) in self.world_data.iter().enumerate() {
-        self.world_triangles.push(block.to_colored_triangles());
-        self.outlines.push(block.to_outlines());
-        self.selection_triangles.push(block.to_triangles(selection_color(i as u32)));
-      }
-    })
-  }
-
-  /// Creates the HUD.
   pub unsafe fn make_hud(&mut self) {
     let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
 
@@ -911,12 +920,52 @@ impl App {
       let pixels: Color4<u8> = Color4::of_rgba(0, 0, 0, 0);
       gl::ReadPixels(x, y, 1, 1, gl::RGB, gl::UNSIGNED_BYTE, mem::transmute(&pixels));
 
-      let block_index = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
-      if block_index == 0 {
-        None
-      } else {
-        Some(block_index - 1)
+      let block_id = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
+      self.block_id_to_index.find(&(block_id as u32)).map(|&x| x)
+  }
+  
+  fn place_block(&mut self, low_corner: Vector3<GLfloat>, high_corner: Vector3<GLfloat>, block_type: BlockType, check_collisions: bool) {
+    let block = Block::new(low_corner, high_corner, block_type, self.block_count);
+    let collided =
+      check_collisions &&
+      self
+        .world_data
+        .iter()
+        .any(|other_block|
+          match intersect(&block.bounds, &other_block.bounds) {
+            Intersect(_) => {
+              true
+            }
+            NoIntersect => false,
+          }
+        );
+
+    if !collided {
+      unsafe {
+        self.world_data.grow(1, &block);
+        self.world_triangles.push(block.to_colored_triangles());
+        self.outlines.push(block.to_outlines());
+        self.selection_triangles.push(block.to_triangles(selection_color(self.block_count)));
+        self.block_id_to_index.insert(block.id, self.world_data.len() - 1);
+        self.block_count += 1;
       }
+    }
+  }
+
+  fn remove_block(&mut self, block_index: uint) {
+    let block_id = self.world_data[block_index].id;
+    // block that will be swapped into block_index in GL buffers after removal
+    let swapped_block_id = self.world_data[self.world_data.len() - 1].id;
+    unsafe {
+      self.world_data.swap_remove(block_index);
+      self.world_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+      self.outlines.swap_remove(LINE_VERTICES_PER_BLOCK, block_index);
+      self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BLOCK, block_index);
+    }
+    self.block_id_to_index.remove(&block_id);
+    if block_id != swapped_block_id {
+      self.block_id_to_index.insert(swapped_block_id, block_index);
+    }
   }
 
   #[inline]
