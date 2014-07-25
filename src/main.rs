@@ -560,7 +560,7 @@ impl Game<GameWindowSDL2> for App {
               Some(block_index) => {
                 if block_index > 0 { 
                   let block = self.world_data[block_index];
-                  self.place_block(block.low_corner + Vector3::unit_y(), block.high_corner + Vector3::unit_y(), Dirt, true);
+                  self.place_block(block.bounds.low_corner + Vector3::unit_y(), block.bounds.high_corner + Vector3::unit_y(), Dirt, true);
                 }
               }
             }
@@ -613,43 +613,44 @@ impl Game<GameWindowSDL2> for App {
       unsafe {
         self.selection_triangles = GLBuffer::new(
           self.shader_program,
-          [ VertexAttribData::new("position", 3),
-            VertexAttribData::new("in_color", 4),
+          [ VertexAttribData { name: "position", size: 3 },
+            VertexAttribData { name: "in_color", size: 4 },
           ],
           MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BLOCK,
         );
 
         self.world_triangles = GLBuffer::new(
           self.shader_program,
-          [ VertexAttribData::new("position", 3),
-            VertexAttribData::new("in_color", 4),
+          [ VertexAttribData { name: "position", size: 3 },
+            VertexAttribData { name: "in_color", size: 4 },
           ],
           MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BLOCK,
         );
 
         self.outlines = GLBuffer::new(
           self.shader_program,
-          [ VertexAttribData::new("position", 3),
-            VertexAttribData::new("in_color", 4),
+          [ VertexAttribData { name: "position", size: 3 },
+            VertexAttribData { name: "in_color", size: 4 },
           ],
           MAX_WORLD_SIZE * LINE_VERTICES_PER_BLOCK,
         );
 
         self.hud_triangles = GLBuffer::new(
           self.shader_program,
-          [ VertexAttribData::new("position", 3),
-            VertexAttribData::new("in_color", 4),
+          [ VertexAttribData { name: "position", size: 3 },
+            VertexAttribData { name: "in_color", size: 4 },
           ],
           16 * VERTICES_PER_TRIANGLE,
         );
 
         self.texture_triangles = GLBuffer::new(
           self.texture_shader,
-          [ VertexAttribData::new("position", 2),
-            VertexAttribData::new("texture_position", 2),
+          [ VertexAttribData { name: "position", size: 2 },
+            VertexAttribData { name: "texture_position", size: 2 },
           ],
           8 * VERTICES_PER_TRIANGLE,
         );
+
 
         self.make_textures();
         self.make_hud();
@@ -789,7 +790,7 @@ fn mask(mask: u32, i: u32) -> u32 {
 
 fn selection_color(block_id: u32) -> Color4<GLfloat> {
   assert!(block_id < 0xFF000000, "too many items for selection buffer");
-  let ret = Color4::new(
+  let ret = Color4::of_rgba(
     (mask(0x00FF0000, block_id) as GLfloat / 255.0),
     (mask(0x0000FF00, block_id) as GLfloat / 255.0),
     (mask(0x000000FF, block_id) as GLfloat / 255.0),
@@ -932,7 +933,7 @@ impl App {
         .world_data
         .iter()
         .any(|other_block|
-          match intersect(&block, other_block) {
+          match intersect(&block.bounds, &other_block.bounds) {
             Intersect(_) => {
               true
             }
