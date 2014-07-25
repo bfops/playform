@@ -46,6 +46,8 @@ static MAX_WORLD_SIZE: uint = 20000;
 
 static MAX_JUMP_FUEL: uint = 4;
 
+static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
+
 /// A data structure which specifies how to pass data from opengl to the vertex
 /// shaders.
 pub struct VertexAttribData<'a> {
@@ -579,7 +581,7 @@ impl Game<GameWindowSDL2> for App {
       gl::Enable(gl::DEPTH_TEST);
       gl::DepthFunc(gl::LESS);
       gl::ClearDepth(100.0);
-      gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+      gl::ClearColor(SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a);
 
       unsafe {
         self.set_up_shaders();
@@ -766,6 +768,9 @@ impl Game<GameWindowSDL2> for App {
 
   fn render(&mut self, _: &mut GameWindowSDL2, _: &RenderArgs) {
     time!(&self.timers, "render", || unsafe {
+      // set the sky color
+      gl::ClearColor(SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a);
+
       // draw the world
       gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
       self.world_triangles.draw(gl::TRIANGLES);
@@ -917,6 +922,7 @@ impl App {
   /// Renders the selection buffer.
   pub fn render_selection(&self) {
     time!(&self.timers, "render.render_selection", || {
+      gl::ClearColor(0.0, 0.0, 0.0, 1.0);
       gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
       self.selection_triangles.draw(gl::TRIANGLES);
     })
