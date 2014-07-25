@@ -1,4 +1,5 @@
 pub use color::Color4;
+use cgmath::aabb::Aabb2;
 use cgmath::angle;
 use cgmath::array::Array2;
 use cgmath::matrix::{Matrix, Matrix3, Matrix4};
@@ -825,35 +826,12 @@ impl App {
     for line in instructions.iter() {
       self.textures.push(self.font.sans.red(*line));
 
-      let (x1, y1) = (-0.97, y - 0.2);
-      let (x2, y2) = (0.0, y);
-      self.texture_triangles.push([
-        TextureVertex {
-          screen_position:  Point2 { x: x1,  y: y1  },
-          texture_position: Point2 { x: 0.0, y: 0.0 },
-        },
-        TextureVertex {
-          screen_position:  Point2 { x: x2,  y: y2  },
-          texture_position: Point2 { x: 1.0, y: 1.0 },
-        },
-         TextureVertex {
-          screen_position:  Point2 { x: x1,  y: y2  },
-          texture_position: Point2 { x: 0.0, y: 1.0 },
-        },
-
-        TextureVertex {
-          screen_position:  Point2 { x: x1,  y: y1  },
-          texture_position: Point2 { x: 0.0, y: 0.0 },
-        },
-        TextureVertex {
-          screen_position:  Point2 { x: x2,  y: y1  },
-          texture_position: Point2 { x: 1.0, y: 0.0 },
-        },
-        TextureVertex {
-          screen_position:  Point2 { x: x2,  y: y2  },
-          texture_position: Point2 { x: 1.0, y: 1.0 },
-        },
-      ]);
+      self.texture_triangles.push(
+        TextureVertex::square(
+          Aabb2 {
+            min: Point2 { x: -0.97, y: y - 0.2 },
+            max: Point2 { x: 0.0,   y: y       },
+          }));
       y -= 0.2;
     }
   }
@@ -892,22 +870,12 @@ impl App {
   pub unsafe fn make_hud(&mut self) {
     let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
 
-    let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> ColoredVertex {
-      ColoredVertex {
-        position: Point3 { x: x, y: y, z: z },
-        color: cursor_color
-      }
-    };
-
-    self.hud_triangles.push([
-      vtx(-0.02, -0.02, 0.0),
-      vtx(0.02, 0.02, 0.0),
-      vtx(-0.02, 0.02, 0.0),
-
-      vtx(-0.02, -0.02, 0.0),
-      vtx(0.02, -0.02, 0.0),
-      vtx(0.02, 0.02, 0.0),
-    ]);
+    self.hud_triangles.push(
+      ColoredVertex::square(
+        Aabb2 {
+          min: Point2 { x: -0.02, y: -0.02 },
+          max: Point2 { x:  0.02, y:  0.02 },
+        }, cursor_color));
   }
 
 
