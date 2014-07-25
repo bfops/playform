@@ -388,8 +388,8 @@ pub struct App {
   shader_program: u32,
   texture_shader: u32,
 
-  // Is LMB pressed?
-  is_mouse_pressed: bool,
+  // which mouse buttons are currently pressed
+  mouse_buttons_pressed: Vec<piston::mouse::Button>,
 
   font: fontloader::FontLoader,
   scache: CStringCache,
@@ -455,6 +455,14 @@ pub fn from_axis_angle<S: BaseFloat>(axis: Vector3<S>, angle: angle::Rad<S>) -> 
 #[allow(non_snake_case_functions)]
 pub unsafe fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
   name.with_c_str(|ptr| gl::GetAttribLocation(shader_program, ptr))
+}
+
+#[inline]
+pub fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
+  match v.iter().position(|x| { *x == t }) {
+    None => { },
+    Some(i) => { v.swap_remove(i); },
+  }
 }
 
 impl Game<GameWindowSDL2> for App {
@@ -543,37 +551,16 @@ impl Game<GameWindowSDL2> for App {
     })
   }
 
+  #[inline]
   fn mouse_press(&mut self, _: &mut GameWindowSDL2, args: &MousePressArgs) {
     time!(&self.timers, "event.mouse_press", || {
-      match args.button {
-        piston::mouse::Left => {
-          self.is_mouse_pressed = true;
-        },
-        piston::mouse::Right => {
-          unsafe{
-            match self.block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2) {
-              None => { },
-              Some(block_index) => {
-                if block_index > 0 { 
-                  let block = self.world_data[block_index];
-                  self.place_block(block.bounds.low_corner + Vector3::unit_y(), block.bounds.high_corner + Vector3::unit_y(), Dirt, true);
-                }
-              }
-            }
-          }
-        }
-        _ => { }
-      }
+      self.mouse_buttons_pressed.push(args.button);
     })
   }
 
+  #[inline]
   fn mouse_release(&mut self, _: &mut GameWindowSDL2, args: &MouseReleaseArgs) {
-    match args.button {
-      piston::mouse::Left => {
-        self.is_mouse_pressed = false;
-      },
-      _ => {}
-    }
+    swap_remove_first(&mut self.mouse_buttons_pressed, args.button)
   }
 
   fn load(&mut self, _: &mut GameWindowSDL2) {
@@ -742,14 +729,27 @@ impl Game<GameWindowSDL2> for App {
       self.camera_speed = self.camera_speed * Vector3::new(0.7, 0.99, 0.7);
 
       // Block deletion
-      if self.is_mouse_pressed {
+      if self.is_mouse_pressed(piston::mouse::Left) {
         time!(&self.timers, "update.delete_block", || unsafe {
           self
-            .block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2)
+            .block_at_screen_center()
             .map(|block_index| {
               self.remove_block(block_index);
             });
         })
+      }
+      if self.is_mouse_pressed(piston::mouse::Right) {
+        unsafe {
+          match self.block_at_screen_center() {
+            None => { },
+            Some(block_index) => {
+              if block_index > 0 {
+                let block = self.world_data[block_index];
+                self.place_block(block.bounds.low_corner + Vector3::unit_y(), block.bounds.high_corner + Vector3::unit_y(), Dirt, true);
+              }
+            }
+          }
+        }
       }
     })
   }
@@ -829,7 +829,7 @@ impl App {
       lateral_rotation: angle::rad(0.0),
       shader_program: -1 as u32,
       texture_shader: -1 as u32,
-      is_mouse_pressed: false,
+      mouse_buttons_pressed: Vec::new(),
       font: fontloader::FontLoader::new(),
       scache: CStringCache::new(),
       timers: stopwatch::TimerSet::new(),
@@ -882,6 +882,10 @@ impl App {
         }, cursor_color));
   }
 
+  #[inline]
+  pub fn is_mouse_pressed(&self, b: piston::mouse::Button) -> bool {
+    self.mouse_buttons_pressed.iter().any(|x| { *x == b })
+  }
 
   /// Sets the opengl projection matrix.
   pub unsafe fn set_projection(&mut self, m: &Matrix4<GLfloat>) {
@@ -901,7 +905,7 @@ impl App {
 
   #[inline]
   /// Renders the selection buffer.
-  pub fn render_selection(&mut self) {
+  pub fn render_selection(&self) {
     time!(&self.timers, "render.render_selection", || {
       gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
       self.selection_triangles.draw(gl::TRIANGLES);
@@ -910,7 +914,7 @@ impl App {
 
   /// Returns the index of the block at the given (x, y) coordinate on the screen.
   /// The pixel coordinates are in the range [(0.0, 0.0), (1.0, 1.0)].
-  unsafe fn block_at_screen(&mut self, x: i32, y: i32) -> Option<uint> {
+  unsafe fn block_at_screen(&self, x: i32, y: i32) -> Option<uint> {
       self.render_selection();
 
       let pixels: Color4<u8> = Color4::of_rgba(0, 0, 0, 0);
@@ -918,6 +922,11 @@ impl App {
 
       let block_id = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
       self.block_id_to_index.find(&(block_id as u32)).map(|&x| x)
+  }
+
+  #[inline]
+  unsafe fn block_at_screen_center(&self) -> Option<uint> {
+    self.block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2)
   }
 
   #[inline]
