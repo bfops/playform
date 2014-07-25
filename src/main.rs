@@ -279,11 +279,11 @@ impl Block {
   // with a different color on each face (front, left, top, back, right, bottom).
   // Triangle vertices are in CCW order when viewed from the outside of
   // the cube, for rendering purposes.
-  fn to_triangles(&self, c: Color4<GLfloat>) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
+  fn to_triangles(&self, c: [Color4<GLfloat>, ..6]) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
     let (x1, y1, z1) = (self.bounds.low_corner.x, self.bounds.low_corner.y, self.bounds.low_corner.z);
     let (x2, y2, z2) = (self.bounds.high_corner.x, self.bounds.high_corner.y, self.bounds.high_corner.z);
 
-    let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> ColoredVertex {
+    let vtx = |x: GLfloat, y: GLfloat, z: GLfloat, c: Color4<GLfloat>| -> ColoredVertex {
       ColoredVertex {
         position: Point3 { x: x, y: y, z: z },
         color: c
@@ -292,29 +292,30 @@ impl Block {
 
     [
       // front
-      vtx(x1, y1, z1), vtx(x1, y2, z1), vtx(x2, y2, z1),
-      vtx(x1, y1, z1), vtx(x2, y2, z1), vtx(x2, y1, z1),
+      vtx(x1, y1, z1, c[0]), vtx(x1, y2, z1, c[0]), vtx(x2, y2, z1, c[0]),
+      vtx(x1, y1, z1, c[0]), vtx(x2, y2, z1, c[0]), vtx(x2, y1, z1, c[0]),
       // left
-      vtx(x1, y1, z2), vtx(x1, y2, z2), vtx(x1, y2, z1),
-      vtx(x1, y1, z2), vtx(x1, y2, z1), vtx(x1, y1, z1),
+      vtx(x1, y1, z2, c[1]), vtx(x1, y2, z2, c[1]), vtx(x1, y2, z1, c[1]),
+      vtx(x1, y1, z2, c[1]), vtx(x1, y2, z1, c[1]), vtx(x1, y1, z1, c[1]),
       // top
-      vtx(x1, y2, z1), vtx(x1, y2, z2), vtx(x2, y2, z2),
-      vtx(x1, y2, z1), vtx(x2, y2, z2), vtx(x2, y2, z1),
+      vtx(x1, y2, z1, c[2]), vtx(x1, y2, z2, c[2]), vtx(x2, y2, z2, c[2]),
+      vtx(x1, y2, z1, c[2]), vtx(x2, y2, z2, c[2]), vtx(x2, y2, z1, c[2]),
       // back
-      vtx(x2, y1, z2), vtx(x2, y2, z2), vtx(x1, y2, z2),
-      vtx(x2, y1, z2), vtx(x1, y2, z2), vtx(x1, y1, z2),
+      vtx(x2, y1, z2, c[3]), vtx(x2, y2, z2, c[3]), vtx(x1, y2, z2, c[3]),
+      vtx(x2, y1, z2, c[3]), vtx(x1, y2, z2, c[3]), vtx(x1, y1, z2, c[3]),
       // right
-      vtx(x2, y1, z1), vtx(x2, y2, z1), vtx(x2, y2, z2),
-      vtx(x2, y1, z1), vtx(x2, y2, z2), vtx(x2, y1, z2),
+      vtx(x2, y1, z1, c[4]), vtx(x2, y2, z1, c[4]), vtx(x2, y2, z2, c[4]),
+      vtx(x2, y1, z1, c[4]), vtx(x2, y2, z2, c[4]), vtx(x2, y1, z2, c[4]),
       // bottom
-      vtx(x1, y1, z2), vtx(x1, y1, z1), vtx(x2, y1, z1),
-      vtx(x1, y1, z2), vtx(x2, y1, z1), vtx(x2, y1, z2),
+      vtx(x1, y1, z2, c[5]), vtx(x1, y1, z1, c[5]), vtx(x2, y1, z1, c[5]),
+      vtx(x1, y1, z2, c[5]), vtx(x2, y1, z1, c[5]), vtx(x2, y1, z2, c[5]),
     ]
   }
 
   #[inline]
   fn to_colored_triangles(&self) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
-    self.to_triangles(self.block_type.to_color())
+    let colors = [self.block_type.to_color(), ..6];
+    self.to_triangles(colors)
   }
 
   // Construct outlines for this Block, to sharpen the edges.
@@ -731,7 +732,7 @@ impl Game<GameWindowSDL2> for App {
         time!(&self.timers, "update.delete_block", || unsafe {
           self
             .block_at_window_center()
-            .map(|block_index| {
+            .map(|(block_index, _)| {
               self.remove_block(block_index);
             });
         })
@@ -740,9 +741,16 @@ impl Game<GameWindowSDL2> for App {
         unsafe {
           match self.block_at_window_center() {
             None => { },
-            Some(block_index) => {
+            Some((block_index, face)) => {
               let block = self.world_data[block_index];
-              let direction = Vector3::unit_y();
+              let direction =
+                    [ -Vector3::unit_z(),
+                      -Vector3::unit_x(),
+                       Vector3::unit_y(),
+                       Vector3::unit_z(),
+                       Vector3::unit_x(),
+                      -Vector3::unit_y(),
+                    ][face];
               self.place_block(
                 block.bounds.low_corner + direction,
                 block.bounds.high_corner + direction,
@@ -916,19 +924,21 @@ impl App {
 
   /// Returns the index of the block at the given (x, y) coordinate in the window.
   /// The pixel coordinates are from (0, 0) to (WINDOW_WIDTH, WINDOW_HEIGHT).
-  unsafe fn block_at_window(&self, x: i32, y: i32) -> Option<uint> {
+  unsafe fn block_at_window(&self, x: i32, y: i32) -> Option<(uint, uint)> {
       self.render_selection();
 
       let pixels: Color4<u8> = Color4::of_rgba(0, 0, 0, 0);
       gl::ReadPixels(x, y, 1, 1, gl::RGB, gl::UNSIGNED_BYTE, mem::transmute(&pixels));
 
-      let block_id = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
-      self.block_id_to_index.find(&(block_id as u32)).map(|&x| x)
+      let selection_id = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
+      let block_id = selection_id / 6;
+      let face_id = selection_id % 6;
+      self.block_id_to_index.find(&(block_id as u32)).map(|&x| (x, face_id))
   }
 
   #[inline]
-  /// Returns block id shown at the center of the window.
-  unsafe fn block_at_window_center(&self) -> Option<uint> {
+  /// Returns (block id, block face) shown at the center of the window.
+  unsafe fn block_at_window_center(&self) -> Option<(uint, uint)> {
     self.block_at_window(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2)
   }
 
@@ -954,7 +964,16 @@ impl App {
         self.world_data.grow(1, &block);
         self.world_triangles.push(block.to_colored_triangles());
         self.outlines.push(block.to_outlines());
-        self.selection_triangles.push(block.to_triangles(id_color(block.id)));
+        let selection_id = block.id * 6;
+        let selection_colors =
+              [ id_color(selection_id + 0),
+                id_color(selection_id + 1),
+                id_color(selection_id + 2),
+                id_color(selection_id + 3),
+                id_color(selection_id + 4),
+                id_color(selection_id + 5),
+              ];
+        self.selection_triangles.push(block.to_triangles(selection_colors));
         self.block_id_to_index.insert(block.id, self.world_data.len() - 1);
         self.next_block_id += 1;
       }
