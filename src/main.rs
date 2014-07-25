@@ -124,7 +124,7 @@ impl<T: Clone> GLBuffer<T> {
     }
   }
 
-  /// Analog of vec::Vector::swap_remove`, but for triangle data.
+  /// Analog of vec::Vector::swap_remove`, but for GLBuffer data.
   pub unsafe fn swap_remove(&mut self, span: uint, i: uint) {
     gl::BindVertexArray(self.vertex_array);
     gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
@@ -195,7 +195,6 @@ impl<T> Drop for GLBuffer<T> {
   }
 }
 
-/// Similar to a block in minecraft.
 #[deriving(Clone)]
 #[allow(missing_doc)]
 pub enum BlockType {
@@ -214,10 +213,8 @@ impl BlockType {
   }
 }
 
-// TODO(cgaebel): Shold `Block` just be a `cgmath::Aabb`?
-
 #[deriving(Clone)]
-/// A minecraft-y block in the game world.
+/// A voxel-ish block in the game world.
 pub struct Block {
   bounds: BoundingBox,
   // bounds of the Block
@@ -278,8 +275,9 @@ impl Block {
     }
   }
 
-  // Construct the faces of the block as triangles for rendering.
-  // Triangle vertices are in clockwise order when viewed from the outside of
+  // Construct the faces of the block as triangles for rendering,
+  // with a different color on each face (front, left, top, back, right, bottom).
+  // Triangle vertices are in CCW order when viewed from the outside of
   // the cube, for rendering purposes.
   fn to_triangles(&self, c: Color4<GLfloat>) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
     let (x1, y1, z1) = (self.bounds.low_corner.x, self.bounds.low_corner.y, self.bounds.low_corner.z);
@@ -356,8 +354,8 @@ impl Block {
 /// The whole application. Wrapped up in a nice frameworky struct for SDL.
 pub struct App {
   world_data: Vec<Block>,
-  // number of blocks that have been created. Used to assign block ids
-  block_count: u32,
+  // next block id to assign
+  next_block_id: u32,
   // mapping of block_id to the block's index in OpenGL buffers
   block_id_to_index: HashMap<u32, uint>,
   // position; units are world coordinates
@@ -732,7 +730,7 @@ impl Game<GameWindowSDL2> for App {
       if self.is_mouse_pressed(piston::mouse::Left) {
         time!(&self.timers, "update.delete_block", || unsafe {
           self
-            .block_at_screen_center()
+            .block_at_window_center()
             .map(|block_index| {
               self.remove_block(block_index);
             });
@@ -740,13 +738,17 @@ impl Game<GameWindowSDL2> for App {
       }
       if self.is_mouse_pressed(piston::mouse::Right) {
         unsafe {
-          match self.block_at_screen_center() {
+          match self.block_at_window_center() {
             None => { },
             Some(block_index) => {
-              if block_index > 0 {
-                let block = self.world_data[block_index];
-                self.place_block(block.bounds.low_corner + Vector3::unit_y(), block.bounds.high_corner + Vector3::unit_y(), Dirt, true);
-              }
+              let block = self.world_data[block_index];
+              let direction = Vector3::unit_y();
+              self.place_block(
+                block.bounds.low_corner + direction,
+                block.bounds.high_corner + direction,
+                Dirt,
+                true
+              );
             }
           }
         }
@@ -784,12 +786,13 @@ fn mask(mask: u32, i: u32) -> u32 {
   (i & mask) >> (mask as uint).trailing_zeros()
 }
 
-fn selection_color(block_id: u32) -> Color4<GLfloat> {
-  assert!(block_id < 0xFF000000, "too many items for selection buffer");
+// map ids to unique colors
+fn id_color(id: u32) -> Color4<GLfloat> {
+  assert!(id < 0xFF000000, "too many items for selection buffer");
   let ret = Color4::of_rgba(
-    (mask(0x00FF0000, block_id) as GLfloat / 255.0),
-    (mask(0x0000FF00, block_id) as GLfloat / 255.0),
-    (mask(0x000000FF, block_id) as GLfloat / 255.0),
+    (mask(0x00FF0000, id) as GLfloat / 255.0),
+    (mask(0x0000FF00, id) as GLfloat / 255.0),
+    (mask(0x000000FF, id) as GLfloat / 255.0),
     1.0,
   );
   assert!(ret.r >= 0.0);
@@ -801,7 +804,6 @@ fn selection_color(block_id: u32) -> Color4<GLfloat> {
   ret
 }
 
-
 impl App {
   /// Initializes an empty app.
   pub unsafe fn new() -> App {
@@ -809,7 +811,7 @@ impl App {
       world_data: Vec::new(),
       // Start assigning block_ids at 1.
       // block_id 0 corresponds to no block.
-      block_count: 1 as u32,
+      next_block_id: 1 as u32,
       block_id_to_index: HashMap::<u32, uint>::new(),
       camera_position: Vector3::zero(),
       camera_speed: Vector3::zero(),
@@ -912,9 +914,9 @@ impl App {
     })
   }
 
-  /// Returns the index of the block at the given (x, y) coordinate on the screen.
-  /// The pixel coordinates are in the range [(0.0, 0.0), (1.0, 1.0)].
-  unsafe fn block_at_screen(&self, x: i32, y: i32) -> Option<uint> {
+  /// Returns the index of the block at the given (x, y) coordinate in the window.
+  /// The pixel coordinates are from (0, 0) to (WINDOW_WIDTH, WINDOW_HEIGHT).
+  unsafe fn block_at_window(&self, x: i32, y: i32) -> Option<uint> {
       self.render_selection();
 
       let pixels: Color4<u8> = Color4::of_rgba(0, 0, 0, 0);
@@ -925,8 +927,9 @@ impl App {
   }
 
   #[inline]
-  unsafe fn block_at_screen_center(&self) -> Option<uint> {
-    self.block_at_screen(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2)
+  /// Returns block id shown at the center of the window.
+  unsafe fn block_at_window_center(&self) -> Option<uint> {
+    self.block_at_window(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2)
   }
 
   #[inline]
@@ -944,20 +947,16 @@ impl App {
 
   unsafe fn place_block(&mut self, low_corner: Vector3<GLfloat>, high_corner: Vector3<GLfloat>, block_type: BlockType, check_collisions: bool) {
     time!(&self.timers, "place_block", || {
-      let block = Block::new(low_corner, high_corner, block_type, self.block_count);
-      let collided = check_collisions &&
-        match self.collision(&block.bounds) {
-          None => false,
-          Some(_) => true,
-        };
+      let block = Block::new(low_corner, high_corner, block_type, self.next_block_id);
+      let collided = check_collisions && self.collision(&block.bounds).is_some();
 
       if !collided {
         self.world_data.grow(1, &block);
         self.world_triangles.push(block.to_colored_triangles());
         self.outlines.push(block.to_outlines());
-        self.selection_triangles.push(block.to_triangles(selection_color(self.block_count)));
+        self.selection_triangles.push(block.to_triangles(id_color(block.id)));
         self.block_id_to_index.insert(block.id, self.world_data.len() - 1);
-        self.block_count += 1;
+        self.next_block_id += 1;
       }
     })
   }
