@@ -921,7 +921,6 @@ impl App {
       gl::ReadPixels(x, y, 1, 1, gl::RGB, gl::UNSIGNED_BYTE, mem::transmute(&pixels));
 
       let block_id = (pixels.r as uint << 16) | (pixels.g as uint << 8) | (pixels.b as uint << 0);
-      // TODO: check if id not in hashmap
       self.block_id_to_index.find(&(block_id as u32)).map(|&x| x)
   }
   
