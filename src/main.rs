@@ -807,12 +807,12 @@ fn mask(mask: u32, i: u32) -> u32 {
   (i & mask) >> (mask as uint).trailing_zeros()
 }
 
-fn selection_color(i: u32) -> Color4<GLfloat> {
-  assert!(i < 0xFF000000, "too many items for selection buffer");
+fn selection_color(block_id: u32) -> Color4<GLfloat> {
+  assert!(block_id < 0xFF000000, "too many items for selection buffer");
   let ret = Color4::new(
-    (mask(0x00FF0000, i) as GLfloat / 255.0),
-    (mask(0x0000FF00, i) as GLfloat / 255.0),
-    (mask(0x000000FF, i) as GLfloat / 255.0),
+    (mask(0x00FF0000, block_id) as GLfloat / 255.0),
+    (mask(0x0000FF00, block_id) as GLfloat / 255.0),
+    (mask(0x000000FF, block_id) as GLfloat / 255.0),
     1.0,
   );
   assert!(ret.r >= 0.0);
