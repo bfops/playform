@@ -1,4 +1,5 @@
 pub use color::Color4;
+use bounding_box::BoundingBox;
 use cgmath::aabb::Aabb2;
 use cgmath::angle;
 use cgmath::array::Array2;
@@ -215,9 +216,8 @@ impl BlockType {
 #[deriving(Clone)]
 /// A minecraft-y block in the game world.
 pub struct Block {
+  bounds: BoundingBox,
   // bounds of the Block
-  low_corner: Vector3<GLfloat>,
-  high_corner: Vector3<GLfloat>,
   block_type: BlockType,
 }
 
@@ -233,7 +233,7 @@ enum Intersect1 {
 }
 
 // Find whether two Blocks intersect.
-fn intersect(b1: &Block, b2: &Block) -> Intersect {
+fn intersect(b1: &BoundingBox, b2: &BoundingBox) -> Intersect {
   fn intersect1(x1l: GLfloat, x1h: GLfloat, x2l: GLfloat, x2h: GLfloat) -> Intersect1 {
     if x1l > x2l && x1h <= x2h {
       Within
@@ -272,8 +272,7 @@ fn intersect(b1: &Block, b2: &Block) -> Intersect {
 impl Block {
   fn new(low_corner: Vector3<GLfloat>, high_corner: Vector3<GLfloat>, block_type: BlockType) -> Block {
     Block {
-      low_corner: low_corner.clone(),
-      high_corner: high_corner.clone(),
+      bounds: BoundingBox { low_corner: low_corner, high_corner: high_corner },
       block_type: block_type,
     }
   }
@@ -282,8 +281,8 @@ impl Block {
   // Triangle vertices are in clockwise order when viewed from the outside of
   // the cube, for rendering purposes.
   fn to_triangles(&self, c: Color4<GLfloat>) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BLOCK] {
-    let (x1, y1, z1) = (self.low_corner.x, self.low_corner.y, self.low_corner.z);
-    let (x2, y2, z2) = (self.high_corner.x, self.high_corner.y, self.high_corner.z);
+    let (x1, y1, z1) = (self.bounds.low_corner.x, self.bounds.low_corner.y, self.bounds.low_corner.z);
+    let (x2, y2, z2) = (self.bounds.high_corner.x, self.bounds.high_corner.y, self.bounds.high_corner.z);
 
     let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> ColoredVertex {
       ColoredVertex {
@@ -323,8 +322,8 @@ impl Block {
   fn to_outlines(&self) -> [ColoredVertex, ..VERTICES_PER_LINE * LINES_PER_BLOCK] {
     // distance from the block to construct the bounding outlines.
     let d = 0.002;
-    let (x1, y1, z1) = (self.low_corner.x - d, self.low_corner.y - d, self.low_corner.z - d);
-    let (x2, y2, z2) = (self.high_corner.x + d, self.high_corner.y + d, self.high_corner.z + d);
+    let (x1, y1, z1) = (self.bounds.low_corner.x - d, self.bounds.low_corner.y - d, self.bounds.low_corner.z - d);
+    let (x2, y2, z2) = (self.bounds.high_corner.x + d, self.bounds.high_corner.y + d, self.bounds.high_corner.z + d);
     let c = Color4::of_rgba(0.0, 0.0, 0.0, 1.0);
 
     let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> ColoredVertex {
@@ -927,18 +926,15 @@ impl App {
   }
 
 
-  /// Constructs a new player block, given the highest x, highest y, and
-  /// highest z corner. The size of the player is hardcoded.
-  fn construct_player(&self, high_corner: Vector3<GLfloat>) -> Block {
+  fn player_bounds(&self, high_corner: Vector3<GLfloat>) -> BoundingBox {
     // TODO(cgaebel): We should be using a `cgmath::Aabb` for this.
-    let low_corner = high_corner - Vector3::new(0.5, 2.0, 1.0);
-    // TODO: this really shouldn't be Stone.
-    Block::new(low_corner, high_corner, Stone)
+    let low_corner = high_corner - Vector3::new(1.0, 2.0, 1.0);
+    BoundingBox { low_corner: low_corner, high_corner: high_corner }
   }
 
   /// Translates the camera by a vector.
   pub unsafe fn translate(&mut self, v: Vector3<GLfloat>) {
-    let player = self.construct_player(self.camera_position + v);
+    let player = self.player_bounds(self.camera_position + v);
 
     let mut d_camera_speed : Vector3<GLfloat> = Vector3::new(0.0, 0.0, 0.0);
 
@@ -947,7 +943,7 @@ impl App {
         .world_data
         .iter()
         .any(|block|
-          match intersect(&player, block) {
+          match intersect(&player, &block.bounds) {
             Intersect(stop) => {
               d_camera_speed = v*stop - v;
               true
