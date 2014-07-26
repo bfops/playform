@@ -65,6 +65,14 @@ pub struct GLBuffer<T> {
   capacity: uint,
 }
 
+fn aligned_slice_to_ptr<T>(vs: &[T], alignment: uint) -> *const c95::c_void {
+  unsafe {
+    let vs_as_slice : raw::Slice<T> = mem::transmute(vs);
+    assert_eq!(vs_as_slice.data as uint & (alignment - 1), 0);
+    vs_as_slice.data as *const c95::c_void
+  }
+}
+
 impl<T: Clone> GLBuffer<T> {
   #[inline]
   /// An empty `GLBuffer`.
@@ -160,16 +168,12 @@ impl<T: Clone> GLBuffer<T> {
     gl::BindVertexArray(self.vertex_array);
     gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
 
-    let vs_as_slice : raw::Slice<T> = mem::transmute(vs);
-
-    assert_eq!(vs_as_slice.data as uint & 0x3, 0);
-
     let size = mem::size_of::<T>() as i64;
     gl::BufferSubData(
       gl::ARRAY_BUFFER,
       size * self.length as i64,
-      size * vs_as_slice.len as i64,
-      vs_as_slice.data as *const c95::c_void
+      size * vs.len() as i64,
+      aligned_slice_to_ptr(vs, 4)
     );
 
     self.length += vs.len();
