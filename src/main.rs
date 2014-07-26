@@ -42,12 +42,9 @@ static VERTICES_PER_LINE: uint = 2;
 static TRIANGLE_VERTICES_PER_BLOCK: uint = TRIANGLES_PER_BLOCK * VERTICES_PER_TRIANGLE;
 static LINE_VERTICES_PER_BLOCK: uint = LINES_PER_BLOCK * VERTICES_PER_LINE;
 
-static MAX_WORLD_SIZE: uint = 100000;
+static MAX_WORLD_SIZE: uint = 20000;
 
 static MAX_JUMP_FUEL: uint = 4;
-
-// how many blocks to load during every update step
-static LOAD_SPEED:uint = 1 << 8;
 
 /// A data structure which specifies how to pass data from opengl to the vertex
 /// shaders.
@@ -58,7 +55,7 @@ pub struct VertexAttribData<'a> {
   pub size: uint,
 }
 
-/// An opengl array, of shit on the GPU.
+/// A fixed-capacity array of GLfloat-based structures passed to OpenGL.
 pub struct GLBuffer<T> {
   vertex_array: u32,
   vertex_buffer: u32,
@@ -358,8 +355,6 @@ impl Block {
 /// The whole application. Wrapped up in a nice frameworky struct for SDL.
 pub struct App {
   world_data: Vec<Block>,
-  // id of the next block to load
-  next_load_id: u32,
   // next block id to assign
   next_block_id: u32,
   // mapping of block_id to the block's index in OpenGL buffers
@@ -645,100 +640,67 @@ impl Game<GameWindowSDL2> for App {
 
       timers.time("load.construct", || unsafe {
         // low dirt block
-        for i in range_inclusive(-2i, 2) {
-          for j in range_inclusive(-2i, 2) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (6.0 + i, 6.0, 0.0 + j);
-            let (x2, y2, z2) = (6.5 + i, 6.5, 0.5 + j);
+        for i in range_inclusive(-1i, 1) {
+          for j in range_inclusive(-1i, 1) {
+            let (x1, y1, z1) = (3.0 + i as GLfloat, 6.0, 0.0 + j as GLfloat);
+            let (x2, y2, z2) = (4.0 + i as GLfloat, 7.0, 1.0 + j as GLfloat);
             self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt, false);
           }
         }
         // high dirt block
-        for i in range_inclusive(-2i, 2) {
-          for j in range_inclusive(-2i, 2) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (0.0 + i, 12.0, 5.0 + j);
-            let (x2, y2, z2) = (0.5 + i, 12.5, 5.5 + j);
+        for i in range_inclusive(-1i, 1) {
+          for j in range_inclusive(-1i, 1) {
+            let (x1, y1, z1) = (0.0 + i as GLfloat, 12.0, 5.0 + j as GLfloat);
+            let (x2, y2, z2) = (1.0 + i as GLfloat, 13.0, 6.0 + j as GLfloat);
             self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt, false);
           }
         }
         // ground
-        for i in range_inclusive(-64i, 64) {
-          for j in range_inclusive(-64i, 64) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (i, 0.0, j);
-            let (x2, y2, z2) = (i + 0.5, 1.0, j + 0.5);
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(-32i, 32) {
+            let (x1, y1, z1) = (i as GLfloat - 0.5, 0.0, j as GLfloat - 0.5);
+            let (x2, y2, z2) = (i as GLfloat + 0.5, 1.0, j as GLfloat + 0.5);
             self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Grass, false);
           }
         }
         // front wall
-        for i in range_inclusive(-64i, 64) {
-          for j in range_inclusive(0i, 64) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (i, 0.5 + j, -32.0);
-            let (x2, y2, z2) = (i + 0.5, 1.0 + j, -32.0 + 0.5);
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(0i, 32) {
+            let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, -32.0 - 0.5);
+            let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, -32.0 + 0.5);
             self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
           }
         }
         // back wall
-        for i in range_inclusive(-64i, 64) {
-          for j in range_inclusive(0i, 64) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (i - 0.5, 1.0 + j, 32.0 - 0.5);
-            let (x2, y2, z2) = (i + 0.5, 2.0 + j, 32.0 + 0.5);
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(0i, 32) {
+            let (x1, y1, z1) = (i as GLfloat - 0.5, 1.0 + j as GLfloat, 32.0 - 0.5);
+            let (x2, y2, z2) = (i as GLfloat + 0.5, 2.0 + j as GLfloat, 32.0 + 0.5);
             self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
           }
         }
         // left wall
-        for i in range_inclusive(-64i, 64) {
-          for j in range_inclusive(0i, 64) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (-32.0, 0.5 + j, i - 0.5);
-            let (x2, y2, z2) = (-32.0 + 0.5, 1.0 + j, i + 0.5);
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(0i, 32) {
+            let (x1, y1, z1) = (-32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
+            let (x2, y2, z2) = (-32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
             self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
           }
         }
         // right wall
-        for i in range_inclusive(-64i, 64) {
-          for j in range_inclusive(0i, 64) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (32.0, 0.5 + j, i);
-            let (x2, y2, z2) = (32.0 + 0.5, 1.0 + j, i + 0.5);
+        for i in range_inclusive(-32i, 32) {
+          for j in range_inclusive(0i, 32) {
+            let (x1, y1, z1) = (32.0 - 0.5, 1.0 + j as GLfloat, i as GLfloat - 0.5);
+            let (x2, y2, z2) = (32.0 + 0.5, 2.0 + j as GLfloat, i as GLfloat + 0.5);
             self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
           }
         }
       });
     })
-
-    println!("returned from load() with {} blocks", self.world_data.len());
   }
 
   fn update(&mut self, _: &mut GameWindowSDL2, _: &UpdateArgs) {
     time!(&self.timers, "update", || unsafe {
-      let mut i = 0;
-      while i < LOAD_SPEED && self.next_load_id < self.next_block_id {
-        match self.block_id_to_index.find(&self.next_load_id) {
-          None => { },
-          Some(&idx) => {
-            let block = &self.world_data[idx];
-            self.world_triangles.push(block.to_colored_triangles());
-            self.outlines.push(block.to_outlines());
-            let selection_id = block.id * 6;
-            let selection_colors =
-                  [ id_color(selection_id + 0),
-                    id_color(selection_id + 1),
-                    id_color(selection_id + 2),
-                    id_color(selection_id + 3),
-                    id_color(selection_id + 4),
-                    id_color(selection_id + 5),
-                  ];
-            self.selection_triangles.push(block.to_triangles(selection_colors));
-          },
-        }
-        self.next_load_id += 1;
-        i += 1;
-      }
-
       if self.jumping {
         if self.jump_fuel > 0 {
           self.jump_fuel -= 1;
@@ -855,7 +817,6 @@ impl App {
   pub unsafe fn new() -> App {
     App {
       world_data: Vec::new(),
-      next_load_id: 1,
       // Start assigning block_ids at 1.
       // block_id 0 corresponds to no block.
       next_block_id: 1,
@@ -1001,6 +962,18 @@ impl App {
 
       if !collided {
         self.world_data.grow(1, &block);
+        self.world_triangles.push(block.to_colored_triangles());
+        self.outlines.push(block.to_outlines());
+        let selection_id = block.id * 6;
+        let selection_colors =
+              [ id_color(selection_id + 0),
+                id_color(selection_id + 1),
+                id_color(selection_id + 2),
+                id_color(selection_id + 3),
+                id_color(selection_id + 4),
+                id_color(selection_id + 5),
+              ];
+        self.selection_triangles.push(block.to_triangles(selection_colors));
         self.block_id_to_index.insert(block.id, self.world_data.len() - 1);
         self.next_block_id += 1;
       }
