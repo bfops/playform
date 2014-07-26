@@ -152,9 +152,9 @@ impl<T: Clone> GLBuffer<T> {
     );
     gl::BufferSubData(
       gl::ARRAY_BUFFER,
-      (i * span * size) as i64,
+      (i * copy_size) as i64,
       copy_size as i64,
-      mem::transmute(&bytes.slice(0, bytes.len())[0]),
+      aligned_slice_to_ptr(bytes.slice(0, span), 4),
     );
   }
 
