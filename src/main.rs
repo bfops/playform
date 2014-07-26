@@ -352,23 +352,26 @@ impl Block {
   }
 }
 
-/// The whole application. Wrapped up in a nice frameworky struct for SDL.
+pub struct Player {
+  bounds: BoundingBox,
+  // speed; units are world coordinates
+  speed: Vector3<GLfloat>,
+  // acceleration; x/z units are relative to player facing
+  accel: Vector3<GLfloat>,
+  // this is depleted as we jump and replenished as we stand.
+  jump_fuel: uint,
+  // are we currently trying to jump? (e.g. holding the key).
+  is_jumping: bool,
+}
+
+/// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App {
   world_data: Vec<Block>,
+  player: Player,
   // next block id to assign
   next_block_id: u32,
   // mapping of block_id to the block's index in OpenGL buffers
   block_id_to_index: HashMap<u32, uint>,
-  // position; units are world coordinates
-  camera_position: Vector3<GLfloat>,
-  // speed; units are world coordinates
-  camera_speed: Vector3<GLfloat>,
-  // acceleration; x/z units are relative to player facing
-  camera_accel: Vector3<GLfloat>,
-  // this is depleted as we jump and replenished as we stand.
-  jump_fuel: uint,
-  // are we currently trying to jump? (e.g. holding the key).
-  jumping: bool,
   // OpenGL buffers
   world_triangles: GLBuffer<ColoredVertex>,
   outlines: GLBuffer<ColoredVertex>,
@@ -478,10 +481,10 @@ impl Game<GameWindowSDL2> for App {
           self.walk(-Vector3::unit_y());
         },
         piston::keyboard::Space => {
-          if !self.jumping {
-            self.jumping = true;
+          if !self.player.is_jumping {
+            self.player.is_jumping = true;
             // this 0.3 is duplicated in a few places
-            self.camera_accel.y = self.camera_accel.y + 0.3;
+            self.player.accel.y = self.player.accel.y + 0.3;
           }
         },
         piston::keyboard::W => {
@@ -517,10 +520,10 @@ impl Game<GameWindowSDL2> for App {
           self.walk(Vector3::unit_y());
         },
         piston::keyboard::Space => {
-          if self.jumping {
-            self.jumping = false;
+          if self.player.is_jumping {
+            self.player.is_jumping = false;
             // this 0.3 is duplicated in a few places
-            self.camera_accel.y = self.camera_accel.y - 0.3;
+            self.player.accel.y = self.player.accel.y - 0.3;
           }
         },
         piston::keyboard::W => {
@@ -701,17 +704,17 @@ impl Game<GameWindowSDL2> for App {
 
   fn update(&mut self, _: &mut GameWindowSDL2, _: &UpdateArgs) {
     time!(&self.timers, "update", || unsafe {
-      if self.jumping {
-        if self.jump_fuel > 0 {
-          self.jump_fuel -= 1;
+      if self.player.is_jumping {
+        if self.player.jump_fuel > 0 {
+          self.player.jump_fuel -= 1;
         } else {
           // this code is duplicated in a few places
-          self.jumping = false;
-          self.camera_accel.y = self.camera_accel.y - 0.3;
+          self.player.is_jumping = false;
+          self.player.accel.y = self.player.accel.y - 0.3;
         }
       }
 
-      let dP = self.camera_speed;
+      let dP = self.player.speed;
       if dP.x != 0.0 {
         self.translate(Vector3::new(dP.x, 0.0, 0.0));
       }
@@ -722,10 +725,10 @@ impl Game<GameWindowSDL2> for App {
         self.translate(Vector3::new(0.0, 0.0, dP.z));
       }
 
-      let dV = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.camera_accel);
-      self.camera_speed = self.camera_speed + dV;
+      let dV = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.player.accel);
+      self.player.speed = self.player.speed + dV;
       // friction
-      self.camera_speed = self.camera_speed * Vector3::new(0.7, 0.99, 0.7);
+      self.player.speed = self.player.speed * Vector3::new(0.7, 0.99, 0.7);
 
       // Block deletion
       if self.is_mouse_pressed(piston::mouse::Left) {
@@ -817,15 +820,20 @@ impl App {
   pub unsafe fn new() -> App {
     App {
       world_data: Vec::new(),
+      player: Player {
+        bounds: BoundingBox {
+            low_corner: Vector3::new(-1.0, -2.0, -1.0),
+            high_corner: Vector3::zero(),
+        },
+        speed: Vector3::zero(),
+        accel: Vector3::new(0.0, -0.1, 0.0),
+        jump_fuel: 0,
+        is_jumping: false,
+      },
       // Start assigning block_ids at 1.
       // block_id 0 corresponds to no block.
       next_block_id: 1,
       block_id_to_index: HashMap::<u32, uint>::new(),
-      camera_position: Vector3::zero(),
-      camera_speed: Vector3::zero(),
-      camera_accel: Vector3::new(0.0, -0.1, 0.0),
-      jump_fuel: 0,
-      jumping: false,
       world_triangles: GLBuffer::null(),
       outlines: GLBuffer::null(),
       hud_triangles: GLBuffer::null(),
@@ -943,7 +951,8 @@ impl App {
   }
 
   #[inline]
-  fn collision(&self, b: &BoundingBox) -> Option<Intersect> {
+  /// Find a collision with self.world_data.
+  fn world_collision(&self, b: &BoundingBox) -> Option<Intersect> {
     for block in self.world_data.iter() {
       let i = intersect(b, &block.bounds);
       match i {
@@ -958,7 +967,10 @@ impl App {
   unsafe fn place_block(&mut self, low_corner: Vector3<GLfloat>, high_corner: Vector3<GLfloat>, block_type: BlockType, check_collisions: bool) {
     time!(&self.timers, "place_block", || {
       let block = Block::new(low_corner, high_corner, block_type, self.next_block_id);
-      let collided = check_collisions && self.collision(&block.bounds).is_some();
+      let collided = check_collisions &&
+            ( self.world_collision(&block.bounds).is_some() || 
+              intersect(&block.bounds, &self.player.bounds).is_some()
+            );
 
       if !collided {
         self.world_data.grow(1, &block);
@@ -999,28 +1011,24 @@ impl App {
   #[inline]
   /// Changes the camera's acceleration by the given `da`.
   pub fn walk(&mut self, da: Vector3<GLfloat>) {
-    self.camera_accel = self.camera_accel + da.mul_s(0.2);
-  }
-
-
-  fn player_bounds(&self, high_corner: Vector3<GLfloat>) -> BoundingBox {
-    // TODO(cgaebel): We should be using a `cgmath::Aabb` for this.
-    let low_corner = high_corner - Vector3::new(1.0, 2.0, 1.0);
-    BoundingBox { low_corner: low_corner, high_corner: high_corner }
+    self.player.accel = self.player.accel + da.mul_s(0.2);
   }
 
   /// Translates the camera by a vector.
   pub unsafe fn translate(&mut self, v: Vector3<GLfloat>) {
-    let player = self.player_bounds(self.camera_position + v);
-
     let mut d_camera_speed : Vector3<GLfloat> = Vector3::new(0.0, 0.0, 0.0);
+
+    let new_player_bounds = BoundingBox {
+          low_corner: self.player.bounds.low_corner + v,
+          high_corner: self.player.bounds.high_corner + v,
+        };
 
     let collided =
       self
         .world_data
         .iter()
         .any(|block|
-          match intersect(&player, &block.bounds) {
+          match intersect(&new_player_bounds, &block.bounds) {
             Some(stop) => {
               d_camera_speed = v*stop - v;
               true
@@ -1029,19 +1037,19 @@ impl App {
           }
         );
 
-    self.camera_speed = self.camera_speed + d_camera_speed;
+    self.player.speed = self.player.speed + d_camera_speed;
 
     if collided {
       if v.y < 0.0 {
-        self.jump_fuel = MAX_JUMP_FUEL;
+        self.player.jump_fuel = MAX_JUMP_FUEL;
       }
     } else {
-      self.camera_position = self.camera_position + v;
+      self.player.bounds = new_player_bounds;
       self.translation_matrix = self.translation_matrix * translate(-v);
       self.update_projection();
 
       if v.y < 0.0 {
-        self.jump_fuel = 0;
+        self.player.jump_fuel = 0;
       }
     }
   }
