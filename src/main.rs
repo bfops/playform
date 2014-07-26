@@ -135,7 +135,7 @@ impl<T: Clone> GLBuffer<T> {
     let size = mem::size_of::<T>();
     let copy_size = (size * span) as uint;
     let mut bytes: Vec<T> = Vec::with_capacity(span);
-    bytes.set_len(copy_size);
+    bytes.set_len(span);
     gl::GetBufferSubData(
       gl::ARRAY_BUFFER,
       (self.length * size) as i64,
