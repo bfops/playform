@@ -12,6 +12,7 @@
 
 extern crate cgmath;
 extern crate gl;
+extern crate libc;
 extern crate piston;
 extern crate sdl2;
 extern crate sdl2_game_window;

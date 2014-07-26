@@ -10,6 +10,7 @@ use cgmath::vector::{Vector, Vector3};
 use cgmath::projection;
 use cstr_cache::CStringCache;
 use fontloader;
+use libc::types::common::c95;
 use piston;
 use piston::*;
 use gl;
@@ -17,12 +18,13 @@ use gl::types::*;
 use sdl2_game_window::GameWindowSDL2;
 use sdl2::mouse;
 use stopwatch;
+use std::collections::HashMap;
 use std::mem;
 use std::iter::range_inclusive;
 use std::ptr;
 use std::str;
 use std::num;
-use std::collections::HashMap;
+use std::raw;
 use vertex::{ColoredVertex,TextureVertex};
 
 // TODO(cgaebel): How the hell do I get this to be exported from `mod stopwatch`?
@@ -161,12 +163,16 @@ impl<T: Clone> GLBuffer<T> {
     gl::BindVertexArray(self.vertex_array);
     gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
 
+    let vs_as_slice : raw::Slice<T> = mem::transmute(vs);
+
+    assert_eq!(vs_as_slice.data as uint & 0x3, 0);
+
     let size = mem::size_of::<T>() as i64;
     gl::BufferSubData(
       gl::ARRAY_BUFFER,
       size * self.length as i64,
-      size * vs.len() as i64,
-      mem::transmute(&vs[0]),
+      size * vs_as_slice.len as i64,
+      vs_as_slice.data as *const c95::c_void
     );
 
     self.length += vs.len();
