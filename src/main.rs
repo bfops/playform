@@ -638,7 +638,7 @@ impl Game<GameWindowSDL2> for App {
           for j in range_inclusive(-64i, 64) {
             let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
             let (x1, y1, z1) = (i, 0.0, j);
-            let (x2, y2, z2) = (i + 0.5, 1.0, j + 0.5);
+            let (x2, y2, z2) = (i + 0.5, 0.5, j + 0.5);
             self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Grass, false);
           }
         }
@@ -655,8 +655,8 @@ impl Game<GameWindowSDL2> for App {
         for i in range_inclusive(-64i, 64) {
           for j in range_inclusive(0i, 64) {
             let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (i - 0.5, 1.0 + j, 32.0 - 0.5);
-            let (x2, y2, z2) = (i + 0.5, 2.0 + j, 32.0 + 0.5);
+            let (x1, y1, z1) = (i - 0.5, 0.5 + j, 32.0 - 0.5);
+            let (x2, y2, z2) = (i + 0.5, 1.0 + j, 32.0 + 0.5);
             self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
           }
         }
@@ -772,7 +772,7 @@ impl Game<GameWindowSDL2> for App {
                        Vector3::unit_z(),
                        Vector3::unit_x(),
                       -Vector3::unit_y(),
-                    ][face];
+                    ][face].mul_s(0.5);
               self.place_block(
                 block.bounds.low_corner + direction,
                 block.bounds.high_corner + direction,
