@@ -153,8 +153,8 @@ impl<T: Clone> GLBuffer<T> {
   #[inline]
   /// Add a set of triangles to the set of triangles to render.
   pub unsafe fn push(&mut self, vs: &[T]) {
-    if self.length >= self.capacity {
-      fail!("Overfilled GLBuffer: {} out of {}", self.length, self.capacity);
+    if self.length + vs.len() > self.capacity {
+      fail!("GLBuffer::push: {} into a {}/{} full GLbuffer", vs.len(), self.length, self.capacity);
     }
 
     gl::BindVertexArray(self.vertex_array);
