@@ -509,7 +509,6 @@ impl Game<GameWindowSDL2> for App {
           }
 
           if triangles.len() > 0 {
-            let gl = &mut self.gl;
             self.world_triangles.get_mut_ref().push(gl, triangles.slice(0, triangles.len()));
             self.outlines.get_mut_ref().push(gl, outlines.slice(0, outlines.len()));
             self.selection_triangles.get_mut_ref().push(gl, selections.slice(0, selections.len()));
