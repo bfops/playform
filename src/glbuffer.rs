@@ -1,7 +1,7 @@
+//! OpenGL arrays of verticies, all shaded with the same program.
 use gl;
 use gl::types::*;
 use std::mem;
-//! OpenGL arrays of verticies, all shaded with the same program.
 use std::ptr;
 use std::raw;
 use libc::types::common::c95;
