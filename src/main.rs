@@ -516,65 +516,62 @@ impl Game<GameWindowSDL2> for App {
         })
       }
 
-      if self.player.is_jumping {
-        if self.player.jump_fuel > 0 {
-          self.player.jump_fuel -= 1;
-        } else {
-          // this code is duplicated in a few places
-          self.player.is_jumping = false;
-          self.player.accel.y = self.player.accel.y - 0.3;
+      time!(&self.timers, "update.player", || unsafe {
+        if self.player.is_jumping {
+          if self.player.jump_fuel > 0 {
+            self.player.jump_fuel -= 1;
+          } else {
+            // this code is duplicated in a few places
+            self.player.is_jumping = false;
+            self.player.accel.y = self.player.accel.y - 0.3;
+          }
         }
-      }
 
-      let dP = self.player.speed;
-      if dP.x != 0.0 {
-        self.translate(Vector3::new(dP.x, 0.0, 0.0));
-      }
-      if dP.y != 0.0 {
-        self.translate(Vector3::new(0.0, dP.y, 0.0));
-      }
-      if dP.z != 0.0 {
-        self.translate(Vector3::new(0.0, 0.0, dP.z));
-      }
+        let dP = self.player.speed;
+        if dP.x != 0.0 {
+          self.translate(Vector3::new(dP.x, 0.0, 0.0));
+        }
+        if dP.y != 0.0 {
+          self.translate(Vector3::new(0.0, dP.y, 0.0));
+        }
+        if dP.z != 0.0 {
+          self.translate(Vector3::new(0.0, 0.0, dP.z));
+        }
 
-      let dV = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.player.accel);
-      self.player.speed = self.player.speed + dV;
-      // friction
-      self.player.speed = self.player.speed * Vector3::new(0.7, 0.99, 0.7);
+        let dV = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.player.accel);
+        self.player.speed = self.player.speed + dV;
+        // friction
+        self.player.speed = self.player.speed * Vector3::new(0.7, 0.99, 0.7);
+      });
 
       // Block deletion
       if self.is_mouse_pressed(piston::mouse::Left) {
         time!(&self.timers, "update.delete_block", || unsafe {
-          self
-            .block_at_window_center()
-            .map(|(id, _)| {
-              self.remove_block(id)
-            });
+          self.block_at_window_center().map(|(id, _)| { self.remove_block(id) });
         })
       }
       if self.is_mouse_pressed(piston::mouse::Right) {
-        unsafe {
-          match self.block_at_window_center() {
-            None => { },
-            Some((block_id, face)) => {
-              let bounds = expect_id(self.physics.find(&block_id));
-              let direction =
-                    [ -Vector3::unit_z(),
-                      -Vector3::unit_x(),
-                       Vector3::unit_y(),
-                       Vector3::unit_z(),
-                       Vector3::unit_x(),
-                      -Vector3::unit_y(),
-                    ][face].mul_s(0.5);
-              self.place_block(
-                bounds.low_corner + direction,
-                bounds.high_corner + direction,
-                Dirt,
-                true
-              );
-            }
-          }
-        }
+        time!(&self.timers, "update.place_block", || unsafe {
+          self.block_at_window_center().map(|(block_id, face)| {
+            let bounds = expect_id(self.physics.find(&block_id));
+            let direction =
+                  [ -Vector3::unit_z(),
+                    -Vector3::unit_x(),
+                      Vector3::unit_y(),
+                      Vector3::unit_z(),
+                      Vector3::unit_x(),
+                    -Vector3::unit_y(),
+                  ][face].mul_s(0.5);
+            // TODO: think about how this should work when placing size A blocks
+            // against size B blocks.
+            self.place_block(
+              bounds.low_corner + direction,
+              bounds.high_corner + direction,
+              Dirt,
+              true
+            );
+          });
+        })
       }
     })
   }
@@ -757,17 +754,17 @@ impl App {
   /// Returns the id of the entity at the given (x, y) coordinate in the window.
   /// The pixel coordinates are from (0, 0) to (WINDOW_WIDTH, WINDOW_HEIGHT).
   unsafe fn block_at_window(&self, x: i32, y: i32) -> Option<(u32, uint)> {
-      self.render_selection();
+    self.render_selection();
 
-      let pixels: Color4<u8> = Color4::of_rgba(0, 0, 0, 0);
-      gl::ReadPixels(x, y, 1, 1, gl::RGB, gl::UNSIGNED_BYTE, mem::transmute(&pixels));
+    let pixels: Color4<u8> = Color4::of_rgba(0, 0, 0, 0);
+    gl::ReadPixels(x, y, 1, 1, gl::RGB, gl::UNSIGNED_BYTE, mem::transmute(&pixels));
 
-      let selection_id = (pixels.r as u32 << 16) | (pixels.g as u32 << 8) | (pixels.b as u32 << 0);
-      if selection_id == 0 {
-        None
-      } else {
-        Some((selection_id / 6, selection_id as uint % 6))
-      }
+    let selection_id = (pixels.r as u32 << 16) | (pixels.g as u32 << 8) | (pixels.b as u32 << 0);
+    if selection_id == 0 {
+    None
+    } else {
+    Some((selection_id / 6, selection_id as uint % 6))
+    }
   }
 
   #[inline]
