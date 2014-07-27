@@ -305,7 +305,6 @@ impl Game<GameWindowSDL2> for App {
     })
   }
 
-  #[inline]
   fn mouse_move(&mut self, w: &mut GameWindowSDL2, args: &MouseMoveArgs) {
     time!(&self.timers, "event.mouse_move", || unsafe {
       let (cx, cy) = (WINDOW_WIDTH as f32 / 2.0, WINDOW_HEIGHT as f32 / 2.0);
@@ -321,14 +320,12 @@ impl Game<GameWindowSDL2> for App {
     })
   }
 
-  #[inline]
   fn mouse_press(&mut self, _: &mut GameWindowSDL2, args: &MousePressArgs) {
     time!(&self.timers, "event.mouse_press", || {
       self.mouse_buttons_pressed.push(args.button);
     })
   }
 
-  #[inline]
   fn mouse_release(&mut self, _: &mut GameWindowSDL2, args: &MouseReleaseArgs) {
     swap_remove_first(&mut self.mouse_buttons_pressed, args.button)
   }
@@ -770,13 +767,11 @@ impl App {
       }
   }
 
-  #[inline]
   /// Returns (block id, block face) shown at the center of the window.
   unsafe fn block_at_window_center(&self) -> Option<(u32, uint)> {
     self.block_at_window(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2)
   }
 
-  #[inline]
   /// Find a collision with self.physics.
   fn world_collision(&self, b: &BoundingBox, self_id: u32) -> Option<Intersect> {
     for (&id, bounds) in self.physics.iter() {
@@ -834,7 +829,6 @@ impl App {
     }
   }
 
-  #[inline]
   /// Changes the camera's acceleration by the given `da`.
   pub fn walk(&mut self, da: Vector3<GLfloat>) {
     self.player.accel = self.player.accel + da.mul_s(0.2);
@@ -890,7 +884,6 @@ impl App {
     self.rotate(Vector3::unit_y(), r);
   }
 
-  #[inline]
   /// Changes the camera pitch by `r` radians. Positive is up.
   /// Angles that "flip around" (i.e. looking too far up or down)
   /// are sliently rejected.
