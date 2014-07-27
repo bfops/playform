@@ -105,16 +105,16 @@ impl<T: Clone> GLBuffer<T> {
       gl::ARRAY_BUFFER,
       (i * copy_size) as i64,
       copy_size as i64,
-      aligned_slice_to_ptr(bytes.slice(0, span), 4),
+      aligned_slice_to_ptr(bytes.slice(0, span), 16),
     );
   }
 
   #[inline]
   /// Add a set of triangles to the set of triangles to render.
   pub unsafe fn push(&mut self, vs: &[T]) {
-    if self.length + vs.len() > self.capacity {
-      fail!("GLBuffer::push: {} into a {}/{} full GLbuffer", vs.len(), self.length, self.capacity);
-    }
+    assert!(
+      self.length + vs.len() <= self.capacity,
+      "GLBuffer::push: {} into a {}/{} full GLbuffer", vs.len(), self.length, self.capacity);
 
     gl::BindVertexArray(self.vertex_array);
     gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);

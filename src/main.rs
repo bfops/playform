@@ -158,6 +158,7 @@ pub struct App {
   translation_matrix: Matrix4<GLfloat>,
   rotation_matrix: Matrix4<GLfloat>,
   lateral_rotation: angle::Rad<GLfloat>,
+  vertical_rotation: angle::Rad<GLfloat>,
   // OpenGL shader "program" id.
   shader_program: u32,
   texture_shader: u32,
@@ -662,6 +663,7 @@ impl App {
       translation_matrix: Matrix4::identity(),
       rotation_matrix: Matrix4::identity(),
       lateral_rotation: angle::rad(0.0),
+      vertical_rotation: angle::rad(0.0),
       shader_program: -1 as u32,
       texture_shader: -1 as u32,
       mouse_buttons_pressed: Vec::new(),
@@ -885,7 +887,17 @@ impl App {
 
   #[inline]
   /// Changes the camera pitch by `r` radians. Positive is up.
+  /// Angles that "flip around" (i.e. looking too far up or down)
+  /// are sliently rejected.
   pub unsafe fn rotate_vertical(&mut self, r: angle::Rad<GLfloat>) {
+    let new_rotation = self.vertical_rotation + r;
+
+    if new_rotation < -angle::Rad::turn_div_4()
+    || new_rotation >  angle::Rad::turn_div_4() {
+      return
+    }
+
+    self.vertical_rotation = new_rotation;
     let axis = self.right();
     self.rotate(axis, r);
   }

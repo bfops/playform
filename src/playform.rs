@@ -27,6 +27,7 @@ mod stopwatch;
 mod ttf;
 mod vertex;
 
+#[allow(dead_code)]
 fn main() {
   return main::main();
 }

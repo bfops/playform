@@ -3,6 +3,8 @@ use gl::types::GLfloat;
 use cgmath::point::{Point2,Point3};
 use cgmath::aabb::Aabb2;
 use color::Color4;
+#[cfg(test)]
+use std::mem;
 
 #[deriving(Clone, Copy)]
 /// An untextured rendering vertex, with position and color.
@@ -11,6 +13,12 @@ pub struct ColoredVertex {
   pub position: Point3<GLfloat>,
   /// The color to apply to this vertex, in lieu of a texture.
   pub color:    Color4<GLfloat>,
+}
+
+#[test]
+fn check_vertex_size() {
+  assert_eq!(mem::size_of::<ColoredVertex>(), 7*4);
+  assert_eq!(mem::size_of::<TextureVertex>(), 4*4);
 }
 
 impl ColoredVertex {
