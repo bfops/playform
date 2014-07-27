@@ -87,25 +87,24 @@ impl<T: Clone> GLBuffer<T> {
 
   /// Analog of vec::Vector::swap_remove`, but for GLBuffer data.
   pub unsafe fn swap_remove(&mut self, span: uint, i: uint) {
+    let i = i * span;
+    assert!(i < self.length);
+    self.length -= span;
+    if i == self.length {
+      // just remove, no swap.
+      return;
+    }
+
     gl::BindVertexArray(self.vertex_array);
     gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
 
-    self.length -= span;
-    let size = mem::size_of::<T>();
-    let copy_size = (size * span) as uint;
-    let mut bytes: Vec<T> = Vec::with_capacity(span);
-    bytes.set_len(span);
-    gl::GetBufferSubData(
+    let byte_size = mem::size_of::<T>() as i64;
+    gl::CopyBufferSubData(
       gl::ARRAY_BUFFER,
-      (self.length * size) as i64,
-      copy_size as i64,
-      mem::transmute(&bytes.as_mut_slice()[0]),
-    );
-    gl::BufferSubData(
       gl::ARRAY_BUFFER,
-      (i * copy_size) as i64,
-      copy_size as i64,
-      aligned_slice_to_ptr(bytes.slice(0, span), 16),
+      self.length as i64 * byte_size,
+      i as i64 * byte_size,
+      span as i64 * byte_size
     );
   }
 
