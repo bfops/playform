@@ -17,10 +17,12 @@ path = "./src/playform.rs"
 git = "https://github.com/bjz/gl-rs"
 
 [dependencies.sdl2_game_window]
+# only until PistonDevelopers/piston#508 and  is merged.
 git = "https://github.com/bfops/sdl2_game_window"
 
 [dependencies.piston]
-git = "https://github.com/PistonDevelopers/piston"
+# only until PistonDevelopers/piston#508 is merged.
+git = "https://github.com/cgaebel/piston"
 
 [dependencies.cgmath]
 git = "https://github.com/bjz/cgmath-rs"
