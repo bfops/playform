@@ -20,7 +20,7 @@ extern crate sdl2_game_window;
 mod bounding_box;
 mod color;
 mod cstr_cache;
-mod glbuffer;
+mod glw;
 mod main;
 mod fontloader;
 mod stopwatch;

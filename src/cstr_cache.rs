@@ -8,6 +8,7 @@ use std::mem;
 
 /// A set of CStrings, associated with rust strings. This makes efficiently
 /// interfacing with opengl functions which take strings, easier.
+#[deriving(Send, Clone)]
 pub struct CStringCache {
   cache: HashMap<&'static str, CString>,
 }

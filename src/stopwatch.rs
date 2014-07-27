@@ -5,6 +5,7 @@ use std::rc::Rc;
 use std::collections::HashMap;
 
 /// A simple stopwatch taht can time events and print stats about them.
+#[deriving(Send)]
 pub struct Stopwatch {
   pub total_time: u64,
   // number of time windows we've clocked
