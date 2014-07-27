@@ -120,9 +120,8 @@ impl<T: Clone> GLBuffer<T> {
       offset += (attrib.size * mem::size_of::<GLfloat>()) as int;
     }
 
-    if offset != mem::size_of::<T>() as int {
-      fail!("attribs are incorrectly sized!");
-    }
+    // Check that the attribs are sized correctly.
+    assert_eq!(offset, mem::size_of::<T>() as int);
 
     gl::BufferData(
       gl::ARRAY_BUFFER,
