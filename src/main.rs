@@ -86,9 +86,7 @@ impl<T: Clone> GLBuffer<T> {
     let mut offset = 0;
     for attrib in attribs.iter() {
       let shader_attrib = glGetAttribLocation(shader_program, attrib.name) as GLuint;
-      if shader_attrib == -1 {
-        fail!("shader attribute \"{}\" not found", attrib.name);
-      }
+      assert!(shader_attrib != -1, "shader attribute \"{}\" not found", attrib.name);
 
       gl::EnableVertexAttribArray(shader_attrib);
       gl::VertexAttribPointer(
