@@ -8,21 +8,16 @@ use cgmath::num::{BaseFloat};
 use cgmath::point::{Point2, Point3};
 use cgmath::vector::{Vector, Vector3};
 use cgmath::projection;
-use cstr_cache::CStringCache;
 use fontloader;
 use piston;
 use piston::*;
-use gl;
-use gl::types::*;
-use glbuffer::GLBuffer;
+use glw::{GLfloat,Lines,Triangles,Shader,Texture,GLBuffer,GLContext};
 use sdl2_game_window::GameWindowSDL2;
 use sdl2::mouse;
 use stopwatch;
 use std::collections::HashMap;
-use std::mem;
 use std::iter::range_inclusive;
-use std::ptr;
-use std::str;
+use std::rc::Rc;
 use std::num;
 use vertex;
 use vertex::{ColoredVertex,TextureVertex};
@@ -34,8 +29,8 @@ macro_rules! time(
   );
 )
 
-static WINDOW_WIDTH: u32 = 800;
-static WINDOW_HEIGHT: u32 = 600;
+static WINDOW_WIDTH:  uint = 800;
+static WINDOW_HEIGHT: uint = 600;
 
 // much bigger than 200000 starts segfaulting.
 static MAX_WORLD_SIZE: uint = 100000;
@@ -133,6 +128,7 @@ fn expect_id<T>(v: Option<T>) -> T {
 }
 
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
+#[deriving(Send, Copy)]
 pub struct App {
   physics: HashMap<u32, BoundingBox>,
   blocks: HashMap<u32, Block>,
@@ -146,13 +142,13 @@ pub struct App {
   // mapping of entity id to the block's index in GLBuffers
   id_to_index: HashMap<u32, uint>,
   // OpenGL buffers
-  world_triangles: GLBuffer<ColoredVertex>,
-  outlines: GLBuffer<ColoredVertex>,
-  hud_triangles: GLBuffer<ColoredVertex>,
-  texture_triangles: GLBuffer<TextureVertex>,
-  textures: Vec<GLuint>,
+  world_triangles: Option<GLBuffer<ColoredVertex>>,
+  outlines: Option<GLBuffer<ColoredVertex>>,
+  hud_triangles: Option<GLBuffer<ColoredVertex>>,
+  texture_triangles: Option<GLBuffer<TextureVertex>>,
+  textures: Vec<Texture>,
   // OpenGL-friendly equivalent of physics for selection/picking.
-  selection_triangles: GLBuffer<ColoredVertex>,
+  selection_triangles: Option<GLBuffer<ColoredVertex>>,
   // OpenGL projection matrix components
   hud_matrix: Matrix4<GLfloat>,
   fov_matrix: Matrix4<GLfloat>,
@@ -161,16 +157,15 @@ pub struct App {
   lateral_rotation: angle::Rad<GLfloat>,
   vertical_rotation: angle::Rad<GLfloat>,
   // OpenGL shader "program" id.
-  shader_program: u32,
-  texture_shader: u32,
+  shader_program: Option<Rc<Shader>>,
+  texture_shader: Option<Rc<Shader>>,
 
   // which mouse buttons are currently pressed
   mouse_buttons_pressed: Vec<piston::mouse::Button>,
 
   font: fontloader::FontLoader,
-  scache: CStringCache,
-
   timers: stopwatch::TimerSet,
+  gl: GLContext,
 }
 
 /// Create a 3D translation matrix.
@@ -237,7 +232,10 @@ pub fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
 
 impl Game<GameWindowSDL2> for App {
   fn key_press(&mut self, _: &mut GameWindowSDL2, args: &KeyPressArgs) {
-    time!(&self.timers, "event.key_press", || unsafe {
+    time!(&self.timers, "event.key_press", || {
+      // TODO(cgaebel): Ideally, updating should not need the GLContext.
+      let gl = &mut self.gl;
+
       match args.key {
         piston::keyboard::A => {
           self.walk(-Vector3::unit_x());
@@ -262,13 +260,13 @@ impl Game<GameWindowSDL2> for App {
           self.walk(Vector3::unit_z());
         },
         piston::keyboard::Left =>
-          self.rotate_lateral(angle::rad(3.14 / 12.0 as GLfloat)),
+          self.rotate_lateral(gl, angle::rad(3.14 / 12.0 as GLfloat)),
         piston::keyboard::Right =>
-          self.rotate_lateral(angle::rad(-3.14 / 12.0 as GLfloat)),
+          self.rotate_lateral(gl, angle::rad(-3.14 / 12.0 as GLfloat)),
         piston::keyboard::Up =>
-          self.rotate_vertical(angle::rad(3.14/12.0 as GLfloat)),
+          self.rotate_vertical(gl, angle::rad(3.14/12.0 as GLfloat)),
         piston::keyboard::Down =>
-          self.rotate_vertical(angle::rad(-3.14/12.0 as GLfloat)),
+          self.rotate_vertical(gl, angle::rad(-3.14/12.0 as GLfloat)),
         _ => {},
       }
     })
@@ -306,15 +304,18 @@ impl Game<GameWindowSDL2> for App {
   }
 
   fn mouse_move(&mut self, w: &mut GameWindowSDL2, args: &MouseMoveArgs) {
-    time!(&self.timers, "event.mouse_move", || unsafe {
+    time!(&self.timers, "event.mouse_move", || {
+      // TODO(cgaebel): Ideally, updating should not need the GLContext.
+      let gl = &mut self.gl;
+
       let (cx, cy) = (WINDOW_WIDTH as f32 / 2.0, WINDOW_HEIGHT as f32 / 2.0);
       // args.y = h - args.y;
       // dy = args.y - cy;
       //  => dy = cy - args.y;
       let (dx, dy) = (args.x as f32 - cx, cy - args.y as f32);
       let (rx, ry) = (dx * -3.14 / 1024.0, dy * 3.14 / 1024.0);
-      self.rotate_lateral(angle::rad(rx));
-      self.rotate_vertical(angle::rad(ry));
+      self.rotate_lateral(gl, angle::rad(rx));
+      self.rotate_vertical(gl, angle::rad(ry));
 
       mouse::warp_mouse_in_window(&w.render_window.window, WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2);
     })
@@ -334,79 +335,78 @@ impl Game<GameWindowSDL2> for App {
     time!(&self.timers, "load", || {
       mouse::show_cursor(false);
 
-      gl::FrontFace(gl::CCW);
-      gl::CullFace(gl::BACK);
-      gl::Enable(gl::CULL_FACE);
+      let gl = &mut self.gl;
 
-      gl::Enable(gl::BLEND);
-      gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+      gl.enable_culling();
+      gl.enable_alpha_blending();
+      gl.enable_smooth_lines();
+      gl.enable_depth_buffer();
+      gl.set_background_color(SKY_COLOR);
 
-      gl::Enable(gl::LINE_SMOOTH);
-      gl::LineWidth(2.5);
+      self.set_up_shaders(gl);
 
-      gl::Enable(gl::DEPTH_TEST);
-      gl::DepthFunc(gl::LESS);
-      gl::ClearDepth(100.0);
-      gl::ClearColor(SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a);
-
-      unsafe {
-        self.set_up_shaders();
-
-        // initialize the projection matrix
-        self.fov_matrix = perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
-        self.translate(Vector3::new(0.0, 4.0, 10.0));
-        self.update_projection();
-      }
+      // initialize the projection matrix
+      self.fov_matrix = perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
+      self.translate(gl, Vector3::new(0.0, 4.0, 10.0));
+      self.update_projection(gl);
 
       let timers = &self.timers;
 
-      unsafe {
-        self.selection_triangles = GLBuffer::new(
-          self.shader_program,
-          [ vertex::AttribData { name: "position", size: 3 },
-            vertex::AttribData { name: "in_color", size: 4 },
-          ],
-          MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BOX,
-        );
+      self.selection_triangles = Some(GLBuffer::new(
+        &self.gl,
+        self.shader_program.get_ref().clone(),
+        [ vertex::AttribData { name: "position", size: 3 },
+          vertex::AttribData { name: "in_color", size: 4 },
+        ],
+        MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BOX,
+        Triangles
+      ));
 
-        self.world_triangles = GLBuffer::new(
-          self.shader_program,
-          [ vertex::AttribData { name: "position", size: 3 },
-            vertex::AttribData { name: "in_color", size: 4 },
-          ],
-          MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BOX,
-        );
+      self.world_triangles = Some(GLBuffer::new(
+        &self.gl,
+        self.shader_program.get_ref().clone(),
+        [ vertex::AttribData { name: "position", size: 3 },
+          vertex::AttribData { name: "in_color", size: 4 },
+        ],
+        MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BOX,
+        Triangles
+      ));
 
-        self.outlines = GLBuffer::new(
-          self.shader_program,
-          [ vertex::AttribData { name: "position", size: 3 },
-            vertex::AttribData { name: "in_color", size: 4 },
-          ],
-          MAX_WORLD_SIZE * LINE_VERTICES_PER_BOX,
-        );
+      self.outlines = Some(GLBuffer::new(
+        &self.gl,
+        self.shader_program.get_ref().clone(),
+        [ vertex::AttribData { name: "position", size: 3 },
+          vertex::AttribData { name: "in_color", size: 4 },
+        ],
+        MAX_WORLD_SIZE * LINE_VERTICES_PER_BOX,
+        Lines
+      ));
 
-        self.hud_triangles = GLBuffer::new(
-          self.shader_program,
-          [ vertex::AttribData { name: "position", size: 3 },
-            vertex::AttribData { name: "in_color", size: 4 },
-          ],
-          16 * VERTICES_PER_TRIANGLE,
-        );
+      self.hud_triangles = Some(GLBuffer::new(
+        &self.gl,
+        self.shader_program.get_ref().clone(),
+        [ vertex::AttribData { name: "position", size: 3 },
+          vertex::AttribData { name: "in_color", size: 4 },
+        ],
+        16 * VERTICES_PER_TRIANGLE,
+        Triangles
+      ));
 
-        self.texture_triangles = GLBuffer::new(
-          self.texture_shader,
-          [ vertex::AttribData { name: "position", size: 2 },
-            vertex::AttribData { name: "texture_position", size: 2 },
-          ],
-          8 * VERTICES_PER_TRIANGLE,
-        );
+      self.texture_triangles = Some(GLBuffer::new(
+        &self.gl,
+        self.texture_shader.get_ref().clone(),
+        [ vertex::AttribData { name: "position", size: 2 },
+          vertex::AttribData { name: "texture_position", size: 2 },
+        ],
+        8 * VERTICES_PER_TRIANGLE,
+        Triangles,
+      ));
 
 
-        self.make_textures();
-        self.make_hud();
-      }
+      self.make_textures(gl);
+      self.make_hud(gl);
 
-      timers.time("load.construct", || unsafe {
+      timers.time("load.construct", || {
         // low dirt block
         for i in range_inclusive(-2i, 2) {
           for j in range_inclusive(-2i, 2) {
@@ -477,9 +477,12 @@ impl Game<GameWindowSDL2> for App {
   }
 
   fn update(&mut self, _: &mut GameWindowSDL2, _: &UpdateArgs) {
-    time!(&self.timers, "update", || unsafe {
+    time!(&self.timers, "update", || {
+      // TODO(cgabel): Ideally, the update thread should not be touching OpenGL.
+      let gl = &mut self.gl;
+
       if self.next_load_id < self.next_block_id {
-        time!(&self.timers, "update.load", || unsafe {
+        time!(&self.timers, "update.load", || {
           let mut i = 0;
           let mut triangles = Vec::new();
           let mut outlines = Vec::new();
@@ -506,14 +509,14 @@ impl Game<GameWindowSDL2> for App {
           }
 
           if triangles.len() > 0 {
-            self.world_triangles.push(triangles.slice(0, triangles.len()));
-            self.outlines.push(outlines.slice(0, outlines.len()));
-            self.selection_triangles.push(selections.slice(0, selections.len()));
+            self.world_triangles.get_mut_ref().push(gl, triangles.slice(0, triangles.len()));
+            self.outlines.get_mut_ref().push(gl, outlines.slice(0, outlines.len()));
+            self.selection_triangles.get_mut_ref().push(gl, selections.slice(0, selections.len()));
           }
-        })
+        });
       }
 
-      time!(&self.timers, "update.player", || unsafe {
+      time!(&self.timers, "update.player", || {
         if self.player.is_jumping {
           if self.player.jump_fuel > 0 {
             self.player.jump_fuel -= 1;
@@ -526,13 +529,13 @@ impl Game<GameWindowSDL2> for App {
 
         let dP = self.player.speed;
         if dP.x != 0.0 {
-          self.translate(Vector3::new(dP.x, 0.0, 0.0));
+          self.translate(gl, Vector3::new(dP.x, 0.0, 0.0));
         }
         if dP.y != 0.0 {
-          self.translate(Vector3::new(0.0, dP.y, 0.0));
+          self.translate(gl, Vector3::new(0.0, dP.y, 0.0));
         }
         if dP.z != 0.0 {
-          self.translate(Vector3::new(0.0, 0.0, dP.z));
+          self.translate(gl, Vector3::new(0.0, 0.0, dP.z));
         }
 
         let dV = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.player.accel);
@@ -543,13 +546,13 @@ impl Game<GameWindowSDL2> for App {
 
       // Block deletion
       if self.is_mouse_pressed(piston::mouse::Left) {
-        time!(&self.timers, "update.delete_block", || unsafe {
-          self.block_at_window_center().map(|(id, _)| { self.remove_block(id) });
+        time!(&self.timers, "update.delete_block", || {
+          self.block_at_window_center(gl).map(|(id, _)| { self.remove_block(gl, id) });
         })
       }
       if self.is_mouse_pressed(piston::mouse::Right) {
-        time!(&self.timers, "update.place_block", || unsafe {
-          self.block_at_window_center().map(|(block_id, face)| {
+        time!(&self.timers, "update.place_block", || {
+          self.block_at_window_center(gl).map(|(block_id, face)| {
             let bounds = expect_id(self.physics.find(&block_id));
             let direction =
                   [ -Vector3::unit_z(),
@@ -574,29 +577,32 @@ impl Game<GameWindowSDL2> for App {
   }
 
   fn render(&mut self, _: &mut GameWindowSDL2, _: &RenderArgs) {
-    time!(&self.timers, "render", || unsafe {
-      // set the sky color
-      gl::ClearColor(SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a);
+    time!(&self.timers, "render", || {
+      let gl = &mut self.gl;
+
+      gl.set_background_color(SKY_COLOR);
+      gl.clear_buffer();
 
       // draw the world
-      gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-      self.world_triangles.draw(gl::TRIANGLES);
-      self.outlines.draw(gl::LINES);
+      self.world_triangles.get_ref().draw(gl);
+      self.outlines.get_ref().draw(gl);
 
       // draw the hud
-      self.set_projection(&self.hud_matrix);
-      self.hud_triangles.draw(gl::TRIANGLES);
-      self.update_projection();
+      self.shader_program.get_mut_ref().set_projection_matrix(gl, &self.hud_matrix);
+      self.hud_triangles.get_ref().draw(gl);
+      self.update_projection(gl);
 
       // draw textures
-      gl::UseProgram(self.texture_shader);
-      let mut i = 0u;
-      for tex in self.textures.iter() {
-        gl::BindTexture(gl::TEXTURE_2D, *tex);
-        self.texture_triangles.draw_slice(gl::TRIANGLES, i * 6, 6);
-        i += 1;
-      }
-      gl::UseProgram(self.shader_program);
+      gl.use_shader(self.texture_shader.get_ref().deref(), |gl| {
+        for (i, tex) in self.textures.iter().enumerate() {
+          tex.bind_2d(gl);
+          let verticies_in_a_square = 6;
+          self.texture_triangles.get_ref().draw_slice(
+            gl,
+            i*verticies_in_a_square,
+            verticies_in_a_square);
+        }
+      });
     })
   }
 }
@@ -626,7 +632,7 @@ fn id_color(id: u32) -> Color4<GLfloat> {
 
 impl App {
   /// Initializes an empty app.
-  pub unsafe fn new() -> App {
+  pub fn new(gl: GLContext) -> App {
     App {
       physics: {
         let mut h = HashMap::new();
@@ -650,11 +656,11 @@ impl App {
       next_block_id: 2,
       index_to_id: Vec::new(),
       id_to_index: HashMap::new(),
-      world_triangles: GLBuffer::null(),
-      outlines: GLBuffer::null(),
-      hud_triangles: GLBuffer::null(),
-      selection_triangles: GLBuffer::null(),
-      texture_triangles: GLBuffer::null(),
+      world_triangles: None,
+      outlines: None,
+      hud_triangles: None,
+      selection_triangles: None,
+      texture_triangles: None,
       textures: Vec::new(),
       hud_matrix: translate(Vector3::new(0.0, 0.0, -1.0)) * sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0),
       fov_matrix: Matrix4::identity(),
@@ -662,30 +668,23 @@ impl App {
       rotation_matrix: Matrix4::identity(),
       lateral_rotation: angle::rad(0.0),
       vertical_rotation: angle::rad(0.0),
-      shader_program: -1 as u32,
-      texture_shader: -1 as u32,
+      shader_program: None,
+      texture_shader: None,
       mouse_buttons_pressed: Vec::new(),
       font: fontloader::FontLoader::new(),
-      scache: CStringCache::new(),
       timers: stopwatch::TimerSet::new(),
+      gl: gl,
     }
   }
 
   /// Build all of our program's shaders.
-  pub unsafe fn set_up_shaders(&mut self) {
-    let ivs = compile_shader(ID_VS_SRC, gl::VERTEX_SHADER);
-    let txs = compile_shader(TX_SRC, gl::FRAGMENT_SHADER);
-    self.texture_shader = link_program(ivs, txs);
-    gl::UseProgram(self.texture_shader);
-
-    let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
-    let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
-    self.shader_program = link_program(vs, fs);
-    gl::UseProgram(self.shader_program);
+  pub fn set_up_shaders(&mut self, gl: &mut GLContext) {
+    self.texture_shader = Some(Rc::new(Shader::new(gl, ID_VS_SRC, TX_SRC)));
+    self.shader_program = Some(Rc::new(Shader::new(gl, VS_SRC, FS_SRC)));
   }
 
   /// Makes some basic textures in the world.
-  pub unsafe fn make_textures(&mut self) {
+  pub fn make_textures(&mut self, gl: &GLContext) {
     let instructions = Vec::from_slice([
             "Use WASD to move, and spacebar to jump.",
             "Use the mouse to look around, and click to remove blocks."
@@ -696,7 +695,8 @@ impl App {
     for line in instructions.iter() {
       self.textures.push(self.font.sans.red(*line));
 
-      self.texture_triangles.push(
+      self.texture_triangles.get_mut_ref().push(
+        gl,
         TextureVertex::square(
           Aabb2 {
             min: Point2 { x: -0.97, y: y - 0.2 },
@@ -706,10 +706,11 @@ impl App {
     }
   }
 
-  pub unsafe fn make_hud(&mut self) {
+  pub fn make_hud(&mut self, gl: &GLContext) {
     let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
 
-    self.hud_triangles.push(
+    self.hud_triangles.get_mut_ref().push(
+      gl,
       ColoredVertex::square(
         Aabb2 {
           min: Point2 { x: -0.02, y: -0.02 },
@@ -722,39 +723,31 @@ impl App {
     self.mouse_buttons_pressed.iter().any(|x| { *x == b })
   }
 
-  /// Sets the opengl projection matrix.
-  pub unsafe fn set_projection(&mut self, m: &Matrix4<GLfloat>) {
-    let var_name = self.scache.convert("proj_matrix").as_ptr();
-    let loc = gl::GetUniformLocation(self.shader_program, var_name);
-    assert!(loc != -1, "couldn't read matrix");
-    gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(m.ptr()));
-  }
-
-  #[inline]
   /// Updates the projetion matrix with all our movements.
-  pub unsafe fn update_projection(&mut self) {
+  pub fn update_projection(&self, gl: &mut GLContext) {
     time!(&self.timers, "update.projection", || {
-      self.set_projection(&(self.fov_matrix * self.rotation_matrix * self.translation_matrix));
+      self.shader_program.get_ref().set_projection_matrix(
+        gl,
+        &(self.fov_matrix * self.rotation_matrix * self.translation_matrix));
     })
   }
 
   #[inline]
   /// Renders the selection buffer.
-  pub fn render_selection(&self) {
+  pub fn render_selection(&self, gl: &mut GLContext) {
     time!(&self.timers, "render.render_selection", || {
-      gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-      gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-      self.selection_triangles.draw(gl::TRIANGLES);
+      gl.set_background_color(Color4 { r: 0.0, g: 0.0, b: 0.0, a: 1.0 });
+      gl.clear_buffer();
+      self.selection_triangles.get_ref().draw(gl);
     })
   }
 
   /// Returns the id of the entity at the given (x, y) coordinate in the window.
   /// The pixel coordinates are from (0, 0) to (WINDOW_WIDTH, WINDOW_HEIGHT).
-  unsafe fn block_at_window(&self, x: i32, y: i32) -> Option<(u32, uint)> {
-    self.render_selection();
+  fn block_at_window(&self, gl: &mut GLContext, x: uint, y: uint) -> Option<(u32, uint)> {
+    self.render_selection(gl);
 
-    let pixels: Color4<u8> = Color4::of_rgba(0, 0, 0, 0);
-    gl::ReadPixels(x, y, 1, 1, gl::RGB, gl::UNSIGNED_BYTE, mem::transmute(&pixels));
+    let pixels: Color4<u8> = gl.read_pixels(x, y, WINDOW_HEIGHT as uint, WINDOW_WIDTH as uint);
 
     let selection_id = (pixels.r as u32 << 16) | (pixels.g as u32 << 8) | (pixels.b as u32 << 0);
     if selection_id == 0 {
@@ -765,8 +758,8 @@ impl App {
   }
 
   /// Returns (block id, block face) shown at the center of the window.
-  unsafe fn block_at_window_center(&self) -> Option<(u32, uint)> {
-    self.block_at_window(WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2)
+  fn block_at_window_center(&self, gl: &mut GLContext) -> Option<(u32, uint)> {
+    self.block_at_window(gl, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
   }
 
   /// Find a collision with self.physics.
@@ -784,7 +777,7 @@ impl App {
     None
   }
 
-  unsafe fn place_block(&mut self, low_corner: Vector3<GLfloat>, high_corner: Vector3<GLfloat>, block_type: BlockType, check_collisions: bool) {
+  fn place_block(&mut self, low_corner: Vector3<GLfloat>, high_corner: Vector3<GLfloat>, block_type: BlockType, check_collisions: bool) {
     time!(&self.timers, "place_block", || {
       let block = Block {
         block_type: block_type,
@@ -810,16 +803,16 @@ impl App {
     })
   }
 
-  unsafe fn remove_block(&mut self, block_id: u32) {
+  fn remove_block(&mut self, gl: &GLContext, block_id: u32) {
     // block that will be swapped into block_index in GL buffers after removal
     let block_index = *expect_id(self.id_to_index.find(&block_id));
     let swapped_block_id = self.index_to_id[self.index_to_id.len() - 1];
     self.index_to_id.swap_remove(block_index).expect("ran out of blocks");
     self.blocks.remove(&block_id);
     self.physics.remove(&block_id);
-    self.world_triangles.swap_remove(TRIANGLE_VERTICES_PER_BOX, block_index);
-    self.outlines.swap_remove(LINE_VERTICES_PER_BOX, block_index);
-    self.selection_triangles.swap_remove(TRIANGLE_VERTICES_PER_BOX, block_index);
+    self.world_triangles.get_mut_ref().swap_remove(gl, TRIANGLE_VERTICES_PER_BOX, block_index);
+    self.outlines.get_mut_ref().swap_remove(gl, LINE_VERTICES_PER_BOX, block_index);
+    self.selection_triangles.get_mut_ref().swap_remove(gl, TRIANGLE_VERTICES_PER_BOX, block_index);
     self.id_to_index.remove(&block_id);
     if block_id != swapped_block_id {
       self.id_to_index.insert(swapped_block_id, block_index);
@@ -832,7 +825,7 @@ impl App {
   }
 
   /// Translates the camera by a vector.
-  pub unsafe fn translate(&mut self, v: Vector3<GLfloat>) {
+  pub fn translate(&mut self, gl: &mut GLContext, v: Vector3<GLfloat>) {
     let mut d_camera_speed : Vector3<GLfloat> = Vector3::new(0.0, 0.0, 0.0);
 
     let player_bounds = { *expect_id(self.physics.find(&self.player.id)) };
@@ -858,7 +851,7 @@ impl App {
     } else {
       self.physics.insert(self.player.id, new_player_bounds);
       self.translation_matrix = self.translation_matrix * translate(-v);
-      self.update_projection();
+      self.update_projection(gl);
 
       if v.y < 0.0 {
         self.player.jump_fuel = 0;
@@ -868,23 +861,23 @@ impl App {
 
   #[inline]
   /// Rotate the player's view about a given vector, by `r` radians.
-  pub unsafe fn rotate(&mut self, v: Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
+  pub fn rotate(&mut self, gl: &mut GLContext, v: Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
     self.rotation_matrix = self.rotation_matrix * from_axis_angle(v, -r);
-    self.update_projection();
+    self.update_projection(gl);
   }
 
   #[inline]
   /// Rotate the camera around the y axis, by `r` radians. Positive is
   /// counterclockwise.
-  pub unsafe fn rotate_lateral(&mut self, r: angle::Rad<GLfloat>) {
+  pub fn rotate_lateral(&mut self, gl: &mut GLContext, r: angle::Rad<GLfloat>) {
     self.lateral_rotation = self.lateral_rotation + r;
-    self.rotate(Vector3::unit_y(), r);
+    self.rotate(gl, Vector3::unit_y(), r);
   }
 
   /// Changes the camera pitch by `r` radians. Positive is up.
   /// Angles that "flip around" (i.e. looking too far up or down)
   /// are sliently rejected.
-  pub unsafe fn rotate_vertical(&mut self, r: angle::Rad<GLfloat>) {
+  pub fn rotate_vertical(&mut self, gl: &mut GLContext, r: angle::Rad<GLfloat>) {
     let new_rotation = self.vertical_rotation + r;
 
     if new_rotation < -angle::Rad::turn_div_4()
@@ -894,7 +887,7 @@ impl App {
 
     self.vertical_rotation = new_rotation;
     let axis = self.right();
-    self.rotate(axis, r);
+    self.rotate(gl, axis, r);
   }
 
   // axes
@@ -915,22 +908,24 @@ impl App {
 #[unsafe_destructor]
 impl Drop for App {
   fn drop(&mut self) {
-    if self.textures.len() == 0 { return }
-    unsafe { gl::DeleteTextures(self.textures.len() as i32, &self.textures[0]); }
+    println!("Update Stats");
+    println!("====================");
+    self.timers.print();
+    println!("");
   }
 }
 
 // Shader sources
 static VS_SRC: &'static str =
 r"#version 330 core
-uniform mat4 proj_matrix;
+uniform mat4 projection_matrix;
 
 in  vec3 position;
 in  vec4 in_color;
 out vec4 color;
 
 void main() {
-  gl_Position = proj_matrix * vec4(position, 1.0);
+  gl_Position = projection_matrix * vec4(position, 1.0);
   color = in_color;
 }";
 
@@ -964,67 +959,6 @@ void main(){
 }
 ";
 
-fn compile_shader(src: &str, ty: GLenum) -> GLuint {
-    let shader = gl::CreateShader(ty);
-    unsafe {
-        // Attempt to compile the shader
-        src.with_c_str(|ptr| gl::ShaderSource(shader, 1, &ptr, ptr::null()));
-        gl::CompileShader(shader);
-
-        // Get the compile status
-        let mut status = gl::FALSE as GLint;
-        gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut status);
-
-        // Fail on error
-        if status != (gl::TRUE as GLint) {
-            let mut len = 0;
-            gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
-            let mut buf = Vec::from_elem(len as uint - 1, 0u8); // subtract 1 to skip the trailing null character
-            gl::GetShaderInfoLog(shader, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
-            fail!("{}", str::from_utf8(buf.slice(0, buf.len())).expect("ShaderInfoLog not valid utf8"));
-        }
-    }
-    shader
-}
-
-fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
-    let program = gl::CreateProgram();
-
-    gl::AttachShader(program, vs);
-    gl::AttachShader(program, fs);
-    gl::LinkProgram(program);
-
-    unsafe {
-        // Get the link status
-        let mut status = gl::FALSE as GLint;
-        gl::GetProgramiv(program, gl::LINK_STATUS, &mut status);
-
-        // Fail on error
-        if status != (gl::TRUE as GLint) {
-            let mut len: GLint = 0;
-            gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
-            let mut buf = Vec::from_elem(len as uint - 1, 0u8); // subtract 1 to skip the trailing null character
-            gl::GetProgramInfoLog(program, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
-            fail!("{}", str::from_utf8(buf.slice(0, buf.len())).expect("ProgramInfoLog not valid utf8"));
-        }
-    }
-
-    program
-}
-
-#[allow(dead_code)]
-unsafe fn println_c_str(str: *const u8) {
-  let mut str = str;
-  loop {
-    let c = *str as char;
-    if c == '\0' {
-      println!("");
-      return;
-    }
-    print!("{:c}", c);
-    str = str.offset(1);
-  }
-}
 
 pub fn main() {
   println!("starting");
@@ -1032,29 +966,25 @@ pub fn main() {
   let mut window = GameWindowSDL2::new(
     GameWindowSettings {
       title: "playform".to_string(),
-      size: [WINDOW_WIDTH, WINDOW_HEIGHT],
+      size: [WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32],
       fullscreen: false,
       exit_on_esc: false,
     }
   );
 
-  let opengl_version = gl::GetString(gl::VERSION);
-  let glsl_version = gl::GetString(gl::SHADING_LANGUAGE_VERSION);
-  print!("OpenGL version: ");
-  unsafe { println_c_str(opengl_version); }
-  print!("GLSL version: ");
-  unsafe { println_c_str(glsl_version); }
-  println!("");
+  let gl = GLContext::new();
 
-  let mut app = unsafe { App::new() };
-  app.run(&mut window, &GameIteratorSettings {
-    updates_per_second: 30,
-    max_frames_per_second: 60,
-  });
+  gl.print_stats();
+
+  unsafe {
+    App::new(gl).run(
+      &mut window,
+      &GameIteratorSettings {
+        updates_per_second: 30,
+        max_frames_per_second: 60,
+      });
+  }
 
   println!("finished!");
   println!("");
-  println!("runtime stats:");
-
-  app.timers.print();
 }
