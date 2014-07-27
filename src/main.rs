@@ -62,12 +62,10 @@ pub struct GLBuffer<T> {
   capacity: uint,
 }
 
-fn aligned_slice_to_ptr<T>(vs: &[T], alignment: uint) -> *const c95::c_void {
-  unsafe {
-    let vs_as_slice : raw::Slice<T> = mem::transmute(vs);
-    assert_eq!(vs_as_slice.data as uint & (alignment - 1), 0);
-    vs_as_slice.data as *const c95::c_void
-  }
+unsafe fn aligned_slice_to_ptr<T>(vs: &[T], alignment: uint) -> *const c95::c_void {
+  let vs_as_slice : raw::Slice<T> = mem::transmute(vs);
+  assert_eq!(vs_as_slice.data as uint & (alignment - 1), 0);
+  vs_as_slice.data as *const c95::c_void
 }
 
 impl<T: Clone> GLBuffer<T> {
