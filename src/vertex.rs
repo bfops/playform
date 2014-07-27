@@ -68,3 +68,12 @@ impl TextureVertex {
     ]
   }
 }
+
+/// A data structure which specifies how to pass data from opengl to the vertex
+/// shaders.
+pub struct AttribData<'a> {
+  /// Cooresponds to the shader's `input variable`.
+  pub name: &'a str,
+  /// The size (in floats) of this attribute.
+  pub size: uint,
+}

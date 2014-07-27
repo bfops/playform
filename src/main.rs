@@ -25,6 +25,7 @@ use std::ptr;
 use std::str;
 use std::num;
 use std::raw;
+use vertex;
 use vertex::{ColoredVertex,TextureVertex};
 
 // TODO(cgaebel): How the hell do I get this to be exported from `mod stopwatch`?
@@ -44,15 +45,6 @@ static MAX_JUMP_FUEL: uint = 4;
 
 // how many blocks to load during every update step
 static LOAD_SPEED:uint = 1 << 12;
-
-/// A data structure which specifies how to pass data from opengl to the vertex
-/// shaders.
-pub struct VertexAttribData<'a> {
-  /// Cooresponds to the shader's `input variable`.
-  pub name: &'a str,
-  /// The size (in floats) of this attribute.
-  pub size: uint,
-}
 
 /// A fixed-capacity array of GLfloat-based structures passed to OpenGL.
 pub struct GLBuffer<T> {
@@ -82,7 +74,7 @@ impl<T: Clone> GLBuffer<T> {
 
   #[inline]
   /// Creates a new array of objects on the GPU.
-  pub unsafe fn new(shader_program: GLuint, attribs: &[VertexAttribData], capacity: uint) -> GLBuffer<T> {
+  pub unsafe fn new(shader_program: GLuint, attribs: &[vertex::AttribData], capacity: uint) -> GLBuffer<T> {
     let mut vertex_array = 0;
     let mut vertex_buffer = 0;
     gl::GenVertexArrays(1, &mut vertex_array);
@@ -524,40 +516,40 @@ impl Game<GameWindowSDL2> for App {
       unsafe {
         self.selection_triangles = GLBuffer::new(
           self.shader_program,
-          [ VertexAttribData { name: "position", size: 3 },
-            VertexAttribData { name: "in_color", size: 4 },
+          [ vertex::AttribData { name: "position", size: 3 },
+            vertex::AttribData { name: "in_color", size: 4 },
           ],
           MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BOX,
         );
 
         self.world_triangles = GLBuffer::new(
           self.shader_program,
-          [ VertexAttribData { name: "position", size: 3 },
-            VertexAttribData { name: "in_color", size: 4 },
+          [ vertex::AttribData { name: "position", size: 3 },
+            vertex::AttribData { name: "in_color", size: 4 },
           ],
           MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BOX,
         );
 
         self.outlines = GLBuffer::new(
           self.shader_program,
-          [ VertexAttribData { name: "position", size: 3 },
-            VertexAttribData { name: "in_color", size: 4 },
+          [ vertex::AttribData { name: "position", size: 3 },
+            vertex::AttribData { name: "in_color", size: 4 },
           ],
           MAX_WORLD_SIZE * LINE_VERTICES_PER_BOX,
         );
 
         self.hud_triangles = GLBuffer::new(
           self.shader_program,
-          [ VertexAttribData { name: "position", size: 3 },
-            VertexAttribData { name: "in_color", size: 4 },
+          [ vertex::AttribData { name: "position", size: 3 },
+            vertex::AttribData { name: "in_color", size: 4 },
           ],
           16 * VERTICES_PER_TRIANGLE,
         );
 
         self.texture_triangles = GLBuffer::new(
           self.texture_shader,
-          [ VertexAttribData { name: "position", size: 2 },
-            VertexAttribData { name: "texture_position", size: 2 },
+          [ vertex::AttribData { name: "position", size: 2 },
+            vertex::AttribData { name: "texture_position", size: 2 },
           ],
           8 * VERTICES_PER_TRIANGLE,
         );
