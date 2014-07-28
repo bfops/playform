@@ -59,12 +59,30 @@ impl BlockType {
   }
 }
 
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Id(u32);
+
+impl Add<Id, Id> for Id {
+  fn add(&self, rhs: &Id) -> Id {
+    let Id(i1) = *self;
+    let Id(i2) = *rhs;
+    Id(i1 + i2)
+  }
+}
+
+impl Mul<u32, Id> for Id {
+  fn mul(&self, rhs: &u32) -> Id {
+    let Id(i) = *self;
+    Id(i * *rhs)
+  }
+}
+
 #[deriving(Clone)]
 /// A voxel-ish block in the game world.
 pub struct Block {
   // bounds of the Block
   block_type: BlockType,
-  id: u32,
+  id: Id,
 }
 
 impl Block {
@@ -117,7 +135,7 @@ pub struct Player {
   jump_fuel: uint,
   // are we currently trying to jump? (e.g. holding the key).
   is_jumping: bool,
-  id: u32,
+  id: Id,
 }
 
 #[inline]
@@ -130,17 +148,17 @@ fn expect_id<T>(v: Option<T>) -> T {
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 #[deriving(Send, Copy)]
 pub struct App {
-  physics: HashMap<u32, BoundingBox>,
-  blocks: HashMap<u32, Block>,
+  physics: HashMap<Id, BoundingBox>,
+  blocks: HashMap<Id, Block>,
   player: Player,
   // id of the next block to load
-  next_load_id: u32,
+  next_load_id: Id,
   // next block id to assign
-  next_block_id: u32,
+  next_id: Id,
   // map index in GLBuffers to entity id
-  index_to_id: Vec<u32>,
+  index_to_id: Vec<Id>,
   // mapping of entity id to the block's index in GLBuffers
-  id_to_index: HashMap<u32, uint>,
+  id_to_index: HashMap<Id, uint>,
   // OpenGL buffers
   world_triangles: Option<GLBuffer<ColoredVertex>>,
   outlines: Option<GLBuffer<ColoredVertex>>,
@@ -335,6 +353,16 @@ impl Game<GameWindowSDL2> for App {
     time!(&self.timers, "load", || {
       mouse::show_cursor(false);
 
+      let playerId = self.alloc_id();
+      self.player.id = playerId;
+      self.physics.insert(
+        playerId,
+        BoundingBox {
+          low_corner: Vector3::new(-1.0, -2.0, -1.0),
+          high_corner: Vector3::zero(),
+        }
+      );
+
       let gl = &mut self.gl;
 
       gl.enable_culling();
@@ -349,8 +377,6 @@ impl Game<GameWindowSDL2> for App {
       self.fov_matrix = perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
       self.translate(gl, Vector3::new(0.0, 4.0, 10.0));
       self.update_projection(gl);
-
-      let timers = &self.timers;
 
       self.selection_triangles = Some(GLBuffer::new(
         &self.gl,
@@ -402,75 +428,9 @@ impl Game<GameWindowSDL2> for App {
         Triangles,
       ));
 
-
       self.make_textures(gl);
       self.make_hud(gl);
-
-      timers.time("load.construct", || {
-        // low dirt block
-        for i in range_inclusive(-2i, 2) {
-          for j in range_inclusive(-2i, 2) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (6.0 + i, 6.0, 0.0 + j);
-            let (x2, y2, z2) = (6.5 + i, 6.5, 0.5 + j);
-            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt, false);
-          }
-        }
-        // high dirt block
-        for i in range_inclusive(-2i, 2) {
-          for j in range_inclusive(-2i, 2) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (0.0 + i, 12.0, 5.0 + j);
-            let (x2, y2, z2) = (0.5 + i, 12.5, 5.5 + j);
-            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt, false);
-          }
-        }
-        // ground
-        for i in range_inclusive(-64i, 64) {
-          for j in range_inclusive(-64i, 64) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (i, 0.0, j);
-            let (x2, y2, z2) = (i + 0.5, 0.5, j + 0.5);
-            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Grass, false);
-          }
-        }
-        // front wall
-        for i in range_inclusive(-64i, 64) {
-          for j in range_inclusive(0i, 64) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (i, 0.5 + j, -32.0);
-            let (x2, y2, z2) = (i + 0.5, 1.0 + j, -32.0 + 0.5);
-            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
-          }
-        }
-        // back wall
-        for i in range_inclusive(-64i, 64) {
-          for j in range_inclusive(0i, 64) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (i - 0.5, 0.5 + j, 32.0);
-            let (x2, y2, z2) = (i + 0.5, 1.0 + j, 32.0 + 0.5);
-            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
-          }
-        }
-        // left wall
-        for i in range_inclusive(-64i, 64) {
-          for j in range_inclusive(0i, 64) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (-32.0, 0.5 + j, i - 0.5);
-            let (x2, y2, z2) = (-32.0 + 0.5, 1.0 + j, i + 0.5);
-            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
-          }
-        }
-        // right wall
-        for i in range_inclusive(-64i, 64) {
-          for j in range_inclusive(0i, 64) {
-            let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-            let (x1, y1, z1) = (32.0, 0.5 + j, i);
-            let (x2, y2, z2) = (32.0 + 0.5, 1.0 + j, i + 0.5);
-            self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
-          }
-        }
-      });
+      self.make_world();
     })
 
     println!("load() finished with {} blocks", self.blocks.len());
@@ -481,30 +441,30 @@ impl Game<GameWindowSDL2> for App {
       // TODO(cgabel): Ideally, the update thread should not be touching OpenGL.
       let gl = &mut self.gl;
 
-      if self.next_load_id < self.next_block_id {
+      if self.next_load_id < self.next_id {
         time!(&self.timers, "update.load", || {
           let mut i = 0;
           let mut triangles = Vec::new();
           let mut outlines = Vec::new();
           let mut selections = Vec::new();
-          while i < LOAD_SPEED && self.next_load_id < self.next_block_id {
+          while i < LOAD_SPEED && self.next_load_id < self.next_id {
             self.blocks.find(&self.next_load_id).map(|block| {
               let bounds = self.physics.find(&self.next_load_id).expect("phyiscs prematurely deleted");
               triangles.push_all(Block::to_triangles(block, bounds));
               outlines.push_all(Block::to_outlines(bounds));
               let selection_id = block.id * 6;
               let selection_colors =
-                    [ id_color(selection_id + 0),
-                      id_color(selection_id + 1),
-                      id_color(selection_id + 2),
-                      id_color(selection_id + 3),
-                      id_color(selection_id + 4),
-                      id_color(selection_id + 5),
+                    [ id_color(selection_id + Id(0)),
+                      id_color(selection_id + Id(1)),
+                      id_color(selection_id + Id(2)),
+                      id_color(selection_id + Id(3)),
+                      id_color(selection_id + Id(4)),
+                      id_color(selection_id + Id(5)),
                     ];
               selections.push_all(bounds.to_triangles(selection_colors));
             });
 
-            self.next_load_id += 1;
+            self.next_load_id = self.next_load_id + Id(1);
             i += 1;
           }
 
@@ -613,7 +573,8 @@ fn mask(mask: u32, i: u32) -> u32 {
 }
 
 // map ids to unique colors
-fn id_color(id: u32) -> Color4<GLfloat> {
+fn id_color(id: Id) -> Color4<GLfloat> {
+  let Id(id) = id;
   assert!(id < 0xFF000000, "too many items for selection buffer");
   let ret = Color4::of_rgba(
     (mask(0x00FF0000, id) as GLfloat / 255.0),
@@ -634,26 +595,19 @@ impl App {
   /// Initializes an empty app.
   pub fn new(gl: GLContext) -> App {
     App {
-      physics: {
-        let mut h = HashMap::new();
-        h.insert(1, BoundingBox {
-            low_corner: Vector3::new(-1.0, -2.0, -1.0),
-            high_corner: Vector3::zero(),
-        });
-        h
-      },
+      physics: HashMap::new(),
       blocks: HashMap::new(),
       player: Player {
         speed: Vector3::zero(),
         accel: Vector3::new(0.0, -0.1, 0.0),
         jump_fuel: 0,
         is_jumping: false,
-        id: 1,
+        id: Id(0),
       },
-      next_load_id: 2,
+      next_load_id: Id(1),
       // Start assigning block_ids at 1.
       // block_id 0 corresponds to no block.
-      next_block_id: 2,
+      next_id: Id(1),
       index_to_id: Vec::new(),
       id_to_index: HashMap::new(),
       world_triangles: None,
@@ -678,13 +632,13 @@ impl App {
   }
 
   /// Build all of our program's shaders.
-  pub fn set_up_shaders(&mut self, gl: &mut GLContext) {
+  fn set_up_shaders(&mut self, gl: &mut GLContext) {
     self.texture_shader = Some(Rc::new(Shader::new(gl, ID_VS_SRC, TX_SRC)));
     self.shader_program = Some(Rc::new(Shader::new(gl, VS_SRC, FS_SRC)));
   }
 
   /// Makes some basic textures in the world.
-  pub fn make_textures(&mut self, gl: &GLContext) {
+  fn make_textures(&mut self, gl: &GLContext) {
     let instructions = Vec::from_slice([
             "Use WASD to move, and spacebar to jump.",
             "Use the mouse to look around, and click to remove blocks."
@@ -706,7 +660,7 @@ impl App {
     }
   }
 
-  pub fn make_hud(&mut self, gl: &GLContext) {
+  fn make_hud(&mut self, gl: &GLContext) {
     let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
 
     self.hud_triangles.get_mut_ref().push(
@@ -716,6 +670,74 @@ impl App {
           min: Point2 { x: -0.02, y: -0.02 },
           max: Point2 { x:  0.02, y:  0.02 },
         }, cursor_color));
+  }
+
+  fn make_world(&mut self) {
+    time!(&self.timers, "make_world", || {
+      // low dirt block
+      for i in range_inclusive(-2i, 2) {
+        for j in range_inclusive(-2i, 2) {
+          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+          let (x1, y1, z1) = (6.0 + i, 6.0, 0.0 + j);
+          let (x2, y2, z2) = (6.5 + i, 6.5, 0.5 + j);
+          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt, false);
+        }
+      }
+      // high dirt block
+      for i in range_inclusive(-2i, 2) {
+        for j in range_inclusive(-2i, 2) {
+          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+          let (x1, y1, z1) = (0.0 + i, 12.0, 5.0 + j);
+          let (x2, y2, z2) = (0.5 + i, 12.5, 5.5 + j);
+          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt, false);
+        }
+      }
+      // ground
+      for i in range_inclusive(-64i, 64) {
+        for j in range_inclusive(-64i, 64) {
+          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+          let (x1, y1, z1) = (i, 0.0, j);
+          let (x2, y2, z2) = (i + 0.5, 0.5, j + 0.5);
+          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Grass, false);
+        }
+      }
+      // front wall
+      for i in range_inclusive(-64i, 64) {
+        for j in range_inclusive(0i, 64) {
+          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+          let (x1, y1, z1) = (i, 0.5 + j, -32.0);
+          let (x2, y2, z2) = (i + 0.5, 1.0 + j, -32.0 + 0.5);
+          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
+        }
+      }
+      // back wall
+      for i in range_inclusive(-64i, 64) {
+        for j in range_inclusive(0i, 64) {
+          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+          let (x1, y1, z1) = (i - 0.5, 0.5 + j, 32.0);
+          let (x2, y2, z2) = (i + 0.5, 1.0 + j, 32.0 + 0.5);
+          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
+        }
+      }
+      // left wall
+      for i in range_inclusive(-64i, 64) {
+        for j in range_inclusive(0i, 64) {
+          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+          let (x1, y1, z1) = (-32.0, 0.5 + j, i - 0.5);
+          let (x2, y2, z2) = (-32.0 + 0.5, 1.0 + j, i + 0.5);
+          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
+        }
+      }
+      // right wall
+      for i in range_inclusive(-64i, 64) {
+        for j in range_inclusive(0i, 64) {
+          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+          let (x1, y1, z1) = (32.0, 0.5 + j, i);
+          let (x2, y2, z2) = (32.0 + 0.5, 1.0 + j, i + 0.5);
+          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
+        }
+      }
+    });
   }
 
   #[inline]
@@ -744,26 +766,26 @@ impl App {
 
   /// Returns the id of the entity at the given (x, y) coordinate in the window.
   /// The pixel coordinates are from (0, 0) to (WINDOW_WIDTH, WINDOW_HEIGHT).
-  fn block_at_window(&self, gl: &mut GLContext, x: uint, y: uint) -> Option<(u32, uint)> {
+  fn block_at_window(&self, gl: &mut GLContext, x: uint, y: uint) -> Option<(Id, uint)> {
     self.render_selection(gl);
 
     let pixels: Color4<u8> = gl.read_pixels(x, y, WINDOW_HEIGHT as uint, WINDOW_WIDTH as uint);
 
     let selection_id = (pixels.r as u32 << 16) | (pixels.g as u32 << 8) | (pixels.b as u32 << 0);
     if selection_id == 0 {
-    None
+      None
     } else {
-    Some((selection_id / 6, selection_id as uint % 6))
+      Some((Id(selection_id / 6), selection_id as uint % 6))
     }
   }
 
   /// Returns (block id, block face) shown at the center of the window.
-  fn block_at_window_center(&self, gl: &mut GLContext) -> Option<(u32, uint)> {
+  fn block_at_window_center(&self, gl: &mut GLContext) -> Option<(Id, uint)> {
     self.block_at_window(gl, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
   }
 
   /// Find a collision with self.physics.
-  fn world_collision(&self, b: &BoundingBox, self_id: u32) -> Option<Intersect> {
+  fn world_collision(&self, b: &BoundingBox, self_id: Id) -> Option<Intersect> {
     for (&id, bounds) in self.physics.iter() {
       if id != self_id {
         let i = BoundingBox::intersect(b, bounds);
@@ -777,11 +799,17 @@ impl App {
     None
   }
 
+  fn alloc_id(&mut self) -> Id {
+    let id = self.next_id;
+    self.next_id = self.next_id + Id(1);
+    id
+  }
+
   fn place_block(&mut self, low_corner: Vector3<GLfloat>, high_corner: Vector3<GLfloat>, block_type: BlockType, check_collisions: bool) {
     time!(&self.timers, "place_block", || {
-      let block = Block {
+      let mut block = Block {
         block_type: block_type,
-        id: self.next_block_id,
+        id: Id(0),
       };
       let bounds = BoundingBox {
         low_corner: low_corner,
@@ -789,21 +817,21 @@ impl App {
       };
       let player_bounds = expect_id(self.physics.find(&self.player.id));
       let collided = check_collisions &&
-            ( self.world_collision(&bounds, 0).is_some() || 
+            ( self.world_collision(&bounds, Id(0)).is_some() || 
               BoundingBox::intersect(&bounds, player_bounds).is_some()
             );
 
       if !collided {
+        block.id = self.alloc_id();
         self.physics.insert(block.id, bounds);
         self.blocks.insert(block.id, block);
         self.index_to_id.push(block.id);
         self.id_to_index.insert(block.id, self.index_to_id.len() - 1);
-        self.next_block_id += 1;
       }
     })
   }
 
-  fn remove_block(&mut self, gl: &GLContext, block_id: u32) {
+  fn remove_block(&mut self, gl: &GLContext, block_id: Id) {
     // block that will be swapped into block_index in GL buffers after removal
     let block_index = *expect_id(self.id_to_index.find(&block_id));
     let swapped_block_id = self.index_to_id[self.index_to_id.len() - 1];
