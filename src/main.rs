@@ -313,7 +313,7 @@ impl Game<GameWindowSDL2> for App {
       // dy = args.y - cy;
       //  => dy = cy - args.y;
       let (dx, dy) = (args.x as f32 - cx, cy - args.y as f32);
-      let (rx, ry) = (dx * -3.14 / 1024.0, dy * 3.14 / 1024.0);
+      let (rx, ry) = (dx * -3.14 / 2048.0, dy * 3.14 / 1600.0);
       self.rotate_lateral(gl, angle::rad(rx));
       self.rotate_vertical(gl, angle::rad(ry));
 
