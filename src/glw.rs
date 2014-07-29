@@ -3,14 +3,17 @@
 //!
 //! GLW stands for "OpenGL wrapper".
 pub use color::Color4;
+use cgmath::angle;
 use cgmath::array::Array2;
 pub use cgmath::matrix::Matrix4;
+use cgmath::vector::Vector3;
 use cstr_cache;
 use libc::types::common::c95;
 use gl;
 use gl::types::*;
 pub use gl::types::GLfloat;
 use std::mem;
+use std::num;
 use std::ptr;
 use std::raw;
 use std::rc::Rc;
@@ -37,6 +40,10 @@ impl Shader {
       assert!(loc != -1, "couldn't read projection matrix");
       gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(m.ptr()));
     }
+  }
+
+  pub fn set_camera(&self, gl: &mut GLContext, c: &Camera) {
+    self.set_projection_matrix(gl, &c.projection_matrix());
   }
 }
 
@@ -290,6 +297,79 @@ impl Texture {
 impl Drop for Texture {
   fn drop(&mut self) {
     unsafe { gl::DeleteTextures(1, &self.id); }
+  }
+}
+
+pub struct Camera {
+  // projection matrix components
+  pub translation: Matrix4<GLfloat>,
+  pub rotation: Matrix4<GLfloat>,
+  pub fov: Matrix4<GLfloat>,
+}
+
+/// Create a 3D translation matrix.
+pub fn translation(t: Vector3<GLfloat>) -> Matrix4<GLfloat> {
+  Matrix4::new(
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    t.x, t.y, t.z, 1.0,
+  )
+}
+
+/// Create a matrix from a rotation around an arbitrary axis.
+pub fn from_axis_angle(axis: Vector3<GLfloat>, angle: angle::Rad<GLfloat>) -> Matrix4<GLfloat> {
+    let (s, c) = angle::sin_cos(angle);
+    let _1subc = num::one::<GLfloat>() - c;
+
+    Matrix4::new(
+        _1subc * axis.x * axis.x + c,
+        _1subc * axis.x * axis.y + s * axis.z,
+        _1subc * axis.x * axis.z - s * axis.y,
+        num::zero(),
+
+        _1subc * axis.x * axis.y - s * axis.z,
+        _1subc * axis.y * axis.y + c,
+        _1subc * axis.y * axis.z + s * axis.x,
+        num::zero(),
+
+        _1subc * axis.x * axis.z + s * axis.y,
+        _1subc * axis.y * axis.z - s * axis.x,
+        _1subc * axis.z * axis.z + c,
+        num::zero(),
+
+        num::zero(),
+        num::zero(),
+        num::zero(),
+        num::one(),
+    )
+}
+
+impl Camera {
+  /// this Camera sits at (0, 0, 0),
+  /// maps [-1, 1] in x horizontally,
+  /// maps [-1, 1] in y vertically,
+  /// and [0, -1] in z in depth.
+  pub fn unit() -> Camera {
+    Camera {
+      translation: Matrix4::identity(),
+      rotation: Matrix4::identity(),
+      fov: Matrix4::identity(),
+    }
+  }
+
+  pub fn projection_matrix(&self) -> Matrix4<GLfloat> {
+    self.fov * self.rotation * self.translation
+  }
+
+  /// Shift the camera by a vector.
+  pub fn translate(&mut self, v: Vector3<GLfloat>) {
+    self.translation = self.translation * translation(-v);
+  }
+
+  /// Rotate about a given vector, by `r` radians.
+  pub fn rotate(&mut self, v: Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
+    self.rotation = self.rotation * from_axis_angle(v, -r);
   }
 }
 

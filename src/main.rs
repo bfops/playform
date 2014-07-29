@@ -4,21 +4,19 @@ use cgmath::aabb::Aabb2;
 use cgmath::angle;
 use cgmath::array::Array2;
 use cgmath::matrix::{Matrix, Matrix3, Matrix4};
-use cgmath::num::{BaseFloat};
 use cgmath::point::{Point2, Point3};
 use cgmath::vector::{Vector, Vector3};
 use cgmath::projection;
 use fontloader;
 use piston;
 use piston::*;
-use glw::{GLfloat,Lines,Triangles,Shader,Texture,GLBuffer,GLContext};
+use glw::{Camera,GLfloat,Lines,Triangles,Shader,Texture,GLBuffer,GLContext,translation,from_axis_angle};
 use sdl2_game_window::GameWindowSDL2;
 use sdl2::mouse;
 use stopwatch;
 use std::collections::HashMap;
 use std::iter::range_inclusive;
 use std::rc::Rc;
-use std::num;
 use vertex;
 use vertex::{ColoredVertex,TextureVertex};
 
@@ -138,6 +136,7 @@ impl Block {
 }
 
 pub struct Player {
+  camera: Camera,
   // speed; units are world coordinates
   speed: Vector3<GLfloat>,
   // acceleration; x/z units are relative to player facing
@@ -262,11 +261,7 @@ pub struct App {
   hud_triangles: Option<GLBuffer<ColoredVertex>>,
   texture_triangles: Option<GLBuffer<TextureVertex>>,
   textures: Vec<Texture>,
-  // OpenGL projection matrix components
-  hud_matrix: Matrix4<GLfloat>,
-  fov_matrix: Matrix4<GLfloat>,
-  translation_matrix: Matrix4<GLfloat>,
-  rotation_matrix: Matrix4<GLfloat>,
+  hud_camera: Camera,
   lateral_rotation: angle::Rad<GLfloat>,
   vertical_rotation: angle::Rad<GLfloat>,
   // OpenGL shader "program" id.
@@ -279,16 +274,6 @@ pub struct App {
   font: fontloader::FontLoader,
   timers: stopwatch::TimerSet,
   gl: GLContext,
-}
-
-/// Create a 3D translation matrix.
-pub fn translation(t: Vector3<GLfloat>) -> Matrix4<GLfloat> {
-  Matrix4::new(
-    1.0, 0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0, 0.0,
-    0.0, 0.0, 1.0, 0.0,
-    t.x, t.y, t.z, 1.0,
-  )
 }
 
 /// Create a 3D perspective initialization matrix.
@@ -307,34 +292,6 @@ pub fn sortho(dx: GLfloat, dy: GLfloat, near: GLfloat, far: GLfloat) -> Matrix4<
   projection::ortho(-dx, dx, -dy, dy, near, far)
 }
 
-/// Create a matrix from a rotation around an arbitrary axis.
-pub fn from_axis_angle<S: BaseFloat>(axis: Vector3<S>, angle: angle::Rad<S>) -> Matrix4<S> {
-    let (s, c) = angle::sin_cos(angle);
-    let _1subc = num::one::<S>() - c;
-
-    Matrix4::new(
-        _1subc * axis.x * axis.x + c,
-        _1subc * axis.x * axis.y + s * axis.z,
-        _1subc * axis.x * axis.z - s * axis.y,
-        num::zero(),
-
-        _1subc * axis.x * axis.y - s * axis.z,
-        _1subc * axis.y * axis.y + c,
-        _1subc * axis.y * axis.z + s * axis.x,
-        num::zero(),
-
-        _1subc * axis.x * axis.z + s * axis.y,
-        _1subc * axis.y * axis.z - s * axis.x,
-        _1subc * axis.z * axis.z + c,
-        num::zero(),
-
-        num::zero(),
-        num::zero(),
-        num::zero(),
-        num::one(),
-    )
-}
-
 #[inline]
 pub fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
   match v.iter().position(|x| { *x == t }) {
@@ -346,9 +303,6 @@ pub fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
 impl Game<GameWindowSDL2> for App {
   fn key_press(&mut self, _: &mut GameWindowSDL2, args: &KeyPressArgs) {
     time!(&self.timers, "event.key_press", || {
-      // TODO(cgaebel): Ideally, updating should not need the GLContext.
-      let gl = &mut self.gl;
-
       match args.key {
         piston::keyboard::A => {
           self.walk(-Vector3::unit_x());
@@ -373,13 +327,13 @@ impl Game<GameWindowSDL2> for App {
           self.walk(Vector3::unit_z());
         },
         piston::keyboard::Left =>
-          self.rotate_lateral(gl, angle::rad(3.14 / 12.0 as GLfloat)),
+          self.rotate_lateral(angle::rad(3.14 / 12.0 as GLfloat)),
         piston::keyboard::Right =>
-          self.rotate_lateral(gl, angle::rad(-3.14 / 12.0 as GLfloat)),
+          self.rotate_lateral(angle::rad(-3.14 / 12.0 as GLfloat)),
         piston::keyboard::Up =>
-          self.rotate_vertical(gl, angle::rad(3.14/12.0 as GLfloat)),
+          self.rotate_vertical(angle::rad(3.14/12.0 as GLfloat)),
         piston::keyboard::Down =>
-          self.rotate_vertical(gl, angle::rad(-3.14/12.0 as GLfloat)),
+          self.rotate_vertical(angle::rad(-3.14/12.0 as GLfloat)),
         _ => {},
       }
     })
@@ -418,17 +372,14 @@ impl Game<GameWindowSDL2> for App {
 
   fn mouse_move(&mut self, w: &mut GameWindowSDL2, args: &MouseMoveArgs) {
     time!(&self.timers, "event.mouse_move", || {
-      // TODO(cgaebel): Ideally, updating should not need the GLContext.
-      let gl = &mut self.gl;
-
       let (cx, cy) = (WINDOW_WIDTH as f32 / 2.0, WINDOW_HEIGHT as f32 / 2.0);
       // args.y = h - args.y;
       // dy = args.y - cy;
       //  => dy = cy - args.y;
       let (dx, dy) = (args.x as f32 - cx, cy - args.y as f32);
       let (rx, ry) = (dx * -3.14 / 2048.0, dy * 3.14 / 1600.0);
-      self.rotate_lateral(gl, angle::rad(rx));
-      self.rotate_vertical(gl, angle::rad(ry));
+      self.rotate_lateral(angle::rad(rx));
+      self.rotate_vertical(angle::rad(ry));
 
       mouse::warp_mouse_in_window(&w.render_window.window, WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2);
     })
@@ -469,7 +420,7 @@ impl Game<GameWindowSDL2> for App {
       self.set_up_shaders(gl);
 
       // initialize the projection matrix
-      self.fov_matrix = perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
+      self.player.camera.fov = perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
       self.translate_player(gl, Vector3::new(0.0, 4.0, 10.0));
       self.update_projection(gl);
 
@@ -604,7 +555,7 @@ impl Game<GameWindowSDL2> for App {
       self.block_buffers.get_ref().draw(gl);
 
       // draw the hud
-      self.shader_program.get_mut_ref().set_projection_matrix(gl, &self.hud_matrix);
+      self.shader_program.get_mut_ref().set_camera(gl, &self.hud_camera);
       self.hud_triangles.get_ref().draw(gl);
       self.update_projection(gl);
 
@@ -667,6 +618,7 @@ impl App {
       physics: HashMap::new(),
       blocks: HashMap::new(),
       player: Player {
+        camera: Camera::unit(),
         speed: Vector3::zero(),
         accel: Vector3::new(0.0, -0.1, 0.0),
         jump_fuel: 0,
@@ -681,10 +633,12 @@ impl App {
       hud_triangles: None,
       texture_triangles: None,
       textures: Vec::new(),
-      hud_matrix: translation(Vector3::new(0.0, 0.0, -1.0)) * sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0),
-      fov_matrix: Matrix4::identity(),
-      translation_matrix: Matrix4::identity(),
-      rotation_matrix: Matrix4::identity(),
+      hud_camera: {
+        let mut c = Camera::unit();
+        c.fov = sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
+        c.fov = translation(Vector3::new(0.0, 0.0, -1.0)) * c.fov;
+        c
+      },
       lateral_rotation: angle::rad(0.0),
       vertical_rotation: angle::rad(0.0),
       shader_program: None,
@@ -816,10 +770,8 @@ impl App {
   /// Updates the projetion matrix with all our movements.
   pub fn update_projection(&self, gl: &mut GLContext) {
     time!(&self.timers, "update.projection", || {
-      self.shader_program.get_ref().set_projection_matrix(
-        gl,
-        &(self.fov_matrix * self.rotation_matrix * self.translation_matrix));
-    })
+      self.shader_program.get_ref().set_camera(gl, &self.player.camera);
+    });
   }
 
   #[inline]
@@ -933,7 +885,7 @@ impl App {
     let id = self.player.id;
     match self.translate(id, v) {
       None => {
-        self.translation_matrix = self.translation_matrix * translation(-v);
+        self.player.camera.translate(v);
         self.update_projection(gl);
 
         if v.y < 0.0 {
@@ -951,24 +903,17 @@ impl App {
   }
 
   #[inline]
-  /// Rotate the player's view about a given vector, by `r` radians.
-  pub fn rotate(&mut self, gl: &mut GLContext, v: Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
-    self.rotation_matrix = self.rotation_matrix * from_axis_angle(v, -r);
-    self.update_projection(gl);
-  }
-
-  #[inline]
   /// Rotate the camera around the y axis, by `r` radians. Positive is
   /// counterclockwise.
-  pub fn rotate_lateral(&mut self, gl: &mut GLContext, r: angle::Rad<GLfloat>) {
+  pub fn rotate_lateral(&mut self, r: angle::Rad<GLfloat>) {
     self.lateral_rotation = self.lateral_rotation + r;
-    self.rotate(gl, Vector3::unit_y(), r);
+    self.player.camera.rotate(Vector3::unit_y(), r);
   }
 
   /// Changes the camera pitch by `r` radians. Positive is up.
   /// Angles that "flip around" (i.e. looking too far up or down)
   /// are sliently rejected.
-  pub fn rotate_vertical(&mut self, gl: &mut GLContext, r: angle::Rad<GLfloat>) {
+  pub fn rotate_vertical(&mut self, r: angle::Rad<GLfloat>) {
     let new_rotation = self.vertical_rotation + r;
 
     if new_rotation < -angle::Rad::turn_div_4()
@@ -978,7 +923,7 @@ impl App {
 
     self.vertical_rotation = new_rotation;
     let axis = self.right();
-    self.rotate(gl, axis, r);
+    self.player.camera.rotate(axis, r);
   }
 
   // axes
