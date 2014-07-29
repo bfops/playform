@@ -77,6 +77,9 @@ unsafe fn aligned_slice_to_ptr<T>(vs: &[T], alignment: uint) -> *const c95::c_vo
 pub struct GLBuffer<T> {
   vertex_array: u32,
   vertex_buffer: u32,
+  /// blocks of size t_span will be treated contiguously.
+  t_span: uint,
+  /// in units of single Ts.
   length:   uint,
   capacity: uint,
   shader: Rc<Shader>,
@@ -104,12 +107,15 @@ impl DrawMode {
 impl<T: Clone> GLBuffer<T> {
   #[inline]
   /// Creates a new array of objects on the GPU.
+  /// capacity is provided in units of size t_span.
   pub fn new(
       _gl: &GLContext,
       shader_program: Rc<Shader>,
       attribs: &[vertex::AttribData],
+      t_span: uint,
       capacity: uint,
       mode: DrawMode) -> GLBuffer<T> {
+    let capacity = capacity * t_span;
     let mut vertex_array = 0;
     let mut vertex_buffer = 0;
 
@@ -157,6 +163,7 @@ impl<T: Clone> GLBuffer<T> {
     GLBuffer {
       vertex_array:  vertex_array,
       vertex_buffer: vertex_buffer,
+      t_span: t_span,
       length: 0,
       capacity: capacity,
       shader: shader_program,
@@ -166,10 +173,10 @@ impl<T: Clone> GLBuffer<T> {
   }
 
   /// Analog of vec::Vector::swap_remove`, but for GLBuffer data.
-  pub fn swap_remove(&mut self, _gl: &GLContext, span: uint, i: uint) {
-    let i = i * span;
+  pub fn swap_remove(&mut self, _gl: &GLContext, i: uint) {
+    let i = i * self.t_span;
     assert!(i < self.length);
-    self.length -= span;
+    self.length -= self.t_span;
     if i == self.length {
       // just remove, no swap.
       return;
@@ -187,17 +194,17 @@ impl<T: Clone> GLBuffer<T> {
       gl::ARRAY_BUFFER,
       self.length as i64 * byte_size,
       i as i64 * byte_size,
-      span as i64 * byte_size
+      self.t_span as i64 * byte_size
     );
   }
 
   /// Add more data into this buffer; the data are not pushed to OpenGL until
   /// flush() is called!
   pub fn push(&mut self, vs: &[T]) {
+    assert!(vs.len() % self.t_span == 0);
     assert!(
       self.length + self.buffer.len() + vs.len() <= self.capacity,
-      "GLBuffer::push: {} into a {}/{} full GLbuffer",
-      vs.len(),
+      "GLBuffer::push into a {}/{} full GLbuffer",
       self.length + self.buffer.len(),
       self.capacity
     );

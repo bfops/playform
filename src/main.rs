@@ -172,7 +172,8 @@ impl BlockBuffers {
         [ vertex::AttribData { name: "position", size: 3 },
           vertex::AttribData { name: "in_color", size: 4 },
         ],
-        MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BOX,
+        TRIANGLE_VERTICES_PER_BOX,
+        MAX_WORLD_SIZE,
         Triangles
       ),
 
@@ -182,7 +183,8 @@ impl BlockBuffers {
         [ vertex::AttribData { name: "position", size: 3 },
           vertex::AttribData { name: "in_color", size: 4 },
         ],
-        MAX_WORLD_SIZE * TRIANGLE_VERTICES_PER_BOX,
+        TRIANGLE_VERTICES_PER_BOX,
+        MAX_WORLD_SIZE,
         Triangles
       ),
 
@@ -192,7 +194,8 @@ impl BlockBuffers {
         [ vertex::AttribData { name: "position", size: 3 },
           vertex::AttribData { name: "in_color", size: 4 },
         ],
-        MAX_WORLD_SIZE * LINE_VERTICES_PER_BOX,
+        LINE_VERTICES_PER_BOX,
+        MAX_WORLD_SIZE,
         Lines
       ),
     }
@@ -223,11 +226,11 @@ impl BlockBuffers {
     let idx = *expect_id!(self.id_to_index.find(&id));
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     self.index_to_id.swap_remove(idx).expect("ran out of blocks");
-    self.triangles.swap_remove(gl, TRIANGLE_VERTICES_PER_BOX, idx);
-    self.selection_triangles.swap_remove(gl, TRIANGLE_VERTICES_PER_BOX, idx);
+    self.triangles.swap_remove(gl, idx);
+    self.selection_triangles.swap_remove(gl, idx);
     self.id_to_index.remove(&id);
 
-    self.outlines.swap_remove(gl, LINE_VERTICES_PER_BOX, idx);
+    self.outlines.swap_remove(gl, idx);
 
     if id != swapped_id {
       self.id_to_index.insert(swapped_id, idx);
@@ -478,7 +481,8 @@ impl Game<GameWindowSDL2> for App {
         [ vertex::AttribData { name: "position", size: 3 },
           vertex::AttribData { name: "in_color", size: 4 },
         ],
-        16 * VERTICES_PER_TRIANGLE,
+        VERTICES_PER_TRIANGLE,
+        16,
         Triangles
       ));
 
@@ -488,7 +492,8 @@ impl Game<GameWindowSDL2> for App {
         [ vertex::AttribData { name: "position", size: 2 },
           vertex::AttribData { name: "texture_position", size: 2 },
         ],
-        8 * VERTICES_PER_TRIANGLE,
+        VERTICES_PER_TRIANGLE,
+        8,
         Triangles,
       ));
 
@@ -715,6 +720,7 @@ impl App {
             min: Point2 { x: -0.97, y: y - 0.2 },
             max: Point2 { x: 0.0,   y: y       },
           }));
+      self.texture_triangles.get_mut_ref().flush(gl);
       y -= 0.2;
     }
 
