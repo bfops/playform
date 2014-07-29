@@ -82,6 +82,9 @@ pub struct GLBuffer<T> {
   shader: Rc<Shader>,
   /// How to draw this buffer. Ex: gl::LINES, gl::TRIANGLES, etc.
   mode: GLenum,
+
+  /// in-memory buffer before sending to OpenGL.
+  buffer: Vec<T>,
 }
 
 pub enum DrawMode {
@@ -158,6 +161,7 @@ impl<T: Clone> GLBuffer<T> {
       capacity: capacity,
       shader: shader_program,
       mode: mode.to_enum(),
+      buffer: Vec::new(),
     }
   }
 
@@ -187,27 +191,39 @@ impl<T: Clone> GLBuffer<T> {
     );
   }
 
-  #[inline]
-  /// Add a set of triangles to the set of triangles to render.
-  pub fn push(&mut self, _gl: &GLContext, vs: &[T]) {
+  /// Add more data into this buffer; the data are not pushed to OpenGL until
+  /// flush() is called!
+  pub fn push(&mut self, vs: &[T]) {
     assert!(
-      self.length + vs.len() <= self.capacity,
-      "GLBuffer::push: {} into a {}/{} full GLbuffer", vs.len(), self.length, self.capacity);
+      self.length + self.buffer.len() + vs.len() <= self.capacity,
+      "GLBuffer::push: {} into a {}/{} full GLbuffer",
+      vs.len(),
+      self.length + self.buffer.len(),
+      self.capacity
+    );
 
-    gl::BindVertexArray(self.vertex_array);
-    gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
+    self.buffer.push_all(vs);
+  }
 
-    let size = mem::size_of::<T>() as i64;
-    unsafe {
-      gl::BufferSubData(
-        gl::ARRAY_BUFFER,
-        size * self.length as i64,
-        size * vs.len() as i64,
-        aligned_slice_to_ptr(vs, 4)
-      );
+  /// Send all the in-memory buffered data to OpenGL buffers.
+  pub fn flush(&mut self, _gl: &GLContext) {
+    if self.buffer.len() > 0 {
+      gl::BindVertexArray(self.vertex_array);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
+
+      let size = mem::size_of::<T>() as i64;
+      unsafe {
+        gl::BufferSubData(
+          gl::ARRAY_BUFFER,
+          size * self.length as i64,
+          size * self.buffer.len() as i64,
+          aligned_slice_to_ptr(self.buffer.slice(0, self.buffer.len()), 4)
+        );
+      }
+
+      self.length += self.buffer.len();
+      self.buffer.clear();
     }
-
-    self.length += vs.len();
   }
 
   #[inline]

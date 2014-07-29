@@ -441,17 +441,15 @@ impl Game<GameWindowSDL2> for App {
       // TODO(cgabel): Ideally, the update thread should not be touching OpenGL.
       let gl = &mut self.gl;
 
+      // if there are more blocks to be loaded, add them into the OpenGL buffers.
       if self.next_load_id < self.next_id {
         time!(&self.timers, "update.load", || {
           let mut i = 0;
-          let mut triangles = Vec::new();
-          let mut outlines = Vec::new();
-          let mut selections = Vec::new();
           while i < LOAD_SPEED && self.next_load_id < self.next_id {
             self.blocks.find(&self.next_load_id).map(|block| {
               let bounds = self.physics.find(&self.next_load_id).expect("phyiscs prematurely deleted");
-              triangles.push_all(Block::to_triangles(block, bounds));
-              outlines.push_all(Block::to_outlines(bounds));
+              self.world_triangles.get_mut_ref().push(Block::to_triangles(block, bounds));
+              self.outlines.get_mut_ref().push(Block::to_outlines(bounds));
               let selection_id = block.id * 6;
               let selection_colors =
                     [ id_color(selection_id + Id(0)),
@@ -461,18 +459,16 @@ impl Game<GameWindowSDL2> for App {
                       id_color(selection_id + Id(4)),
                       id_color(selection_id + Id(5)),
                     ];
-              selections.push_all(bounds.to_triangles(selection_colors));
+              self.selection_triangles.get_mut_ref().push(bounds.to_triangles(selection_colors));
             });
 
             self.next_load_id = self.next_load_id + Id(1);
             i += 1;
           }
 
-          if triangles.len() > 0 {
-            self.world_triangles.get_mut_ref().push(gl, triangles.slice(0, triangles.len()));
-            self.outlines.get_mut_ref().push(gl, outlines.slice(0, outlines.len()));
-            self.selection_triangles.get_mut_ref().push(gl, selections.slice(0, selections.len()));
-          }
+          self.world_triangles.get_mut_ref().flush(gl);
+          self.outlines.get_mut_ref().flush(gl);
+          self.selection_triangles.get_mut_ref().flush(gl);
         });
       }
 
@@ -650,7 +646,6 @@ impl App {
       self.textures.push(self.font.sans.red(*line));
 
       self.texture_triangles.get_mut_ref().push(
-        gl,
         TextureVertex::square(
           Aabb2 {
             min: Point2 { x: -0.97, y: y - 0.2 },
@@ -658,18 +653,21 @@ impl App {
           }));
       y -= 0.2;
     }
+
+    self.texture_triangles.get_mut_ref().flush(gl);
   }
 
   fn make_hud(&mut self, gl: &GLContext) {
     let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
 
     self.hud_triangles.get_mut_ref().push(
-      gl,
       ColoredVertex::square(
         Aabb2 {
           min: Point2 { x: -0.02, y: -0.02 },
           max: Point2 { x:  0.02, y:  0.02 },
         }, cursor_color));
+
+    self.hud_triangles.get_mut_ref().flush(gl);
   }
 
   fn make_world(&mut self) {
