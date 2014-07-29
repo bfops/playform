@@ -214,22 +214,30 @@ impl<T: Clone> GLBuffer<T> {
 
   /// Send all the in-memory buffered data to OpenGL buffers.
   pub fn flush(&mut self, _gl: &GLContext) {
+    assert!(self.buffer.len() % self.t_span == 0);
     if self.buffer.len() > 0 {
-      gl::BindVertexArray(self.vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
-
-      let size = mem::size_of::<T>() as i64;
-      unsafe {
-        gl::BufferSubData(
-          gl::ARRAY_BUFFER,
-          size * self.length as i64,
-          size * self.buffer.len() as i64,
-          aligned_slice_to_ptr(self.buffer.slice(0, self.buffer.len()), 4)
-        );
-      }
+      self.update(_gl, self.length / self.t_span, self.buffer.slice(0, self.buffer.len()));
 
       self.length += self.buffer.len();
       self.buffer.clear();
+    }
+  }
+
+  pub fn update(&self, _gl: &GLContext, idx: uint, vs: &[T]) {
+    assert!(vs.len() % self.t_span == 0);
+    assert!(idx * self.t_span + vs.len() <= self.capacity);
+
+    gl::BindVertexArray(self.vertex_array);
+    gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
+
+    let byte_size = mem::size_of::<T>();
+    unsafe {
+      gl::BufferSubData(
+          gl::ARRAY_BUFFER,
+          (byte_size * idx * self.t_span) as i64,
+          (byte_size * vs.len()) as i64,
+          aligned_slice_to_ptr(vs.slice(0, vs.len()), 4)
+      );
     }
   }
 
