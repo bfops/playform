@@ -10,6 +10,7 @@ use cgmath::projection;
 use fontloader;
 use piston;
 use piston::*;
+use gl;
 use glw::{Camera,GLfloat,Lines,Triangles,Shader,Texture,GLBuffer,GLContext,translation,from_axis_angle};
 use sdl2_game_window::GameWindowSDL2;
 use sdl2::mouse;
@@ -396,6 +397,11 @@ impl Game<GameWindowSDL2> for App {
   }
 
   fn load(&mut self, _: &mut GameWindowSDL2) {
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      err => fail!("OpenGL error 0x{:x} in initialization", err),
+    }
+
     time!(&self.timers, "load", || {
       mouse::show_cursor(false);
 
@@ -417,11 +423,26 @@ impl Game<GameWindowSDL2> for App {
       gl.enable_depth_buffer();
       gl.set_background_color(SKY_COLOR);
 
+      match gl::GetError() {
+        gl::NO_ERROR => {},
+        err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
+      }
+
       self.set_up_shaders(gl);
 
       // initialize the projection matrix
       self.player.camera.fov = perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
+
+      match gl::GetError() {
+        gl::NO_ERROR => {},
+        err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
+      }
       self.translate_player(gl, Vector3::new(0.0, 4.0, 10.0));
+      match gl::GetError() {
+        gl::NO_ERROR => {},
+        err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
+      }
+
       self.update_projection(gl);
 
       self.block_buffers = Some(BlockBuffers::new(&self.gl, self.shader_program.get_ref()));
@@ -654,6 +675,11 @@ impl App {
   fn set_up_shaders(&mut self, gl: &mut GLContext) {
     self.texture_shader = Some(Rc::new(Shader::new(gl, ID_VS_SRC, TX_SRC)));
     self.shader_program = Some(Rc::new(Shader::new(gl, VS_SRC, FS_SRC)));
+
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      err => fail!("OpenGL error 0x{:x} in set_up_shaders", err),
+    }
   }
 
   /// Makes some basic textures in the world.
@@ -771,6 +797,11 @@ impl App {
   pub fn update_projection(&self, gl: &mut GLContext) {
     time!(&self.timers, "update.projection", || {
       self.shader_program.get_ref().set_camera(gl, &self.player.camera);
+
+      match gl::GetError() {
+        gl::NO_ERROR => {},
+        err => fail!("OpenGL error 0x{:x} in update_projection", err),
+      }
     });
   }
 
@@ -806,17 +837,19 @@ impl App {
 
   /// Find a collision with self.physics.
   fn world_collision(&self, b: &BoundingBox, self_id: Id) -> Option<Intersect> {
-    for (&id, bounds) in self.physics.iter() {
-      if id != self_id {
-        let i = BoundingBox::intersect(b, bounds);
-        match i {
-          None => { },
-          Some(_) => { return i; },
+    time!(&self.timers, "world_collision", || {
+      for (&id, bounds) in self.physics.iter() {
+        if id != self_id {
+          let i = BoundingBox::intersect(b, bounds);
+          match i {
+            None => { },
+            Some(_) => { return i; },
+          }
         }
       }
-    }
 
-    None
+      None
+    })
   }
 
   fn alloc_id(&mut self) -> Id {
@@ -860,24 +893,28 @@ impl App {
     self.player.accel = self.player.accel + da.mul_s(0.2);
   }
 
-  /// does not update GLBuffers correctly for block translations
+  /// Move an entity by some amount, returning the first collision to occur.
+  /// If we don't collide, update self.physics with the moved object.
+  /// Does NOT update any asociated GLbuffers, etc.
   fn translate(&mut self, id: Id, amount: Vector3<GLfloat>) -> Option<Intersect> {
-    let bounds;
-    {
-      let bounds1 = expect_id!(self.physics.find(&id));
-      bounds = BoundingBox {
-        low_corner: bounds1.low_corner + amount,
-        high_corner: bounds1.high_corner + amount,
-      };
-    }
+    time!(&self.timers, "translate", || {
+      let bounds;
+      {
+        let bounds1 = expect_id!(self.physics.find(&id));
+        bounds = BoundingBox {
+            low_corner: bounds1.low_corner + amount,
+            high_corner: bounds1.high_corner + amount,
+        };
+      }
 
-    let collided = self.world_collision(&bounds, id);
+      let collided = self.world_collision(&bounds, id);
 
-    if collided.is_none() {
-      self.physics.insert(id, bounds);
-    }
+      if collided.is_none() {
+        self.physics.insert(id, bounds);
+      }
 
-    collided
+      collided
+    })
   }
 
   /// Translates the player/camera by a vector.

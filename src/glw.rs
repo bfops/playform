@@ -32,14 +32,27 @@ impl Shader {
     Shader { id: id }
   }
 
-  /// Sets the variable `proj_matrix` in some shader.
+  /// Sets the variable `projection_matrix` in some shader.
   pub fn set_projection_matrix(&self, gl: &mut GLContext, m: &Matrix4<GLfloat>) {
     let var_name = gl.scache.convert("projection_matrix").as_ptr();
-    unsafe {
-      let loc = gl::GetUniformLocation(self.id, var_name);
-      assert!(loc != -1, "couldn't read projection matrix");
-      gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(m.ptr()));
-    }
+    gl.use_shader(self, |_gl| {
+      unsafe {
+        let loc = gl::GetUniformLocation(self.id, var_name);
+        assert!(loc != -1, "couldn't read projection_matrix");
+
+        match gl::GetError() {
+          gl::NO_ERROR => {},
+          err => fail!("OpenGL error 0x{:x} in GetUniformLocation", err),
+        }
+
+        gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(m.ptr()));
+
+        match gl::GetError() {
+          gl::NO_ERROR => {},
+          err => fail!("OpenGL error 0x{:x} in UniformMatrix4fv", err),
+        }
+      }
+    })
   }
 
   pub fn set_camera(&self, gl: &mut GLContext, c: &Camera) {
@@ -133,8 +146,18 @@ impl<T: Clone> GLBuffer<T> {
       gl::GenBuffers(1, &mut vertex_buffer);
     }
 
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      err => fail!("OpenGL error 0x{:x}", err),
+    }
+
     gl::BindVertexArray(vertex_array);
     gl::BindBuffer(gl::ARRAY_BUFFER, vertex_buffer);
+
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      err => fail!("OpenGL error 0x{:x}", err),
+    }
 
     let mut offset = 0;
     for attrib in attribs.iter() {
@@ -155,6 +178,11 @@ impl<T: Clone> GLBuffer<T> {
       offset += (attrib.size * mem::size_of::<GLfloat>()) as int;
     }
 
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      err => fail!("OpenGL error 0x{:x}", err),
+    }
+
     unsafe {
       // Check that the attribs are sized correctly.
       assert_eq!(offset, mem::size_of::<T>() as int);
@@ -165,6 +193,12 @@ impl<T: Clone> GLBuffer<T> {
         ptr::null(),
         gl::DYNAMIC_DRAW,
       );
+
+      match gl::GetError() {
+        gl::NO_ERROR => {},
+        gl::OUT_OF_MEMORY => fail!("Out of VRAM"),
+        err => fail!("OpenGL error 0x{:x}", err),
+      }
     }
 
     GLBuffer {
@@ -245,6 +279,11 @@ impl<T: Clone> GLBuffer<T> {
           (byte_size * vs.len()) as i64,
           aligned_slice_to_ptr(vs.slice(0, vs.len()), 4)
       );
+    }
+
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      err => fail!("OpenGL error 0x{:x} in GLBuffer::update", err),
     }
   }
 
