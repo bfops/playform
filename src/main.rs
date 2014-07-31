@@ -161,7 +161,7 @@ struct BlockBuffers {
 }
 
 impl BlockBuffers {
-  pub fn new(gl: &GLContext, shader_program: &Rc<Shader>) -> BlockBuffers {
+  pub unsafe fn new(gl: &GLContext, shader_program: &Rc<Shader>) -> BlockBuffers {
     BlockBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
@@ -438,6 +438,7 @@ impl Game<GameWindowSDL2> for App {
         err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
       }
       self.translate_player(gl, Vector3::new(0.0, 4.0, 10.0));
+
       match gl::GetError() {
         gl::NO_ERROR => {},
         err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
@@ -445,29 +446,36 @@ impl Game<GameWindowSDL2> for App {
 
       self.update_projection(gl);
 
-      self.block_buffers = Some(BlockBuffers::new(&self.gl, self.shader_program.get_ref()));
+      match gl::GetError() {
+        gl::NO_ERROR => {},
+        err => fail!("OpenGL error 0x{:x}", err),
+      }
 
-      self.hud_triangles = Some(GLBuffer::new(
-        &self.gl,
-        self.shader_program.get_ref().clone(),
-        [ vertex::AttribData { name: "position", size: 3 },
-          vertex::AttribData { name: "in_color", size: 4 },
-        ],
-        VERTICES_PER_TRIANGLE,
-        16,
-        Triangles
-      ));
+      unsafe {
+        self.block_buffers = Some(BlockBuffers::new(&self.gl, self.shader_program.get_ref()));
 
-      self.texture_triangles = Some(GLBuffer::new(
-        &self.gl,
-        self.texture_shader.get_ref().clone(),
-        [ vertex::AttribData { name: "position", size: 2 },
-          vertex::AttribData { name: "texture_position", size: 2 },
-        ],
-        VERTICES_PER_TRIANGLE,
-        8,
-        Triangles,
-      ));
+        self.hud_triangles = Some(GLBuffer::new(
+            &self.gl,
+            self.shader_program.get_ref().clone(),
+            [ vertex::AttribData { name: "position", size: 3 },
+            vertex::AttribData { name: "in_color", size: 4 },
+            ],
+            VERTICES_PER_TRIANGLE,
+            16,
+            Triangles
+        ));
+
+        self.texture_triangles = Some(GLBuffer::new(
+            &self.gl,
+            self.texture_shader.get_ref().clone(),
+            [ vertex::AttribData { name: "position", size: 2 },
+            vertex::AttribData { name: "texture_position", size: 2 },
+            ],
+            VERTICES_PER_TRIANGLE,
+            8,
+            Triangles,
+        ));
+      }
 
       self.make_textures(gl);
       self.make_hud(gl);

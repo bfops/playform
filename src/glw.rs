@@ -89,7 +89,13 @@ unsafe fn println_c_str(str: *const u8) {
 /// Ensures a slice has a given alignment, and converts it to a raw pointer.
 unsafe fn aligned_slice_to_ptr<T>(vs: &[T], alignment: uint) -> *const c95::c_void {
   let vs_as_slice : raw::Slice<T> = mem::transmute(vs);
-  assert_eq!(vs_as_slice.data as uint & (alignment - 1), 0);
+  assert!(
+    (vs_as_slice.data as uint & (alignment - 1) == 0),
+    "0x{:x} not {}-aligned",
+    vs_as_slice.data as uint,
+    alignment
+  );
+  assert!(vs_as_slice.data != ptr::null());
   vs_as_slice.data as *const c95::c_void
 }
 
@@ -97,7 +103,8 @@ unsafe fn aligned_slice_to_ptr<T>(vs: &[T], alignment: uint) -> *const c95::c_vo
 pub struct GLBuffer<T> {
   vertex_array: u32,
   vertex_buffer: u32,
-  /// blocks of size t_span will be treated contiguously.
+  /// Each index in the GLBuffer is the index of a contiguous block of
+  /// t_span elements.
   t_span: uint,
   /// in units of single Ts.
   length:   uint,
@@ -128,7 +135,7 @@ impl<T: Clone> GLBuffer<T> {
   #[inline]
   /// Creates a new array of objects on the GPU.
   /// capacity is provided in units of size t_span.
-  pub fn new(
+  pub unsafe fn new(
       _gl: &GLContext,
       shader_program: Rc<Shader>,
       attribs: &[vertex::AttribData],
@@ -277,7 +284,7 @@ impl<T: Clone> GLBuffer<T> {
           gl::ARRAY_BUFFER,
           (byte_size * idx * self.t_span) as i64,
           (byte_size * vs.len()) as i64,
-          aligned_slice_to_ptr(vs.slice(0, vs.len()), 4)
+          aligned_slice_to_ptr(vs.slice(0, vs.len()), mem::size_of::<GLfloat>())
       );
     }
 
