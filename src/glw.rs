@@ -22,6 +22,8 @@ use vertex;
 
 pub struct Shader {
   id: GLuint,
+  vs: GLuint,
+  fs: GLuint,
 }
 
 impl Shader {
@@ -29,7 +31,7 @@ impl Shader {
     let vs = gl.compile_shader(vertex_shader, gl::VERTEX_SHADER);
     let fs = gl.compile_shader(fragment_shader, gl::FRAGMENT_SHADER);
     let id = gl.link_shader(vs, fs);
-    Shader { id: id }
+    Shader { id: id, vs: vs, fs: fs }
   }
 
   /// Sets the variable `projection_matrix` in some shader.
@@ -62,7 +64,9 @@ impl Shader {
 
 impl Drop for Shader {
   fn drop(&mut self) {
-    gl::DeleteShader(self.id);
+    gl::DeleteProgram(self.id);
+    gl::DeleteShader(self.vs);
+    gl::DeleteShader(self.fs);
   }
 }
 

@@ -985,7 +985,7 @@ impl App {
   }
 }
 
-// TODO(cgabeel): This should be removed when rustc bug #8861 is patched.
+// TODO(cgaebel): This should be removed when rustc bug #8861 is patched.
 #[unsafe_destructor]
 impl Drop for App {
   fn drop(&mut self) {
