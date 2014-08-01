@@ -421,7 +421,6 @@ impl Game<GameWindowSDL2> for App {
       gl.enable_alpha_blending();
       gl.enable_smooth_lines();
       gl.enable_depth_buffer();
-      gl.set_background_color(SKY_COLOR);
 
       match gl::GetError() {
         gl::NO_ERROR => {},
@@ -437,14 +436,12 @@ impl Game<GameWindowSDL2> for App {
         gl::NO_ERROR => {},
         err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
       }
-      self.translate_player(gl, Vector3::new(0.0, 4.0, 10.0));
+      self.translate_player(Vector3::new(0.0, 4.0, 10.0));
 
       match gl::GetError() {
         gl::NO_ERROR => {},
         err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
       }
-
-      self.update_projection(gl);
 
       match gl::GetError() {
         gl::NO_ERROR => {},
@@ -526,13 +523,13 @@ impl Game<GameWindowSDL2> for App {
 
         let dP = self.player.speed;
         if dP.x != 0.0 {
-          self.translate_player(gl, Vector3::new(dP.x, 0.0, 0.0));
+          self.translate_player(Vector3::new(dP.x, 0.0, 0.0));
         }
         if dP.y != 0.0 {
-          self.translate_player(gl, Vector3::new(0.0, dP.y, 0.0));
+          self.translate_player(Vector3::new(0.0, dP.y, 0.0));
         }
         if dP.z != 0.0 {
-          self.translate_player(gl, Vector3::new(0.0, 0.0, dP.z));
+          self.translate_player(Vector3::new(0.0, 0.0, dP.z));
         }
 
         let dV = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.player.accel);
@@ -581,12 +578,12 @@ impl Game<GameWindowSDL2> for App {
       gl.clear_buffer();
 
       // draw the world
+      self.update_projection(gl);
       self.block_buffers.get_ref().draw(gl);
 
       // draw the hud
       self.shader_program.get_mut_ref().set_camera(gl, &self.hud_camera);
       self.hud_triangles.get_ref().draw(gl);
-      self.update_projection(gl);
 
       // draw textures
       gl.use_shader(self.texture_shader.get_ref().deref(), |gl| {
@@ -708,7 +705,6 @@ impl App {
             min: Point2 { x: -0.97, y: y - 0.2 },
             max: Point2 { x: 0.0,   y: y       },
           }));
-      self.texture_triangles.get_mut_ref().flush(gl);
       y -= 0.2;
     }
 
@@ -817,8 +813,10 @@ impl App {
   /// Renders the selection buffer.
   pub fn render_selection(&self, gl: &mut GLContext) {
     time!(&self.timers, "render.render_selection", || {
-      gl.set_background_color(Color4 { r: 0.0, g: 0.0, b: 0.0, a: 1.0 });
+      gl.set_background_color(Color4::of_rgba(0.0, 0.0, 0.0, 0.0));
       gl.clear_buffer();
+
+      self.update_projection(gl);
       self.block_buffers.get_ref().draw_selection(gl);
     })
   }
@@ -926,12 +924,11 @@ impl App {
   }
 
   /// Translates the player/camera by a vector.
-  fn translate_player(&mut self, gl: &mut GLContext, v: Vector3<GLfloat>) {
+  fn translate_player(&mut self, v: Vector3<GLfloat>) {
     let id = self.player.id;
     match self.translate(id, v) {
       None => {
         self.player.camera.translate(v);
-        self.update_projection(gl);
 
         if v.y < 0.0 {
           self.player.jump_fuel = 0;
