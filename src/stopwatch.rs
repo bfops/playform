@@ -38,11 +38,11 @@ impl Stopwatch {
       println!("{} never ran", name);
     } else {
       println!(
-        "{}: {}ms over {} samples (avg {}ms)",
+        "{}: {}ms over {} samples (avg {}us)",
         name,
         self.total_time / 1000000,
         self.number_of_windows,
-        (self.total_time / self.number_of_windows / 1000000),
+        (self.total_time / self.number_of_windows / 1000),
       );
     }
   }
