@@ -1,10 +1,9 @@
 pub use color::Color4;
-use bounding_box::*;
-use cgmath::aabb::Aabb2;
+use cgmath::aabb::{Aabb2, Aabb3};
 use cgmath::angle;
 use cgmath::array::Array2;
 use cgmath::matrix::{Matrix, Matrix3, Matrix4};
-use cgmath::point::{Point2, Point3};
+use cgmath::point::{Point, Point2, Point3};
 use cgmath::vector::{Vector, Vector3};
 use cgmath::projection;
 use fontloader;
@@ -51,6 +50,13 @@ static MAX_JUMP_FUEL: uint = 4;
 static LOAD_SPEED:uint = 1 << 12;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
+static TRIANGLES_PER_BOX: uint = 12;
+static LINES_PER_BOX: uint = 12;
+static VERTICES_PER_TRIANGLE: uint = 3;
+static VERTICES_PER_LINE: uint = 2;
+static TRIANGLE_VERTICES_PER_BOX: uint = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
+static LINE_VERTICES_PER_BOX: uint = LINES_PER_BOX * VERTICES_PER_LINE;
+
 #[deriving(Clone)]
 #[allow(missing_doc)]
 pub enum BlockType {
@@ -87,6 +93,91 @@ impl Mul<u32, Id> for Id {
   }
 }
 
+type BoundingBox = Aabb3<GLfloat>;
+
+pub type Intersect = Vector3<GLfloat>;
+
+pub enum Intersect1 {
+  Within,
+  Partial,
+}
+
+// Construct the faces of the box as triangles for rendering,
+// with a different color on each face (front, left, top, back, right, bottom).
+// Triangle vertices are in CCW order when viewed from the outside of
+// the cube, for rendering purposes.
+fn to_triangles(bounds: &Aabb3<GLfloat>, c: [Color4<GLfloat>, ..6]) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
+  let (x1, y1, z1) = (bounds.min.x, bounds.min.y, bounds.min.z);
+  let (x2, y2, z2) = (bounds.max.x, bounds.max.y, bounds.max.z);
+
+  let vtx = |x: GLfloat, y: GLfloat, z: GLfloat, c: Color4<GLfloat>| -> ColoredVertex {
+    ColoredVertex {
+      position: Point3 { x: x, y: y, z: z },
+      color: c
+    }
+  };
+
+  // Remember: x increases to the right, y increases up, and z becomes more
+  // negative as depth from the viewer increases.
+  [
+    // front
+    vtx(x2, y1, z2, c[3]), vtx(x2, y2, z2, c[3]), vtx(x1, y2, z2, c[3]),
+    vtx(x2, y1, z2, c[3]), vtx(x1, y2, z2, c[3]), vtx(x1, y1, z2, c[3]),
+    // left
+    vtx(x1, y1, z2, c[1]), vtx(x1, y2, z2, c[1]), vtx(x1, y2, z1, c[1]),
+    vtx(x1, y1, z2, c[1]), vtx(x1, y2, z1, c[1]), vtx(x1, y1, z1, c[1]),
+    // top
+    vtx(x1, y2, z1, c[2]), vtx(x1, y2, z2, c[2]), vtx(x2, y2, z2, c[2]),
+    vtx(x1, y2, z1, c[2]), vtx(x2, y2, z2, c[2]), vtx(x2, y2, z1, c[2]),
+    // back
+    vtx(x1, y1, z1, c[0]), vtx(x1, y2, z1, c[0]), vtx(x2, y2, z1, c[0]),
+    vtx(x1, y1, z1, c[0]), vtx(x2, y2, z1, c[0]), vtx(x2, y1, z1, c[0]),
+    // right
+    vtx(x2, y1, z1, c[4]), vtx(x2, y2, z1, c[4]), vtx(x2, y2, z2, c[4]),
+    vtx(x2, y1, z1, c[4]), vtx(x2, y2, z2, c[4]), vtx(x2, y1, z2, c[4]),
+    // bottom
+    vtx(x1, y1, z2, c[5]), vtx(x1, y1, z1, c[5]), vtx(x2, y1, z1, c[5]),
+    vtx(x1, y1, z2, c[5]), vtx(x2, y1, z1, c[5]), vtx(x2, y1, z2, c[5]),
+  ]
+}
+
+// Find whether two Blocks intersect.
+fn intersect(b1: &BoundingBox, b2: &BoundingBox) -> Option<Intersect> {
+  fn intersect1(x1l: GLfloat, x1h: GLfloat, x2l: GLfloat, x2h: GLfloat) -> Option<Intersect1> {
+    if x1l > x2l && x1h <= x2h {
+      Some(Within)
+    } else if x1h > x2l && x2h > x1l {
+      Some(Partial)
+    } else {
+      None
+    }
+  }
+
+  let mut ret = true;
+  let mut v = Vector3::ident();
+  match intersect1(b1.min.x, b1.max.x, b2.min.x, b2.max.x) {
+    Some(Within) => { },
+    Some(Partial) => { v.x = 0.0; },
+    None => { ret = false; },
+  }
+  match intersect1(b1.min.y, b1.max.y, b2.min.y, b2.max.y) {
+    Some(Within) => { },
+    Some(Partial) => { v.y = 0.0; },
+    None => { ret = false; },
+  }
+  match intersect1(b1.min.z, b1.max.z, b2.min.z, b2.max.z) {
+    Some(Within) => { },
+    Some(Partial) => { v.z = 0.0; },
+    None => { ret = false; },
+  }
+
+  if ret {
+    Some(v)
+  } else {
+    None
+  }
+}
+
 #[deriving(Clone)]
 /// A voxel-ish block in the game world.
 pub struct Block {
@@ -99,15 +190,15 @@ impl Block {
   #[inline]
   fn to_triangles(block: &Block, bounds: &BoundingBox) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
     let colors = [block.block_type.to_color(), ..6];
-    bounds.to_triangles(colors)
+    to_triangles(bounds, colors)
   }
 
   // Construct outlines for this Block, to sharpen the edges.
   fn to_outlines(bounds: &BoundingBox) -> [ColoredVertex, ..VERTICES_PER_LINE * LINES_PER_BOX] {
     // distance from the block to construct the bounding outlines.
     let d = 0.002;
-    let (x1, y1, z1) = (bounds.low_corner.x - d, bounds.low_corner.y - d, bounds.low_corner.z - d);
-    let (x2, y2, z2) = (bounds.high_corner.x + d, bounds.high_corner.y + d, bounds.high_corner.z + d);
+    let (x1, y1, z1) = (bounds.min.x - d, bounds.min.y - d, bounds.min.z - d);
+    let (x2, y2, z2) = (bounds.max.x + d, bounds.max.y + d, bounds.max.z + d);
     let c = Color4::of_rgba(0.0, 0.0, 0.0, 1.0);
 
     let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> ColoredVertex {
@@ -410,8 +501,8 @@ impl Game<GameWindowSDL2> for App {
       self.physics.insert(
         playerId,
         BoundingBox {
-          low_corner: Vector3::new(-1.0, -2.0, -1.0),
-          high_corner: Vector3::zero(),
+          min: Point3::new(-1.0, -2.0, -1.0),
+          max: Point3::new(0.0, 0.0, 0.0)
         }
       );
 
@@ -559,8 +650,8 @@ impl Game<GameWindowSDL2> for App {
             // TODO: think about how this should work when placing size A blocks
             // against size B blocks.
             self.place_block(
-              bounds.low_corner + direction,
-              bounds.high_corner + direction,
+              bounds.min.add_v(&direction),
+              bounds.max.add_v(&direction),
               Dirt,
               true
             );
@@ -634,7 +725,7 @@ fn to_selection_triangles(bounds: &BoundingBox, id: Id) -> [ColoredVertex, ..TRI
           id_color(selection_id + Id(4)),
           id_color(selection_id + Id(5)),
         ];
-  bounds.to_triangles(selection_colors)
+  to_triangles(bounds, selection_colors)
 }
 
 impl App {
@@ -732,7 +823,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (6.0 + i, 6.0, 0.0 + j);
           let (x2, y2, z2) = (6.5 + i, 6.5, 0.5 + j);
-          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt, false);
+          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Dirt, false);
         }
       }
       // high dirt block
@@ -741,7 +832,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (0.0 + i, 12.0, 5.0 + j);
           let (x2, y2, z2) = (0.5 + i, 12.5, 5.5 + j);
-          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Dirt, false);
+          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Dirt, false);
         }
       }
       // ground
@@ -750,7 +841,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (i, 0.0, j);
           let (x2, y2, z2) = (i + 0.5, 0.5, j + 0.5);
-          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Grass, false);
+          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Grass, false);
         }
       }
       // front wall
@@ -759,7 +850,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (i, 0.5 + j, -32.0);
           let (x2, y2, z2) = (i + 0.5, 1.0 + j, -32.0 + 0.5);
-          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
+          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Stone, false);
         }
       }
       // back wall
@@ -768,7 +859,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (i, 0.5 + j, 32.0);
           let (x2, y2, z2) = (i + 0.5, 1.0 + j, 32.0 + 0.5);
-          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
+          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Stone, false);
         }
       }
       // left wall
@@ -777,7 +868,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (-32.0, 0.5 + j, i);
           let (x2, y2, z2) = (-32.0 + 0.5, 1.0 + j, i + 0.5);
-          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
+          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Stone, false);
         }
       }
       // right wall
@@ -786,7 +877,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (32.0, 0.5 + j, i);
           let (x2, y2, z2) = (32.0 + 0.5, 1.0 + j, i + 0.5);
-          self.place_block(Vector3::new(x1, y1, z1), Vector3::new(x2, y2, z2), Stone, false);
+          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Stone, false);
         }
       }
     });
@@ -846,7 +937,7 @@ impl App {
     time!(&self.timers, "world_collision", || {
       for (&id, bounds) in self.physics.iter() {
         if id != self_id {
-          let i = BoundingBox::intersect(b, bounds);
+          let i = intersect(b, bounds);
           match i {
             None => { },
             Some(_) => { return i; },
@@ -864,20 +955,20 @@ impl App {
     id
   }
 
-  fn place_block(&mut self, low_corner: Vector3<GLfloat>, high_corner: Vector3<GLfloat>, block_type: BlockType, check_collisions: bool) {
+  fn place_block(&mut self, min: Point3<GLfloat>, max: Point3<GLfloat>, block_type: BlockType, check_collisions: bool) {
     time!(&self.timers, "place_block", || {
       let mut block = Block {
         block_type: block_type,
         id: Id(0),
       };
       let bounds = BoundingBox {
-        low_corner: low_corner,
-        high_corner: high_corner,
+        min: min,
+        max: max,
       };
       let player_bounds = expect_id!(self.physics.find(&self.player.id));
       let collided = check_collisions &&
             ( self.world_collision(&bounds, Id(0)).is_some() || 
-              BoundingBox::intersect(&bounds, player_bounds).is_some()
+              intersect(&bounds, player_bounds).is_some()
             );
 
       if !collided {
@@ -908,8 +999,8 @@ impl App {
       {
         let bounds1 = expect_id!(self.physics.find(&id));
         bounds = BoundingBox {
-            low_corner: bounds1.low_corner + amount,
-            high_corner: bounds1.high_corner + amount,
+            min: bounds1.min.add_v(&amount),
+            max: bounds1.max.add_v(&amount),
         };
       }
 

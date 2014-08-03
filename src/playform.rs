@@ -17,7 +17,6 @@ extern crate piston;
 extern crate sdl2;
 extern crate sdl2_game_window;
 
-mod bounding_box;
 mod color;
 mod cstr_cache;
 mod glw;
