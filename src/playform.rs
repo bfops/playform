@@ -19,9 +19,10 @@ extern crate sdl2_game_window;
 
 mod color;
 mod cstr_cache;
+mod fontloader;
 mod glw;
 mod main;
-mod fontloader;
+mod octree;
 mod stopwatch;
 mod ttf;
 mod vertex;

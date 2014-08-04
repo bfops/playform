@@ -7,6 +7,7 @@ use cgmath::point::{Point, Point2, Point3};
 use cgmath::vector::{Vector, Vector3};
 use cgmath::projection;
 use fontloader;
+use octree;
 use piston;
 use piston::*;
 use gl;
@@ -95,13 +96,6 @@ impl Mul<u32, Id> for Id {
 
 type BoundingBox = Aabb3<GLfloat>;
 
-pub type Intersect = Vector3<GLfloat>;
-
-pub enum Intersect1 {
-  Within,
-  Partial,
-}
-
 // Construct the faces of the box as triangles for rendering,
 // with a different color on each face (front, left, top, back, right, bottom).
 // Triangle vertices are in CCW order when viewed from the outside of
@@ -139,43 +133,6 @@ fn to_triangles(bounds: &Aabb3<GLfloat>, c: [Color4<GLfloat>, ..6]) -> [ColoredV
     vtx(x1, y1, z2, c[5]), vtx(x1, y1, z1, c[5]), vtx(x2, y1, z1, c[5]),
     vtx(x1, y1, z2, c[5]), vtx(x2, y1, z1, c[5]), vtx(x2, y1, z2, c[5]),
   ]
-}
-
-// Find whether two Blocks intersect.
-fn intersect(b1: &BoundingBox, b2: &BoundingBox) -> Option<Intersect> {
-  fn intersect1(x1l: GLfloat, x1h: GLfloat, x2l: GLfloat, x2h: GLfloat) -> Option<Intersect1> {
-    if x1l > x2l && x1h <= x2h {
-      Some(Within)
-    } else if x1h > x2l && x2h > x1l {
-      Some(Partial)
-    } else {
-      None
-    }
-  }
-
-  let mut ret = true;
-  let mut v = Vector3::ident();
-  match intersect1(b1.min.x, b1.max.x, b2.min.x, b2.max.x) {
-    Some(Within) => { },
-    Some(Partial) => { v.x = 0.0; },
-    None => { ret = false; },
-  }
-  match intersect1(b1.min.y, b1.max.y, b2.min.y, b2.max.y) {
-    Some(Within) => { },
-    Some(Partial) => { v.y = 0.0; },
-    None => { ret = false; },
-  }
-  match intersect1(b1.min.z, b1.max.z, b2.min.z, b2.max.z) {
-    Some(Within) => { },
-    Some(Partial) => { v.z = 0.0; },
-    None => { ret = false; },
-  }
-
-  if ret {
-    Some(v)
-  } else {
-    None
-  }
 }
 
 #[deriving(Clone)]
@@ -339,9 +296,10 @@ impl BlockBuffers {
 }
 
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
-#[deriving(Send, Copy)]
 pub struct App {
+  world_space: octree::Octree<Id>,
   physics: HashMap<Id, BoundingBox>,
+  locations: HashMap<Id, *mut octree::Octree<Id>>,
   blocks: HashMap<Id, Block>,
   player: Player,
   // id of the next block to load
@@ -413,6 +371,7 @@ impl Game<GameWindowSDL2> for App {
           }
         },
         piston::keyboard::W => {
+          println!("W");
           self.walk(-Vector3::unit_z());
         },
         piston::keyboard::S => {
@@ -498,13 +457,14 @@ impl Game<GameWindowSDL2> for App {
 
       let playerId = self.alloc_id();
       self.player.id = playerId;
-      self.physics.insert(
-        playerId,
+      let bounds =
         BoundingBox {
           min: Point3::new(-1.0, -2.0, -1.0),
           max: Point3::new(0.0, 0.0, 0.0)
-        }
-      );
+        };
+      let octree_location = self.world_space.insert(bounds, playerId);
+      self.locations.insert(playerId, octree_location);
+      self.physics.insert(playerId, bounds);
 
       let gl = &mut self.gl;
 
@@ -584,7 +544,7 @@ impl Game<GameWindowSDL2> for App {
           let mut i = 0;
           while i < LOAD_SPEED && self.next_load_id < self.next_id {
             self.blocks.find(&self.next_load_id).map(|block| {
-              let bounds = self.physics.find(&self.next_load_id).expect("phyiscs prematurely deleted");
+              let bounds = expect_id!(self.physics.find(&self.next_load_id));
               self.block_buffers.get_mut_ref().push(
                 block.id,
                 Block::to_triangles(block, bounds),
@@ -731,8 +691,14 @@ fn to_selection_triangles(bounds: &BoundingBox, id: Id) -> [ColoredVertex, ..TRI
 impl App {
   /// Initializes an empty app.
   pub fn new(gl: GLContext) -> App {
+    let world_bounds = Aabb3::new(
+      Point3 { x: -512.0, y: -32.0, z: -512.0 },
+      Point3 { x: 512.0, y: 512.0, z: 512.0 },
+    );
     App {
+      world_space: octree::Octree::new(&world_bounds),
       physics: HashMap::new(),
+      locations: HashMap::new(),
       blocks: HashMap::new(),
       player: Player {
         camera: Camera::unit(),
@@ -912,6 +878,14 @@ impl App {
     })
   }
 
+  fn find_octree_location(&self, id: Id) -> *mut octree::Octree<Id> {
+    *(self
+    .locations
+    .find(&id)
+    .expect("location prematurely deleted")
+    )
+  }
+
   /// Returns the id of the entity at the given (x, y) coordinate in the window.
   /// The pixel coordinates are from (0, 0) to (WINDOW_WIDTH, WINDOW_HEIGHT).
   fn block_at_window(&self, gl: &mut GLContext, x: uint, y: uint) -> Option<(Id, uint)> {
@@ -932,20 +906,10 @@ impl App {
     self.block_at_window(gl, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
   }
 
-  /// Find a collision with self.physics.
-  fn world_collision(&self, b: &BoundingBox, self_id: Id) -> Option<Intersect> {
+  /// Find a collision with a world object
+  fn collides_with(&self, self_id: Id, b: &BoundingBox) -> bool {
     time!(&self.timers, "world_collision", || {
-      for (&id, bounds) in self.physics.iter() {
-        if id != self_id {
-          let i = intersect(b, bounds);
-          match i {
-            None => { },
-            Some(_) => { return i; },
-          }
-        }
-      }
-
-      None
+      self.world_space.intersect(b, self_id)
     })
   }
 
@@ -965,24 +929,33 @@ impl App {
         min: min,
         max: max,
       };
-      let player_bounds = expect_id!(self.physics.find(&self.player.id));
-      let collided = check_collisions &&
-            ( self.world_collision(&bounds, Id(0)).is_some() || 
-              intersect(&bounds, player_bounds).is_some()
-            );
+      let collided = check_collisions && self.collides_with(Id(0), &bounds);
 
       if !collided {
         block.id = self.alloc_id();
-        self.physics.insert(block.id, bounds);
+        let octree_loc =
+          time!(&self.timers, "place_block.octree", || {
+            self.world_space.insert(bounds.clone(), block.id)
+          });
+        self.locations.insert(block.id, octree_loc);
+        self.physics.insert(block.id, bounds.clone());
         self.blocks.insert(block.id, block);
       }
     })
   }
 
   fn remove_block(&mut self, gl: &GLContext, id: &Id) {
-    self.physics.remove(id);
+    {
+      let bounds = expect_id!(self.physics.find(id));
+      let &octree_location = self.locations.find(id).expect("no octree_location to remove");
+      self.locations.remove(id);
+      unsafe {
+        (*octree_location).remove(*id, bounds);
+      }
+    }
     self.blocks.remove(id);
     self.block_buffers.get_mut_ref().swap_remove(gl, *id);
+    self.physics.remove(id);
   }
 
   /// Changes the camera's acceleration by the given `da`.
@@ -990,48 +963,52 @@ impl App {
     self.player.accel = self.player.accel + da.mul_s(0.2);
   }
 
-  /// Move an entity by some amount, returning the first collision to occur.
-  /// If we don't collide, update self.physics with the moved object.
+  /// Move an entity by some amount, returning the collisions that occur.
+  /// If we don't collide, update self.locations with the moved object.
   /// Does NOT update any asociated GLbuffers, etc.
-  fn translate(&mut self, id: Id, amount: Vector3<GLfloat>) -> Option<Intersect> {
+  fn translate(&mut self, id: Id, amount: Vector3<GLfloat>) -> bool {
     time!(&self.timers, "translate", || {
-      let bounds;
-      {
-        let bounds1 = expect_id!(self.physics.find(&id));
-        bounds = BoundingBox {
-            min: bounds1.min.add_v(&amount),
-            max: bounds1.max.add_v(&amount),
+      let bounds = expect_id!(self.physics.find(&id));
+      let new_bounds =
+        BoundingBox {
+            min: bounds.min.add_v(&amount),
+            max: bounds.max.add_v(&amount),
         };
+
+      let octree_location = self.find_octree_location(id);
+      assert!(octree_location.is_not_null());
+      let collision = unsafe {
+        (*octree_location).intersect(&new_bounds, id)
+      };
+
+      if !collision {
+        unsafe {
+          let octree_location = (*octree_location).move(id, bounds, new_bounds);
+          self.locations.insert(id, octree_location);
+          self.physics.insert(id, new_bounds);
+        }
       }
 
-      let collided = self.world_collision(&bounds, id);
-
-      if collided.is_none() {
-        self.physics.insert(id, bounds);
-      }
-
-      collided
+      collision
     })
   }
 
   /// Translates the player/camera by a vector.
   fn translate_player(&mut self, v: Vector3<GLfloat>) {
     let id = self.player.id;
-    match self.translate(id, v) {
-      None => {
-        self.player.camera.translate(v);
+    let collisions = self.translate(id, v);
+    if collisions {
+      self.player.speed = self.player.speed - v;
 
-        if v.y < 0.0 {
-          self.player.jump_fuel = 0;
-        }
-      },
-      Some(stop) => {
-        self.player.speed = self.player.speed + v * stop - v;
+      if v.y < 0.0 {
+        self.player.jump_fuel = MAX_JUMP_FUEL;
+      }
+    } else {
+      self.player.camera.translate(v);
 
-        if v.y < 0.0 {
-          self.player.jump_fuel = MAX_JUMP_FUEL;
-        }
-      },
+      if v.y < 0.0 {
+        self.player.jump_fuel = 0;
+      }
     }
   }
 
