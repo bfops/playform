@@ -371,7 +371,6 @@ impl Game<GameWindowSDL2> for App {
           }
         },
         piston::keyboard::W => {
-          println!("W");
           self.walk(-Vector3::unit_z());
         },
         piston::keyboard::S => {
@@ -382,9 +381,9 @@ impl Game<GameWindowSDL2> for App {
         piston::keyboard::Right =>
           self.rotate_lateral(angle::rad(-3.14 / 12.0 as GLfloat)),
         piston::keyboard::Up =>
-          self.rotate_vertical(angle::rad(3.14/12.0 as GLfloat)),
+          self.rotate_vertical(angle::rad(3.14 / 12.0 as GLfloat)),
         piston::keyboard::Down =>
-          self.rotate_vertical(angle::rad(-3.14/12.0 as GLfloat)),
+          self.rotate_vertical(angle::rad(-3.14 / 12.0 as GLfloat)),
         _ => {},
       }
     })

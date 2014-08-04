@@ -148,6 +148,8 @@ impl<V: Clone + Eq + Hash> Octree<V> {
         },
         Leaf(ref mut vs) => {
           vs.push((bounds, v));
+          // TODO: bisect this leaf if the median length is less than half the
+          // current length.
           None
         },
         Branch(ref mut b) => {
@@ -277,6 +279,7 @@ impl<V: Clone + Eq + Hash> Octree<V> {
     self.on_mut_ancestor(&bounds, |t| { t.insert(bounds.clone(), v.clone()) })
   }
 
+  // TODO: consider collapsing space
   pub fn remove(&mut self, v: V, bounds: &Aabb3<F>) {
     assert!(contains(&self.bounds, bounds));
     // copied largely from insert()
