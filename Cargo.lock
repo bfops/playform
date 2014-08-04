@@ -1,0 +1,56 @@
+[root]
+name = "playform"
+version = "0.0.0"
+dependencies = [
+ "cgmath 0.0.1 (git+https://github.com/bjz/cgmath-rs#7ca114d5aae9576f3084188878b554429ce181a6)",
+ "gl 0.0.1 (git+https://github.com/bjz/gl-rs#e176219d70eb9aa3f706370c104241b63784cf2c)",
+ "piston 0.0.0 (git+https://github.com/PistonDevelopers/piston#29bd042009283c3a28398268277c02c07d02f832)",
+ "sdl2_game_window 0.0.0 (git+https://github.com/bfops/sdl2_game_window#e749032f140492a5a70bb886c0b11b14e5e21726)",
+]
+
+[[package]]
+name = "cgmath"
+version = "0.0.1"
+source = "git+https://github.com/bjz/cgmath-rs#7ca114d5aae9576f3084188878b554429ce181a6"
+
+[[package]]
+name = "gl"
+version = "0.0.1"
+source = "git+https://github.com/bjz/gl-rs#e176219d70eb9aa3f706370c104241b63784cf2c"
+dependencies = [
+ "gl_generator 0.0.1 (git+https://github.com/bjz/gl-rs#e176219d70eb9aa3f706370c104241b63784cf2c)",
+]
+
+[[package]]
+name = "gl_generator"
+version = "0.0.1"
+source = "git+https://github.com/bjz/gl-rs#e176219d70eb9aa3f706370c104241b63784cf2c"
+dependencies = [
+ "sax-rs 0.0.1 (git+https://github.com/bjz/sax-rs#32365363802b8590a1b9e970e1128044b6db74d9)",
+]
+
+[[package]]
+name = "piston"
+version = "0.0.0"
+source = "git+https://github.com/PistonDevelopers/piston#29bd042009283c3a28398268277c02c07d02f832"
+
+[[package]]
+name = "sax-rs"
+version = "0.0.1"
+source = "git+https://github.com/bjz/sax-rs#32365363802b8590a1b9e970e1128044b6db74d9"
+
+[[package]]
+name = "sdl2"
+version = "0.0.1"
+source = "git+https://github.com/bvssvni/rust-sdl2#3a05f595adeafd682476713224f786f2cd974b46"
+
+[[package]]
+name = "sdl2_game_window"
+version = "0.0.0"
+source = "git+https://github.com/bfops/sdl2_game_window#e749032f140492a5a70bb886c0b11b14e5e21726"
+dependencies = [
+ "gl 0.0.1 (git+https://github.com/bjz/gl-rs#e176219d70eb9aa3f706370c104241b63784cf2c)",
+ "piston 0.0.0 (git+https://github.com/PistonDevelopers/piston#29bd042009283c3a28398268277c02c07d02f832)",
+ "sdl2 0.0.1 (git+https://github.com/bvssvni/rust-sdl2#3a05f595adeafd682476713224f786f2cd974b46)",
+]
+
