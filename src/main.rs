@@ -1,22 +1,19 @@
 pub use color::Color4;
-use cgmath::aabb::{Aabb2, Aabb3};
-use cgmath::angle;
-use cgmath::array::Array2;
-use cgmath::matrix::{Matrix, Matrix3, Matrix4};
-use cgmath::point::{Point, Point2, Point3};
-use cgmath::vector::{Vector, Vector3};
-use cgmath::projection;
 use fontloader;
+use ncollide3df32::bounding_volume::aabb::AABB;
+use nalgebra::na::{Vec2, Vec3, RMul};
 use octree;
 use piston;
 use piston::*;
 use gl;
-use glw::{Camera,GLfloat,Lines,Triangles,Shader,Texture,GLBuffer,GLContext,translation,from_axis_angle};
+use glw;
+use glw::{Camera,GLfloat,Lines,Triangles,Shader,Texture,GLBuffer,GLContext,translation};
 use sdl2_game_window::GameWindowSDL2;
 use sdl2::mouse;
 use stopwatch;
 use std::collections::HashMap;
 use std::iter::range_inclusive;
+use std::f32::consts::PI;
 use std::rc::Rc;
 use vertex;
 use vertex::{ColoredVertex,TextureVertex};
@@ -94,19 +91,17 @@ impl Mul<u32, Id> for Id {
   }
 }
 
-type BoundingBox = Aabb3<GLfloat>;
-
 // Construct the faces of the box as triangles for rendering,
 // with a different color on each face (front, left, top, back, right, bottom).
 // Triangle vertices are in CCW order when viewed from the outside of
 // the cube, for rendering purposes.
-fn to_triangles(bounds: &Aabb3<GLfloat>, c: [Color4<GLfloat>, ..6]) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
-  let (x1, y1, z1) = (bounds.min.x, bounds.min.y, bounds.min.z);
-  let (x2, y2, z2) = (bounds.max.x, bounds.max.y, bounds.max.z);
+fn to_triangles(bounds: &AABB, c: [Color4<GLfloat>, ..6]) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
+  let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
+  let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
 
   let vtx = |x: GLfloat, y: GLfloat, z: GLfloat, c: Color4<GLfloat>| -> ColoredVertex {
     ColoredVertex {
-      position: Point3 { x: x, y: y, z: z },
+      position: Vec3::new(x, y, z),
       color: c
     }
   };
@@ -145,22 +140,22 @@ pub struct Block {
 
 impl Block {
   #[inline]
-  fn to_triangles(block: &Block, bounds: &BoundingBox) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
+  fn to_triangles(block: &Block, bounds: &AABB) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
     let colors = [block.block_type.to_color(), ..6];
     to_triangles(bounds, colors)
   }
 
   // Construct outlines for this Block, to sharpen the edges.
-  fn to_outlines(bounds: &BoundingBox) -> [ColoredVertex, ..VERTICES_PER_LINE * LINES_PER_BOX] {
+  fn to_outlines(bounds: &AABB) -> [ColoredVertex, ..VERTICES_PER_LINE * LINES_PER_BOX] {
     // distance from the block to construct the bounding outlines.
     let d = 0.002;
-    let (x1, y1, z1) = (bounds.min.x - d, bounds.min.y - d, bounds.min.z - d);
-    let (x2, y2, z2) = (bounds.max.x + d, bounds.max.y + d, bounds.max.z + d);
+    let (x1, y1, z1) = (bounds.mins().x - d, bounds.mins().y - d, bounds.mins().z - d);
+    let (x2, y2, z2) = (bounds.maxs().x + d, bounds.maxs().y + d, bounds.maxs().z + d);
     let c = Color4::of_rgba(0.0, 0.0, 0.0, 1.0);
 
     let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> ColoredVertex {
       ColoredVertex {
-        position: Point3 { x: x, y: y, z: z },
+        position: Vec3::new(x, y, z),
         color: c
       }
     };
@@ -187,9 +182,9 @@ impl Block {
 pub struct Player {
   camera: Camera,
   // speed; units are world coordinates
-  speed: Vector3<GLfloat>,
+  speed: Vec3<GLfloat>,
   // acceleration; x/z units are relative to player facing
-  accel: Vector3<GLfloat>,
+  accel: Vec3<GLfloat>,
   // this is depleted as we jump and replenished as we stand.
   jump_fuel: uint,
   // are we currently trying to jump? (e.g. holding the key).
@@ -298,7 +293,7 @@ impl BlockBuffers {
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App {
   world_space: octree::Octree<Id>,
-  physics: HashMap<Id, BoundingBox>,
+  physics: HashMap<Id, AABB>,
   locations: HashMap<Id, *mut octree::Octree<Id>>,
   blocks: HashMap<Id, Block>,
   player: Player,
@@ -312,8 +307,8 @@ pub struct App {
   texture_triangles: Option<GLBuffer<TextureVertex>>,
   textures: Vec<Texture>,
   hud_camera: Camera,
-  lateral_rotation: angle::Rad<GLfloat>,
-  vertical_rotation: angle::Rad<GLfloat>,
+  lateral_rotation: f32, // in radians
+  vertical_rotation: f32, // in radians
   // OpenGL shader "program" id.
   shader_program: Option<Rc<Shader>>,
   texture_shader: Option<Rc<Shader>>,
@@ -324,22 +319,6 @@ pub struct App {
   font: fontloader::FontLoader,
   timers: stopwatch::TimerSet,
   gl: GLContext,
-}
-
-/// Create a 3D perspective initialization matrix.
-pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) -> Matrix4<GLfloat> {
-  Matrix4::new(
-    fovy / aspect, 0.0, 0.0,                              0.0,
-    0.0,          fovy, 0.0,                              0.0,
-    0.0,           0.0, (near + far) / (near - far),     -1.0,
-    0.0,           0.0, 2.0 * near * far / (near - far),  0.0,
-  )
-}
-
-#[inline]
-/// Create a XY symmetric ortho matrix.
-pub fn sortho(dx: GLfloat, dy: GLfloat, near: GLfloat, far: GLfloat) -> Matrix4<GLfloat> {
-  projection::ortho(-dx, dx, -dy, dy, near, far)
 }
 
 #[inline]
@@ -355,13 +334,13 @@ impl Game<GameWindowSDL2> for App {
     time!(&self.timers, "event.key_press", || {
       match args.key {
         piston::keyboard::A => {
-          self.walk(-Vector3::unit_x());
+          self.walk(Vec3::new(-1.0, 0.0, 0.0));
         },
         piston::keyboard::D => {
-          self.walk(Vector3::unit_x());
+          self.walk(Vec3::new(1.0, 0.0, 0.0));
         },
         piston::keyboard::LShift => {
-          self.walk(-Vector3::unit_y());
+          self.walk(Vec3::new(0.0, -1.0, 0.0));
         },
         piston::keyboard::Space => {
           if !self.player.is_jumping {
@@ -371,19 +350,19 @@ impl Game<GameWindowSDL2> for App {
           }
         },
         piston::keyboard::W => {
-          self.walk(-Vector3::unit_z());
+          self.walk(Vec3::new(0.0, 0.0, -1.0));
         },
         piston::keyboard::S => {
-          self.walk(Vector3::unit_z());
+          self.walk(Vec3::new(0.0, 0.0, 1.0));
         },
         piston::keyboard::Left =>
-          self.rotate_lateral(angle::rad(3.14 / 12.0 as GLfloat)),
+          self.rotate_lateral(PI / 12.0),
         piston::keyboard::Right =>
-          self.rotate_lateral(angle::rad(-3.14 / 12.0 as GLfloat)),
+          self.rotate_lateral(-PI / 12.0),
         piston::keyboard::Up =>
-          self.rotate_vertical(angle::rad(3.14 / 12.0 as GLfloat)),
+          self.rotate_vertical(PI / 12.0),
         piston::keyboard::Down =>
-          self.rotate_vertical(angle::rad(-3.14 / 12.0 as GLfloat)),
+          self.rotate_vertical(-PI / 12.0),
         _ => {},
       }
     })
@@ -394,13 +373,13 @@ impl Game<GameWindowSDL2> for App {
       match args.key {
         // accelerations are negated from those in key_press.
         piston::keyboard::A => {
-          self.walk(Vector3::unit_x());
+          self.walk(Vec3::new(1.0, 0.0, 0.0));
         },
         piston::keyboard::D => {
-          self.walk(-Vector3::unit_x());
+          self.walk(Vec3::new(-1.0, 0.0, 0.0));
         },
         piston::keyboard::LShift => {
-          self.walk(Vector3::unit_y());
+          self.walk(Vec3::new(0.0, 1.0, 0.0));
         },
         piston::keyboard::Space => {
           if self.player.is_jumping {
@@ -410,10 +389,10 @@ impl Game<GameWindowSDL2> for App {
           }
         },
         piston::keyboard::W => {
-          self.walk(Vector3::unit_z());
+          self.walk(Vec3::new(0.0, 0.0, 1.0));
         },
         piston::keyboard::S => {
-          self.walk(-Vector3::unit_z());
+          self.walk(Vec3::new(0.0, 0.0, -1.0));
         },
         _ => { }
       }
@@ -428,8 +407,8 @@ impl Game<GameWindowSDL2> for App {
       //  => dy = cy - args.y;
       let (dx, dy) = (args.x as f32 - cx, cy - args.y as f32);
       let (rx, ry) = (dx * -3.14 / 2048.0, dy * 3.14 / 1600.0);
-      self.rotate_lateral(angle::rad(rx));
-      self.rotate_vertical(angle::rad(ry));
+      self.rotate_lateral(rx);
+      self.rotate_vertical(ry);
 
       mouse::warp_mouse_in_window(&w.render_window.window, WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2);
     })
@@ -457,10 +436,10 @@ impl Game<GameWindowSDL2> for App {
       let playerId = self.alloc_id();
       self.player.id = playerId;
       let bounds =
-        BoundingBox {
-          min: Point3::new(-1.0, -2.0, -1.0),
-          max: Point3::new(0.0, 0.0, 0.0)
-        };
+        AABB::new(
+          Vec3::new(-1.0, -2.0, -1.0),
+          Vec3::new(0.0, 0.0, 0.0)
+        );
       let octree_location = self.world_space.insert(bounds, playerId);
       self.locations.insert(playerId, octree_location);
       self.physics.insert(playerId, bounds);
@@ -480,13 +459,13 @@ impl Game<GameWindowSDL2> for App {
       self.set_up_shaders(gl);
 
       // initialize the projection matrix
-      self.player.camera.fov = perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
+      self.player.camera.fov = glw::perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
 
       match gl::GetError() {
         gl::NO_ERROR => {},
         err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
       }
-      self.translate_player(Vector3::new(0.0, 4.0, 10.0));
+      self.translate_player(Vec3::new(0.0, 4.0, 10.0));
 
       match gl::GetError() {
         gl::NO_ERROR => {},
@@ -573,19 +552,21 @@ impl Game<GameWindowSDL2> for App {
 
         let dP = self.player.speed;
         if dP.x != 0.0 {
-          self.translate_player(Vector3::new(dP.x, 0.0, 0.0));
+          self.translate_player(Vec3::new(dP.x, 0.0, 0.0));
         }
         if dP.y != 0.0 {
-          self.translate_player(Vector3::new(0.0, dP.y, 0.0));
+          self.translate_player(Vec3::new(0.0, dP.y, 0.0));
         }
         if dP.z != 0.0 {
-          self.translate_player(Vector3::new(0.0, 0.0, dP.z));
+          self.translate_player(Vec3::new(0.0, 0.0, dP.z));
         }
 
-        let dV = Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&self.player.accel);
+        let dV =
+            glw::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation)
+            .rmul(&self.player.accel);
         self.player.speed = self.player.speed + dV;
         // friction
-        self.player.speed = self.player.speed * Vector3::new(0.7, 0.99, 0.7);
+        self.player.speed = self.player.speed * Vec3::new(0.7, 0.99, 0.7 as f32);
       });
 
       // Block deletion
@@ -599,18 +580,18 @@ impl Game<GameWindowSDL2> for App {
           self.block_at_window_center(gl).map(|(block_id, face)| {
             let bounds = expect_id!(self.physics.find(&block_id));
             let direction =
-                  [ -Vector3::unit_z(),
-                    -Vector3::unit_x(),
-                     Vector3::unit_y(),
-                     Vector3::unit_z(),
-                     Vector3::unit_x(),
-                    -Vector3::unit_y(),
-                  ][face].mul_s(0.5);
+                  [ Vec3::new(0.0, 0.0, -1.0),
+                    Vec3::new(-1.0, 0.0, 0.0),
+                    Vec3::new(0.0, 1.0, 0.0),
+                    Vec3::new(0.0, 0.0, 1.0),
+                    Vec3::new(1.0, 0.0, 0.0),
+                    Vec3::new(0.0, -1.0, 0.0),
+                  ][face] * 0.5 as GLfloat;
             // TODO: think about how this should work when placing size A blocks
             // against size B blocks.
             self.place_block(
-              bounds.min.add_v(&direction),
-              bounds.max.add_v(&direction),
+              bounds.mins() + direction,
+              bounds.maxs() + direction,
               Dirt,
               true
             );
@@ -674,7 +655,7 @@ fn id_color(id: Id) -> Color4<GLfloat> {
   ret
 }
 
-fn to_selection_triangles(bounds: &BoundingBox, id: Id) -> [ColoredVertex, ..TRIANGLE_VERTICES_PER_BOX] {
+fn to_selection_triangles(bounds: &AABB, id: Id) -> [ColoredVertex, ..TRIANGLE_VERTICES_PER_BOX] {
   let selection_id = id * 6;
   let selection_colors =
         [ id_color(selection_id + Id(0)),
@@ -690,9 +671,9 @@ fn to_selection_triangles(bounds: &BoundingBox, id: Id) -> [ColoredVertex, ..TRI
 impl App {
   /// Initializes an empty app.
   pub fn new(gl: GLContext) -> App {
-    let world_bounds = Aabb3::new(
-      Point3 { x: -512.0, y: -32.0, z: -512.0 },
-      Point3 { x: 512.0, y: 512.0, z: 512.0 },
+    let world_bounds = AABB::new(
+      Vec3 { x: -512.0, y: -32.0, z: -512.0 },
+      Vec3 { x: 512.0, y: 512.0, z: 512.0 },
     );
     App {
       world_space: octree::Octree::new(&world_bounds),
@@ -701,8 +682,8 @@ impl App {
       blocks: HashMap::new(),
       player: Player {
         camera: Camera::unit(),
-        speed: Vector3::zero(),
-        accel: Vector3::new(0.0, -0.1, 0.0),
+        speed: Vec3::new(0.0, 0.0, 0.0),
+        accel: Vec3::new(0.0, -0.1, 0.0),
         jump_fuel: 0,
         is_jumping: false,
         id: Id(0),
@@ -717,12 +698,12 @@ impl App {
       textures: Vec::new(),
       hud_camera: {
         let mut c = Camera::unit();
-        c.fov = sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
-        c.fov = translation(Vector3::new(0.0, 0.0, -1.0)) * c.fov;
+        c.fov = glw::sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
+        c.fov = translation(Vec3::new(0.0, 0.0, -1.0)) * c.fov;
         c
       },
-      lateral_rotation: angle::rad(0.0),
-      vertical_rotation: angle::rad(0.0),
+      lateral_rotation: 0.0,
+      vertical_rotation: 0.0,
       shader_program: None,
       texture_shader: None,
       mouse_buttons_pressed: Vec::new(),
@@ -757,10 +738,9 @@ impl App {
 
       self.texture_triangles.get_mut_ref().push(
         TextureVertex::square(
-          Aabb2 {
-            min: Point2 { x: -0.97, y: y - 0.2 },
-            max: Point2 { x: 0.0,   y: y       },
-          }));
+          Vec2 { x: -0.97, y: y - 0.2 },
+          Vec2 { x: 0.0,   y: y       }
+        ));
       y -= 0.2;
     }
 
@@ -772,10 +752,10 @@ impl App {
 
     self.hud_triangles.get_mut_ref().push(
       ColoredVertex::square(
-        Aabb2 {
-          min: Point2 { x: -0.02, y: -0.02 },
-          max: Point2 { x:  0.02, y:  0.02 },
-        }, cursor_color));
+        Vec2 { x: -0.02, y: -0.02 },
+        Vec2 { x:  0.02, y:  0.02 },
+        cursor_color
+      ));
 
     self.hud_triangles.get_mut_ref().flush(gl);
   }
@@ -788,7 +768,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (6.0 + i, 6.0, 0.0 + j);
           let (x2, y2, z2) = (6.5 + i, 6.5, 0.5 + j);
-          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Dirt, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Dirt, false);
         }
       }
       // high dirt block
@@ -797,7 +777,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (0.0 + i, 12.0, 5.0 + j);
           let (x2, y2, z2) = (0.5 + i, 12.5, 5.5 + j);
-          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Dirt, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Dirt, false);
         }
       }
       // ground
@@ -806,7 +786,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (i, 0.0, j);
           let (x2, y2, z2) = (i + 0.5, 0.5, j + 0.5);
-          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Grass, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Grass, false);
         }
       }
       // front wall
@@ -815,7 +795,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (i, 0.5 + j, -32.0);
           let (x2, y2, z2) = (i + 0.5, 1.0 + j, -32.0 + 0.5);
-          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Stone, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Stone, false);
         }
       }
       // back wall
@@ -824,7 +804,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (i, 0.5 + j, 32.0);
           let (x2, y2, z2) = (i + 0.5, 1.0 + j, 32.0 + 0.5);
-          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Stone, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Stone, false);
         }
       }
       // left wall
@@ -833,7 +813,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (-32.0, 0.5 + j, i);
           let (x2, y2, z2) = (-32.0 + 0.5, 1.0 + j, i + 0.5);
-          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Stone, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Stone, false);
         }
       }
       // right wall
@@ -842,7 +822,7 @@ impl App {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (32.0, 0.5 + j, i);
           let (x2, y2, z2) = (32.0 + 0.5, 1.0 + j, i + 0.5);
-          self.place_block(Point3::new(x1, y1, z1), Point3::new(x2, y2, z2), Stone, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Stone, false);
         }
       }
     });
@@ -906,7 +886,7 @@ impl App {
   }
 
   /// Find a collision with a world object
-  fn collides_with(&self, self_id: Id, b: &BoundingBox) -> bool {
+  fn collides_with(&self, self_id: Id, b: &AABB) -> bool {
     time!(&self.timers, "world_collision", || {
       self.world_space.intersect(b, self_id)
     })
@@ -918,16 +898,13 @@ impl App {
     id
   }
 
-  fn place_block(&mut self, min: Point3<GLfloat>, max: Point3<GLfloat>, block_type: BlockType, check_collisions: bool) {
+  fn place_block(&mut self, min: Vec3<GLfloat>, max: Vec3<GLfloat>, block_type: BlockType, check_collisions: bool) {
     time!(&self.timers, "place_block", || {
       let mut block = Block {
         block_type: block_type,
         id: Id(0),
       };
-      let bounds = BoundingBox {
-        min: min,
-        max: max,
-      };
+      let bounds = AABB::new(min, max);
       let collided = check_collisions && self.collides_with(Id(0), &bounds);
 
       if !collided {
@@ -958,21 +935,21 @@ impl App {
   }
 
   /// Changes the camera's acceleration by the given `da`.
-  fn walk(&mut self, da: Vector3<GLfloat>) {
-    self.player.accel = self.player.accel + da.mul_s(0.2);
+  fn walk(&mut self, da: Vec3<GLfloat>) {
+    self.player.accel = self.player.accel + da * 0.2 as GLfloat;
   }
 
   /// Move an entity by some amount, returning the collisions that occur.
   /// If we don't collide, update self.locations with the moved object.
   /// Does NOT update any asociated GLbuffers, etc.
-  fn translate(&mut self, id: Id, amount: Vector3<GLfloat>) -> bool {
+  fn translate(&mut self, id: Id, amount: Vec3<GLfloat>) -> bool {
     time!(&self.timers, "translate", || {
       let bounds = expect_id!(self.physics.find(&id));
       let new_bounds =
-        BoundingBox {
-            min: bounds.min.add_v(&amount),
-            max: bounds.max.add_v(&amount),
-        };
+        AABB::new(
+          bounds.mins() + amount,
+          bounds.maxs() + amount
+        );
 
       let octree_location = self.find_octree_location(id);
       assert!(octree_location.is_not_null());
@@ -993,7 +970,7 @@ impl App {
   }
 
   /// Translates the player/camera by a vector.
-  fn translate_player(&mut self, v: Vector3<GLfloat>) {
+  fn translate_player(&mut self, v: Vec3<GLfloat>) {
     let id = self.player.id;
     let collisions = self.translate(id, v);
     if collisions {
@@ -1014,19 +991,19 @@ impl App {
   #[inline]
   /// Rotate the camera around the y axis, by `r` radians. Positive is
   /// counterclockwise.
-  pub fn rotate_lateral(&mut self, r: angle::Rad<GLfloat>) {
+  pub fn rotate_lateral(&mut self, r: GLfloat) {
     self.lateral_rotation = self.lateral_rotation + r;
-    self.player.camera.rotate(Vector3::unit_y(), r);
+    self.player.camera.rotate(Vec3::new(0.0, 1.0, 0.0), r);
   }
 
   /// Changes the camera pitch by `r` radians. Positive is up.
   /// Angles that "flip around" (i.e. looking too far up or down)
   /// are sliently rejected.
-  pub fn rotate_vertical(&mut self, r: angle::Rad<GLfloat>) {
+  pub fn rotate_vertical(&mut self, r: GLfloat) {
     let new_rotation = self.vertical_rotation + r;
 
-    if new_rotation < -angle::Rad::turn_div_4()
-    || new_rotation >  angle::Rad::turn_div_4() {
+    if new_rotation < -PI / 2.0
+    || new_rotation >  PI / 2.0 {
       return
     }
 
@@ -1038,14 +1015,18 @@ impl App {
   // axes
 
   /// Return the "right" axis (i.e. the x-axis rotated to match you).
-  pub fn right(&self) -> Vector3<GLfloat> {
-    return Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&Vector3::unit_x());
+  pub fn right(&self) -> Vec3<GLfloat> {
+    return
+      glw::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation)
+        .rmul(&Vec3::new(1.0, 0.0, 0.0))
   }
 
   /// Return the "forward" axis (i.e. the z-axis rotated to match you).
   #[allow(dead_code)]
-  pub fn forward(&self) -> Vector3<GLfloat> {
-    return Matrix3::from_axis_angle(&Vector3::unit_y(), self.lateral_rotation).mul_v(&-Vector3::unit_z());
+  pub fn forward(&self) -> Vec3<GLfloat> {
+    return
+      glw::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation)
+        .rmul(&Vec3::new(0.0, 0.0, -1.0))
   }
 }
 

@@ -22,5 +22,8 @@ git = "https://github.com/bfops/sdl2_game_window"
 [dependencies.piston]
 git = "https://github.com/PistonDevelopers/piston"
 
-[dependencies.cgmath]
-git = "https://github.com/bjz/cgmath-rs"
+[dependencies.nalgebra]
+git = "https://github.com/sebcrozet/nalgebra"
+
+[dependencies.ncollide3df32]
+git = "https://github.com/sebcrozet/ncollide"

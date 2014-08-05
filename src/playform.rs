@@ -10,9 +10,10 @@
 // to disable warnings only in a macro.
 #![allow(unused_unsafe)]
 
-extern crate cgmath;
 extern crate gl;
 extern crate libc;
+extern crate nalgebra;
+extern crate ncollide3df32;
 extern crate piston;
 extern crate sdl2;
 extern crate sdl2_game_window;

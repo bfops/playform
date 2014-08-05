@@ -2,55 +2,76 @@
 name = "playform"
 version = "0.0.0"
 dependencies = [
- "cgmath 0.0.1 (git+https://github.com/bjz/cgmath-rs#7ca114d5aae9576f3084188878b554429ce181a6)",
- "gl 0.0.1 (git+https://github.com/bjz/gl-rs#e176219d70eb9aa3f706370c104241b63784cf2c)",
- "piston 0.0.0 (git+https://github.com/PistonDevelopers/piston#29bd042009283c3a28398268277c02c07d02f832)",
- "sdl2_game_window 0.0.0 (git+https://github.com/bfops/sdl2_game_window#e749032f140492a5a70bb886c0b11b14e5e21726)",
+ "cgmath 0.0.1 (git+https://github.com/bjz/cgmath-rs#e9a1723ef42ecf238f38e991eae746b928c6faf8)",
+ "gl 0.0.1 (git+https://github.com/bjz/gl-rs#2ddffa202045ca62302def27bcfaddc3477effab)",
+ "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra#335bdd8a01ad83431dbb6a223287d395c1e47c1c)",
+ "ncollide3df32 0.1.0 (git+https://github.com/sebcrozet/ncollide#55ef90eb169d51c2b948465fa83feef27ec19db5)",
+ "piston 0.0.0 (git+https://github.com/PistonDevelopers/piston#b11e73f5bb140d2e2d47789ee43252fd0281173d)",
+ "sdl2_game_window 0.0.0 (git+https://github.com/bfops/sdl2_game_window#7a90a4726b1529d1c404c9396ba34112d6d9ae31)",
 ]
 
 [[package]]
 name = "cgmath"
 version = "0.0.1"
-source = "git+https://github.com/bjz/cgmath-rs#7ca114d5aae9576f3084188878b554429ce181a6"
+source = "git+https://github.com/bjz/cgmath-rs#e9a1723ef42ecf238f38e991eae746b928c6faf8"
+
+[[package]]
+name = "dim3"
+version = "1.0.0"
+source = "git+https://github.com/sebcrozet/ncollide#55ef90eb169d51c2b948465fa83feef27ec19db5"
 
 [[package]]
 name = "gl"
 version = "0.0.1"
-source = "git+https://github.com/bjz/gl-rs#e176219d70eb9aa3f706370c104241b63784cf2c"
+source = "git+https://github.com/bjz/gl-rs#2ddffa202045ca62302def27bcfaddc3477effab"
 dependencies = [
- "gl_generator 0.0.1 (git+https://github.com/bjz/gl-rs#e176219d70eb9aa3f706370c104241b63784cf2c)",
+ "gl_generator 0.0.1 (git+https://github.com/bjz/gl-rs#2ddffa202045ca62302def27bcfaddc3477effab)",
 ]
 
 [[package]]
 name = "gl_generator"
 version = "0.0.1"
-source = "git+https://github.com/bjz/gl-rs#e176219d70eb9aa3f706370c104241b63784cf2c"
+source = "git+https://github.com/bjz/gl-rs#2ddffa202045ca62302def27bcfaddc3477effab"
 dependencies = [
- "sax-rs 0.0.1 (git+https://github.com/bjz/sax-rs#32365363802b8590a1b9e970e1128044b6db74d9)",
+ "rust-xml 0.1.0 (git+https://github.com/netvl/rust-xml#bf50add39f2419742f624676bed8c93307bd863d)",
+]
+
+[[package]]
+name = "nalgebra"
+version = "0.1.0"
+source = "git+https://github.com/sebcrozet/nalgebra#335bdd8a01ad83431dbb6a223287d395c1e47c1c"
+
+[[package]]
+name = "ncollide3df32"
+version = "0.1.0"
+source = "git+https://github.com/sebcrozet/ncollide#55ef90eb169d51c2b948465fa83feef27ec19db5"
+dependencies = [
+ "dim3 1.0.0 (git+https://github.com/sebcrozet/ncollide#55ef90eb169d51c2b948465fa83feef27ec19db5)",
+ "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra#335bdd8a01ad83431dbb6a223287d395c1e47c1c)",
 ]
 
 [[package]]
 name = "piston"
 version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/piston#29bd042009283c3a28398268277c02c07d02f832"
+source = "git+https://github.com/PistonDevelopers/piston#b11e73f5bb140d2e2d47789ee43252fd0281173d"
 
 [[package]]
-name = "sax-rs"
-version = "0.0.1"
-source = "git+https://github.com/bjz/sax-rs#32365363802b8590a1b9e970e1128044b6db74d9"
+name = "rust-xml"
+version = "0.1.0"
+source = "git+https://github.com/netvl/rust-xml#bf50add39f2419742f624676bed8c93307bd863d"
 
 [[package]]
 name = "sdl2"
 version = "0.0.1"
-source = "git+https://github.com/bvssvni/rust-sdl2#3a05f595adeafd682476713224f786f2cd974b46"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#feddc845ecd36c6dbdc088b7ceccf285dc9b452e"
 
 [[package]]
 name = "sdl2_game_window"
 version = "0.0.0"
-source = "git+https://github.com/bfops/sdl2_game_window#e749032f140492a5a70bb886c0b11b14e5e21726"
+source = "git+https://github.com/bfops/sdl2_game_window#7a90a4726b1529d1c404c9396ba34112d6d9ae31"
 dependencies = [
- "gl 0.0.1 (git+https://github.com/bjz/gl-rs#e176219d70eb9aa3f706370c104241b63784cf2c)",
- "piston 0.0.0 (git+https://github.com/PistonDevelopers/piston#29bd042009283c3a28398268277c02c07d02f832)",
- "sdl2 0.0.1 (git+https://github.com/bvssvni/rust-sdl2#3a05f595adeafd682476713224f786f2cd974b46)",
+ "gl 0.0.1 (git+https://github.com/bjz/gl-rs#2ddffa202045ca62302def27bcfaddc3477effab)",
+ "piston 0.0.0 (git+https://github.com/PistonDevelopers/piston#b11e73f5bb140d2e2d47789ee43252fd0281173d)",
+ "sdl2 0.0.1 (git+https://github.com/AngryLawyer/rust-sdl2#feddc845ecd36c6dbdc088b7ceccf285dc9b452e)",
 ]
 

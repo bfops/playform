@@ -3,17 +3,13 @@
 //!
 //! GLW stands for "OpenGL wrapper".
 pub use color::Color4;
-use cgmath::angle;
-use cgmath::array::Array2;
-pub use cgmath::matrix::Matrix4;
-use cgmath::vector::Vector3;
 use cstr_cache;
 use libc::types::common::c95;
+use nalgebra::na::{Mat3, Mat4, Vec3, Eye, Outer};
 use gl;
 use gl::types::*;
 pub use gl::types::GLfloat;
 use std::mem;
-use std::num;
 use std::ptr;
 use std::raw;
 use std::rc::Rc;
@@ -35,7 +31,7 @@ impl Shader {
   }
 
   /// Sets the variable `projection_matrix` in some shader.
-  pub fn set_projection_matrix(&self, gl: &mut GLContext, m: &Matrix4<GLfloat>) {
+  pub fn set_projection_matrix(&self, gl: &mut GLContext, m: &Mat4<GLfloat>) {
     let var_name = gl.scache.convert("projection_matrix").as_ptr();
     gl.use_shader(self, |_gl| {
       unsafe {
@@ -47,11 +43,12 @@ impl Shader {
           err => fail!("OpenGL error 0x{:x} in GetUniformLocation", err),
         }
 
-        gl::UniformMatrix4fv(loc, 1, 0, mem::transmute(m.ptr()));
+        let p = mem::transmute(m);
+        gl::UniformMatrix4fv(loc, 1, 0, p);
 
         match gl::GetError() {
           gl::NO_ERROR => {},
-          err => fail!("OpenGL error 0x{:x} in UniformMatrix4fv", err),
+          err => fail!("OpenGL error 0x{:x} in UniformMat4fv", err),
         }
       }
     })
@@ -352,47 +349,75 @@ impl Drop for Texture {
 
 pub struct Camera {
   // projection matrix components
-  pub translation: Matrix4<GLfloat>,
-  pub rotation: Matrix4<GLfloat>,
-  pub fov: Matrix4<GLfloat>,
+  pub translation: Mat4<GLfloat>,
+  pub rotation: Mat4<GLfloat>,
+  pub fov: Mat4<GLfloat>,
 }
 
 /// Create a 3D translation matrix.
-pub fn translation(t: Vector3<GLfloat>) -> Matrix4<GLfloat> {
-  Matrix4::new(
-    1.0, 0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0, 0.0,
-    0.0, 0.0, 1.0, 0.0,
-    t.x, t.y, t.z, 1.0,
-  )
+pub fn translation(t: Vec3<GLfloat>) -> Mat4<GLfloat> {
+  Mat4 {
+    m11: 1.0, m12: 0.0, m13: 0.0, m14: t.x,
+    m21: 0.0, m22: 1.0, m23: 0.0, m24: t.y,
+    m31: 0.0, m32: 0.0, m33: 1.0, m34: t.z,
+    m41: 0.0, m42: 0.0, m43: 0.0, m44: 1.0,
+  }
+}
+
+pub fn from_axis_angle3(axis: Vec3<GLfloat>, angle: GLfloat) -> Mat3<GLfloat> {
+  let (s, c) = angle.sin_cos();
+  let Vec3 { x: xs, y: ys, z: zs } = axis * s;
+  let vsub1c = axis * (1.0 - c);
+  Outer::outer(&vsub1c, &vsub1c) +
+    Mat3 {
+      m11: c,   m12: -zs, m13: ys,
+      m21: zs,  m22: c,   m23: -xs,
+      m31: -ys, m32: xs,  m33: c,
+    }
 }
 
 /// Create a matrix from a rotation around an arbitrary axis.
-pub fn from_axis_angle(axis: Vector3<GLfloat>, angle: angle::Rad<GLfloat>) -> Matrix4<GLfloat> {
-    let (s, c) = angle::sin_cos(angle);
-    let _1subc = num::one::<GLfloat>() - c;
+pub fn from_axis_angle4(axis: Vec3<GLfloat>, angle: GLfloat) -> Mat4<GLfloat> {
+  let (s, c) = angle.sin_cos();
+  let sub1c = 1.0 - c;
+  let Vec3 { x: xs, y: ys, z: zs } = axis * s;
+  let (x, y, z) = (axis.x, axis.y, axis.z);
+  Mat4 {
+    m11: x*x*sub1c + c,  m12: x*y*sub1c - zs, m13: x*z*sub1c + ys, m14: 0.0,
+    m21: y*x*sub1c + zs, m22: y*y*sub1c + c,  m23: y*z*sub1c - xs, m24: 0.0,
+    m31: z*x*sub1c - ys, m32: z*y*sub1c + xs, m33: z*z*sub1c + c,  m34: 0.0,
+    m41: 0.0,            m42: 0.0,            m43: 0.0,            m44: 1.0,
+  }
+}
 
-    Matrix4::new(
-        _1subc * axis.x * axis.x + c,
-        _1subc * axis.x * axis.y + s * axis.z,
-        _1subc * axis.x * axis.z - s * axis.y,
-        num::zero(),
+/// Create a 3D perspective initialization matrix.
+pub fn perspective(fovy: GLfloat, aspect: GLfloat, near: GLfloat, far: GLfloat) -> Mat4<GLfloat> {
+  Mat4 {
+    m11: fovy / aspect, m12: 0.0,   m13: 0.0,                         m14: 0.0,
+    m21: 0.0,           m22: fovy,  m23: 0.0,                         m24: 0.0,
+    m31: 0.0,           m32: 0.0,   m33: (near + far) / (near - far), m34: 2.0 * near * far / (near - far),
+    m41: 0.0,           m42: 0.0,   m43: -1.0,                        m44: 0.0,
+  }
+}
 
-        _1subc * axis.x * axis.y - s * axis.z,
-        _1subc * axis.y * axis.y + c,
-        _1subc * axis.y * axis.z + s * axis.x,
-        num::zero(),
+#[allow(dead_code)]
+pub fn ortho(left: GLfloat, right: GLfloat, bottom: GLfloat, top: GLfloat, near: GLfloat, far: GLfloat) -> Mat4<GLfloat> {
+  Mat4 {
+    m11: 2.0 / (right - left),  m12: 0.0,                   m13: 0.0,                 m14: (left + right) / (left - right),
+    m21: 0.0,                   m22: 2.0 / (top - bottom),  m23: 0.0,                 m24: (bottom + top) / (bottom - top),
+    m31: 0.0,                   m32: 0.0,                   m33: 2.0 / (near - far),  m34: (near + far) / (near - far),
+    m41: 0.0,                   m42: 0.0,                   m43: 0.0,                 m44: 1.0,
+  }
+}
 
-        _1subc * axis.x * axis.z + s * axis.y,
-        _1subc * axis.y * axis.z - s * axis.x,
-        _1subc * axis.z * axis.z + c,
-        num::zero(),
-
-        num::zero(),
-        num::zero(),
-        num::zero(),
-        num::one(),
-    )
+/// Create a XY symmetric ortho matrix.
+pub fn sortho(dx: GLfloat, dy: GLfloat, near: GLfloat, far: GLfloat) -> Mat4<GLfloat> {
+  Mat4 {
+    m11: 1.0 / dx,  m12: 0.0,       m13: 0.0,                 m14: 0.0,
+    m21: 0.0,       m22: 1.0 / dy,  m23: 0.0,                 m24: 0.0,
+    m31: 0.0,       m32: 0.0,       m33: 2.0 / (near - far),  m34: (near + far) / (near - far),
+    m41: 0.0,       m42: 0.0,       m43: 0.0,                 m44: 1.0,
+  }
 }
 
 impl Camera {
@@ -402,24 +427,24 @@ impl Camera {
   /// and [0, -1] in z in depth.
   pub fn unit() -> Camera {
     Camera {
-      translation: Matrix4::identity(),
-      rotation: Matrix4::identity(),
-      fov: Matrix4::identity(),
+      translation: Eye::new_identity(4),
+      rotation: Eye::new_identity(4),
+      fov: Eye::new_identity(4),
     }
   }
 
-  pub fn projection_matrix(&self) -> Matrix4<GLfloat> {
+  pub fn projection_matrix(&self) -> Mat4<GLfloat> {
     self.fov * self.rotation * self.translation
   }
 
   /// Shift the camera by a vector.
-  pub fn translate(&mut self, v: Vector3<GLfloat>) {
+  pub fn translate(&mut self, v: Vec3<GLfloat>) {
     self.translation = self.translation * translation(-v);
   }
 
   /// Rotate about a given vector, by `r` radians.
-  pub fn rotate(&mut self, v: Vector3<GLfloat>, r: angle::Rad<GLfloat>) {
-    self.rotation = self.rotation * from_axis_angle(v, -r);
+  pub fn rotate(&mut self, v: Vec3<GLfloat>, r: GLfloat) {
+    self.rotation = self.rotation * from_axis_angle4(v, -r);
   }
 }
 
