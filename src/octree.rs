@@ -1,32 +1,12 @@
 use nalgebra::na::{Vec3};
 use ncollide3df32::bounding_volume::aabb::AABB;
+use ncollide3df32::bounding_volume::BoundingVolume;
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::mem;
 use std::ptr::RawPtr;
 
 type F = f32;
-
-fn less(p1: &Vec3<F>, p2: &Vec3<F>) -> bool {
-  p1.x < p2.x &&
-  p1.y < p2.y &&
-  p1.z < p2.z
-}
-
-fn lequal(p1: &Vec3<F>, p2: &Vec3<F>) -> bool {
-  p1.x <= p2.x &&
-  p1.y <= p2.y &&
-  p1.z <= p2.z
-}
-
-fn intersect(b1: &AABB, b2: &AABB) -> bool {
-  let r = less(b1.mins(), b2.maxs()) && less(b2.mins(), b1.maxs());
-  r
-}
-
-fn contains(b1: &AABB, b2: &AABB) -> bool {
-  lequal(b1.mins(), b2.mins()) && lequal(b2.mins(), b2.maxs())
-}
 
 fn length(bounds: &AABB, d: Dimension) -> F {
   get(d, bounds.maxs()) - get(d, bounds.mins())
@@ -102,7 +82,7 @@ impl<V: Clone + Eq + Hash> Octree<V> {
   }
 
   pub fn insert(&mut self, bounds: AABB, v: V) -> *mut Octree<V> {
-    assert!(contains(&self.bounds, &bounds));
+    assert!(self.bounds.contains(&bounds));
     let t: Option<*mut Octree<V>> =
       match self.contents {
         Empty => {
@@ -193,7 +173,7 @@ impl<V: Clone + Eq + Hash> Octree<V> {
   }
 
   fn on_ancestor<T>(&self, bounds: &AABB, f: |&Octree<V>| -> T) -> T {
-    if contains(&self.bounds, bounds) {
+    if self.bounds.contains(bounds) {
       f(self)
     } else {
       unsafe {
@@ -204,7 +184,7 @@ impl<V: Clone + Eq + Hash> Octree<V> {
   }
 
   fn on_mut_ancestor<T>(&mut self, bounds: &AABB, f: |&mut Octree<V>| -> T) -> T {
-    if contains(&self.bounds, bounds) {
+    if self.bounds.contains(bounds) {
       f(self)
     } else {
       unsafe {
@@ -219,7 +199,7 @@ impl<V: Clone + Eq + Hash> Octree<V> {
   pub fn intersect(&self, bounds: &AABB, self_v: V) -> bool {
     match self.contents {
       Empty => false,
-      Leaf(ref vs) => vs.iter().any(|&(bs, ref v)| { *v != self_v && intersect(bounds, &bs) }),
+      Leaf(ref vs) => vs.iter().any(|&(bs, ref v)| { *v != self_v && bounds.intersects(&bs) }),
       Branch(ref b) => {
         let mid = middle(&self.bounds, self.dimension);
         let (low_bounds, high_bounds) = split(mid, self.dimension, *bounds);
@@ -239,7 +219,7 @@ impl<V: Clone + Eq + Hash> Octree<V> {
         let mut r = HashSet::new();
         for &(bs, ref v) in vs.iter() {
           if *v != self_v {
-            if intersect(bounds, &bs) {
+            if bounds.intersects(&bs) {
               r.insert(v.clone());
             }
           }
@@ -281,7 +261,7 @@ impl<V: Clone + Eq + Hash> Octree<V> {
 
   // TODO: consider collapsing space
   pub fn remove(&mut self, v: V, bounds: &AABB) {
-    assert!(contains(&self.bounds, bounds));
+    assert!(self.bounds.contains(bounds));
     // copied largely from insert()
     match self.contents {
       Empty => {
