@@ -904,6 +904,11 @@ impl App {
         block_type: block_type,
         id: Id(0),
       };
+      // hacky solution to make sure blocks have "breathing room" and don't
+      // collide with their neighbours.
+      let epsilon: GLfloat = 0.00001;
+      let min = min + Vec3::new(epsilon, epsilon, epsilon);
+      let max = max - Vec3::new(epsilon, epsilon, epsilon);
       let bounds = AABB::new(min, max);
       let collided = check_collisions && self.collides_with(Id(0), &bounds);
 
