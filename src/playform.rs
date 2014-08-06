@@ -1,4 +1,4 @@
-//! The entry point, bitch.
+//! The entry point.
 #![crate_type = "bin"]
 #![deny(warnings)]
 #![deny(missing_doc)]
