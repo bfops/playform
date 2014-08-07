@@ -1,7 +1,7 @@
 pub use color::Color4;
 use fontloader;
 use ncollide3df32::bounding_volume::aabb::AABB;
-use nalgebra::na::{Vec2, Vec3, RMul};
+use nalgebra::na::{Vec2, Vec3, RMul, Norm};
 use octree;
 use piston;
 use piston::*;
@@ -179,6 +179,10 @@ impl Block {
   }
 }
 
+fn center(bounds: &AABB) -> Vec3<GLfloat> {
+  (bounds.mins() + *bounds.maxs()) / (2.0 as GLfloat)
+}
+
 pub struct Player {
   camera: Camera,
   // speed; units are world coordinates
@@ -192,8 +196,12 @@ pub struct Player {
   id: Id,
 }
 
+type Behavior = fn(&App, &mut Mob);
+
 pub struct Mob {
   speed: Vec3<GLfloat>,
+  behavior: Behavior,
+  id: Id,
 }
 
 struct BlockBuffers {
@@ -574,7 +582,37 @@ impl Game<GameWindowSDL2> for App {
       self.make_hud(gl);
       self.make_world();
 
-      self.add_mob(Vec3::new(0.0, 8.0, -1.0));
+      fn mob_behavior(world: &App, mob: &mut Mob) {
+        let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
+        if Norm::norm(&to_player) < 2.0 {
+          mob.behavior = wait_for_distance;
+        }
+
+        fn wait_for_distance(world: &App, mob: &mut Mob) {
+          let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
+          if Norm::norm(&to_player) > 8.0 {
+            mob.behavior = follow_player;
+          }
+        }
+
+        fn follow_player(world: &App, mob: &mut Mob) {
+          let mut to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
+          if to_player.normalize() < 2.0 {
+            mob.behavior = wait_to_reset;
+            mob.speed = Vec3::new(0.0, 0.0, 0.0);
+          } else {
+            mob.speed = to_player / 2.0 as GLfloat;
+          }
+        }
+
+        fn wait_to_reset(world: &App, mob: &mut Mob) {
+          let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
+          if Norm::norm(&to_player) >= 2.0 {
+            mob.behavior = mob_behavior;
+          }
+        }
+      }
+      self.add_mob(Vec3::new(0.0, 8.0, -1.0), mob_behavior);
     })
 
     println!("load() finished with {} blocks", self.blocks.len());
@@ -641,6 +679,8 @@ impl Game<GameWindowSDL2> for App {
 
       time!(&self.timers, "update.mobs", || {
         for (&id, mob) in self.mobs.mut_iter() {
+          (mob.behavior)(self, mob);
+
           // duplicated in player update code
           mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
 
@@ -951,6 +991,10 @@ impl App {
     })
   }
 
+  fn get_bounds(&self, id: Id) -> &AABB {
+    expect_id!(self.physics.find(&id))
+  }
+
   fn find_octree_location(&self, id: Id) -> *mut octree::Octree<Id> {
     *(self
     .locations
@@ -992,12 +1036,14 @@ impl App {
     id
   }
 
-  fn add_mob(&mut self, low_corner: Vec3<GLfloat>) {
+  fn add_mob(&mut self, low_corner: Vec3<GLfloat>, behavior: fn(&App, &mut Mob)) {
     let id = self.alloc_id();
     self.mobs.insert(
       id,
       Mob {
         speed: Vec3::new(0.0, 0.0, 0.0),
+        behavior: behavior,
+        id: id,
       }
     );
     let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
