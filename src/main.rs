@@ -502,11 +502,9 @@ impl Game<GameWindowSDL2> for App {
 
       let playerId = self.alloc_id();
       self.player.id = playerId;
-      let bounds =
-        AABB::new(
-          Vec3::new(-1.0, -2.0, -1.0),
-          Vec3::new(0.0, 0.0, 0.0)
-        );
+      let min = Vec3::new(0.0, 0.0, 0.0);
+      let max = Vec3::new(1.0, 2.0, 1.0);
+      let bounds = AABB::new(min, max);
       let octree_location = self.world_space.insert(bounds, playerId);
       self.locations.insert(playerId, octree_location);
       self.physics.insert(playerId, bounds);
@@ -526,6 +524,7 @@ impl Game<GameWindowSDL2> for App {
       self.set_up_shaders(gl);
 
       // initialize the projection matrix
+      self.player.camera.translate((min + max) / 2.0 as GLfloat);
       self.player.camera.fov = glw::perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
 
       match gl::GetError() {
