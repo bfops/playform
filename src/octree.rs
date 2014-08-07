@@ -135,13 +135,13 @@ impl<V: Clone + Eq + Hash> Octree<V> {
         Branch(ref mut b) => {
           // copied in remove()
           let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, bounds);
-          l.map(|low_half| { b.low_tree.insert(low_half, v.clone()); });
-          h.map(|high_half| { b.high_tree.insert(high_half, v.clone()); });
+          l.map(|low_half| b.low_tree.insert(low_half, v.clone()));
+          h.map(|high_half| b.high_tree.insert(high_half, v.clone()));
           None
         },
       };
     unsafe {
-      t.map_or(mem::transmute(self), |x| { mem::transmute(x) })
+      t.map_or(mem::transmute(self), |x| mem::transmute(x))
     }
   }
 
@@ -199,12 +199,12 @@ impl<V: Clone + Eq + Hash> Octree<V> {
   pub fn intersect(&self, bounds: &AABB, self_v: V) -> bool {
     match self.contents {
       Empty => false,
-      Leaf(ref vs) => vs.iter().any(|&(bs, ref v)| { *v != self_v && bounds.intersects(&bs) }),
+      Leaf(ref vs) => vs.iter().any(|&(bs, ref v)| *v != self_v && bounds.intersects(&bs)),
       Branch(ref b) => {
         let mid = middle(&self.bounds, self.dimension);
         let (low_bounds, high_bounds) = split(mid, self.dimension, *bounds);
-        low_bounds.map_or(false, |bs| { b.low_tree.intersect(&bs, self_v.clone()) }) ||
-        high_bounds.map_or(false, |bs| { b.high_tree.intersect(&bs, self_v.clone()) })
+        low_bounds.map_or(false, |bs| b.low_tree.intersect(&bs, self_v.clone())) ||
+        high_bounds.map_or(false, |bs| b.high_tree.intersect(&bs, self_v.clone()))
       }
     }
   }
@@ -250,13 +250,13 @@ impl<V: Clone + Eq + Hash> Octree<V> {
   // this tree, any children, or any relatives, starting the search from the
   // current tree. Uses equality comparison on V to ignore "same" objects.
   pub fn intersect_details_from(&self, bounds: &AABB, self_v: V) -> HashSet<V> {
-    self.on_ancestor(bounds, |t| { t.intersect_details(bounds, self_v.clone()) })
+    self.on_ancestor(bounds, |t| t.intersect_details(bounds, self_v.clone()))
   }
 
   // like insert, but before recursing downward, we recurse up the parents
   // until the bounds provided are inside the tree.
   fn insert_from(&mut self, bounds: AABB, v: V) -> *mut Octree<V> {
-    self.on_mut_ancestor(&bounds, |t| { t.insert(bounds.clone(), v.clone()) })
+    self.on_mut_ancestor(&bounds, |t| t.insert(bounds.clone(), v.clone()))
   }
 
   // TODO: consider collapsing space
@@ -268,13 +268,13 @@ impl<V: Clone + Eq + Hash> Octree<V> {
         fail!("Could not Octree::remove(&Empty)");
       },
       Leaf(ref mut vs) => {
-        let i = vs.iter().position(|&(_, ref x)| { *x == v }).expect("could not Octree::remove()");
+        let i = vs.iter().position(|&(_, ref x)| *x == v).expect("could not Octree::remove()");
         vs.swap_remove(i);
       },
       Branch(ref mut bs) => {
         let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, *bounds);
-        l.map(|low_half| { bs.low_tree.remove(v.clone(), &low_half); });
-        h.map(|high_half| { bs.high_tree.remove(v.clone(), &high_half); });
+        l.map(|low_half| bs.low_tree.remove(v.clone(), &low_half));
+        h.map(|high_half| bs.high_tree.remove(v.clone(), &high_half));
       }
     }
   }

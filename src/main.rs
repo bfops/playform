@@ -323,7 +323,7 @@ pub struct App {
 
 #[inline]
 pub fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
-  match v.iter().position(|x| { *x == t }) {
+  match v.iter().position(|x| *x == t) {
     None => { },
     Some(i) => { v.swap_remove(i); },
   }
@@ -572,7 +572,7 @@ impl Game<GameWindowSDL2> for App {
       // Block deletion
       if self.is_mouse_pressed(piston::mouse::Left) {
         time!(&self.timers, "update.delete_block", || {
-          self.block_at_window_center(gl).map(|(id, _)| { self.remove_block(gl, &id) });
+          self.block_at_window_center(gl).map(|(id, _)| self.remove_block(gl, &id));
         })
       }
       if self.is_mouse_pressed(piston::mouse::Right) {
@@ -830,7 +830,7 @@ impl App {
 
   #[inline]
   pub fn is_mouse_pressed(&self, b: piston::mouse::Button) -> bool {
-    self.mouse_buttons_pressed.iter().any(|x| { *x == b })
+    self.mouse_buttons_pressed.iter().any(|x| *x == b)
   }
 
   /// Updates the projetion matrix with all our movements.
