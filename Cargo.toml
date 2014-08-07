@@ -26,4 +26,5 @@ git = "https://github.com/PistonDevelopers/piston"
 git = "https://github.com/sebcrozet/nalgebra"
 
 [dependencies.ncollide3df32]
-git = "https://github.com/sebcrozet/ncollide"
+# until the repo no longer exists
+git = "https://github.com/bfops/ncollide"
