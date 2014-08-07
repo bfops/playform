@@ -192,6 +192,10 @@ pub struct Player {
   id: Id,
 }
 
+pub struct Mob {
+  speed: Vec3<GLfloat>,
+}
+
 struct BlockBuffers {
   id_to_index: HashMap<Id, uint>,
   index_to_id: Vec<Id>,
@@ -290,6 +294,67 @@ impl BlockBuffers {
   }
 }
 
+struct MobBuffers {
+  id_to_index: HashMap<Id, uint>,
+  index_to_id: Vec<Id>,
+
+  triangles: GLBuffer<ColoredVertex>,
+  // TODO: render mob selection_triangles even if we don't want to pick them,
+  // so that they occlude blocks and whatnot.
+}
+
+impl MobBuffers {
+  pub unsafe fn new(gl: &GLContext, shader_program: &Rc<Shader>) -> MobBuffers {
+    MobBuffers {
+      id_to_index: HashMap::new(),
+      index_to_id: Vec::new(),
+
+      triangles: GLBuffer::new(
+        gl,
+        shader_program.clone(),
+        [ vertex::AttribData { name: "position", size: 3 },
+          vertex::AttribData { name: "in_color", size: 4 },
+        ],
+        TRIANGLE_VERTICES_PER_BOX,
+        32,
+        Triangles
+      ),
+    }
+  }
+
+  pub fn push(
+    &mut self,
+    id: Id,
+    triangles: &[ColoredVertex]
+  ) {
+    self.id_to_index.insert(id, self.index_to_id.len());
+    self.index_to_id.push(id);
+
+    self.triangles.push(triangles);
+  }
+
+  pub fn flush(&mut self, gl: &GLContext) {
+    self.triangles.flush(gl);
+  }
+
+  pub fn update(
+    &mut self,
+    gl: &GLContext,
+    id: Id,
+    triangles: &[ColoredVertex]
+  ) {
+    let idx = *expect_id!(self.id_to_index.find(&id));
+    self.triangles.update(gl, idx, triangles);
+  }
+
+  pub fn draw(&self, gl: &GLContext) {
+    self.triangles.draw(gl);
+  }
+
+  pub fn draw_selection(&self, _gl: &GLContext) {
+  }
+}
+
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App {
   world_space: octree::Octree<Id>,
@@ -297,6 +362,7 @@ pub struct App {
   locations: HashMap<Id, *mut octree::Octree<Id>>,
   blocks: HashMap<Id, Block>,
   player: Player,
+  mobs: HashMap<Id, Mob>,
   // id of the next block to load
   next_load_id: Id,
   // next block id to assign
@@ -304,6 +370,7 @@ pub struct App {
   // OpenGL buffers
   block_buffers: Option<BlockBuffers>,
   hud_triangles: Option<GLBuffer<ColoredVertex>>,
+  mob_buffers: Option<MobBuffers>,
   texture_triangles: Option<GLBuffer<TextureVertex>>,
   textures: Vec<Texture>,
   hud_camera: Camera,
@@ -479,6 +546,7 @@ impl Game<GameWindowSDL2> for App {
 
       unsafe {
         self.block_buffers = Some(BlockBuffers::new(&self.gl, self.shader_program.get_ref()));
+        self.mob_buffers = Some(MobBuffers::new(&self.gl, self.shader_program.get_ref()));
 
         self.hud_triangles = Some(GLBuffer::new(
             &self.gl,
@@ -506,6 +574,8 @@ impl Game<GameWindowSDL2> for App {
       self.make_textures(gl);
       self.make_hud(gl);
       self.make_world();
+
+      self.add_mob(Vec3::new(0.0, 8.0, -1.0));
     })
 
     println!("load() finished with {} blocks", self.blocks.len());
@@ -550,6 +620,7 @@ impl Game<GameWindowSDL2> for App {
           }
         }
 
+        // duplicated in mob update code
         let dP = self.player.speed;
         if dP.x != 0.0 {
           self.translate_player(Vec3::new(dP.x, 0.0, 0.0));
@@ -567,6 +638,24 @@ impl Game<GameWindowSDL2> for App {
         self.player.speed = self.player.speed + dV;
         // friction
         self.player.speed = self.player.speed * Vec3::new(0.7, 0.99, 0.7 as f32);
+      });
+
+      time!(&self.timers, "update.mobs", || {
+        for (&id, mob) in self.mobs.mut_iter() {
+          // duplicated in player update code
+          mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
+
+          let dP = mob.speed;
+          if dP.x != 0.0 {
+            self.translate_mob(gl, id, Vec3::new(dP.x, 0.0, 0.0));
+          }
+          if dP.y != 0.0 {
+            self.translate_mob(gl, id, Vec3::new(0.0, dP.y, 0.0));
+          }
+          if dP.z != 0.0 {
+            self.translate_mob(gl, id, Vec3::new(0.0, 0.0, dP.z));
+          }
+        }
       });
 
       // Block deletion
@@ -611,6 +700,9 @@ impl Game<GameWindowSDL2> for App {
       // draw the world
       self.update_projection(gl);
       self.block_buffers.get_ref().draw(gl);
+
+      // draw mobs
+      self.mob_buffers.get_ref().draw(gl);
 
       // draw the hud
       self.shader_program.get_mut_ref().set_camera(gl, &self.hud_camera);
@@ -688,11 +780,13 @@ impl App {
         is_jumping: false,
         id: Id(0),
       },
+      mobs: HashMap::new(),
       next_load_id: Id(1),
       // Start assigning block_ids at 1.
       // block_id 0 corresponds to no block.
       next_id: Id(1),
       block_buffers: None,
+      mob_buffers: None,
       hud_triangles: None,
       texture_triangles: None,
       textures: Vec::new(),
@@ -854,6 +948,7 @@ impl App {
 
       self.update_projection(gl);
       self.block_buffers.get_ref().draw_selection(gl);
+      self.mob_buffers.get_ref().draw_selection(gl);
     })
   }
 
@@ -896,6 +991,22 @@ impl App {
     let id = self.next_id;
     self.next_id = self.next_id + Id(1);
     id
+  }
+
+  fn add_mob(&mut self, low_corner: Vec3<GLfloat>) {
+    let id = self.alloc_id();
+    self.mobs.insert(
+      id,
+      Mob {
+        speed: Vec3::new(0.0, 0.0, 0.0),
+      }
+    );
+    let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
+    let octree_loc = self.world_space.insert(bounds, id);
+    self.locations.insert(id, octree_loc);
+    self.physics.insert(id, bounds);
+    self.mob_buffers.get_mut_ref().push(id, to_triangles(&bounds, [Color4::of_rgba(1.0, 0.0, 0.0, 1.0), ..6]));
+    self.mob_buffers.get_mut_ref().flush(&self.gl);
   }
 
   fn place_block(&mut self, min: Vec3<GLfloat>, max: Vec3<GLfloat>, block_type: BlockType, check_collisions: bool) {
@@ -990,6 +1101,19 @@ impl App {
       if v.y < 0.0 {
         self.player.jump_fuel = 0;
       }
+    }
+  }
+
+  fn translate_mob(&mut self, gl: &mut GLContext, id: Id, v: Vec3<GLfloat>) {
+    if self.translate(id, v) {
+      self.mobs.find_mut(&id).map(|m| m.speed = m.speed - v);
+    } else {
+      let bounds = expect_id!(self.physics.find(&id));
+      self.mob_buffers.get_mut_ref().update(
+        gl,
+        id,
+        to_triangles(bounds, [Color4::of_rgba(1.0, 0.0, 0.0, 1.0), ..6])
+      );
     }
   }
 
