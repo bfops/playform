@@ -1,6 +1,7 @@
 pub use color::Color4;
 use fontloader;
 use ncollide3df32::bounding_volume::aabb::AABB;
+use ncollide3df32::ray::{Ray, RayCast};
 use nalgebra::na::{Vec2, Vec3, RMul};
 use octree;
 use piston;
@@ -12,7 +13,7 @@ use sdl2_game_window::GameWindowSDL2;
 use sdl2::mouse;
 use stopwatch;
 use std::collections::HashMap;
-use std::iter::range_inclusive;
+use std::iter::{range,range_inclusive};
 use std::f32::consts::PI;
 use std::rc::Rc;
 use vertex;
@@ -91,18 +92,28 @@ impl Mul<u32, Id> for Id {
   }
 }
 
-// Construct the faces of the box as triangles for rendering,
-// with a different color on each face (front, left, top, back, right, bottom).
-// Triangle vertices are in CCW order when viewed from the outside of
-// the cube, for rendering purposes.
-fn to_triangles(bounds: &AABB, c: [Color4<GLfloat>, ..6]) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
+fn to_faces(bounds: &AABB) -> [AABB, ..6] {
   let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
   let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
 
-  let vtx = |x: GLfloat, y: GLfloat, z: GLfloat, c: Color4<GLfloat>| -> ColoredVertex {
+  [
+    AABB::new(Vec3::new(x1, y1, z2), Vec3::new(x2, y2, z2)),
+    AABB::new(Vec3::new(x1, y1, z1), Vec3::new(x1, y2, z2)),
+    AABB::new(Vec3::new(x1, y2, z1), Vec3::new(x2, y2, z2)),
+    AABB::new(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z1)),
+    AABB::new(Vec3::new(x2, y1, z1), Vec3::new(x2, y2, z2)),
+    AABB::new(Vec3::new(x1, y1, z1), Vec3::new(x2, y1, z2)),
+  ]
+}
+
+fn to_triangles(bounds: &AABB, c: &Color4<GLfloat>) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
+  let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
+  let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
+
+  let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> ColoredVertex {
     ColoredVertex {
       position: Vec3::new(x, y, z),
-      color: c
+      color: c.clone(),
     }
   };
 
@@ -110,23 +121,23 @@ fn to_triangles(bounds: &AABB, c: [Color4<GLfloat>, ..6]) -> [ColoredVertex, ..V
   // negative as depth from the viewer increases.
   [
     // front
-    vtx(x2, y1, z2, c[3]), vtx(x2, y2, z2, c[3]), vtx(x1, y2, z2, c[3]),
-    vtx(x2, y1, z2, c[3]), vtx(x1, y2, z2, c[3]), vtx(x1, y1, z2, c[3]),
+    vtx(x2, y1, z2), vtx(x2, y2, z2), vtx(x1, y2, z2),
+    vtx(x2, y1, z2), vtx(x1, y2, z2), vtx(x1, y1, z2),
     // left
-    vtx(x1, y1, z2, c[1]), vtx(x1, y2, z2, c[1]), vtx(x1, y2, z1, c[1]),
-    vtx(x1, y1, z2, c[1]), vtx(x1, y2, z1, c[1]), vtx(x1, y1, z1, c[1]),
+    vtx(x1, y1, z2), vtx(x1, y2, z2), vtx(x1, y2, z1),
+    vtx(x1, y1, z2), vtx(x1, y2, z1), vtx(x1, y1, z1),
     // top
-    vtx(x1, y2, z1, c[2]), vtx(x1, y2, z2, c[2]), vtx(x2, y2, z2, c[2]),
-    vtx(x1, y2, z1, c[2]), vtx(x2, y2, z2, c[2]), vtx(x2, y2, z1, c[2]),
+    vtx(x1, y2, z1), vtx(x1, y2, z2), vtx(x2, y2, z2),
+    vtx(x1, y2, z1), vtx(x2, y2, z2), vtx(x2, y2, z1),
     // back
-    vtx(x1, y1, z1, c[0]), vtx(x1, y2, z1, c[0]), vtx(x2, y2, z1, c[0]),
-    vtx(x1, y1, z1, c[0]), vtx(x2, y2, z1, c[0]), vtx(x2, y1, z1, c[0]),
+    vtx(x1, y1, z1), vtx(x1, y2, z1), vtx(x2, y2, z1),
+    vtx(x1, y1, z1), vtx(x2, y2, z1), vtx(x2, y1, z1),
     // right
-    vtx(x2, y1, z1, c[4]), vtx(x2, y2, z1, c[4]), vtx(x2, y2, z2, c[4]),
-    vtx(x2, y1, z1, c[4]), vtx(x2, y2, z2, c[4]), vtx(x2, y1, z2, c[4]),
+    vtx(x2, y1, z1), vtx(x2, y2, z1), vtx(x2, y2, z2),
+    vtx(x2, y1, z1), vtx(x2, y2, z2), vtx(x2, y1, z2),
     // bottom
-    vtx(x1, y1, z2, c[5]), vtx(x1, y1, z1, c[5]), vtx(x2, y1, z1, c[5]),
-    vtx(x1, y1, z2, c[5]), vtx(x2, y1, z1, c[5]), vtx(x2, y1, z2, c[5]),
+    vtx(x1, y1, z2), vtx(x1, y1, z1), vtx(x2, y1, z1),
+    vtx(x1, y1, z2), vtx(x2, y1, z1), vtx(x2, y1, z2),
   ]
 }
 
@@ -139,10 +150,11 @@ pub struct Block {
 }
 
 impl Block {
-  #[inline]
+  // Construct the faces of the box as triangles for rendering,
+  // Triangle vertices are in CCW order when viewed from the outside of
+  // the cube, for rendering purposes.
   fn to_triangles(block: &Block, bounds: &AABB) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
-    let colors = [block.block_type.to_color(), ..6];
-    to_triangles(bounds, colors)
+    to_triangles(bounds, &block.block_type.to_color())
   }
 
   // Construct outlines for this Block, to sharpen the edges.
@@ -202,9 +214,6 @@ struct BlockBuffers {
 
   triangles: GLBuffer<ColoredVertex>,
   outlines: GLBuffer<ColoredVertex>,
-
-  // OpenGL-friendly equivalent of block data for selection/picking.
-  selection_triangles: GLBuffer<ColoredVertex>,
 }
 
 impl BlockBuffers {
@@ -212,17 +221,6 @@ impl BlockBuffers {
     BlockBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
-
-      selection_triangles: GLBuffer::new(
-        gl,
-        shader_program.clone(),
-        [ vertex::AttribData { name: "position", size: 3 },
-          vertex::AttribData { name: "in_color", size: 4 },
-        ],
-        TRIANGLE_VERTICES_PER_BOX,
-        MAX_WORLD_SIZE,
-        Triangles
-      ),
 
       triangles: GLBuffer::new(
         gl,
@@ -252,21 +250,18 @@ impl BlockBuffers {
     &mut self,
     id: Id,
     triangles: &[ColoredVertex],
-    outlines: &[ColoredVertex],
-    selections: &[ColoredVertex]
+    outlines: &[ColoredVertex]
   ) {
     self.id_to_index.insert(id, self.index_to_id.len());
     self.index_to_id.push(id);
 
     self.triangles.push(triangles);
     self.outlines.push(outlines);
-    self.selection_triangles.push(selections);
   }
 
   pub fn flush(&mut self, gl: &GLContext) {
     self.triangles.flush(gl);
     self.outlines.flush(gl);
-    self.selection_triangles.flush(gl);
   }
 
   pub fn swap_remove(&mut self, gl: &GLContext, id: Id) {
@@ -274,7 +269,6 @@ impl BlockBuffers {
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     self.index_to_id.swap_remove(idx).expect("ran out of blocks");
     self.triangles.swap_remove(gl, idx);
-    self.selection_triangles.swap_remove(gl, idx);
     self.id_to_index.remove(&id);
 
     self.outlines.swap_remove(gl, idx);
@@ -288,9 +282,13 @@ impl BlockBuffers {
     self.triangles.draw(gl);
     self.outlines.draw(gl);
   }
+}
 
-  pub fn draw_selection(&self, gl: &GLContext) {
-    self.selection_triangles.draw(gl);
+#[inline]
+pub fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
+  match v.iter().position(|x| *x == t) {
+    None => { },
+    Some(i) => { v.swap_remove(i); },
   }
 }
 
@@ -299,8 +297,6 @@ struct MobBuffers {
   index_to_id: Vec<Id>,
 
   triangles: GLBuffer<ColoredVertex>,
-  // TODO: render mob selection_triangles even if we don't want to pick them,
-  // so that they occlude blocks and whatnot.
 }
 
 impl MobBuffers {
@@ -350,13 +346,26 @@ impl MobBuffers {
   pub fn draw(&self, gl: &GLContext) {
     self.triangles.draw(gl);
   }
+}
 
-  pub fn draw_selection(&self, _gl: &GLContext) {
-  }
+fn first_face(bounds: &AABB, ray: &Ray) -> uint {
+  let f = octree::partial_min_by(
+      to_faces(bounds)
+        .iter()
+        .zip(range(0 as uint, 6))
+        .filter_map(|(bounds, i)| {
+            bounds.toi_with_ray(ray, true).map(|x| (x, i))
+          }),
+      |(toi, _)| toi
+    )
+    .map(|(_, i)| i)
+    .expect("ray does not intersect any faces");
+  f
 }
 
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App {
+  line_of_sight: Option<GLBuffer<ColoredVertex>>,
   world_space: octree::Octree<Id>,
   physics: HashMap<Id, AABB>,
   locations: HashMap<Id, *mut octree::Octree<Id>>,
@@ -386,14 +395,6 @@ pub struct App {
   font: fontloader::FontLoader,
   timers: stopwatch::TimerSet,
   gl: GLContext,
-}
-
-#[inline]
-pub fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
-  match v.iter().position(|x| *x == t) {
-    None => { },
-    Some(i) => { v.swap_remove(i); },
-  }
 }
 
 impl Game<GameWindowSDL2> for App {
@@ -430,6 +431,18 @@ impl Game<GameWindowSDL2> for App {
           self.rotate_vertical(PI / 12.0),
         piston::keyboard::Down =>
           self.rotate_vertical(-PI / 12.0),
+        piston::keyboard::M => {
+          self.line_of_sight.get_mut_ref().update(&self.gl, 0, [
+            ColoredVertex {
+              position: self.player.camera.position,
+              color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
+            },
+            ColoredVertex {
+              position: self.player.camera.position + self.forward() * (32.0 as f32),
+              color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
+            },
+          ]);
+        },
         _ => {},
       }
     })
@@ -544,6 +557,17 @@ impl Game<GameWindowSDL2> for App {
       }
 
       unsafe {
+        self.line_of_sight = Some(GLBuffer::new(
+            &self.gl,
+            self.shader_program.get_ref().clone(),
+            [ vertex::AttribData { name: "position", size: 3 },
+              vertex::AttribData { name: "in_color", size: 4 },
+            ],
+            2,
+            2,
+            Lines
+        ));
+
         self.block_buffers = Some(BlockBuffers::new(&self.gl, self.shader_program.get_ref()));
         self.mob_buffers = Some(MobBuffers::new(&self.gl, self.shader_program.get_ref()));
 
@@ -551,7 +575,7 @@ impl Game<GameWindowSDL2> for App {
             &self.gl,
             self.shader_program.get_ref().clone(),
             [ vertex::AttribData { name: "position", size: 3 },
-            vertex::AttribData { name: "in_color", size: 4 },
+              vertex::AttribData { name: "in_color", size: 4 },
             ],
             VERTICES_PER_TRIANGLE,
             16,
@@ -575,6 +599,18 @@ impl Game<GameWindowSDL2> for App {
       self.make_world();
 
       self.add_mob(Vec3::new(0.0, 8.0, -1.0));
+
+      self.line_of_sight.get_mut_ref().push([
+        ColoredVertex {
+          position: Vec3::new(0.0, 0.0, 0.0),
+          color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
+        },
+        ColoredVertex {
+          position: Vec3::new(0.0, 0.0, 0.0),
+          color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
+        },
+      ]);
+      self.line_of_sight.get_mut_ref().flush(gl);
     })
 
     println!("load() finished with {} blocks", self.blocks.len());
@@ -595,8 +631,7 @@ impl Game<GameWindowSDL2> for App {
               self.block_buffers.get_mut_ref().push(
                 block.id,
                 Block::to_triangles(block, bounds),
-                Block::to_outlines(bounds),
-                to_selection_triangles(bounds, block.id)
+                Block::to_outlines(bounds)
               );
             });
 
@@ -660,18 +695,20 @@ impl Game<GameWindowSDL2> for App {
       // Block deletion
       if self.is_mouse_pressed(piston::mouse::Left) {
         time!(&self.timers, "update.delete_block", || {
-          self.block_at_window_center(gl).map(|(id, _)| self.remove_block(gl, &id));
+          self.entity_in_front().map(|(id, _)| {
+            self.remove_block(gl, &id);
+          });
         })
       }
       if self.is_mouse_pressed(piston::mouse::Right) {
         time!(&self.timers, "update.place_block", || {
-          self.block_at_window_center(gl).map(|(block_id, face)| {
+          self.entity_in_front().map(|(block_id, face)| {
             let bounds = expect_id!(self.physics.find(&block_id));
             let direction =
-                  [ Vec3::new(0.0, 0.0, -1.0),
+                  [ Vec3::new(0.0, 0.0, 1.0),
                     Vec3::new(-1.0, 0.0, 0.0),
                     Vec3::new(0.0, 1.0, 0.0),
-                    Vec3::new(0.0, 0.0, 1.0),
+                    Vec3::new(0.0, 0.0, -1.0),
                     Vec3::new(1.0, 0.0, 0.0),
                     Vec3::new(0.0, -1.0, 0.0),
                   ][face] * 0.5 as GLfloat;
@@ -698,6 +735,7 @@ impl Game<GameWindowSDL2> for App {
 
       // draw the world
       self.update_projection(gl);
+      self.line_of_sight.get_ref().draw(gl);
       self.block_buffers.get_ref().draw(gl);
 
       // draw mobs
@@ -722,43 +760,6 @@ impl Game<GameWindowSDL2> for App {
   }
 }
 
-#[inline]
-fn mask(mask: u32, i: u32) -> u32 {
-  (i & mask) >> (mask as uint).trailing_zeros()
-}
-
-// map ids to unique colors
-fn id_color(id: Id) -> Color4<GLfloat> {
-  let Id(id) = id;
-  assert!(id < 0xFF000000, "too many items for selection buffer");
-  let ret = Color4::of_rgba(
-    (mask(0x00FF0000, id) as GLfloat / 255.0),
-    (mask(0x0000FF00, id) as GLfloat / 255.0),
-    (mask(0x000000FF, id) as GLfloat / 255.0),
-    1.0,
-  );
-  assert!(ret.r >= 0.0);
-  assert!(ret.r <= 1.0 as f32);
-  assert!(ret.g >= 0.0 as f32);
-  assert!(ret.g <= 1.0 as f32);
-  assert!(ret.b >= 0.0 as f32);
-  assert!(ret.b <= 1.0 as f32);
-  ret
-}
-
-fn to_selection_triangles(bounds: &AABB, id: Id) -> [ColoredVertex, ..TRIANGLE_VERTICES_PER_BOX] {
-  let selection_id = id * 6;
-  let selection_colors =
-        [ id_color(selection_id + Id(0)),
-          id_color(selection_id + Id(1)),
-          id_color(selection_id + Id(2)),
-          id_color(selection_id + Id(3)),
-          id_color(selection_id + Id(4)),
-          id_color(selection_id + Id(5)),
-        ];
-  to_triangles(bounds, selection_colors)
-}
-
 impl App {
   /// Initializes an empty app.
   pub fn new(gl: GLContext) -> App {
@@ -767,6 +768,7 @@ impl App {
       Vec3 { x: 512.0, y: 512.0, z: 512.0 },
     );
     App {
+      line_of_sight: None,
       world_space: octree::Octree::new(&world_bounds),
       physics: HashMap::new(),
       locations: HashMap::new(),
@@ -938,19 +940,6 @@ impl App {
     });
   }
 
-  #[inline]
-  /// Renders the selection buffer.
-  pub fn render_selection(&self, gl: &mut GLContext) {
-    time!(&self.timers, "render.render_selection", || {
-      gl.set_background_color(Color4::of_rgba(0.0, 0.0, 0.0, 0.0));
-      gl.clear_buffer();
-
-      self.update_projection(gl);
-      self.block_buffers.get_ref().draw_selection(gl);
-      self.mob_buffers.get_ref().draw_selection(gl);
-    })
-  }
-
   fn find_octree_location(&self, id: Id) -> *mut octree::Octree<Id> {
     *(self
     .locations
@@ -959,24 +948,15 @@ impl App {
     )
   }
 
-  /// Returns the id of the entity at the given (x, y) coordinate in the window.
-  /// The pixel coordinates are from (0, 0) to (WINDOW_WIDTH, WINDOW_HEIGHT).
-  fn block_at_window(&self, gl: &mut GLContext, x: uint, y: uint) -> Option<(Id, uint)> {
-    self.render_selection(gl);
-
-    let pixels: Color4<u8> = gl.read_pixels(x, y, WINDOW_HEIGHT as uint, WINDOW_WIDTH as uint);
-
-    let selection_id = (pixels.r as u32 << 16) | (pixels.g as u32 << 8) | (pixels.b as u32 << 0);
-    if selection_id == 0 {
-      None
-    } else {
-      Some((Id(selection_id / 6), selection_id as uint % 6))
-    }
-  }
-
+  // TODO: just return entity ID; let face be a separate call.
   /// Returns (block id, block face) shown at the center of the window.
-  fn block_at_window_center(&self, gl: &mut GLContext) -> Option<(Id, uint)> {
-    self.block_at_window(gl, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
+  fn entity_in_front(&self) -> Option<(Id, uint)> {
+    let ray = Ray { orig: self.player.camera.position, dir: self.forward(), };
+    // TODO: fix face numbering
+    self.world_space.cast_ray(&ray, &self.player.id).map(|id| {
+      let bounds = expect_id!(self.physics.find(&id));
+      (id, first_face(bounds, &ray))
+    })
   }
 
   /// Find a collision with a world object
@@ -1004,7 +984,7 @@ impl App {
     let octree_loc = self.world_space.insert(bounds, id);
     self.locations.insert(id, octree_loc);
     self.physics.insert(id, bounds);
-    self.mob_buffers.get_mut_ref().push(id, to_triangles(&bounds, [Color4::of_rgba(1.0, 0.0, 0.0, 1.0), ..6]));
+    self.mob_buffers.get_mut_ref().push(id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
     self.mob_buffers.get_mut_ref().flush(&self.gl);
   }
 
@@ -1111,7 +1091,7 @@ impl App {
       self.mob_buffers.get_mut_ref().update(
         gl,
         id,
-        to_triangles(bounds, [Color4::of_rgba(1.0, 0.0, 0.0, 1.0), ..6])
+        to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
       );
     }
   }
@@ -1150,11 +1130,13 @@ impl App {
   }
 
   /// Return the "forward" axis (i.e. the z-axis rotated to match you).
-  #[allow(dead_code)]
   pub fn forward(&self) -> Vec3<GLfloat> {
-    return
-      glw::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation)
-        .rmul(&Vec3::new(0.0, 0.0, -1.0))
+    let y_axis = Vec3::new(0.0, 1.0, 0.0);
+    let transform = 
+      glw::from_axis_angle3(self.right(), self.vertical_rotation) *
+      glw::from_axis_angle3(y_axis, self.lateral_rotation);
+    let forward_orig = Vec3::new(0.0, 0.0, -1.0);
+    return transform.rmul(&forward_orig);
   }
 }
 

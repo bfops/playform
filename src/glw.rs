@@ -352,6 +352,7 @@ pub struct Camera {
   pub translation: Mat4<GLfloat>,
   pub rotation: Mat4<GLfloat>,
   pub fov: Mat4<GLfloat>,
+  pub position: Vec3<GLfloat>,
 }
 
 /// Create a 3D translation matrix.
@@ -430,6 +431,7 @@ impl Camera {
       translation: Eye::new_identity(4),
       rotation: Eye::new_identity(4),
       fov: Eye::new_identity(4),
+      position: Vec3::new(0.0, 0.0, 0.0),
     }
   }
 
@@ -440,6 +442,7 @@ impl Camera {
   /// Shift the camera by a vector.
   pub fn translate(&mut self, v: Vec3<GLfloat>) {
     self.translation = self.translation * translation(-v);
+    self.position = self.position + v;
   }
 
   /// Rotate about a given vector, by `r` radians.
@@ -581,6 +584,7 @@ impl GLContext {
     r
   }
 
+  #[allow(dead_code)]
   /// Returns the color of a pixel at (x, y). x and y must be the coordinates
   /// of a pixel in the window. This function will fail if they aren't.
   pub fn read_pixels(&self, x: uint, y: uint, window_height: uint, window_width: uint) -> Color4<u8> {

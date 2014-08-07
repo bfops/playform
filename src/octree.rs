@@ -1,10 +1,13 @@
 use nalgebra::na::{Vec3};
 use ncollide3df32::bounding_volume::aabb::AABB;
 use ncollide3df32::bounding_volume::BoundingVolume;
+use ncollide3df32::ray::{Ray, RayCast};
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::mem;
 use std::ptr::RawPtr;
+
+use std::fmt::Show;
 
 type F = f32;
 
@@ -49,6 +52,26 @@ fn split(mid: F, d: Dimension, bounds: AABB) -> (Option<AABB>, Option<AABB>) {
   }
 }
 
+// TODO: this is NOT the right module for this..
+pub fn partial_min_by<A: Clone, T: Iterator<A>, B: PartialOrd>(t: T, f: |A| -> B) -> Option<A> {
+  let mut t = t;
+  let (mut min_a, mut min_b) = {
+    match t.next() {
+      None => return None,
+      Some(a) => (a.clone(), f(a.clone())),
+    }
+  };
+  for a in t {
+    let b = f(a.clone());
+    if b < min_b {
+      min_a = a;
+      min_b = b;
+    }
+  }
+
+  Some(min_a)
+}
+
 pub enum Dimension { X, Y, Z }
 
 struct Branches<V> {
@@ -71,7 +94,7 @@ pub struct Octree<V> {
   contents: OctreeContents<V>,
 }
 
-impl<V: Clone + Eq + Hash> Octree<V> {
+impl<V: Show + Clone + Eq + PartialOrd + Hash> Octree<V> {
   pub fn new(bounds: &AABB) -> Octree<V> {
     Octree {
       parent: RawPtr::null(),
@@ -259,7 +282,7 @@ impl<V: Clone + Eq + Hash> Octree<V> {
     self.on_mut_ancestor(&bounds, |t| t.insert(bounds.clone(), v.clone()))
   }
 
-  // TODO: consider collapsing space
+  // TODO: merge neighbors when appropriate
   pub fn remove(&mut self, v: V, bounds: &AABB) {
     assert!(self.bounds.contains(bounds));
     // copied largely from insert()
@@ -282,5 +305,54 @@ impl<V: Clone + Eq + Hash> Octree<V> {
   pub fn move(&mut self, v: V, bounds: &AABB, new_bounds: AABB) -> *mut Octree<V> {
     self.remove(v.clone(), bounds);
     self.insert_from(new_bounds, v)
+  }
+
+  pub fn cast_ray(&self, ray: &Ray, self_v: &V) -> Option<V> {
+    match self.contents {
+      Empty => {
+        None
+      },
+      Leaf(ref vs) => {
+        // find the time of intersection (TOI) of the ray with each object in
+        // this leaf; filter out the objects it doesn't intersect at all. Then
+        // find the object with the lowest TOI.
+        partial_min_by(
+          vs.iter().filter_map(|&(bounds, ref v)| {
+              if *v == *self_v {
+                None
+              } else {
+                bounds.toi_with_ray(ray, true).map(|x| (x, v.clone()))
+              }
+            }
+          ),
+          |(_, v)| v
+        )
+        .map(|(_, v)| v)
+      },
+      Branch(ref bs) => {
+        let mut trees: Vec<(f32, &Box<Octree<V>>)> = Vec::new();
+        let ref l = bs.low_tree;
+        let ref h = bs.high_tree;
+        for &t in [l, h].iter() {
+          (**t).bounds.toi_with_ray(ray, true).map(|toi| trees.push((toi, t)));
+        }
+        trees.sort_by(|&(t1, _), &(t2, _)| {
+          if t1 < t2 {
+            Less
+          } else if t1 > t2 {
+            Greater
+          } else {
+            Equal
+          }
+        });
+        for &(_, t) in trees.iter() {
+          let r = t.cast_ray(ray, self_v);
+          if r.is_some() {
+            return r;
+          }
+        }
+        None
+      }
+    }
   }
 }
