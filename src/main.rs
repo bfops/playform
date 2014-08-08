@@ -696,7 +696,9 @@ impl Game<GameWindowSDL2> for App {
       if self.is_mouse_pressed(piston::mouse::Left) {
         time!(&self.timers, "update.delete_block", || {
           self.entity_in_front().map(|(id, _)| {
-            self.remove_block(gl, &id);
+            if self.blocks.contains_key(&id) {
+              self.remove_block(gl, &id);
+            }
           });
         })
       }
@@ -953,7 +955,7 @@ impl App {
   fn entity_in_front(&self) -> Option<(Id, uint)> {
     let ray = Ray { orig: self.player.camera.position, dir: self.forward(), };
     // TODO: fix face numbering
-    self.world_space.cast_ray(&ray, &self.player.id).map(|id| {
+    self.world_space.cast_ray(&ray, self.player.id).map(|id| {
       let bounds = expect_id!(self.physics.find(&id));
       (id, first_face(bounds, &ray))
     })

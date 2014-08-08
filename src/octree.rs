@@ -21,9 +21,9 @@ fn middle(bounds: &AABB, d: Dimension) -> F {
 
 fn get(d: Dimension, p: &Vec3<F>) -> F {
   match d {
-    X => p.x.clone(),
-    Y => p.y.clone(),
-    Z => p.z.clone(),
+    X => p.x,
+    Y => p.y,
+    Z => p.z,
   }
 }
 
@@ -53,16 +53,17 @@ fn split(mid: F, d: Dimension, bounds: AABB) -> (Option<AABB>, Option<AABB>) {
 }
 
 // TODO: this is NOT the right module for this..
-pub fn partial_min_by<A: Clone, T: Iterator<A>, B: PartialOrd>(t: T, f: |A| -> B) -> Option<A> {
+pub fn partial_min_by<A: Copy, T: Iterator<A>, B: PartialOrd>(t: T, f: |A| -> B) -> Option<A> {
   let mut t = t;
   let (mut min_a, mut min_b) = {
     match t.next() {
       None => return None,
-      Some(a) => (a.clone(), f(a.clone())),
+      Some(a) => (a, f(a)),
     }
   };
   for a in t {
-    let b = f(a.clone());
+    let b = f(a);
+    assert!(b != min_b);
     if b < min_b {
       min_a = a;
       min_b = b;
@@ -87,6 +88,7 @@ enum OctreeContents<V> {
   Branch(Branches<V>),
 }
 
+// TODO: allow inserting things as "mobile", and don't break those objects up.
 pub struct Octree<V> {
   parent: *mut Octree<V>,
   dimension: Dimension,
@@ -94,7 +96,7 @@ pub struct Octree<V> {
   contents: OctreeContents<V>,
 }
 
-impl<V: Show + Clone + Eq + PartialOrd + Hash> Octree<V> {
+impl<V: Show + Copy + Eq + PartialOrd + Hash> Octree<V> {
   pub fn new(bounds: &AABB) -> Octree<V> {
     Octree {
       parent: RawPtr::null(),
@@ -109,7 +111,7 @@ impl<V: Show + Clone + Eq + PartialOrd + Hash> Octree<V> {
     let t: Option<*mut Octree<V>> =
       match self.contents {
         Empty => {
-          let vs = Vec::from_elem(1, (bounds.clone(), v.clone()));
+          let vs = Vec::from_fn(1, |_| (bounds.clone(), v));
           // if the object mostly fills the leaf, don't bother subsecting space more.
           if length(&bounds, self.dimension) * (2.0 as f32) < length(&self.bounds, self.dimension) {
             let mid = middle(&self.bounds, self.dimension);
@@ -123,14 +125,14 @@ impl<V: Show + Clone + Eq + PartialOrd + Hash> Octree<V> {
               let mut parent = None;
               low_bounds.map(
                 |bs| {
-                  low.insert(bs, v.clone());
+                  low.insert(bs, v);
                   spans_multiple = true;
                   parent = Some(mem::transmute(&mut *low));
                 }
               );
               high_bounds.map(
                 |bs| {
-                  high.insert(bs, v.clone());
+                  high.insert(bs, v);
                   spans_multiple = true;
                   parent = Some(mem::transmute(&mut *high));
                 }
@@ -158,8 +160,8 @@ impl<V: Show + Clone + Eq + PartialOrd + Hash> Octree<V> {
         Branch(ref mut b) => {
           // copied in remove()
           let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, bounds);
-          l.map(|low_half| b.low_tree.insert(low_half, v.clone()));
-          h.map(|high_half| b.high_tree.insert(high_half, v.clone()));
+          l.map(|low_half| b.low_tree.insert(low_half, v));
+          h.map(|high_half| b.high_tree.insert(high_half, v));
           None
         },
       };
@@ -226,8 +228,8 @@ impl<V: Show + Clone + Eq + PartialOrd + Hash> Octree<V> {
       Branch(ref b) => {
         let mid = middle(&self.bounds, self.dimension);
         let (low_bounds, high_bounds) = split(mid, self.dimension, *bounds);
-        low_bounds.map_or(false, |bs| b.low_tree.intersect(&bs, self_v.clone())) ||
-        high_bounds.map_or(false, |bs| b.high_tree.intersect(&bs, self_v.clone()))
+        low_bounds.map_or(false, |bs| b.low_tree.intersect(&bs, self_v)) ||
+        high_bounds.map_or(false, |bs| b.high_tree.intersect(&bs, self_v))
       }
     }
   }
@@ -240,10 +242,10 @@ impl<V: Show + Clone + Eq + PartialOrd + Hash> Octree<V> {
       Empty => HashSet::new(),
       Leaf(ref vs) => {
         let mut r = HashSet::new();
-        for &(bs, ref v) in vs.iter() {
-          if *v != self_v {
+        for &(bs, v) in vs.iter() {
+          if v != self_v {
             if bounds.intersects(&bs) {
-              r.insert(v.clone());
+              r.insert(v);
             }
           }
         }
@@ -254,13 +256,13 @@ impl<V: Show + Clone + Eq + PartialOrd + Hash> Octree<V> {
         let mid = middle(&self.bounds, self.dimension);
         let (low_bounds, high_bounds) = split(mid, self.dimension, *bounds);
         low_bounds.map(|bs| {
-          for ref v in b.low_tree.intersect_details(&bs, self_v.clone()).iter() {
-            r.insert((*v).clone());
+          for v in b.low_tree.intersect_details(&bs, self_v).iter() {
+            r.insert(*v);
           }
         });
         high_bounds.map(|bs| {
-          for ref v in b.high_tree.intersect_details(&bs, self_v.clone()).iter() {
-            r.insert((*v).clone());
+          for v in b.high_tree.intersect_details(&bs, self_v).iter() {
+            r.insert(*v);
           }
         });
         r
@@ -273,13 +275,13 @@ impl<V: Show + Clone + Eq + PartialOrd + Hash> Octree<V> {
   // this tree, any children, or any relatives, starting the search from the
   // current tree. Uses equality comparison on V to ignore "same" objects.
   pub fn intersect_details_from(&self, bounds: &AABB, self_v: V) -> HashSet<V> {
-    self.on_ancestor(bounds, |t| t.intersect_details(bounds, self_v.clone()))
+    self.on_ancestor(bounds, |t| t.intersect_details(bounds, self_v))
   }
 
   // like insert, but before recursing downward, we recurse up the parents
   // until the bounds provided are inside the tree.
   fn insert_from(&mut self, bounds: AABB, v: V) -> *mut Octree<V> {
-    self.on_mut_ancestor(&bounds, |t| t.insert(bounds.clone(), v.clone()))
+    self.on_mut_ancestor(&bounds, |t| t.insert(bounds.clone(), v))
   }
 
   // TODO: merge neighbors when appropriate
@@ -296,18 +298,18 @@ impl<V: Show + Clone + Eq + PartialOrd + Hash> Octree<V> {
       },
       Branch(ref mut bs) => {
         let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, *bounds);
-        l.map(|low_half| bs.low_tree.remove(v.clone(), &low_half));
-        h.map(|high_half| bs.high_tree.remove(v.clone(), &high_half));
+        l.map(|low_half| bs.low_tree.remove(v, &low_half));
+        h.map(|high_half| bs.high_tree.remove(v, &high_half));
       }
     }
   }
 
   pub fn move(&mut self, v: V, bounds: &AABB, new_bounds: AABB) -> *mut Octree<V> {
-    self.remove(v.clone(), bounds);
+    self.remove(v, bounds);
     self.insert_from(new_bounds, v)
   }
 
-  pub fn cast_ray(&self, ray: &Ray, self_v: &V) -> Option<V> {
+  pub fn cast_ray(&self, ray: &Ray, self_v: V) -> Option<V> {
     match self.contents {
       Empty => {
         None
@@ -317,11 +319,11 @@ impl<V: Show + Clone + Eq + PartialOrd + Hash> Octree<V> {
         // this leaf; filter out the objects it doesn't intersect at all. Then
         // find the object with the lowest TOI.
         partial_min_by(
-          vs.iter().filter_map(|&(bounds, ref v)| {
-              if *v == *self_v {
+          vs.iter().filter_map(|&(bounds, v)| {
+              if v == self_v {
                 None
               } else {
-                bounds.toi_with_ray(ray, true).map(|x| (x, v.clone()))
+                bounds.toi_with_ray(ray, true).map(|x| (x, v))
               }
             }
           ),
