@@ -327,7 +327,7 @@ impl<V: Show + Copy + Eq + PartialOrd + Hash> Octree<V> {
               }
             }
           ),
-          |(_, v)| v
+          |(toi, _)| toi
         )
         .map(|(_, v)| v)
       },
