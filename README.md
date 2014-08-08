@@ -13,14 +13,16 @@ once this is a little more developed.
 It can be built with `cargo build`, which should grab dependencies
 automatically. `playform` can then be run from the `target` directory.
 
-The camera can be moved using `WASD` controls, as well as `Space` and `LShift`,
-and the view can be rotated using the camera or the arrow keys.
+The player can be moved using `WASD` controls, as well as `Space` and `LShift`,
+and the view can be rotated using the mouse or the arrow keys.
 Using the mouse to click on a block will cause it to disappear, and
 right-clicking will place a block of dirt.
+
+One mob spawns that will play a tag-lke game with you: once you touch it, it
+will follow you until it touches you, at which point it will stop again.
 
 ## Screenshots
 
 ![screenshot 1](/../screenshots/screenshots/screenshot1.png?raw=true)
 ![screenshot 2](/../screenshots/screenshots/screenshot2.png?raw=true)
 ![screenshot 3](/../screenshots/screenshots/screenshot3.png?raw=true)
-![screenshot 4](/../screenshots/screenshots/screenshot4.png?raw=true)
