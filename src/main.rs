@@ -227,14 +227,14 @@ struct BlockBuffers {
 }
 
 impl BlockBuffers {
-  pub unsafe fn new(gl: &GLContext, shader_program: &Rc<Shader>) -> BlockBuffers {
+  pub unsafe fn new(gl: &GLContext, color_shader: &Rc<Shader>) -> BlockBuffers {
     BlockBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
 
       triangles: GLBuffer::new(
         gl,
-        shader_program.clone(),
+        color_shader.clone(),
         [ vertex::AttribData { name: "position", size: 3 },
           vertex::AttribData { name: "in_color", size: 4 },
         ],
@@ -245,7 +245,7 @@ impl BlockBuffers {
 
       outlines: GLBuffer::new(
         gl,
-        shader_program.clone(),
+        color_shader.clone(),
         [ vertex::AttribData { name: "position", size: 3 },
           vertex::AttribData { name: "in_color", size: 4 },
         ],
@@ -310,14 +310,14 @@ struct MobBuffers {
 }
 
 impl MobBuffers {
-  pub unsafe fn new(gl: &GLContext, shader_program: &Rc<Shader>) -> MobBuffers {
+  pub unsafe fn new(gl: &GLContext, color_shader: &Rc<Shader>) -> MobBuffers {
     MobBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
 
       triangles: GLBuffer::new(
         gl,
-        shader_program.clone(),
+        color_shader.clone(),
         [ vertex::AttribData { name: "position", size: 3 },
           vertex::AttribData { name: "in_color", size: 4 },
         ],
@@ -396,8 +396,8 @@ pub struct App {
   lateral_rotation: f32, // in radians
   vertical_rotation: f32, // in radians
   // OpenGL shader "program" id.
-  shader_program: Option<Rc<Shader>>,
-  texture_shader: Option<Rc<Shader>>,
+  color_shader: Option<Rc<Shader>>,
+  hud_shader: Option<Rc<Shader>>,
 
   // which mouse buttons are currently pressed
   mouse_buttons_pressed: Vec<piston::mouse::Button>,
@@ -494,7 +494,11 @@ impl Game<GameWindowSDL2> for App {
       self.rotate_lateral(rx);
       self.rotate_vertical(ry);
 
-      mouse::warp_mouse_in_window(&w.render_window.window, WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2);
+      mouse::warp_mouse_in_window(
+        &w.render_window.window,
+        WINDOW_WIDTH as i32 / 2,
+        WINDOW_HEIGHT as i32 / 2
+      );
     })
   }
 
@@ -532,6 +536,7 @@ impl Game<GameWindowSDL2> for App {
       gl.enable_alpha_blending();
       gl.enable_smooth_lines();
       gl.enable_depth_buffer();
+      gl.set_background_color(SKY_COLOR);
 
       match gl::GetError() {
         gl::NO_ERROR => {},
@@ -548,22 +553,13 @@ impl Game<GameWindowSDL2> for App {
         gl::NO_ERROR => {},
         err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
       }
+
       self.translate_player(Vec3::new(0.0, 4.0, 10.0));
-
-      match gl::GetError() {
-        gl::NO_ERROR => {},
-        err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
-      }
-
-      match gl::GetError() {
-        gl::NO_ERROR => {},
-        err => fail!("OpenGL error 0x{:x}", err),
-      }
 
       unsafe {
         self.line_of_sight = Some(GLBuffer::new(
             &self.gl,
-            self.shader_program.get_ref().clone(),
+            self.color_shader.get_ref().clone(),
             [ vertex::AttribData { name: "position", size: 3 },
               vertex::AttribData { name: "in_color", size: 4 },
             ],
@@ -572,12 +568,12 @@ impl Game<GameWindowSDL2> for App {
             Lines
         ));
 
-        self.block_buffers = Some(BlockBuffers::new(&self.gl, self.shader_program.get_ref()));
-        self.mob_buffers = Some(MobBuffers::new(&self.gl, self.shader_program.get_ref()));
+        self.block_buffers = Some(BlockBuffers::new(&self.gl, self.color_shader.get_ref()));
+        self.mob_buffers = Some(MobBuffers::new(&self.gl, self.color_shader.get_ref()));
 
         self.hud_triangles = Some(GLBuffer::new(
             &self.gl,
-            self.shader_program.get_ref().clone(),
+            self.color_shader.get_ref().clone(),
             [ vertex::AttribData { name: "position", size: 3 },
               vertex::AttribData { name: "in_color", size: 4 },
             ],
@@ -588,7 +584,7 @@ impl Game<GameWindowSDL2> for App {
 
         self.texture_triangles = Some(GLBuffer::new(
             &self.gl,
-            self.texture_shader.get_ref().clone(),
+            self.hud_shader.get_ref().clone(),
             [ vertex::AttribData { name: "position", size: 2 },
             vertex::AttribData { name: "texture_position", size: 2 },
             ],
@@ -769,7 +765,6 @@ impl Game<GameWindowSDL2> for App {
     time!(&self.timers, "render", || {
       let gl = &mut self.gl;
 
-      gl.set_background_color(SKY_COLOR);
       gl.clear_buffer();
 
       // draw the world
@@ -781,11 +776,11 @@ impl Game<GameWindowSDL2> for App {
       self.mob_buffers.get_ref().draw(gl);
 
       // draw the hud
-      self.shader_program.get_mut_ref().set_camera(gl, &self.hud_camera);
+      self.color_shader.get_mut_ref().set_camera(gl, &self.hud_camera);
       self.hud_triangles.get_ref().draw(gl);
 
       // draw textures
-      gl.use_shader(self.texture_shader.get_ref().deref(), |gl| {
+      gl.use_shader(self.hud_shader.get_ref().deref(), |gl| {
         for (i, tex) in self.textures.iter().enumerate() {
           tex.bind_2d(gl);
           let verticies_in_a_square = 6;
@@ -839,8 +834,8 @@ impl App {
       },
       lateral_rotation: 0.0,
       vertical_rotation: 0.0,
-      shader_program: None,
-      texture_shader: None,
+      color_shader: None,
+      hud_shader: None,
       mouse_buttons_pressed: Vec::new(),
       font: fontloader::FontLoader::new(),
       timers: stopwatch::TimerSet::new(),
@@ -850,8 +845,8 @@ impl App {
 
   /// Build all of our program's shaders.
   fn set_up_shaders(&mut self, gl: &mut GLContext) {
-    self.texture_shader = Some(Rc::new(Shader::new(gl, ID_VS_SRC, TX_SRC)));
-    self.shader_program = Some(Rc::new(Shader::new(gl, VS_SRC, FS_SRC)));
+    self.hud_shader = Some(Rc::new(Shader::new(gl, ID_VS_SRC, TX_SRC)));
+    self.color_shader = Some(Rc::new(Shader::new(gl, VS_SRC, FS_SRC)));
 
     match gl::GetError() {
       gl::NO_ERROR => {},
@@ -971,7 +966,7 @@ impl App {
   /// Updates the projetion matrix with all our movements.
   pub fn update_projection(&self, gl: &mut GLContext) {
     time!(&self.timers, "update.projection", || {
-      self.shader_program.get_ref().set_camera(gl, &self.player.camera);
+      self.color_shader.get_ref().set_camera(gl, &self.player.camera);
 
       match gl::GetError() {
         gl::NO_ERROR => {},
@@ -1263,7 +1258,7 @@ pub fn main() {
       &mut window,
       &GameIteratorSettings {
         updates_per_second: 30,
-        max_frames_per_second: 60,
+        max_frames_per_second: 30,
       });
   }
 
