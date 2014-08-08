@@ -415,9 +415,6 @@ impl Game<GameWindowSDL2> for App {
         piston::keyboard::D => {
           self.walk(Vec3::new(1.0, 0.0, 0.0));
         },
-        piston::keyboard::LShift => {
-          self.walk(Vec3::new(0.0, -1.0, 0.0));
-        },
         piston::keyboard::Space => {
           if !self.player.is_jumping {
             self.player.is_jumping = true;
@@ -465,9 +462,6 @@ impl Game<GameWindowSDL2> for App {
         },
         piston::keyboard::D => {
           self.walk(Vec3::new(-1.0, 0.0, 0.0));
-        },
-        piston::keyboard::LShift => {
-          self.walk(Vec3::new(0.0, 1.0, 0.0));
         },
         piston::keyboard::Space => {
           if self.player.is_jumping {
