@@ -199,8 +199,10 @@ pub struct Player {
   camera: Camera,
   // speed; units are world coordinates
   speed: Vec3<GLfloat>,
-  // acceleration; x/z units are relative to player facing
+  // acceleration; units are world coordinates
   accel: Vec3<GLfloat>,
+  // acceleration; x/z units are relative to player facing
+  walk_accel: Vec3<GLfloat>,
   // this is depleted as we jump and replenished as we stand.
   jump_fuel: uint,
   // are we currently trying to jump? (e.g. holding the key).
@@ -698,10 +700,11 @@ impl Game<GameWindowSDL2> for App {
           self.translate_player(Vec3::new(0.0, 0.0, dP.z));
         }
 
-        let dV =
-            glw::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation)
-            .rmul(&self.player.accel);
-        self.player.speed = self.player.speed + dV;
+        let y_axis = Vec3::new(0.0, 1.0, 0.0);
+        let walk_v =
+            glw::from_axis_angle3(y_axis, self.lateral_rotation)
+            .rmul(&self.player.walk_accel);
+        self.player.speed = self.player.speed + walk_v + self.player.accel;
         // friction
         self.player.speed = self.player.speed * Vec3::new(0.7, 0.99, 0.7 as f32);
       });
@@ -813,6 +816,7 @@ impl App {
         camera: Camera::unit(),
         speed: Vec3::new(0.0, 0.0, 0.0),
         accel: Vec3::new(0.0, -0.1, 0.0),
+        walk_accel: Vec3::new(0.0, 0.0, 0.0),
         jump_fuel: 0,
         is_jumping: false,
         id: Id(0),
@@ -1073,7 +1077,7 @@ impl App {
 
   /// Changes the camera's acceleration by the given `da`.
   fn walk(&mut self, da: Vec3<GLfloat>) {
-    self.player.accel = self.player.accel + da * 0.2 as GLfloat;
+    self.player.walk_accel = self.player.walk_accel + da * 0.2 as GLfloat;
   }
 
   /// Move an entity by some amount, returning the collisions that occur.
