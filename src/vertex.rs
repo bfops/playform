@@ -17,7 +17,7 @@ pub struct ColoredVertex {
 #[test]
 fn check_vertex_size() {
   assert_eq!(mem::size_of::<ColoredVertex>(), 7*4);
-  assert_eq!(mem::size_of::<TextureVertex>(), 4*4);
+  assert_eq!(mem::size_of::<TextureVertex>(), 5*4);
 }
 
 impl ColoredVertex {
@@ -36,14 +36,12 @@ impl ColoredVertex {
 }
 
 #[deriving(Clone, Copy)]
-/// A point on a texture, with both a screen position and a texture position.
+/// A point on a texture, with both a world position and a texture position.
 ///
-/// The screen position is from [-1, 1], and the texture position is [0, 1].
-/// This is opengl's fault, not mine. Don't shoot the messenger.
+/// The texture position is [0, 1].
 pub struct TextureVertex {
-  /// The position of this vertex on the screen. The range of valid values
-  /// in each dimension is [-1, 1].
-  pub screen_position:  Vec2<GLfloat>,
+  /// The position of this vertex in the world.
+  pub world_position:  Vec3<GLfloat>,
 
   /// The position of this vertex on a texture. The range of valid values
   /// in each dimension is [0, 1].
@@ -51,7 +49,8 @@ pub struct TextureVertex {
 }
 
 impl TextureVertex {
-  /// Generates two textured triangles, representing a square in 2D space.
+  /// Generates two textured triangles, representing a square in 2D space,
+  /// at z = 0.
   /// The bounds of the square is represented by `b`.
   ///
   /// The coordinates on the texture will implicitly be the "whole thing".
@@ -59,7 +58,7 @@ impl TextureVertex {
   pub fn square(min: Vec2<GLfloat>, max: Vec2<GLfloat>) -> [TextureVertex, ..6] {
     let vtx = |x, y, tx, ty| {
         TextureVertex {
-          screen_position:  Vec2::new(x, y),
+          world_position:  Vec3::new(x, y, 0.0),
           texture_position: Vec2::new(tx, ty),
         }
       };

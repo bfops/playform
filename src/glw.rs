@@ -192,8 +192,10 @@ impl<T: Clone> GLBuffer<T> {
     }
 
     unsafe {
-      // Check that the attribs are sized correctly.
-      assert_eq!(offset, mem::size_of::<T>() as int);
+      assert!(
+        offset == mem::size_of::<T>() as int,
+        "GLBuffer attribs incorrectly sized"
+      );
 
       gl::BufferData(
         gl::ARRAY_BUFFER,
@@ -221,6 +223,7 @@ impl<T: Clone> GLBuffer<T> {
     }
   }
 
+  #[allow(dead_code)]
   /// Analog of vec::Vector::swap_remove`, but for GLBuffer data.
   pub fn swap_remove(&mut self, _gl: &GLContext, i: uint) {
     let i = i * self.t_span;
@@ -265,7 +268,7 @@ impl<T: Clone> GLBuffer<T> {
   pub fn flush(&mut self, _gl: &GLContext) {
     assert!(self.buffer.len() % self.t_span == 0);
     if self.buffer.len() > 0 {
-      self.update(_gl, self.length / self.t_span, self.buffer.slice(0, self.buffer.len()));
+      self.update(_gl, self.length / self.t_span, self.buffer.as_slice());
 
       self.length += self.buffer.len();
       self.buffer.clear();
@@ -285,7 +288,7 @@ impl<T: Clone> GLBuffer<T> {
           gl::ARRAY_BUFFER,
           (byte_size * idx * self.t_span) as i64,
           (byte_size * vs.len()) as i64,
-          aligned_slice_to_ptr(vs.slice(0, vs.len()), mem::size_of::<GLfloat>())
+          aligned_slice_to_ptr(vs.as_slice(), mem::size_of::<GLfloat>())
       );
     }
 
@@ -530,7 +533,7 @@ impl GLContext {
         gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
         let mut buf = Vec::from_elem(len as uint - 1, 0u8); // subtract 1 to skip the trailing null character
         gl::GetShaderInfoLog(shader, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
-        fail!("{}", str::from_utf8(buf.slice(0, buf.len())).expect("ShaderInfoLog not valid utf8"));
+        fail!("{}", str::from_utf8(buf.as_slice()).expect("ShaderInfoLog not valid utf8"));
       }
     }
     shader
@@ -556,7 +559,7 @@ impl GLContext {
             gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
             let mut buf = Vec::from_elem(len as uint - 1, 0u8); // subtract 1 to skip the trailing null character
             gl::GetProgramInfoLog(program, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
-            fail!("{}", str::from_utf8(buf.slice(0, buf.len())).expect("ProgramInfoLog not valid utf8"));
+            fail!("{}", str::from_utf8(buf.as_slice()).expect("ProgramInfoLog not valid utf8"));
         }
     }
 

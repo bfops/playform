@@ -13,11 +13,11 @@ use sdl2_game_window::GameWindowSDL2;
 use sdl2::mouse;
 use stopwatch;
 use std::collections::HashMap;
-use std::iter::{range,range_inclusive};
 use std::f32::consts::PI;
+use std::iter::{range,range_inclusive};
 use std::rc::Rc;
 use vertex;
-use vertex::{ColoredVertex,TextureVertex};
+use vertex::{ColoredVertex, TextureVertex};
 
 // TODO(cgaebel): How the hell do I get this to be exported from `mod stopwatch`?
 macro_rules! time(
@@ -56,9 +56,8 @@ static VERTICES_PER_LINE: uint = 2;
 static TRIANGLE_VERTICES_PER_BOX: uint = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
 static LINE_VERTICES_PER_BOX: uint = LINES_PER_BOX * VERTICES_PER_LINE;
 
-#[deriving(Clone)]
-#[allow(missing_doc)]
-pub enum BlockType {
+#[deriving(Copy, PartialEq, Eq, Hash)]
+enum BlockType {
   Grass,
   Dirt,
   Stone,
@@ -74,7 +73,7 @@ impl BlockType {
   }
 }
 
-#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
+#[deriving(Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
 pub struct Id(u32);
 
 impl Add<Id, Id> for Id {
@@ -110,7 +109,7 @@ fn to_triangles(bounds: &AABB, c: &Color4<GLfloat>) -> [ColoredVertex, ..VERTICE
   let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
   let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
 
-  let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> ColoredVertex {
+  let vtx = |x, y, z| {
     ColoredVertex {
       position: Vec3::new(x, y, z),
       color: c.clone(),
@@ -121,42 +120,33 @@ fn to_triangles(bounds: &AABB, c: &Color4<GLfloat>) -> [ColoredVertex, ..VERTICE
   // negative as depth from the viewer increases.
   [
     // front
-    vtx(x2, y1, z2), vtx(x2, y2, z2), vtx(x1, y2, z2),
-    vtx(x2, y1, z2), vtx(x1, y2, z2), vtx(x1, y1, z2),
+    vtx(x1, y1, z2), vtx(x2, y2, z2), vtx(x1, y2, z2),
+    vtx(x1, y1, z2), vtx(x2, y1, z2), vtx(x2, y2, z2),
     // left
-    vtx(x1, y1, z2), vtx(x1, y2, z2), vtx(x1, y2, z1),
-    vtx(x1, y1, z2), vtx(x1, y2, z1), vtx(x1, y1, z1),
+    vtx(x1, y1, z1), vtx(x1, y2, z2), vtx(x1, y2, z1),
+    vtx(x1, y1, z1), vtx(x1, y1, z2), vtx(x1, y2, z2),
     // top
-    vtx(x1, y2, z1), vtx(x1, y2, z2), vtx(x2, y2, z2),
     vtx(x1, y2, z1), vtx(x2, y2, z2), vtx(x2, y2, z1),
+    vtx(x1, y2, z1), vtx(x1, y2, z2), vtx(x2, y2, z2),
     // back
-    vtx(x1, y1, z1), vtx(x1, y2, z1), vtx(x2, y2, z1),
     vtx(x1, y1, z1), vtx(x2, y2, z1), vtx(x2, y1, z1),
+    vtx(x1, y1, z1), vtx(x1, y2, z1), vtx(x2, y2, z1),
     // right
-    vtx(x2, y1, z1), vtx(x2, y2, z1), vtx(x2, y2, z2),
     vtx(x2, y1, z1), vtx(x2, y2, z2), vtx(x2, y1, z2),
+    vtx(x2, y1, z1), vtx(x2, y2, z1), vtx(x2, y2, z2),
     // bottom
-    vtx(x1, y1, z2), vtx(x1, y1, z1), vtx(x2, y1, z1),
-    vtx(x1, y1, z2), vtx(x2, y1, z1), vtx(x2, y1, z2),
+    vtx(x1, y1, z1), vtx(x2, y1, z2), vtx(x1, y1, z2),
+    vtx(x1, y1, z1), vtx(x2, y1, z1), vtx(x2, y1, z2),
   ]
 }
 
-#[deriving(Clone)]
 /// A voxel-ish block in the game world.
 pub struct Block {
-  // bounds of the Block
   block_type: BlockType,
   id: Id,
 }
 
 impl Block {
-  // Construct the faces of the box as triangles for rendering,
-  // Triangle vertices are in CCW order when viewed from the outside of
-  // the cube, for rendering purposes.
-  fn to_triangles(block: &Block, bounds: &AABB) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
-    to_triangles(bounds, &block.block_type.to_color())
-  }
-
   // Construct outlines for this Block, to sharpen the edges.
   fn to_outlines(bounds: &AABB) -> [ColoredVertex, ..VERTICES_PER_LINE * LINES_PER_BOX] {
     // distance from the block to construct the bounding outlines.
@@ -397,7 +387,7 @@ pub struct App {
   vertical_rotation: f32, // in radians
   // OpenGL shader "program" id.
   color_shader: Option<Rc<Shader>>,
-  hud_shader: Option<Rc<Shader>>,
+  texture_shader: Option<Rc<Shader>>,
 
   // which mouse buttons are currently pressed
   mouse_buttons_pressed: Vec<piston::mouse::Button>,
@@ -584,9 +574,9 @@ impl Game<GameWindowSDL2> for App {
 
         self.texture_triangles = Some(GLBuffer::new(
             &self.gl,
-            self.hud_shader.get_ref().clone(),
-            [ vertex::AttribData { name: "position", size: 2 },
-            vertex::AttribData { name: "texture_position", size: 2 },
+            self.texture_shader.get_ref().clone(),
+            [ vertex::AttribData { name: "position", size: 3 },
+              vertex::AttribData { name: "texture_position", size: 2 },
             ],
             VERTICES_PER_TRIANGLE,
             8,
@@ -660,7 +650,7 @@ impl Game<GameWindowSDL2> for App {
               let bounds = expect_id!(self.physics.find(&self.next_load_id));
               self.block_buffers.get_mut_ref().push(
                 block.id,
-                Block::to_triangles(block, bounds),
+                to_triangles(bounds, &block.block_type.to_color()),
                 Block::to_outlines(bounds)
               );
             });
@@ -768,7 +758,9 @@ impl Game<GameWindowSDL2> for App {
       gl.clear_buffer();
 
       // draw the world
-      self.update_projection(gl);
+      self.color_shader.get_mut_ref().set_camera(gl, &self.player.camera);
+      self.texture_shader.get_mut_ref().set_camera(gl, &self.player.camera);
+
       self.line_of_sight.get_ref().draw(gl);
       self.block_buffers.get_ref().draw(gl);
 
@@ -777,10 +769,11 @@ impl Game<GameWindowSDL2> for App {
 
       // draw the hud
       self.color_shader.get_mut_ref().set_camera(gl, &self.hud_camera);
+      self.texture_shader.get_mut_ref().set_camera(gl, &self.hud_camera);
       self.hud_triangles.get_ref().draw(gl);
 
       // draw textures
-      gl.use_shader(self.hud_shader.get_ref().deref(), |gl| {
+      gl.use_shader(self.texture_shader.get_ref().deref(), |gl| {
         for (i, tex) in self.textures.iter().enumerate() {
           tex.bind_2d(gl);
           let verticies_in_a_square = 6;
@@ -835,7 +828,7 @@ impl App {
       lateral_rotation: 0.0,
       vertical_rotation: 0.0,
       color_shader: None,
-      hud_shader: None,
+      texture_shader: None,
       mouse_buttons_pressed: Vec::new(),
       font: fontloader::FontLoader::new(),
       timers: stopwatch::TimerSet::new(),
@@ -845,7 +838,7 @@ impl App {
 
   /// Build all of our program's shaders.
   fn set_up_shaders(&mut self, gl: &mut GLContext) {
-    self.hud_shader = Some(Rc::new(Shader::new(gl, ID_VS_SRC, TX_SRC)));
+    self.texture_shader = Some(Rc::new(Shader::new(gl, TX_VS_SRC, TX_FS_SRC)));
     self.color_shader = Some(Rc::new(Shader::new(gl, VS_SRC, FS_SRC)));
 
     match gl::GetError() {
@@ -963,18 +956,6 @@ impl App {
     self.mouse_buttons_pressed.iter().any(|x| *x == b)
   }
 
-  /// Updates the projetion matrix with all our movements.
-  pub fn update_projection(&self, gl: &mut GLContext) {
-    time!(&self.timers, "update.projection", || {
-      self.color_shader.get_ref().set_camera(gl, &self.player.camera);
-
-      match gl::GetError() {
-        gl::NO_ERROR => {},
-        err => fail!("OpenGL error 0x{:x} in update_projection", err),
-      }
-    });
-  }
-
   fn get_bounds(&self, id: Id) -> &AABB {
     expect_id!(self.physics.find(&id))
   }
@@ -1035,6 +1016,7 @@ impl App {
         block_type: block_type,
         id: Id(0),
       };
+
       // hacky solution to make sure blocks have "breathing room" and don't
       // collide with their neighbours.
       let epsilon: GLfloat = 0.00001;
@@ -1214,17 +1196,18 @@ void main() {
   frag_color = color;
 }";
 
-static ID_VS_SRC: &'static str =
+static TX_VS_SRC: &'static str =
 r"#version 330 core
-in  vec2 position;
+uniform mat4 projection_matrix;
+in  vec3 position;
 in  vec2 texture_position;
 out vec2 tex_position;
 void main() {
   tex_position = texture_position;
-  gl_Position = vec4(position, -1.0, 1.0);
+  gl_Position = projection_matrix * vec4(position, 1.0);
 }";
 
-static TX_SRC: &'static str =
+static TX_FS_SRC: &'static str =
 r"#version 330 core
 in  vec2 tex_position;
 out vec4 frag_color;
