@@ -292,6 +292,9 @@ impl<T: Clone> GLBuffer<T> {
       );
     }
 
+    gl::Flush();
+    gl::Finish();
+
     match gl::GetError() {
       gl::NO_ERROR => {},
       err => fail!("OpenGL error 0x{:x} in GLBuffer::update", err),
