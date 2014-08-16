@@ -40,9 +40,6 @@ macro_rules! expect_id(
 static WINDOW_WIDTH:  uint = 800;
 static WINDOW_HEIGHT: uint = 600;
 
-// much bigger than 200000 starts segfaulting.
-static MAX_WORLD_SIZE: uint = 100000;
-
 static MAX_JUMP_FUEL: uint = 4;
 
 // how many blocks to load during every update step
@@ -143,6 +140,8 @@ fn to_triangles(bounds: &AABB, c: &Color4<GLfloat>) -> [ColoredVertex, ..VERTICE
 /// A voxel-ish block in the game world.
 pub struct Block {
   block_type: BlockType,
+  triangles: GLBuffer<ColoredVertex>,
+  outlines: GLBuffer<ColoredVertex>,
   id: Id,
 }
 
@@ -179,6 +178,14 @@ impl Block {
       vtx(x2, y2, z1), vtx(x2, y2, z2),
     ]
   }
+
+  pub fn draw(&self, gl: &GLContext) {
+    self.triangles.draw(gl);
+  }
+
+  pub fn draw_outlines(&self, gl: &GLContext) {
+    self.outlines.draw(gl);
+  }
 }
 
 fn center(bounds: &AABB) -> Vec3<GLfloat> {
@@ -206,82 +213,6 @@ pub struct Mob {
   speed: Vec3<GLfloat>,
   behavior: Behavior,
   id: Id,
-}
-
-struct BlockBuffers {
-  id_to_index: HashMap<Id, uint>,
-  index_to_id: Vec<Id>,
-
-  triangles: GLBuffer<ColoredVertex>,
-  outlines: GLBuffer<ColoredVertex>,
-}
-
-impl BlockBuffers {
-  pub unsafe fn new(gl: &GLContext, color_shader: &Rc<Shader>) -> BlockBuffers {
-    BlockBuffers {
-      id_to_index: HashMap::new(),
-      index_to_id: Vec::new(),
-
-      triangles: GLBuffer::new(
-        gl,
-        color_shader.clone(),
-        [ vertex::AttribData { name: "position", size: 3 },
-          vertex::AttribData { name: "in_color", size: 4 },
-        ],
-        TRIANGLE_VERTICES_PER_BOX,
-        MAX_WORLD_SIZE,
-        Triangles
-      ),
-
-      outlines: GLBuffer::new(
-        gl,
-        color_shader.clone(),
-        [ vertex::AttribData { name: "position", size: 3 },
-          vertex::AttribData { name: "in_color", size: 4 },
-        ],
-        LINE_VERTICES_PER_BOX,
-        MAX_WORLD_SIZE,
-        Lines
-      ),
-    }
-  }
-
-  pub fn push(
-    &mut self,
-    id: Id,
-    triangles: &[ColoredVertex],
-    outlines: &[ColoredVertex]
-  ) {
-    self.id_to_index.insert(id, self.index_to_id.len());
-    self.index_to_id.push(id);
-
-    self.triangles.push(triangles);
-    self.outlines.push(outlines);
-  }
-
-  pub fn flush(&mut self, gl: &GLContext) {
-    self.triangles.flush(gl);
-    self.outlines.flush(gl);
-  }
-
-  pub fn swap_remove(&mut self, gl: &GLContext, id: Id) {
-    let idx = *expect_id!(self.id_to_index.find(&id));
-    let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
-    self.index_to_id.swap_remove(idx).expect("ran out of blocks");
-    self.triangles.swap_remove(gl, idx);
-    self.id_to_index.remove(&id);
-
-    self.outlines.swap_remove(gl, idx);
-
-    if id != swapped_id {
-      self.id_to_index.insert(swapped_id, idx);
-    }
-  }
-
-  pub fn draw(&self, gl: &GLContext) {
-    self.triangles.draw(gl);
-    self.outlines.draw(gl);
-  }
 }
 
 #[inline]
@@ -377,7 +308,6 @@ pub struct App {
   // next block id to assign
   next_id: Id,
   // OpenGL buffers
-  block_buffers: Option<BlockBuffers>,
   hud_triangles: Option<GLBuffer<ColoredVertex>>,
   mob_buffers: Option<MobBuffers>,
   texture_triangles: Option<GLBuffer<TextureVertex>>,
@@ -558,7 +488,6 @@ impl Game<GameWindowSDL2> for App {
             Lines
         ));
 
-        self.block_buffers = Some(BlockBuffers::new(&self.gl, self.color_shader.get_ref()));
         self.mob_buffers = Some(MobBuffers::new(&self.gl, self.color_shader.get_ref()));
 
         self.hud_triangles = Some(GLBuffer::new(
@@ -646,20 +575,17 @@ impl Game<GameWindowSDL2> for App {
         time!(&self.timers, "update.load", || {
           let mut i = 0;
           while i < LOAD_SPEED && self.next_load_id < self.next_id {
-            self.blocks.find(&self.next_load_id).map(|block| {
+            self.blocks.find_mut(&self.next_load_id).map(|block| {
               let bounds = expect_id!(self.physics.find(&self.next_load_id));
-              self.block_buffers.get_mut_ref().push(
-                block.id,
-                to_triangles(bounds, &block.block_type.to_color()),
-                Block::to_outlines(bounds)
-              );
+              block.triangles.push(to_triangles(bounds, &block.block_type.to_color()));
+              block.triangles.flush(gl);
+              block.outlines.push(Block::to_outlines(bounds));
+              block.outlines.flush(gl);
             });
 
             self.next_load_id = self.next_load_id + Id(1);
             i += 1;
           }
-
-          self.block_buffers.get_mut_ref().flush(gl);
         });
       }
 
@@ -720,7 +646,7 @@ impl Game<GameWindowSDL2> for App {
         time!(&self.timers, "update.delete_block", || {
           self.entity_in_front().map(|(id, _)| {
             if self.blocks.contains_key(&id) {
-              self.remove_block(gl, &id);
+              self.remove_block(&id);
             }
           });
         })
@@ -762,7 +688,14 @@ impl Game<GameWindowSDL2> for App {
       self.texture_shader.get_mut_ref().set_camera(gl, &self.player.camera);
 
       self.line_of_sight.get_ref().draw(gl);
-      self.block_buffers.get_ref().draw(gl);
+
+      for (_, block) in self.blocks.iter() {
+        block.draw(gl);
+      }
+
+      for (_, block) in self.blocks.iter() {
+        block.draw_outlines(gl);
+      }
 
       // draw mobs
       self.mob_buffers.get_ref().draw(gl);
@@ -783,6 +716,9 @@ impl Game<GameWindowSDL2> for App {
             verticies_in_a_square);
         }
       });
+
+      gl::Flush();
+      gl::Finish();
     })
   }
 }
@@ -814,7 +750,6 @@ impl App {
       // Start assigning block_ids at 1.
       // block_id 0 corresponds to no block.
       next_id: Id(1),
-      block_buffers: None,
       mob_buffers: None,
       hud_triangles: None,
       texture_triangles: None,
@@ -1011,10 +946,32 @@ impl App {
   }
 
   fn place_block(&mut self, min: Vec3<GLfloat>, max: Vec3<GLfloat>, block_type: BlockType, check_collisions: bool) {
-    time!(&self.timers, "place_block", || {
+    time!(&self.timers, "place_block", || unsafe {
       let mut block = Block {
         block_type: block_type,
         id: Id(0),
+
+        triangles: GLBuffer::new(
+          &self.gl,
+          self.color_shader.get_ref().clone(),
+          [ vertex::AttribData { name: "position", size: 3 },
+            vertex::AttribData { name: "in_color", size: 4 },
+          ],
+          TRIANGLE_VERTICES_PER_BOX,
+          1,
+          Triangles
+        ),
+
+        outlines: GLBuffer::new(
+          &self.gl,
+          self.color_shader.get_ref().clone(),
+          [ vertex::AttribData { name: "position", size: 3 },
+            vertex::AttribData { name: "in_color", size: 4 },
+          ],
+          LINE_VERTICES_PER_BOX,
+          1,
+          Lines
+        ),
       };
 
       // hacky solution to make sure blocks have "breathing room" and don't
@@ -1038,7 +995,7 @@ impl App {
     })
   }
 
-  fn remove_block(&mut self, gl: &GLContext, id: &Id) {
+  fn remove_block(&mut self, id: &Id) {
     {
       let bounds = expect_id!(self.physics.find(id));
       let &octree_location = self.locations.find(id).expect("no octree_location to remove");
@@ -1048,7 +1005,6 @@ impl App {
       }
     }
     self.blocks.remove(id);
-    self.block_buffers.get_mut_ref().swap_remove(gl, *id);
     self.physics.remove(id);
   }
 
