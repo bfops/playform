@@ -24,6 +24,7 @@ mod fontloader;
 mod glw;
 mod main;
 mod octree;
+mod physics;
 mod stopwatch;
 mod ttf;
 mod vertex;

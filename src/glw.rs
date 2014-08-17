@@ -100,6 +100,8 @@ unsafe fn aligned_slice_to_ptr<T>(vs: &[T], alignment: uint) -> *const c95::c_vo
   vs_as_slice.data as *const c95::c_void
 }
 
+// TODO: Don't 1-1 vertex array objects with vertex buffers
+
 /// A fixed-capacity array of GLfloat-based structures passed to OpenGL.
 pub struct GLBuffer<T> {
   vertex_array: u32,

@@ -7,8 +7,6 @@ use std::hash::Hash;
 use std::mem;
 use std::ptr::RawPtr;
 
-use std::fmt::Show;
-
 type F = f32;
 
 fn length(bounds: &AABB, d: Dimension) -> F {
@@ -96,7 +94,7 @@ pub struct Octree<V> {
   contents: OctreeContents<V>,
 }
 
-impl<V: Show + Copy + Eq + PartialOrd + Hash> Octree<V> {
+impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   pub fn new(bounds: &AABB) -> Octree<V> {
     Octree {
       parent: RawPtr::null(),
