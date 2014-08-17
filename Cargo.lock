@@ -6,6 +6,7 @@ dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra#314f0c0043f4df3968d0c4049f1d733d174cd883)",
  "ncollide3df32 0.1.0 (git+https://github.com/sebcrozet/ncollide#cb993ca2d3f46688acc7043fa4ae7f12cad5a908)",
  "piston 0.0.0 (git+https://github.com/PistonDevelopers/piston#8b814ca5d1c62408a896c00979f294591f2df5e7)",
+ "png 0.0.1 (git+https://github.com/bfops/rust-png#d9bb3b52349a0962368e8df2a08682dcab58bb5e)",
  "sdl2_game_window 0.0.0 (git+https://github.com/PistonDevelopers/sdl2_game_window#d2d25650d431af4f513fbfd4c37305a935f077ac)",
 ]
 
@@ -80,6 +81,11 @@ source = "git+https://github.com/PistonDevelopers/piston#8b814ca5d1c62408a896c00
 dependencies = [
  "vecmath 0.0.0 (git+https://github.com/PistonDevelopers/vecmath#b56e2f23e04f2c4674647463c1fea276fec842c3)",
 ]
+
+[[package]]
+name = "png"
+version = "0.0.1"
+source = "git+https://github.com/bfops/rust-png#d9bb3b52349a0962368e8df2a08682dcab58bb5e"
 
 [[package]]
 name = "render"

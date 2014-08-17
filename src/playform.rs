@@ -15,6 +15,7 @@ extern crate libc;
 extern crate nalgebra;
 extern crate ncollide3df32;
 extern crate piston;
+extern crate png;
 extern crate sdl2;
 extern crate sdl2_game_window;
 

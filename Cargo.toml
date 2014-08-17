@@ -25,5 +25,8 @@ git = "https://github.com/PistonDevelopers/piston"
 [dependencies.nalgebra]
 git = "https://github.com/sebcrozet/nalgebra"
 
+[dependencies.png]
+git = "https://github.com/bfops/rust-png"
+
 [dependencies.ncollide3df32]
 git = "https://github.com/sebcrozet/ncollide"

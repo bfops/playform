@@ -10,6 +10,7 @@ use piston::*;
 use gl;
 use glw;
 use glw::{Camera,GLfloat,Lines,Triangles,Shader,Texture,GLBuffer,GLContext,translation};
+use png;
 use sdl2_game_window::GameWindowSDL2;
 use sdl2::mouse;
 use stopwatch;
@@ -17,7 +18,10 @@ use std::cell;
 use std::collections::HashMap;
 use std::f32::consts::PI;
 use std::iter::{range,range_inclusive};
+use std::mem;
+use std::raw;
 use std::rc::Rc;
+use libc::types::common::c95::c_void;
 use vertex;
 use vertex::{ColoredVertex, TextureVertex};
 
@@ -60,16 +64,6 @@ enum BlockType {
   Grass,
   Dirt,
   Stone,
-}
-
-impl BlockType {
-  fn to_color(&self) -> Color4<GLfloat> {
-    match *self {
-      Grass => Color4::of_rgba(0.0, 0.5,  0.0, 1.0),
-      Dirt  => Color4::of_rgba(0.2, 0.15, 0.1, 1.0),
-      Stone => Color4::of_rgba(0.5, 0.5,  0.5, 1.0),
-    }
-  }
 }
 
 #[deriving(Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
@@ -141,8 +135,8 @@ fn to_triangles(bounds: &AABB, c: &Color4<GLfloat>) -> [ColoredVertex, ..VERTICE
 
 /// A voxel-ish block in the game world.
 pub struct Block {
-  block_type: BlockType,
-  triangles: GLBuffer<ColoredVertex>,
+  texture: Rc<Texture>,
+  triangles: GLBuffer<TextureVertex>,
   outlines: GLBuffer<ColoredVertex>,
   id: Id,
 }
@@ -181,7 +175,43 @@ impl Block {
     ]
   }
 
+  fn to_texture_triangles(bounds: &AABB) -> [TextureVertex, ..TRIANGLE_VERTICES_PER_BOX] {
+    let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
+    let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
+
+    let vtx = |x, y, z, tx, ty| {
+      TextureVertex {
+        world_position: Vec3::new(x, y, z),
+        texture_position: Vec2::new(tx, ty),
+      }
+    };
+
+    // Remember: x increases to the right, y increases up, and z becomes more
+    // negative as depth from the viewer increases.
+    [
+      // front
+      vtx(x1, y1, z2, 0.0, 0.50), vtx(x2, y2, z2, 0.25, 0.25), vtx(x1, y2, z2, 0.25, 0.50),
+      vtx(x1, y1, z2, 0.0, 0.50), vtx(x2, y1, z2, 0.0, 0.25), vtx(x2, y2, z2, 0.25, 0.25),
+      // left
+      vtx(x1, y1, z1, 0.75, 0.0), vtx(x1, y2, z2, 0.5, 0.25), vtx(x1, y2, z1, 0.5, 0.0),
+      vtx(x1, y1, z1, 0.75, 0.0), vtx(x1, y1, z2, 0.75, 0.25), vtx(x1, y2, z2, 0.5, 0.25),
+      // top
+      vtx(x1, y2, z1, 0.25, 0.25), vtx(x2, y2, z2, 0.5, 0.50), vtx(x2, y2, z1, 0.25, 0.50),
+      vtx(x1, y2, z1, 0.25, 0.25), vtx(x1, y2, z2, 0.5, 0.25), vtx(x2, y2, z2, 0.5, 0.50),
+      // back
+      vtx(x1, y1, z1, 0.75, 0.50), vtx(x2, y2, z1, 0.5, 0.25), vtx(x2, y1, z1, 0.75, 0.25),
+      vtx(x1, y1, z1, 0.75, 0.50), vtx(x1, y2, z1, 0.5, 0.50), vtx(x2, y2, z1, 0.5, 0.25),
+      // right
+      vtx(x2, y1, z1, 0.75, 0.75), vtx(x2, y2, z2, 0.5, 0.50), vtx(x2, y1, z2, 0.75, 0.50),
+      vtx(x2, y1, z1, 0.75, 0.75), vtx(x2, y2, z1, 0.5, 0.75), vtx(x2, y2, z2, 0.5, 0.50),
+      // bottom
+      vtx(x1, y1, z1, 0.75, 0.50), vtx(x2, y1, z2, 1.0, 0.25), vtx(x1, y1, z2, 1.0, 0.50),
+      vtx(x1, y1, z1, 0.75, 0.50), vtx(x2, y1, z1, 0.75, 0.25), vtx(x2, y1, z2, 1.0, 0.25),
+    ]
+  }
+
   pub fn draw(&self, gl: &GLContext) {
+    self.texture.bind_2d(gl);
     self.triangles.draw(gl);
   }
 
@@ -264,6 +294,7 @@ fn first_face(bounds: &AABB, ray: &Ray) -> uint {
 pub struct App {
   line_of_sight: Option<GLBuffer<ColoredVertex>>,
   physics: Physics<Id>,
+  block_textures: HashMap<BlockType, Rc<Texture>>,
   blocks: HashMap<Id, Block>,
   player: Player,
   mobs: HashMap<Id, cell::RefCell<Mob>>,
@@ -405,6 +436,8 @@ impl Game<GameWindowSDL2> for App {
     time!(&self.timers, "load", || {
       mouse::show_cursor(false);
 
+      self.load_block_textures();
+
       let playerId = self.alloc_id();
       self.player.id = playerId;
       let min = Vec3::new(0.0, 0.0, 0.0);
@@ -537,7 +570,7 @@ impl Game<GameWindowSDL2> for App {
               None => {},
               Some(block) => {
                 let bounds = expect_id!(self.physics.get_bounds(self.next_load_id));
-                block.triangles.push(to_triangles(bounds, &block.block_type.to_color()));
+                block.triangles.push(Block::to_texture_triangles(bounds));
                 block.triangles.flush(gl);
                 block.outlines.push(Block::to_outlines(bounds));
                 block.outlines.flush(gl);
@@ -704,6 +737,7 @@ impl App {
         bounds: HashMap::new(),
         locations: HashMap::new(),
       },
+      block_textures: HashMap::new(),
       blocks: HashMap::new(),
       player: Player {
         camera: Camera::unit(),
@@ -747,6 +781,33 @@ impl App {
     match gl::GetError() {
       gl::NO_ERROR => {},
       err => fail!("OpenGL error 0x{:x} in set_up_shaders", err),
+    }
+  }
+
+  fn load_block_textures(&mut self) {
+    for &(block_type, path) in [(Grass, "textures/grass.png"), (Stone, "textures/stone.png"), (Dirt, "textures/dirt.png")].iter() {
+      let img = match png::load_png(&Path::new(path)) {
+        Ok(i) => i,
+        Err(s) => fail!("Could not load png {}: {}", path, s)
+      };
+      if img.color_type != png::RGBA8 {
+        fail!("unsupported color type {:} in png", img.color_type);
+      }
+      println!("loaded rgba8 png file {}", path);
+
+      let texture = unsafe {
+        let mut texture = 0;
+        gl::GenTextures(1, &mut texture);
+        gl::BindTexture(gl::TEXTURE_2D, texture);
+        let pixels: raw::Slice<c_void> = mem::transmute(img.pixels.as_slice());
+        gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, img.width as i32, img.height as i32,
+                      0, gl::RGBA, gl::UNSIGNED_INT_8_8_8_8_REV, pixels.data);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+        texture
+      };
+
+      self.block_textures.insert(block_type, Rc::new(glw::Texture { id: texture }));
     }
   }
 
@@ -920,14 +981,14 @@ impl App {
   fn place_block(&mut self, min: Vec3<GLfloat>, max: Vec3<GLfloat>, block_type: BlockType, check_collisions: bool) {
     time!(&self.timers, "place_block", || unsafe {
       let mut block = Block {
-        block_type: block_type,
+        texture: self.block_textures.find(&block_type).expect("block texture not loaded").clone(),
         id: Id(0),
 
         triangles: GLBuffer::new(
           &self.gl,
-          self.color_shader.get_ref().clone(),
+          self.texture_shader.get_ref().clone(),
           [ vertex::AttribData { name: "position", size: 3 },
-            vertex::AttribData { name: "in_color", size: 4 },
+            vertex::AttribData { name: "texture_position", size: 2 },
           ],
           TRIANGLE_VERTICES_PER_BOX,
           1,
