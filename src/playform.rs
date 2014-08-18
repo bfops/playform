@@ -18,6 +18,7 @@ extern crate piston;
 extern crate png;
 extern crate sdl2;
 extern crate sdl2_game_window;
+extern crate shader_version;
 
 mod color;
 mod cstr_cache;

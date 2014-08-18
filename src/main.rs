@@ -6,13 +6,17 @@ use ncollide3df32::ray::{Ray, RayCast};
 use octree;
 use physics::Physics;
 use piston;
-use piston::*;
+use piston::{GameEvent,GameWindowSettings,GameIterator,GameIteratorSettings};
+use piston::{MouseMoveArgs,MousePressArgs,MouseReleaseArgs,KeyPressArgs,KeyReleaseArgs,UpdateArgs,RenderArgs};
+use piston::{Render,Update,KeyPress,KeyRelease,MousePress,MouseRelease,MouseMove};
 use gl;
+use gl::types::GLfloat;
 use glw;
-use glw::{Camera,GLfloat,Lines,Triangles,Shader,Texture,GLBuffer,GLContext,translation};
+use glw::{Camera,Lines,Triangles,Shader,Texture,GLBuffer,GLContext,translation};
 use png;
-use sdl2_game_window::GameWindowSDL2;
+use sdl2_game_window::{GameWindowSDL2};
 use sdl2::mouse;
+use shader_version::opengl::*;
 use stopwatch;
 use std::cell;
 use std::collections::HashMap;
@@ -24,6 +28,7 @@ use std::rc::Rc;
 use libc::types::common::c95::c_void;
 use vertex;
 use vertex::{ColoredVertex, TextureVertex};
+
 
 // TODO(cgaebel): How the hell do I get this to be exported from `mod stopwatch`?
 macro_rules! time(
@@ -321,7 +326,7 @@ pub struct App {
   gl: GLContext,
 }
 
-impl Game<GameWindowSDL2> for App {
+impl App {
   fn key_press(&mut self, _: &mut GameWindowSDL2, args: &KeyPressArgs) {
     time!(&self.timers, "event.key_press", || {
       match args.key {
@@ -410,7 +415,7 @@ impl Game<GameWindowSDL2> for App {
       self.rotate_vertical(ry);
 
       mouse::warp_mouse_in_window(
-        &w.render_window.window,
+        &w.window,
         WINDOW_WIDTH as i32 / 2,
         WINDOW_HEIGHT as i32 / 2
       );
@@ -427,7 +432,7 @@ impl Game<GameWindowSDL2> for App {
     swap_remove_first(&mut self.mouse_buttons_pressed, args.button)
   }
 
-  fn load(&mut self, _: &mut GameWindowSDL2) {
+  fn load(&mut self) {
     match gl::GetError() {
       gl::NO_ERROR => {},
       err => fail!("OpenGL error 0x{:x} in initialization", err),
@@ -721,9 +726,7 @@ impl Game<GameWindowSDL2> for App {
       gl::Finish();
     })
   }
-}
 
-impl App {
   /// Initializes an empty app.
   pub fn new(gl: GLContext) -> App {
     let world_bounds = AABB::new(
@@ -1088,11 +1091,45 @@ impl App {
   /// Return the "forward" axis (i.e. the z-axis rotated to match you).
   pub fn forward(&self) -> Vec3<GLfloat> {
     let y_axis = Vec3::new(0.0, 1.0, 0.0);
-    let transform = 
+    let transform =
       glw::from_axis_angle3(self.right(), self.vertical_rotation) *
       glw::from_axis_angle3(y_axis, self.lateral_rotation);
     let forward_orig = Vec3::new(0.0, 0.0, -1.0);
     return transform.rmul(&forward_orig);
+  }
+
+  /// Handles a game event.
+  fn event(&mut self, game_window: &mut GameWindowSDL2, event: &mut GameEvent) {
+    match *event {
+      Render(ref mut args) => self.render(game_window, args),
+      Update(ref mut args) => self.update(game_window, args),
+      KeyPress(ref args) => self.key_press(game_window, args),
+      KeyRelease(ref args) => self.key_release(game_window, args),
+      MousePress(ref args) => self.mouse_press(game_window, args),
+      MouseRelease(ref args) => self.mouse_release(game_window, args),
+      MouseMove(ref args) => self.mouse_move(game_window, args),
+      _ => {},
+    }
+  }
+
+  /// Executes a game loop.
+  fn run(&mut self, w: &mut GameWindowSDL2) {
+    self.load();
+
+    let mut game_iter =
+      GameIterator::new(
+        w,
+        &GameIteratorSettings {
+          updates_per_second: 30,
+          max_frames_per_second: 30,
+        });
+
+    loop {
+      match game_iter.next() {
+        None => break,
+        Some(mut e) => self.event(game_iter.game_window, &mut e)
+      }
+    }
   }
 }
 
@@ -1157,6 +1194,7 @@ pub fn main() {
   println!("starting");
 
   let mut window = GameWindowSDL2::new(
+    OpenGL_3_3,
     GameWindowSettings {
       title: "playform".to_string(),
       size: [WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32],
@@ -1170,12 +1208,7 @@ pub fn main() {
   gl.print_stats();
 
   unsafe {
-    App::new(gl).run(
-      &mut window,
-      &GameIteratorSettings {
-        updates_per_second: 30,
-        max_frames_per_second: 30,
-      });
+    App::new(gl).run(&mut window);
   }
 
   println!("finished!");

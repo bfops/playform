@@ -8,7 +8,6 @@ use libc::types::common::c95;
 use nalgebra::na::{Mat3, Mat4, Vec3, Eye, Outer};
 use gl;
 use gl::types::*;
-pub use gl::types::GLfloat;
 use std::mem;
 use std::ptr;
 use std::raw;
