@@ -1,4 +1,4 @@
-pub use color::Color4;
+use color::Color4;
 use fontloader;
 use ncollide3df32::bounding_volume::aabb::AABB;
 use nalgebra::na::{Vec2, Vec3, RMul, Norm};
@@ -308,26 +308,76 @@ pub struct Player {
 
 type Behavior = fn(&App, &mut Mob);
 
-// TODO: give MobBuffers make instead of giving each Mob its own buffers.
 pub struct Mob {
   speed: Vec3<f32>,
   behavior: Behavior,
-  triangles: GLBuffer<ColoredVertex>,
   id: Id,
 }
 
 impl Mob {
-  pub fn translate(&mut self, gl: &GLContext, physics: &mut Physics<Id>, v: Vec3<f32>) {
-    if expect_id!(physics.translate(self.id, v)) {
-      self.speed = self.speed - v;
+  pub fn translate(&mut self, gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut MobBuffers, dP: Vec3<GLfloat>) {
+    if expect_id!(physics.translate(self.id, dP)) {
+      self.speed = self.speed - dP;
     } else {
       let bounds = expect_id!(physics.get_bounds(self.id));
-      self.triangles.update(
+      mob_buffers.update(
         gl,
-        0,
+        self.id,
         to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
       );
     }
+  }
+}
+
+struct MobBuffers {
+  id_to_index: HashMap<Id, uint>,
+  index_to_id: Vec<Id>,
+
+  triangles: GLBuffer<ColoredVertex>,
+}
+
+impl MobBuffers {
+  pub unsafe fn new(gl: &GLContext, color_shader: &Rc<Shader>) -> MobBuffers {
+    MobBuffers {
+      id_to_index: HashMap::new(),
+      index_to_id: Vec::new(),
+
+      triangles: GLBuffer::new(
+        gl,
+        color_shader.clone(),
+        [ vertex::AttribData { name: "position", size: 3 },
+          vertex::AttribData { name: "in_color", size: 4 },
+        ],
+        TRIANGLE_VERTICES_PER_BOX,
+        32,
+        Triangles
+      ),
+    }
+  }
+
+  pub fn push(
+    &mut self,
+    id: Id,
+    triangles: &[ColoredVertex]
+  ) {
+    self.id_to_index.insert(id, self.index_to_id.len());
+    self.index_to_id.push(id);
+
+    self.triangles.push(triangles);
+  }
+
+  pub fn flush(&mut self, gl: &GLContext) {
+    self.triangles.flush(gl);
+  }
+
+  pub fn update(
+    &mut self,
+    gl: &GLContext,
+    id: Id,
+    triangles: &[ColoredVertex]
+  ) {
+    let idx = *expect_id!(self.id_to_index.find(&id));
+    self.triangles.update(gl, idx, triangles);
   }
 
   pub fn draw(&self, gl: &GLContext) {
@@ -362,6 +412,7 @@ fn first_face(bounds: &AABB, ray: &Ray) -> uint {
 pub struct App {
   line_of_sight: Option<GLBuffer<ColoredVertex>>,
   physics: Physics<Id>,
+  mob_buffers: Option<MobBuffers>,
   block_buffers: HashMap<BlockType, BlockBuffers>,
   block_textures: HashMap<BlockType, Rc<Texture>>,
   blocks: HashMap<Id, Block>,
@@ -525,6 +576,10 @@ impl App {
       self.set_up_shaders();
       self.load_block_textures();
 
+      unsafe {
+        self.mob_buffers = Some(MobBuffers::new(&self.gl, self.color_shader.get_ref()));
+      }
+
       // initialize the projection matrix
       self.player.camera.translate((min + max) / 2.0 as GLfloat);
       self.player.camera.fov = glw::perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
@@ -663,7 +718,6 @@ impl App {
           }
         }
 
-        // duplicated in mob update code
         let dP = self.player.speed;
         if dP.x != 0.0 {
           self.translate_player(Vec3::new(dP.x, 0.0, 0.0));
@@ -694,18 +748,17 @@ impl App {
           let mut mob = mob.borrow_mut();
           let mob = mob.deref_mut();
 
-          // duplicated in player update code
           mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
 
           let dP = mob.speed;
           if dP.x != 0.0 {
-            mob.translate(&self.gl, &mut self.physics, Vec3::new(dP.x, 0.0, 0.0));
+            mob.translate(&self.gl, &mut self.physics, self.mob_buffers.get_mut_ref(), Vec3::new(dP.x, 0.0, 0.0));
           }
           if dP.y != 0.0 {
-            mob.translate(&self.gl, &mut self.physics, Vec3::new(0.0, dP.y, 0.0));
+            mob.translate(&self.gl, &mut self.physics, self.mob_buffers.get_mut_ref(), Vec3::new(0.0, dP.y, 0.0));
           }
           if dP.z != 0.0 {
-            mob.translate(&self.gl, &mut self.physics, Vec3::new(0.0, 0.0, dP.z));
+            mob.translate(&self.gl, &mut self.physics, self.mob_buffers.get_mut_ref(), Vec3::new(0.0, 0.0, dP.z));
           }
         }
       });
@@ -713,7 +766,7 @@ impl App {
       // Block deletion
       if self.is_mouse_pressed(piston::mouse::Left) {
         time!(&self.timers, "update.delete_block", || {
-          self.entity_in_front().map(|(id, _)| {
+          self.entity_in_front().map(|id| {
             if self.blocks.contains_key(&id) {
               self.remove_block(id);
             }
@@ -724,17 +777,18 @@ impl App {
         time!(&self.timers, "update.place_block", || {
           match self.entity_in_front() {
             None => {},
-            Some((block_id, face)) => {
-              let direction =
-                    [ Vec3::new(0.0, 0.0, 1.0),
-                      Vec3::new(-1.0, 0.0, 0.0),
-                      Vec3::new(0.0, 1.0, 0.0),
-                      Vec3::new(0.0, 0.0, -1.0),
-                      Vec3::new(1.0, 0.0, 0.0),
-                      Vec3::new(0.0, -1.0, 0.0),
-                    ][face] * 0.5 as GLfloat;
+            Some(block_id) => {
               let (mins, maxs) = {
                 let bounds = self.get_bounds(block_id);
+                let face = first_face(bounds, &self.forward_ray());
+                let direction =
+                      [ Vec3::new(0.0, 0.0, 1.0),
+                        Vec3::new(-1.0, 0.0, 0.0),
+                        Vec3::new(0.0, 1.0, 0.0),
+                        Vec3::new(0.0, 0.0, -1.0),
+                        Vec3::new(1.0, 0.0, 0.0),
+                        Vec3::new(0.0, -1.0, 0.0),
+                      ][face] * 0.5 as GLfloat;
                 // TODO: think about how this should work when placing size A blocks
                 // against size B blocks.
                 (bounds.mins() + direction, bounds.maxs() + direction)
@@ -762,9 +816,7 @@ impl App {
         buffers.draw(&self.gl);
       }
 
-      for (_, mob) in self.mobs.iter() {
-        mob.borrow().draw(&self.gl);
-      }
+      self.mob_buffers.get_ref().draw(&self.gl);
 
       // draw the hud
       self.color_shader.get_mut_ref().set_camera(&mut self.gl, &self.hud_camera);
@@ -801,6 +853,7 @@ impl App {
         bounds: HashMap::new(),
         locations: HashMap::new(),
       },
+      mob_buffers: None,
       block_buffers: HashMap::new(),
       block_textures: HashMap::new(),
       blocks: HashMap::new(),
@@ -999,15 +1052,9 @@ impl App {
     expect_id!(self.physics.get_bounds(id))
   }
 
-  // TODO: just return entity ID; let face be a separate call.
-  /// Returns (block id, block face) shown at the center of the window.
-  fn entity_in_front(&self) -> Option<(Id, uint)> {
-    let ray = Ray { orig: self.player.camera.position, dir: self.forward(), };
-    // TODO: fix face numbering
-    self.physics.octree.cast_ray(&ray, self.player.id).map(|id| {
-      let bounds = self.get_bounds(id);
-      (id, first_face(bounds, &ray))
-    })
+  /// Returns id of the entity in front of the cursor.
+  fn entity_in_front(&self) -> Option<Id> {
+    self.physics.octree.cast_ray(&self.forward_ray(), self.player.id)
   }
 
   /// Find a collision with a world object
@@ -1026,28 +1073,18 @@ impl App {
   fn add_mob(&mut self, low_corner: Vec3<GLfloat>, behavior: fn(&App, &mut Mob)) {
     let id = self.alloc_id();
 
-    let mut mob =
+    let mob =
       unsafe {
         Mob {
-            speed: Vec3::new(0.0, 0.0, 0.0),
-            behavior: behavior,
-            id: id,
-            triangles: GLBuffer::new(
-              &self.gl,
-              self.color_shader.get_ref().clone(),
-              [ vertex::AttribData { name: "position", size: 3 },
-                vertex::AttribData { name: "in_color", size: 4 },
-              ],
-              TRIANGLE_VERTICES_PER_BOX,
-              32,
-              Triangles
-            ),
+          speed: Vec3::new(0.0, 0.0, 0.0),
+          behavior: behavior,
+          id: id,
         }
       };
 
     let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
-    mob.triangles.push(to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
-    mob.triangles.flush(&self.gl);
+    self.mob_buffers.get_mut_ref().push(id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
+    self.mob_buffers.get_mut_ref().flush(&self.gl);
 
     self.physics.insert(id, &bounds);
     self.mobs.insert(id, cell::RefCell::new(mob));
@@ -1142,7 +1179,7 @@ impl App {
         .rmul(&Vec3::new(1.0, 0.0, 0.0))
   }
 
-  /// Return the "forward" axis (i.e. the z-axis rotated to match you).
+  /// Return the "Ray axis (i.e. the z-axis rotated to match you).
   pub fn forward(&self) -> Vec3<GLfloat> {
     let y_axis = Vec3::new(0.0, 1.0, 0.0);
     let transform =
@@ -1150,6 +1187,10 @@ impl App {
       glw::from_axis_angle3(y_axis, self.lateral_rotation);
     let forward_orig = Vec3::new(0.0, 0.0, -1.0);
     return transform.rmul(&forward_orig);
+  }
+
+  pub fn forward_ray(&self) -> Ray {
+    Ray { orig: self.player.camera.position, dir: self.forward() }
   }
 
   /// Handles a game event.

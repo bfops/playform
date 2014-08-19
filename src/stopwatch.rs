@@ -69,8 +69,7 @@ impl TimerSet {
   /// This function is not marked `mut` because borrow checking is done
   /// dynamically.
   pub fn time<T>(&self, name: &str, f: || -> T) -> T {
-    // TODO(cgaebel): is the explicit scope needed here?
-    let has_key = { self.timers.borrow().contains_key_equiv(&name) };
+    let has_key = self.timers.borrow().contains_key_equiv(&name);
 
     let timer : Rc<RefCell<Stopwatch>> =
       if has_key {
