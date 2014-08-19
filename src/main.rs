@@ -1,4 +1,5 @@
 use color::Color4;
+use common::*;
 use fontloader;
 use ncollide3df32::bounding_volume::aabb::AABB;
 use nalgebra::na::{Vec2, Vec3, RMul, Norm};
@@ -48,9 +49,6 @@ macro_rules! expect_id(
   );
 )
 
-static WINDOW_WIDTH:  uint = 800;
-static WINDOW_HEIGHT: uint = 600;
-
 static MAX_WORLD_SIZE: uint = 100000;
 
 static MAX_JUMP_FUEL: uint = 4;
@@ -58,13 +56,6 @@ static MAX_JUMP_FUEL: uint = 4;
 // how many blocks to load during every update step
 static LOAD_SPEED:uint = 1 << 12;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
-
-static TRIANGLES_PER_BOX: uint = 12;
-static LINES_PER_BOX: uint = 12;
-static VERTICES_PER_TRIANGLE: uint = 3;
-static VERTICES_PER_LINE: uint = 2;
-static TRIANGLE_VERTICES_PER_BOX: uint = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
-static LINE_VERTICES_PER_BOX: uint = LINES_PER_BOX * VERTICES_PER_LINE;
 
 #[deriving(Copy, PartialEq, Eq, Hash)]
 enum BlockType {
@@ -145,7 +136,7 @@ macro_rules! translate_mob(
     App::translate_mob(
       &$world.gl,
       &mut $world.physics,
-      $world.mob_buffers.get_mut_ref(),
+      &mut $world.mob_buffers,
       $mob,
       $v
     );
@@ -391,7 +382,7 @@ pub fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
 }
 
 fn first_face(bounds: &AABB, ray: &Ray) -> uint {
-  let f = octree::partial_min_by(
+  let f = partial_min_by(
       to_faces(bounds)
         .iter()
         .zip(range(0 as uint, 6))
@@ -407,28 +398,32 @@ fn first_face(bounds: &AABB, ray: &Ray) -> uint {
 
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App {
-  line_of_sight: Option<GLBuffer<ColoredVertex>>,
   physics: Physics<Id>,
-  mob_buffers: Option<MobBuffers>,
-  block_buffers: HashMap<BlockType, BlockBuffers>,
-  block_textures: HashMap<BlockType, Rc<Texture>>,
   blocks: HashMap<Id, Block>,
   player: Player,
   mobs: HashMap<Id, cell::RefCell<Mob>>,
+
   // id of the next block to load
   next_load_id: Id,
   // next block id to assign
   next_id: Id,
+
   // OpenGL buffers
-  hud_triangles: Option<GLBuffer<ColoredVertex>>,
-  texture_triangles: Option<GLBuffer<TextureVertex>>,
+  mob_buffers: MobBuffers,
+  block_buffers: HashMap<BlockType, BlockBuffers>,
+  block_textures: HashMap<BlockType, Rc<Texture>>,
+  line_of_sight: GLBuffer<ColoredVertex>,
+  hud_triangles: GLBuffer<ColoredVertex>,
+  texture_triangles: GLBuffer<TextureVertex>,
+
   textures: Vec<Texture>,
   hud_camera: Camera,
   lateral_rotation: f32, // in radians
   vertical_rotation: f32, // in radians
-  // OpenGL shader "program" id.
-  color_shader: Option<Rc<Shader>>,
-  texture_shader: Option<Rc<Shader>>,
+
+  // OpenGL shader "program" ids
+  color_shader: Rc<Shader>,
+  texture_shader: Rc<Shader>,
 
   // which mouse buttons are currently pressed
   mouse_buttons_pressed: Vec<piston::mouse::Button>,
@@ -480,7 +475,7 @@ impl App {
               color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
             },
           ];
-          self.line_of_sight.get_mut_ref().update(&self.gl, 0, updates);
+          self.line_of_sight.update(&self.gl, 0, updates);
         },
         _ => {},
       }
@@ -570,12 +565,7 @@ impl App {
         err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
       }
 
-      self.set_up_shaders();
       self.load_block_textures();
-
-      unsafe {
-        self.mob_buffers = Some(MobBuffers::new(&self.gl, self.color_shader.get_ref()));
-      }
 
       // initialize the projection matrix
       self.player.camera.translate((min + max) / 2.0 as GLfloat);
@@ -587,41 +577,6 @@ impl App {
       }
 
       self.translate_player(Vec3::new(0.0, 4.0, 10.0));
-
-      unsafe {
-        self.line_of_sight = Some(GLBuffer::new(
-            &self.gl,
-            self.color_shader.get_ref().clone(),
-            [ vertex::AttribData { name: "position", size: 3 },
-              vertex::AttribData { name: "in_color", size: 4 },
-            ],
-            2,
-            2,
-            Lines
-        ));
-
-        self.hud_triangles = Some(GLBuffer::new(
-            &self.gl,
-            self.color_shader.get_ref().clone(),
-            [ vertex::AttribData { name: "position", size: 3 },
-              vertex::AttribData { name: "in_color", size: 4 },
-            ],
-            VERTICES_PER_TRIANGLE,
-            16,
-            Triangles
-        ));
-
-        self.texture_triangles = Some(GLBuffer::new(
-            &self.gl,
-            self.texture_shader.get_ref().clone(),
-            [ vertex::AttribData { name: "position", size: 3 },
-              vertex::AttribData { name: "texture_position", size: 2 },
-            ],
-            VERTICES_PER_TRIANGLE,
-            8,
-            Triangles,
-        ));
-      }
 
       self.make_textures();
       self.make_hud();
@@ -660,7 +615,7 @@ impl App {
 
       self.add_mob(Vec3::new(0.0, 8.0, -1.0), mob_behavior);
 
-      self.line_of_sight.get_mut_ref().push([
+      self.line_of_sight.push([
         ColoredVertex {
           position: Vec3::new(0.0, 0.0, 0.0),
           color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
@@ -670,7 +625,7 @@ impl App {
           color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
         },
       ]);
-      self.line_of_sight.get_mut_ref().flush(&self.gl);
+      self.line_of_sight.flush(&self.gl);
     })
 
     println!("load() finished with {} blocks", self.blocks.len());
@@ -803,29 +758,29 @@ impl App {
       self.gl.clear_buffer();
 
       // draw the world
-      self.color_shader.get_mut_ref().set_camera(&mut self.gl, &self.player.camera);
-      self.texture_shader.get_mut_ref().set_camera(&mut self.gl, &self.player.camera);
+      self.color_shader.set_camera(&mut self.gl, &self.player.camera);
+      self.texture_shader.set_camera(&mut self.gl, &self.player.camera);
 
-      self.line_of_sight.get_ref().draw(&self.gl);
+      self.line_of_sight.draw(&self.gl);
 
       for (block_type, buffers) in self.block_buffers.iter() {
         self.block_textures.find(block_type).expect("no texture found").bind_2d(&self.gl);
         buffers.draw(&self.gl);
       }
 
-      self.mob_buffers.get_ref().draw(&self.gl);
+      self.mob_buffers.draw(&self.gl);
 
       // draw the hud
-      self.color_shader.get_mut_ref().set_camera(&mut self.gl, &self.hud_camera);
-      self.texture_shader.get_mut_ref().set_camera(&mut self.gl, &self.hud_camera);
-      self.hud_triangles.get_ref().draw(&self.gl);
+      self.color_shader.set_camera(&mut self.gl, &self.hud_camera);
+      self.texture_shader.set_camera(&mut self.gl, &self.hud_camera);
+      self.hud_triangles.draw(&self.gl);
 
       // draw textures
-      self.gl.use_shader(self.texture_shader.get_ref().deref(), |gl| {
+      self.gl.use_shader(self.texture_shader.deref(), |gl| {
         for (i, tex) in self.textures.iter().enumerate() {
           tex.bind_2d(gl);
           let verticies_in_a_square = 6;
-          self.texture_triangles.get_ref().draw_slice(
+          self.texture_triangles.draw_slice(
             gl,
             i*verticies_in_a_square,
             verticies_in_a_square);
@@ -839,18 +794,71 @@ impl App {
 
   /// Initializes an empty app.
   pub fn new(gl: GLContext) -> App {
+    let mut gl = gl;
     let world_bounds = AABB::new(
       Vec3 { x: -512.0, y: -32.0, z: -512.0 },
       Vec3 { x: 512.0, y: 512.0, z: 512.0 },
     );
+
+    let texture_shader = Rc::new(Shader::new(&mut gl, TX_VS_SRC, TX_FS_SRC));
+    let color_shader = Rc::new(Shader::new(&mut gl, VS_SRC, FS_SRC));
+
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      err => fail!("OpenGL error 0x{:x} setting up shaders", err),
+    }
+
+    let line_of_sight = unsafe {
+      GLBuffer::new(
+          &gl,
+          color_shader.clone(),
+          [ vertex::AttribData { name: "position", size: 3 },
+            vertex::AttribData { name: "in_color", size: 4 },
+          ],
+          2,
+          2,
+          Lines
+      )
+    };
+
+    let hud_triangles = unsafe {
+      GLBuffer::new(
+          &gl,
+          color_shader.clone(),
+          [ vertex::AttribData { name: "position", size: 3 },
+            vertex::AttribData { name: "in_color", size: 4 },
+          ],
+          VERTICES_PER_TRIANGLE,
+          16,
+          Triangles
+      )
+    };
+
+    let texture_triangles = unsafe {
+      GLBuffer::new(
+          &gl,
+          texture_shader.clone(),
+          [ vertex::AttribData { name: "position", size: 3 },
+            vertex::AttribData { name: "texture_position", size: 2 },
+          ],
+          VERTICES_PER_TRIANGLE,
+          8,
+          Triangles,
+      )
+    };
+
+    let mob_buffers = unsafe {
+      MobBuffers::new(&gl, &color_shader)
+    };
+
     App {
-      line_of_sight: None,
+      line_of_sight: line_of_sight,
       physics: Physics {
         octree: octree::Octree::new(&world_bounds),
         bounds: HashMap::new(),
         locations: HashMap::new(),
       },
-      mob_buffers: None,
+      mob_buffers: mob_buffers,
       block_buffers: HashMap::new(),
       block_textures: HashMap::new(),
       blocks: HashMap::new(),
@@ -868,8 +876,8 @@ impl App {
       // Start assigning block_ids at 1.
       // block_id 0 corresponds to no block.
       next_id: Id(1),
-      hud_triangles: None,
-      texture_triangles: None,
+      hud_triangles: hud_triangles,
+      texture_triangles: texture_triangles,
       textures: Vec::new(),
       hud_camera: {
         let mut c = Camera::unit();
@@ -879,23 +887,12 @@ impl App {
       },
       lateral_rotation: 0.0,
       vertical_rotation: 0.0,
-      color_shader: None,
-      texture_shader: None,
+      color_shader: color_shader,
+      texture_shader: texture_shader,
       mouse_buttons_pressed: Vec::new(),
       font: fontloader::FontLoader::new(),
       timers: stopwatch::TimerSet::new(),
       gl: gl,
-    }
-  }
-
-  /// Build all of our program's shaders.
-  fn set_up_shaders(&mut self) {
-    self.texture_shader = Some(Rc::new(Shader::new(&mut self.gl, TX_VS_SRC, TX_FS_SRC)));
-    self.color_shader = Some(Rc::new(Shader::new(&mut self.gl, VS_SRC, FS_SRC)));
-
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x} in set_up_shaders", err),
     }
   }
 
@@ -928,8 +925,8 @@ impl App {
           block_type,
           BlockBuffers::new(
             &self.gl,
-            self.color_shader.get_ref(),
-            self.texture_shader.get_ref()
+            &self.color_shader,
+            &self.texture_shader,
           )
         );
       }
@@ -948,7 +945,7 @@ impl App {
     for line in instructions.iter() {
       self.textures.push(self.font.sans.red(*line));
 
-      self.texture_triangles.get_mut_ref().push(
+      self.texture_triangles.push(
         TextureVertex::square(
           Vec2 { x: -0.97, y: y - 0.2 },
           Vec2 { x: 0.0,   y: y       }
@@ -956,20 +953,20 @@ impl App {
       y -= 0.2;
     }
 
-    self.texture_triangles.get_mut_ref().flush(&self.gl);
+    self.texture_triangles.flush(&self.gl);
   }
 
   fn make_hud(&mut self) {
     let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
 
-    self.hud_triangles.get_mut_ref().push(
+    self.hud_triangles.push(
       ColoredVertex::square(
         Vec2 { x: -0.02, y: -0.02 },
         Vec2 { x:  0.02, y:  0.02 },
         cursor_color
       ));
 
-    self.hud_triangles.get_mut_ref().flush(&self.gl);
+    self.hud_triangles.flush(&self.gl);
   }
 
   fn make_world(&mut self) {
@@ -1080,8 +1077,8 @@ impl App {
       };
 
     let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
-    self.mob_buffers.get_mut_ref().push(id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
-    self.mob_buffers.get_mut_ref().flush(&self.gl);
+    self.mob_buffers.push(id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
+    self.mob_buffers.flush(&self.gl);
 
     self.physics.insert(id, &bounds);
     self.mobs.insert(id, cell::RefCell::new(mob));

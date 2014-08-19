@@ -1,3 +1,4 @@
+use common::*;
 use nalgebra::na::{Vec3};
 use ncollide3df32::bounding_volume::aabb::AABB;
 use ncollide3df32::bounding_volume::BoundingVolume;
@@ -50,27 +51,6 @@ fn split(mid: F, d: Dimension, bounds: AABB) -> (Option<AABB>, Option<AABB>) {
   }
 }
 
-// TODO: this is NOT the right module for this..
-pub fn partial_min_by<A: Copy, T: Iterator<A>, B: PartialOrd>(t: T, f: |A| -> B) -> Option<A> {
-  let mut t = t;
-  let (mut min_a, mut min_b) = {
-    match t.next() {
-      None => return None,
-      Some(a) => (a, f(a)),
-    }
-  };
-  for a in t {
-    let b = f(a);
-    assert!(b != min_b);
-    if b < min_b {
-      min_a = a;
-      min_b = b;
-    }
-  }
-
-  Some(min_a)
-}
-
 pub enum Dimension { X, Y, Z }
 
 struct Branches<V> {
@@ -86,7 +66,7 @@ enum OctreeContents<V> {
   Branch(Branches<V>),
 }
 
-// TODO: allow inserting things as "mobile", and don't break those objects up.
+// TODO: allow inserting things with a "mobile" flag; don't subdivide those objects.
 pub struct Octree<V> {
   parent: *mut Octree<V>,
   dimension: Dimension,

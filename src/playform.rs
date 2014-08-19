@@ -21,6 +21,7 @@ extern crate sdl2_game_window;
 extern crate shader_version;
 
 mod color;
+mod common;
 mod cstr_cache;
 mod fontloader;
 mod glw;
