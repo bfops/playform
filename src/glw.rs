@@ -103,20 +103,20 @@ unsafe fn aligned_slice_to_ptr<T>(vs: &[T], alignment: uint) -> *const c95::c_vo
 
 /// A fixed-capacity array of GLfloat-based structures passed to OpenGL.
 pub struct GLBuffer<T> {
-  vertex_array: u32,
-  vertex_buffer: u32,
+  pub vertex_array: u32,
+  pub vertex_buffer: u32,
   /// Each index in the GLBuffer is the index of a contiguous block of
   /// t_span elements.
-  t_span: uint,
+  pub t_span: uint,
   /// in units of single Ts.
-  length:   uint,
-  capacity: uint,
-  shader: Rc<Shader>,
+  pub length:   uint,
+  pub capacity: uint,
+  pub shader: Rc<Shader>,
   /// How to draw this buffer. Ex: gl::LINES, gl::TRIANGLES, etc.
-  mode: GLenum,
+  pub mode: GLenum,
 
   /// in-memory buffer before sending to OpenGL.
-  buffer: Vec<T>,
+  pub buffer: Vec<T>,
 }
 
 pub enum DrawMode {
@@ -224,11 +224,11 @@ impl<T: Clone> GLBuffer<T> {
     }
   }
 
-  #[allow(dead_code)]
-  /// Analog of vec::Vector::swap_remove`, but for GLBuffer data.
+  /// Analog of `std::vec::Vec::swap_remove`, but for GLBuffer data.
   pub fn swap_remove(&mut self, _gl: &GLContext, i: uint) {
     let i = i * self.t_span;
-    assert!(i < self.length);
+    assert!(i < self.length + self.buffer.len());
+    assert!(i < self.length, "GLBuffer::swap_remove on unflushed data");
     self.length -= self.t_span;
     if i == self.length {
       // just remove, no swap.
