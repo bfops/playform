@@ -26,3 +26,4 @@ will follow you until it touches you, at which point it will stop again.
 ![screenshot 1](/../screenshots/screenshots/screenshot1.png?raw=true)
 ![screenshot 2](/../screenshots/screenshots/screenshot2.png?raw=true)
 ![screenshot 3](/../screenshots/screenshots/screenshot3.png?raw=true)
+![screenshot 4](/../screenshots/screenshots/screenshot4.png?raw=true)
