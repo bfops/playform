@@ -140,6 +140,18 @@ fn to_triangles(bounds: &AABB, c: &Color4<GLfloat>) -> [ColoredVertex, ..VERTICE
   ]
 }
 
+macro_rules! translate_mob(
+  ($world:expr, $mob:expr, $v:expr) => (
+    App::translate_mob(
+      &$world.gl,
+      &mut $world.physics,
+      $world.mob_buffers.get_mut_ref(),
+      $mob,
+      $v
+    );
+  );
+)
+
 /// A voxel-ish block in the game world.
 pub struct Block {
   block_type: BlockType,
@@ -312,21 +324,6 @@ pub struct Mob {
   speed: Vec3<f32>,
   behavior: Behavior,
   id: Id,
-}
-
-impl Mob {
-  pub fn translate(&mut self, gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut MobBuffers, dP: Vec3<GLfloat>) {
-    if expect_id!(physics.translate(self.id, dP)) {
-      self.speed = self.speed - dP;
-    } else {
-      let bounds = expect_id!(physics.get_bounds(self.id));
-      mob_buffers.update(
-        gl,
-        self.id,
-        to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
-      );
-    }
-  }
 }
 
 struct MobBuffers {
@@ -752,13 +749,13 @@ impl App {
 
           let dP = mob.speed;
           if dP.x != 0.0 {
-            mob.translate(&self.gl, &mut self.physics, self.mob_buffers.get_mut_ref(), Vec3::new(dP.x, 0.0, 0.0));
+            translate_mob!(self, mob, Vec3::new(dP.x, 0.0, 0.0));
           }
           if dP.y != 0.0 {
-            mob.translate(&self.gl, &mut self.physics, self.mob_buffers.get_mut_ref(), Vec3::new(0.0, dP.y, 0.0));
+            translate_mob!(self, mob, Vec3::new(0.0, dP.y, 0.0));
           }
           if dP.z != 0.0 {
-            mob.translate(&self.gl, &mut self.physics, self.mob_buffers.get_mut_ref(), Vec3::new(0.0, 0.0, dP.z));
+            translate_mob!(self, mob, Vec3::new(0.0, 0.0, dP.z));
           }
         }
       });
@@ -1143,6 +1140,19 @@ impl App {
       if v.y < 0.0 {
         self.player.jump_fuel = 0;
       }
+    }
+  }
+
+  fn translate_mob(gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut MobBuffers, mob: &mut Mob, dP: Vec3<GLfloat>) {
+    if expect_id!(physics.translate(mob.id, dP)) {
+      mob.speed = mob.speed - dP;
+    } else {
+      let bounds = expect_id!(physics.get_bounds(mob.id));
+      mob_buffers.update(
+        gl,
+        mob.id,
+        to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
+      );
     }
   }
 
