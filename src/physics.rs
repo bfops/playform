@@ -1,3 +1,4 @@
+use glw::GLContext;
 use nalgebra::na::Vec3;
 use ncollide3df32::bounding_volume::aabb::AABB;
 use ncollide3df32::math::Scalar;
@@ -12,20 +13,20 @@ pub struct Physics<T> {
 }
 
 impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
-  pub fn insert(&mut self, t: T, bounds: &AABB) {
-    let loc = self.octree.insert(bounds.clone(), t);
+  pub fn insert(&mut self, gl: &GLContext, t: T, bounds: &AABB) {
+    let loc = self.octree.insert(gl, bounds.clone(), t);
     self.locations.insert(t, loc);
     self.bounds.insert(t, bounds.clone());
   }
 
-  pub fn remove(&mut self, t: T) {
+  pub fn remove(&mut self, gl: &GLContext, t: T) {
     match self.bounds.find(&t) {
       None => {},
       Some(bounds) => {
         let &octree_location = self.locations.find(&t).expect("no octree_location to remove");
         self.locations.remove(&t);
         unsafe {
-          (*octree_location).remove(t, bounds);
+          (*octree_location).remove(gl, t, bounds);
         }
       },
     }
@@ -35,7 +36,7 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
     self.bounds.find(&t)
   }
 
-  pub fn translate(&mut self, t: T, amount: Vec3<Scalar>) -> Option<bool> {
+  pub fn translate(&mut self, gl: &GLContext, t: T, amount: Vec3<Scalar>) -> Option<bool> {
     match self.bounds.find_mut(&t) {
       None => None,
       Some(bounds) => {
@@ -53,7 +54,7 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
 
         if !collision {
           unsafe {
-            let octree_location = (*octree_location).move(t, bounds, new_bounds);
+            let octree_location = (*octree_location).move(gl, t, bounds, new_bounds);
             self.locations.insert(t, octree_location);
             *bounds = new_bounds;
           }

@@ -1,6 +1,7 @@
 use color::Color4;
 use common::*;
 use fontloader;
+use ncollide3df32::bounding_volume::LooseBoundingVolume;
 use ncollide3df32::bounding_volume::aabb::AABB;
 use nalgebra::na::{Vec2, Vec3, RMul, Norm};
 use ncollide3df32::ray::{Ray, RayCast};
@@ -151,36 +152,8 @@ pub struct Block {
 
 impl Block {
   // Construct outlines for this Block, to sharpen the edges.
-  fn to_outlines(bounds: &AABB) -> [ColoredVertex, ..VERTICES_PER_LINE * LINES_PER_BOX] {
-    // distance from the block to construct the bounding outlines.
-    let d = 0.002;
-    let (x1, y1, z1) = (bounds.mins().x - d, bounds.mins().y - d, bounds.mins().z - d);
-    let (x2, y2, z2) = (bounds.maxs().x + d, bounds.maxs().y + d, bounds.maxs().z + d);
-    let c = Color4::of_rgba(0.0, 0.0, 0.0, 1.0);
-
-    let vtx = |x: GLfloat, y: GLfloat, z: GLfloat| -> ColoredVertex {
-      ColoredVertex {
-        position: Vec3::new(x, y, z),
-        color: c
-      }
-    };
-
-    [
-      vtx(x1, y1, z1), vtx(x2, y1, z1),
-      vtx(x1, y2, z1), vtx(x2, y2, z1),
-      vtx(x1, y1, z2), vtx(x2, y1, z2),
-      vtx(x1, y2, z2), vtx(x2, y2, z2),
-
-      vtx(x1, y1, z1), vtx(x1, y2, z1),
-      vtx(x2, y1, z1), vtx(x2, y2, z1),
-      vtx(x1, y1, z2), vtx(x1, y2, z2),
-      vtx(x2, y1, z2), vtx(x2, y2, z2),
-
-      vtx(x1, y1, z1), vtx(x1, y1, z2),
-      vtx(x2, y1, z1), vtx(x2, y1, z2),
-      vtx(x1, y2, z1), vtx(x1, y2, z2),
-      vtx(x2, y2, z1), vtx(x2, y2, z2),
-    ]
+  fn to_outlines(bounds: &AABB) -> [ColoredVertex, ..LINE_VERTICES_PER_BOX] {
+    to_outlines(&bounds.loosened(0.002))
   }
 
   fn to_texture_triangles(bounds: &AABB) -> [TextureVertex, ..TRIANGLE_VERTICES_PER_BOX] {
@@ -275,7 +248,7 @@ impl BlockBuffers {
   pub fn swap_remove(&mut self, gl: &GLContext, id: Id) {
     let idx = *expect_id!(self.id_to_index.find(&id));
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
-    self.index_to_id.swap_remove(idx).expect("ran out of blocks");
+    self.index_to_id.swap_remove(idx).unwrap();
     self.triangles.swap_remove(gl, idx);
     self.id_to_index.remove(&id);
     self.outlines.swap_remove(gl, idx);
@@ -411,6 +384,7 @@ pub struct App {
   // OpenGL buffers
   mob_buffers: MobBuffers,
   block_buffers: HashMap<BlockType, BlockBuffers>,
+  octree_buffers: Rc<cell::RefCell<octree::OctreeBuffers<Id>>>,
   block_textures: HashMap<BlockType, Rc<Texture>>,
   line_of_sight: GLBuffer<ColoredVertex>,
   hud_triangles: GLBuffer<ColoredVertex>,
@@ -427,6 +401,8 @@ pub struct App {
 
   // which mouse buttons are currently pressed
   mouse_buttons_pressed: Vec<piston::mouse::Button>,
+
+  render_octree: bool,
 
   font: fontloader::FontLoader,
   timers: stopwatch::TimerSet,
@@ -477,6 +453,9 @@ impl App {
           ];
           self.line_of_sight.update(&self.gl, 0, updates);
         },
+        piston::keyboard::O => {
+          self.render_octree = !self.render_octree;
+        }
         _ => {},
       }
     })
@@ -552,7 +531,7 @@ impl App {
       self.player.id = playerId;
       let min = Vec3::new(0.0, 0.0, 0.0);
       let max = Vec3::new(1.0, 2.0, 1.0);
-      self.physics.insert(playerId, &AABB::new(min, max));
+      self.physics.insert(&self.gl, playerId, &AABB::new(min, max));
 
       self.gl.enable_culling();
       self.gl.enable_alpha_blending();
@@ -761,7 +740,12 @@ impl App {
       self.color_shader.set_camera(&mut self.gl, &self.player.camera);
       self.texture_shader.set_camera(&mut self.gl, &self.player.camera);
 
+      // debug stuff
       self.line_of_sight.draw(&self.gl);
+
+      if self.render_octree {
+        self.octree_buffers.deref().borrow().draw(&self.gl);
+      }
 
       for (block_type, buffers) in self.block_buffers.iter() {
         self.block_textures.find(block_type).expect("no texture found").bind_2d(&self.gl);
@@ -851,14 +835,19 @@ impl App {
       MobBuffers::new(&gl, &color_shader)
     };
 
+    let octree_buffers = unsafe {
+      Rc::new(cell::RefCell::new(octree::OctreeBuffers::new(&gl, &color_shader)))
+    };
+
     App {
       line_of_sight: line_of_sight,
       physics: Physics {
-        octree: octree::Octree::new(&world_bounds),
+        octree: octree::Octree::new(&octree_buffers, &world_bounds),
         bounds: HashMap::new(),
         locations: HashMap::new(),
       },
       mob_buffers: mob_buffers,
+      octree_buffers: octree_buffers,
       block_buffers: HashMap::new(),
       block_textures: HashMap::new(),
       blocks: HashMap::new(),
@@ -890,6 +879,7 @@ impl App {
       color_shader: color_shader,
       texture_shader: texture_shader,
       mouse_buttons_pressed: Vec::new(),
+      render_octree: false,
       font: fontloader::FontLoader::new(),
       timers: stopwatch::TimerSet::new(),
       gl: gl,
@@ -1080,7 +1070,7 @@ impl App {
     self.mob_buffers.push(id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
     self.mob_buffers.flush(&self.gl);
 
-    self.physics.insert(id, &bounds);
+    self.physics.insert(&self.gl, id, &bounds);
     self.mobs.insert(id, cell::RefCell::new(mob));
   }
 
@@ -1094,14 +1084,12 @@ impl App {
       // hacky solution to make sure blocks have "breathing room" and don't
       // collide with their neighbours.
       let epsilon: GLfloat = 0.00001;
-      let min = min + Vec3::new(epsilon, epsilon, epsilon);
-      let max = max - Vec3::new(epsilon, epsilon, epsilon);
-      let bounds = AABB::new(min, max);
+      let bounds = AABB::new(min, max).loosened(-epsilon);
       let collided = check_collisions && self.collides_with(Id(0), &bounds);
 
       if !collided {
         block.id = self.alloc_id();
-        self.physics.insert(block.id, &bounds);
+        self.physics.insert(&self.gl, block.id, &bounds);
         self.blocks.insert(block.id, block);
       }
     })
@@ -1112,7 +1100,7 @@ impl App {
       let block = expect_id!(self.blocks.find(&id));
       self.block_buffers.find_mut(&block.block_type).expect("no block type").swap_remove(&self.gl, id);
     }
-    self.physics.remove(id);
+    self.physics.remove(&self.gl, id);
     self.blocks.remove(&id);
   }
 
@@ -1124,7 +1112,7 @@ impl App {
   /// Translates the player/camera by a vector.
   fn translate_player(&mut self, v: Vec3<GLfloat>) {
     let id = self.player.id;
-    let collided = expect_id!(self.physics.translate(id, v));
+    let collided = expect_id!(self.physics.translate(&self.gl, id, v));
     if collided {
       self.player.speed = self.player.speed - v;
 
@@ -1141,7 +1129,7 @@ impl App {
   }
 
   fn translate_mob(gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut MobBuffers, mob: &mut Mob, dP: Vec3<GLfloat>) {
-    if expect_id!(physics.translate(mob.id, dP)) {
+    if expect_id!(physics.translate(gl, mob.id, dP)) {
       mob.speed = mob.speed - dP;
     } else {
       let bounds = expect_id!(physics.get_bounds(mob.id));
