@@ -8,6 +8,8 @@ use std::hash::Hash;
 
 pub struct Physics<T> {
   pub octree: octree::Octree<T>,
+  // TODO: couple this more tightly into the octree,
+  // so it's easier to maintain.
   pub locations: HashMap<T, *mut octree::Octree<T>>,
   pub bounds: HashMap<T, AABB>,
 }

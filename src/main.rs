@@ -31,7 +31,6 @@ use libc::types::common::c95::c_void;
 use vertex;
 use vertex::{ColoredVertex, TextureVertex};
 
-
 // TODO(cgaebel): How the hell do I get this to be exported from `mod stopwatch`?
 macro_rules! time(
   ($timers:expr, $name:expr, $f:expr) => (

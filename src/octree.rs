@@ -6,7 +6,7 @@ use ncollide3df32::ray::{Ray, RayCast};
 use std::cell::RefCell;
 use std::collections::{HashMap,HashSet};
 use std::hash::Hash;
-use std::mem;
+use std::num::NumCast;
 use std::ptr::RawPtr;
 use std::rc::Rc;
 use vertex;
@@ -136,9 +136,7 @@ struct Branches<V> {
 
 type LeafContents<V> = Vec<(AABB, OctreeId, V)>;
 
-// TODO: try real hard to remove the Empty case.
 enum OctreeContents<V> {
-  Empty,
   Leaf(LeafContents<V>),
   Branch(Branches<V>),
 }
@@ -165,7 +163,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       parent: RawPtr::null(),
       dimension: X,
       bounds: bounds.clone(),
-      contents: Empty,
+      contents: Leaf(Vec::new()),
       id: Octree::<V>::alloc_id(),
       buffers: buffers.clone(),
     }
@@ -182,104 +180,100 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
 
   pub fn insert(&mut self, gl: &GLContext, bounds: AABB, v: V) -> *mut Octree<V> {
     assert!(self.bounds.contains(&bounds));
-    let t: Option<*mut Octree<V>> =
-      match self.contents {
-        Empty => {
-          let id = Octree::<V>::alloc_id();
-          let vs = Vec::from_fn(1, |_| (bounds.clone(), id, v));
-          // if the object mostly fills the leaf, don't bother subsecting space more.
-          if length(&bounds, self.dimension) * (2.0 as f32) < length(&self.bounds, self.dimension) {
-            let mid = middle(&self.bounds, self.dimension);
+    let contents = match self.contents {
+      Leaf(ref mut vs) => {
+        if vs.is_empty() {
+          self.buffers.deref().borrow_mut().deref_mut().push(self.id, to_outlines(&self.bounds));
+        }
 
-            let d = self.dimension;
-            let (low, high) = self.bisect(mid);
-            let (mut low, mut high) = (box low, box high);
-            unsafe {
-              let (low_bounds, high_bounds) = split(mid.clone(), d, bounds);
-              let mut spans_multiple = false;
-              let mut parent = None;
-              low_bounds.map(
-                |bs| {
-                  low.insert(gl, bs, v);
-                  spans_multiple = true;
-                  parent = Some(mem::transmute(&mut *low));
-                }
-              );
-              high_bounds.map(
-                |bs| {
-                  high.insert(gl, bs, v);
-                  spans_multiple = true;
-                  parent = Some(mem::transmute(&mut *high));
-                }
-              );
+        let id = Octree::<V>::alloc_id();
+        vs.push((bounds, id, v));
+        self.buffers.deref().borrow_mut().deref_mut().push(id, to_outlines(&bounds));
+        self.buffers.deref().borrow_mut().deref_mut().flush(gl);
 
-              self.contents = Branch(Branches { low_tree: low, high_tree: high });
+        let d = self.dimension;
+        let avg_length =
+          vs.iter().fold(
+            0.0,
+            |x, &(bounds, _, _)| x + length(&bounds, d)
+          ) / NumCast::from(vs.len()).unwrap();
 
-              if spans_multiple {
-                None
-              } else {
-                parent
-              }
-            }
-          } else {
-            self.contents = Leaf(vs);
-            self.buffers.deref().borrow_mut().deref_mut().push(self.id, to_outlines(&self.bounds));
-            self.buffers.deref().borrow_mut().deref_mut().push(id, to_outlines(&bounds));
-            self.buffers.deref().borrow_mut().deref_mut().flush(gl);
-            None
+        if avg_length < length(&self.bounds, self.dimension) / 2.0 {
+          for &(_, id, _) in vs.iter() {
+            self.buffers.deref().borrow_mut().deref_mut().swap_remove(gl, id);
           }
-        },
-        Leaf(ref mut vs) => {
-          let id = Octree::<V>::alloc_id();
-          vs.push((bounds, id, v));
-          self.buffers.deref().borrow_mut().deref_mut().push(id, to_outlines(&bounds));
-            self.buffers.deref().borrow_mut().deref_mut().flush(gl);
-          // TODO: bisect this leaf if the median length is less than half the
-          // current length.
+
+          self.buffers.deref().borrow_mut().deref_mut().swap_remove(gl, self.id);
+
+          let (low, high) =
+            Octree::bisect(
+              gl,
+              self,
+              &self.buffers,
+              &self.bounds,
+              self.dimension,
+              vs
+            );
+          Some(Branch(Branches { low_tree: box low, high_tree: box high }))
+        } else {
           None
-        },
-        Branch(ref mut b) => {
-          // copied in remove()
-          let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, bounds);
-          l.map(|low_half| b.low_tree.insert(gl, low_half, v));
-          h.map(|high_half| b.high_tree.insert(gl, high_half, v));
-          None
-        },
-      };
-    unsafe {
-      t.map_or(mem::transmute(self), |x| mem::transmute(x))
-    }
+        }
+      },
+      Branch(ref mut b) => {
+        // copied in remove()
+        let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, bounds);
+        l.map(|low_half| b.low_tree.insert(gl, low_half, v));
+        h.map(|high_half| b.high_tree.insert(gl, high_half, v));
+        None
+      },
+    };
+    contents.map(|c| self.contents = c);
+    self as *mut Octree<V>
   }
 
-  // Split this tree into two sub-trees around a given point,
-  fn bisect(&mut self, mid: F) -> (Octree<V>, Octree<V>) {
-    let (low_bounds, high_bounds) = split(mid.clone(), self.dimension, self.bounds.clone());
+  // Split a leaf into two subtrees.
+  fn bisect(
+      gl: &GLContext,
+      parent: *mut Octree<V>,
+      buffers: &Rc<RefCell<OctreeBuffers<V>>>,
+      bounds: &AABB,
+      dimension: Dimension,
+      vs: &LeafContents<V>
+  ) -> (Octree<V>, Octree<V>) {
+    let mid = middle(bounds, dimension);
+    let (low_bounds, high_bounds) = split(mid, dimension, bounds.clone());
     let low_bounds = low_bounds.expect("world bounds couldn't split on middle");
     let high_bounds = high_bounds.expect("world bounds couldn't split on middle");
-    let new_d = match self.dimension {
+    let new_d = match dimension {
         X => Y,
         Y => Z,
         Z => X,
       };
 
-    (
-      Octree {
-        parent: self,
-        dimension: new_d,
-        bounds: low_bounds.clone(),
-        contents: Empty,
-        id: Octree::<V>::alloc_id(),
-        buffers: self.buffers.clone(),
-      },
-      Octree {
-        parent: self,
-        dimension: new_d,
-        bounds: high_bounds.clone(),
-        contents: Empty,
-        id: Octree::<V>::alloc_id(),
-        buffers: self.buffers.clone(),
-      }
-    )
+    let mut low = Octree {
+      parent: parent,
+      dimension: new_d,
+      bounds: low_bounds.clone(),
+      contents: Leaf(Vec::new()),
+      id: Octree::<V>::alloc_id(),
+      buffers: buffers.clone(),
+    };
+    let mut high = Octree {
+      parent: parent,
+      dimension: new_d,
+      bounds: high_bounds.clone(),
+      contents: Leaf(Vec::new()),
+      id: Octree::<V>::alloc_id(),
+      buffers: buffers.clone(),
+    };
+
+    for &(bounds, id, v) in vs.iter() {
+      let (low_bounds, high_bounds) = split(mid, dimension, bounds);
+      low_bounds.map(|bs| low.insert(gl, bs, v));
+      high_bounds.map(|bs| high.insert(gl, bs, v));
+    }
+
+    (low, high)
   }
 
   fn on_ancestor<T>(&self, bounds: &AABB, f: |&Octree<V>| -> T) -> T {
@@ -308,7 +302,6 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   // this/child trees. Uses equality comparison on V to ignore "same" objects.
   pub fn intersect(&self, bounds: &AABB, self_v: V) -> bool {
     match self.contents {
-      Empty => false,
       Leaf(ref vs) => vs.iter().any(|&(bs, _, ref v)| *v != self_v && bounds.intersects(&bs)),
       Branch(ref b) => {
         let mid = middle(&self.bounds, self.dimension);
@@ -324,7 +317,6 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   // Only finds intersects in this and child trees.
   pub fn intersect_details(&self, bounds: &AABB, self_v: V) -> HashSet<V> {
     match self.contents {
-      Empty => HashSet::new(),
       Leaf(ref vs) => {
         let mut r = HashSet::new();
         for &(bs, _, v) in vs.iter() {
@@ -372,9 +364,6 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   pub fn remove(&mut self, gl: &GLContext, v: V, bounds: &AABB) {
     assert!(self.bounds.contains(bounds));
     let collapse_contents = match self.contents {
-      Empty => {
-        fail!("Could not Octree::remove(&Empty)");
-      },
       Leaf(ref mut vs) => {
         let i = vs.iter().position(|&(_, _, ref x)| *x == v).expect("could not Octree::remove()");
         let (_, id, _) = (*vs)[i];
@@ -382,7 +371,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
         vs.swap_remove(i);
         if vs.is_empty() {
           self.buffers.deref().borrow_mut().deref_mut().swap_remove(gl, self.id);
-          true
+          false
         } else {
           false
         }
@@ -396,13 +385,13 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     };
 
     if collapse_contents {
-      self.contents = Empty;
+      self.contents = Leaf(Vec::new());
     }
   }
 
   pub fn is_empty(&self) -> bool {
     match self.contents {
-      Empty => true,
+      Leaf(ref vs) => vs.is_empty(),
       _ => false,
     }
   }
@@ -414,9 +403,6 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
 
   pub fn cast_ray(&self, ray: &Ray, self_v: V) -> Option<V> {
     match self.contents {
-      Empty => {
-        None
-      },
       Leaf(ref vs) => {
         // find the time of intersection (TOI) of the ray with each object in
         // this leaf; filter out the objects it doesn't intersect at all. Then
