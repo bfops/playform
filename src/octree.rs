@@ -136,6 +136,7 @@ struct Branches<V> {
 
 type LeafContents<V> = Vec<(AABB, OctreeId, V)>;
 
+// TODO: try real hard to remove the Empty case.
 enum OctreeContents<V> {
   Empty,
   Leaf(LeafContents<V>),
@@ -368,25 +369,41 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     self.on_mut_ancestor(&bounds, |t| t.insert(gl, bounds.clone(), v))
   }
 
-  // TODO: merge neighbors when appropriate
   pub fn remove(&mut self, gl: &GLContext, v: V, bounds: &AABB) {
     assert!(self.bounds.contains(bounds));
-    // copied largely from insert()
-    match self.contents {
+    let collapse_contents = match self.contents {
       Empty => {
         fail!("Could not Octree::remove(&Empty)");
       },
       Leaf(ref mut vs) => {
         let i = vs.iter().position(|&(_, _, ref x)| *x == v).expect("could not Octree::remove()");
         let (_, id, _) = (*vs)[i];
-        vs.swap_remove(i);
         self.buffers.deref().borrow_mut().deref_mut().swap_remove(gl, id);
+        vs.swap_remove(i);
+        if vs.is_empty() {
+          self.buffers.deref().borrow_mut().deref_mut().swap_remove(gl, self.id);
+          true
+        } else {
+          false
+        }
       },
       Branch(ref mut bs) => {
         let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, *bounds);
         l.map(|low_half| bs.low_tree.remove(gl, v, &low_half));
         h.map(|high_half| bs.high_tree.remove(gl, v, &high_half));
+        bs.low_tree.is_empty() && bs.high_tree.is_empty()
       }
+    };
+
+    if collapse_contents {
+      self.contents = Empty;
+    }
+  }
+
+  pub fn is_empty(&self) -> bool {
+    match self.contents {
+      Empty => true,
+      _ => false,
     }
   }
 
