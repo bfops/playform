@@ -13,10 +13,13 @@ once this is a little more developed.
 It can be built with `cargo build`, which should grab dependencies
 automatically. `playform` can then be run from the `target` directory.
 
-The player can be moved using `WASD` controls, as well as `Space` and `LShift`,
-and the view can be rotated using the mouse or the arrow keys.
-Using the mouse to click on a block will cause it to disappear, and
-right-clicking will place a block of dirt.
+  * Move: WASD
+  * Jump: Space
+  * Look around: Mouse
+  * Remove block: Left-click
+  * Place dirt block: Right-click
+  * Toggle octree rendering: O
+  * Save line-of-sight: M
 
 One mob spawns that will play a tag-lke game with you: once you touch it, it
 will follow you until it touches you, at which point it will stop again.
