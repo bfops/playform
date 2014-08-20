@@ -1,6 +1,10 @@
 use color::Color4;
 use common::*;
 use fontloader;
+use gl;
+use gl::types::GLfloat;
+use glw;
+use glw::{Camera,Lines,Triangles,Shader,Texture,GLBuffer,GLContext,translation};
 use ncollide3df32::bounding_volume::LooseBoundingVolume;
 use ncollide3df32::bounding_volume::aabb::AABB;
 use nalgebra::na::{Vec2, Vec3, RMul, Norm};
@@ -11,10 +15,6 @@ use piston;
 use piston::{GameEvent,GameWindowSettings,GameIterator,GameIteratorSettings};
 use piston::{MouseMoveArgs,MousePressArgs,MouseReleaseArgs,KeyPressArgs,KeyReleaseArgs,UpdateArgs,RenderArgs};
 use piston::{Render,Update,KeyPress,KeyRelease,MousePress,MouseRelease,MouseMove};
-use gl;
-use gl::types::GLfloat;
-use glw;
-use glw::{Camera,Lines,Triangles,Shader,Texture,GLBuffer,GLContext,translation};
 use png;
 use sdl2_game_window::{GameWindowSDL2};
 use sdl2::mouse;
@@ -30,24 +30,6 @@ use std::rc::Rc;
 use libc::types::common::c95::c_void;
 use vertex;
 use vertex::{ColoredVertex, TextureVertex};
-
-// TODO(cgaebel): How the hell do I get this to be exported from `mod stopwatch`?
-macro_rules! time(
-  ($timers:expr, $name:expr, $f:expr) => (
-    unsafe { ($timers as *const stopwatch::TimerSet).to_option() }.unwrap().time($name, $f)
-  );
-)
-
-/// `expect` an Option with a message assuming it is the result of an entity
-/// id lookup.
-macro_rules! expect_id(
-  ($v:expr) => (
-    match $v {
-      None => fail!("expected entity id not found"),
-      Some(v) => v,
-    }
-  );
-)
 
 static MAX_WORLD_SIZE: uint = 100000;
 
@@ -245,9 +227,9 @@ impl BlockBuffers {
   }
 
   pub fn swap_remove(&mut self, gl: &GLContext, id: Id) {
-    let idx = *expect_id!(self.id_to_index.find(&id));
+    let idx = *unwrap!(self.id_to_index.find(&id));
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
-    self.index_to_id.swap_remove(idx).unwrap();
+    unwrap!(self.index_to_id.swap_remove(idx));
     self.triangles.swap_remove(gl, idx);
     self.id_to_index.remove(&id);
     self.outlines.swap_remove(gl, idx);
@@ -336,7 +318,7 @@ impl MobBuffers {
     id: Id,
     triangles: &[ColoredVertex]
   ) {
-    let idx = *expect_id!(self.id_to_index.find(&id));
+    let idx = *unwrap!(self.id_to_index.find(&id));
     self.triangles.update(gl, idx, triangles);
   }
 
@@ -611,7 +593,7 @@ impl App {
 
   fn update(&mut self, _: &mut GameWindowSDL2, _: &UpdateArgs) {
     time!(&self.timers, "update", || {
-      // TODO(cgabel): Ideally, the update thread should not be touching OpenGL.
+      // TODO(cgaebel): Ideally, the update thread should not be touching OpenGL.
 
       // if there are more blocks to be loaded, add them into the OpenGL buffers.
       if self.next_load_id < self.next_id {
@@ -621,8 +603,8 @@ impl App {
             match self.blocks.find_mut(&self.next_load_id) {
               None => {},
               Some(block) => {
-                let bounds = expect_id!(self.physics.get_bounds(self.next_load_id));
-                let buffers = self.block_buffers.find_mut(&block.block_type).expect("no block type");
+                let bounds = unwrap!(self.physics.get_bounds(self.next_load_id));
+                let buffers = unwrap!(self.block_buffers.find_mut(&block.block_type));
                 buffers.push(block.id, Block::to_texture_triangles(bounds), Block::to_outlines(bounds));
               },
             }
@@ -747,7 +729,8 @@ impl App {
       }
 
       for (block_type, buffers) in self.block_buffers.iter() {
-        self.block_textures.find(block_type).expect("no texture found").bind_2d(&self.gl);
+        let r = unwrap!(self.block_textures.find(block_type));
+        r.bind_2d(&self.gl);
         buffers.draw(&self.gl);
       }
 
@@ -1032,7 +1015,7 @@ impl App {
   }
 
   fn get_bounds(&self, id: Id) -> &AABB {
-    expect_id!(self.physics.get_bounds(id))
+    unwrap!(self.physics.get_bounds(id))
   }
 
   /// Returns id of the entity in front of the cursor.
@@ -1096,8 +1079,9 @@ impl App {
 
   fn remove_block(&mut self, id: Id) {
     {
-      let block = expect_id!(self.blocks.find(&id));
-      self.block_buffers.find_mut(&block.block_type).expect("no block type").swap_remove(&self.gl, id);
+      let block = unwrap!(self.blocks.find(&id));
+      let r = unwrap!(self.block_buffers.find_mut(&block.block_type));
+      r.swap_remove(&self.gl, id);
     }
     self.physics.remove(&self.gl, id);
     self.blocks.remove(&id);
@@ -1111,7 +1095,7 @@ impl App {
   /// Translates the player/camera by a vector.
   fn translate_player(&mut self, v: Vec3<GLfloat>) {
     let id = self.player.id;
-    let collided = expect_id!(self.physics.translate(&self.gl, id, v));
+    let collided = unwrap!(self.physics.translate(&self.gl, id, v));
     if collided {
       self.player.speed = self.player.speed - v;
 
@@ -1128,10 +1112,10 @@ impl App {
   }
 
   fn translate_mob(gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut MobBuffers, mob: &mut Mob, dP: Vec3<GLfloat>) {
-    if expect_id!(physics.translate(gl, mob.id, dP)) {
+    if unwrap!(physics.translate(gl, mob.id, dP)) {
       mob.speed = mob.speed - dP;
     } else {
-      let bounds = expect_id!(physics.get_bounds(mob.id));
+      let bounds = unwrap!(physics.get_bounds(mob.id));
       mob_buffers.update(
         gl,
         mob.id,

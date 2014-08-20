@@ -25,10 +25,10 @@ mod common;
 mod cstr_cache;
 mod fontloader;
 mod glw;
+mod stopwatch;
 mod main;
 mod octree;
 mod physics;
-mod stopwatch;
 mod ttf;
 mod vertex;
 

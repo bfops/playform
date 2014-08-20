@@ -1,3 +1,5 @@
+#![macro_escape]
+
 extern crate time;
 
 use std::cell::{RefCell, Ref};
@@ -117,3 +119,10 @@ fn test_nested() {
     ts.time("world", || {});
   });
 }
+
+#[macro_export]
+macro_rules! time(
+  ($timers:expr, $name:expr, $f:expr) => (
+    unsafe { unwrap!(($timers as *const stopwatch::TimerSet).to_option()) }.time($name, $f)
+  );
+)
