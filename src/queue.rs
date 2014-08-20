@@ -1,3 +1,7 @@
+// for testing
+#[allow(unused_imports)]
+use std::iter::range_inclusive;
+
 /// Circular bounded queue.
 pub struct Queue<T> {
   pub contents: Vec<T>,
@@ -103,5 +107,62 @@ impl<T: Clone> Queue<T> {
     } else {
       (self.contents.slice(low, self.contents.len()), self.contents.slice(0, high))
     }
+  }
+}
+
+#[test]
+fn push_then_slice() {
+  let elems: Vec<int> = Vec::from_slice([1, 2, 3]);
+  let mut q = Queue::new(32);
+  q.push_all(elems.as_slice());
+  assert!(q.len() == elems.len());
+  let (l, h) = q.slices(0, q.len() - 1);
+  assert!(l.len() + h.len() == elems.len() - 1);
+  for (i, elem) in l.iter().enumerate() {
+    assert!(*elem == elems[i]);
+  }
+  for (i, elem) in h.iter().enumerate() {
+    assert!(*elem == elems[i + l.len()]);
+  }
+}
+
+#[test]
+fn push_then_pop() {
+  let popped_pushes: Vec<int> = Vec::from_slice([1, 2, 3]);
+  let more_pushes: Vec<int> = Vec::from_slice([4, 5]);
+  let mut q = Queue::new(32);
+  q.push_all(popped_pushes.as_slice());
+  q.push_all(more_pushes.as_slice());
+  assert!(q.len() == popped_pushes.len() + more_pushes.len());
+  q.pop(popped_pushes.len());
+  assert!(q.len() == more_pushes.len());
+  let (l, h) = q.slices(0, q.len());
+  assert!(l.len() + h.len() == more_pushes.len());
+  for (i, elem) in l.iter().enumerate() {
+    assert!(*elem == more_pushes[i]);
+  }
+  for (i, elem) in h.iter().enumerate() {
+    assert!(*elem == more_pushes[i + l.len()]);
+  }
+}
+
+#[test]
+fn wrapped_pushes() {
+  static capacity: uint = 32;
+  let popped_pushes = Vec::from_elem(capacity / 2, 0);
+  let more_pushes: Vec<int> = range_inclusive(1, capacity as int).collect();
+  let mut q: Queue<int> = Queue::new(capacity);
+  q.push_all(popped_pushes.as_slice());
+  q.pop(popped_pushes.len());
+  q.push_all(more_pushes.as_slice());
+  assert!(q.len() == more_pushes.len());
+  let (l, h) = q.slices(0, q.len());
+  assert!(l.len() + h.len() == more_pushes.len());
+  assert!(h.len() > 0);
+  for (i, elem) in l.iter().enumerate() {
+    assert!(*elem == more_pushes[i]);
+  }
+  for (i, elem) in h.iter().enumerate() {
+    assert!(*elem == more_pushes[i + l.len()]);
   }
 }
