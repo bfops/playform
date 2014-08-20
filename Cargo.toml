@@ -36,3 +36,7 @@ git = "https://github.com/PistonDevelopers/shader_version"
 
 [dependencies.ncollide3df32]
 git = "https://github.com/sebcrozet/ncollide"
+
+[dependencies.glw]
+name = "glw"
+path = "src/glw/"

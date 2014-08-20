@@ -9,9 +9,11 @@ use std::hash::Hash;
 use std::num::NumCast;
 use std::ptr::RawPtr;
 use std::rc::Rc;
-use vertex;
-use vertex::ColoredVertex;
-use glw::{GLSliceBuffer,GLContext,Shader,Lines};
+use glw::gl_buffer::*;
+use glw::gl_context::GLContext;
+use glw::shader::Shader;
+use glw::vertex;
+use glw::vertex::ColoredVertex;
 
 type F = f32;
 

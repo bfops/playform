@@ -1,9 +1,9 @@
 #![macro_escape]
 
-use color::Color4;
+use glw::color::Color4;
+use glw::vertex::{ColoredVertex};
 use nalgebra::na::Vec3;
 use ncollide3df32::bounding_volume::aabb::AABB;
-use vertex::{ColoredVertex};
 
 pub static WINDOW_WIDTH:  uint = 800;
 pub static WINDOW_HEIGHT: uint = 600;

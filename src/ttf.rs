@@ -1,7 +1,7 @@
 extern crate gl;
 
-pub use color::Color4;
-pub use glw;
+use glw::texture::Texture;
+use glw::color::Color4;
 use sdl2::pixels::ll::{SDL_Color,SDL_PIXELFORMAT_ARGB8888};
 use sdl2::surface::ll::SDL_Surface;
 use sdl2::surface;
@@ -92,7 +92,7 @@ impl Font {
   }
 
   /// Color is rgba
-  pub fn render(&self, txt: &str, color: Color4<u8>) -> glw::Texture {
+  pub fn render(&self, txt: &str, color: Color4<u8>) -> Texture {
     unsafe {
       let sdl_color = SDL_Color {
         r: color.r,
@@ -117,25 +117,25 @@ impl Font {
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
       surface::ll::SDL_FreeSurface(surface_ptr as *const SDL_Surface);
-      glw::Texture { id: texture }
+      Texture { id: texture }
     }
   }
 
   /// Color the text red.
   #[allow(dead_code)]
-  pub fn red(&self, txt: &str) -> glw::Texture {
+  pub fn red(&self, txt: &str) -> Texture {
     self.render(txt, Color4::of_rgba(0xFF, 0x00, 0x00, 0xFF))
   }
 
   /// dark black #333
   #[allow(dead_code)]
-  pub fn dark(&self, txt: &str) -> glw::Texture {
+  pub fn dark(&self, txt: &str) -> Texture {
     self.render(txt, Color4::of_rgba(0x33, 0x33, 0x33, 0xFF))
   }
 
   /// light black #555
   #[allow(dead_code)]
-  pub fn light(&self, txt: &str) -> glw::Texture {
+  pub fn light(&self, txt: &str) -> Texture {
     self.render(txt, Color4::of_rgba(0x55, 0x55, 0x55, 0xFF))
   }
 }

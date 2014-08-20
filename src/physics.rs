@@ -1,4 +1,4 @@
-use glw::GLContext;
+use glw::gl_context::GLContext;
 use nalgebra::na::Vec3;
 use ncollide3df32::bounding_volume::aabb::AABB;
 use ncollide3df32::math::Scalar;

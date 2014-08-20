@@ -12,6 +12,7 @@
 #![allow(unused_unsafe)]
 
 extern crate gl;
+extern crate glw;
 extern crate input;
 extern crate libc;
 extern crate nalgebra;
@@ -22,18 +23,13 @@ extern crate sdl2;
 extern crate sdl2_game_window;
 extern crate shader_version;
 
-mod color;
 mod common;
-mod cstr_cache;
 mod fontloader;
-mod glw;
 mod stopwatch;
 mod main;
 mod octree;
 mod physics;
-mod queue;
 mod ttf;
-mod vertex;
 
 #[allow(dead_code)]
 fn main() {

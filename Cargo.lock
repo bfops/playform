@@ -3,6 +3,7 @@ name = "playform"
 version = "0.0.0"
 dependencies = [
  "gl 0.0.1 (git+https://github.com/bjz/gl-rs#8bf7197ac6769a208d6bdc30070958034ecf95e8)",
+ "glw 0.0.0",
  "input 0.0.0 (git+https://github.com/PistonDevelopers/input#f5e259341c3963ba76141b5476c464526fbbc432)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra#1b7cd5fe1fcc3d0a47c626d0672b4827b7e640ae)",
  "ncollide3df32 0.1.0 (git+https://github.com/sebcrozet/ncollide#128f70530e2f254d8840498b215960373ef03087)",
@@ -65,6 +66,10 @@ dependencies = [
  "khronos_api 0.0.1 (git+https://github.com/bjz/gl-rs#8bf7197ac6769a208d6bdc30070958034ecf95e8)",
  "rust-xml 0.1.0 (git+https://github.com/netvl/rust-xml#361fc1ac28422186a97b377ad9c1d571a2b36f6a)",
 ]
+
+[[package]]
+name = "glw"
+version = "0.0.0"
 
 [[package]]
 name = "graphics"

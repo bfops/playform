@@ -1,10 +1,16 @@
-use color::Color4;
 use common::*;
 use fontloader;
 use gl;
 use gl::types::GLfloat;
-use glw;
-use glw::{Camera,Lines,Triangles,Shader,Texture,GLSliceBuffer,GLContext,translation};
+use glw::camera;
+use glw::camera::Camera;
+use glw::color::Color4;
+use glw::gl_buffer::*;
+use glw::gl_context::GLContext;
+use glw::shader::Shader;
+use glw::texture::Texture;
+use glw::vertex;
+use glw::vertex::{ColoredVertex, TextureVertex};
 use input;
 use input::{KeyPress,KeyRelease,MousePress,MouseRelease,MouseMove};
 use ncollide3df32::bounding_volume::LooseBoundingVolume;
@@ -29,8 +35,6 @@ use std::mem;
 use std::raw;
 use std::rc::Rc;
 use libc::types::common::c95::c_void;
-use vertex;
-use vertex::{ColoredVertex, TextureVertex};
 
 static MAX_WORLD_SIZE: uint = 40000;
 
@@ -528,7 +532,7 @@ impl<'a> App<'a> {
 
       // initialize the projection matrix
       self.player.camera.translate((min + max) / 2.0 as GLfloat);
-      self.player.camera.fov = glw::perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
+      self.player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
 
       match gl::GetError() {
         gl::NO_ERROR => {},
@@ -626,7 +630,7 @@ impl<'a> App<'a> {
 
         let y_axis = Vec3::new(0.0, 1.0, 0.0);
         let walk_v =
-            glw::from_axis_angle3(y_axis, self.lateral_rotation)
+            camera::from_axis_angle3(y_axis, self.lateral_rotation)
             .rmul(&self.player.walk_accel);
         self.player.speed = self.player.speed + walk_v + self.player.accel;
         // friction
@@ -830,8 +834,8 @@ impl<'a> App<'a> {
       textures: Vec::new(),
       hud_camera: {
         let mut c = Camera::unit();
-        c.fov = glw::sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
-        c.fov = translation(Vec3::new(0.0, 0.0, -1.0)) * c.fov;
+        c.fov = camera::sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
+        c.fov = camera::translation(Vec3::new(0.0, 0.0, -1.0)) * c.fov;
         c
       },
       lateral_rotation: 0.0,
@@ -869,7 +873,7 @@ impl<'a> App<'a> {
         texture
       };
 
-      self.block_textures.insert(block_type, Rc::new(glw::Texture { id: texture }));
+      self.block_textures.insert(block_type, Rc::new(Texture { id: texture }));
       unsafe {
         self.block_buffers.insert(
           block_type,
@@ -1137,7 +1141,7 @@ impl<'a> App<'a> {
   /// Return the "right" axis (i.e. the x-axis rotated to match you).
   pub fn right(&self) -> Vec3<GLfloat> {
     return
-      glw::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation)
+      camera::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation)
         .rmul(&Vec3::new(1.0, 0.0, 0.0))
   }
 
@@ -1145,8 +1149,8 @@ impl<'a> App<'a> {
   pub fn forward(&self) -> Vec3<GLfloat> {
     let y_axis = Vec3::new(0.0, 1.0, 0.0);
     let transform =
-      glw::from_axis_angle3(self.right(), self.vertical_rotation) *
-      glw::from_axis_angle3(y_axis, self.lateral_rotation);
+      camera::from_axis_angle3(self.right(), self.vertical_rotation) *
+      camera::from_axis_angle3(y_axis, self.lateral_rotation);
     let forward_orig = Vec3::new(0.0, 0.0, -1.0);
     return transform.rmul(&forward_orig);
   }
