@@ -32,7 +32,7 @@ use libc::types::common::c95::c_void;
 use vertex;
 use vertex::{ColoredVertex, TextureVertex};
 
-static MAX_WORLD_SIZE: uint = 100000;
+static MAX_WORLD_SIZE: uint = 40000;
 
 static MAX_JUMP_FUEL: uint = 4;
 

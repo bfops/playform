@@ -88,7 +88,7 @@ impl<V> OctreeBuffers<V> {
           vertex::AttribData { name: "in_color", size: 4 },
         ],
         LINE_VERTICES_PER_BOX,
-        1 << 20,
+        1 << 18,
         Lines
       ),
     }
