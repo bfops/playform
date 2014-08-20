@@ -4,7 +4,7 @@ use fontloader;
 use gl;
 use gl::types::GLfloat;
 use glw;
-use glw::{Camera,Lines,Triangles,Shader,Texture,GLBuffer,GLContext,translation};
+use glw::{Camera,Lines,Triangles,Shader,Texture,GLSliceBuffer,GLContext,translation};
 use input;
 use input::{KeyPress,KeyRelease,MousePress,MouseRelease,MouseMove};
 use ncollide3df32::bounding_volume::LooseBoundingVolume;
@@ -178,8 +178,8 @@ struct BlockBuffers {
   id_to_index: HashMap<Id, uint>,
   index_to_id: Vec<Id>,
 
-  triangles: GLBuffer<TextureVertex>,
-  outlines: GLBuffer<ColoredVertex>,
+  triangles: GLSliceBuffer<TextureVertex>,
+  outlines: GLSliceBuffer<ColoredVertex>,
 }
 
 impl BlockBuffers {
@@ -187,7 +187,7 @@ impl BlockBuffers {
     BlockBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
-      triangles: GLBuffer::new(
+      triangles: GLSliceBuffer::new(
         gl,
         texture_shader.clone(),
         [ vertex::AttribData { name: "position", size: 3 },
@@ -197,7 +197,7 @@ impl BlockBuffers {
         MAX_WORLD_SIZE,
         Triangles
       ),
-      outlines: GLBuffer::new(
+      outlines: GLSliceBuffer::new(
         gl,
         color_shader.clone(),
         [ vertex::AttribData { name: "position", size: 3 },
@@ -276,7 +276,7 @@ struct MobBuffers {
   id_to_index: HashMap<Id, uint>,
   index_to_id: Vec<Id>,
 
-  triangles: GLBuffer<ColoredVertex>,
+  triangles: GLSliceBuffer<ColoredVertex>,
 }
 
 impl MobBuffers {
@@ -285,7 +285,7 @@ impl MobBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
 
-      triangles: GLBuffer::new(
+      triangles: GLSliceBuffer::new(
         gl,
         color_shader.clone(),
         [ vertex::AttribData { name: "position", size: 3 },
@@ -366,9 +366,9 @@ pub struct App<'a> {
   block_buffers: HashMap<BlockType, BlockBuffers>,
   octree_buffers: Rc<cell::RefCell<octree::OctreeBuffers<Id>>>,
   block_textures: HashMap<BlockType, Rc<Texture>>,
-  line_of_sight: GLBuffer<ColoredVertex>,
-  hud_triangles: GLBuffer<ColoredVertex>,
-  texture_triangles: GLBuffer<TextureVertex>,
+  line_of_sight: GLSliceBuffer<ColoredVertex>,
+  hud_triangles: GLSliceBuffer<ColoredVertex>,
+  texture_triangles: GLSliceBuffer<TextureVertex>,
 
   textures: Vec<Texture>,
   hud_camera: Camera,
@@ -728,11 +728,7 @@ impl<'a> App<'a> {
       self.gl.use_shader(self.texture_shader.deref(), |gl| {
         for (i, tex) in self.textures.iter().enumerate() {
           tex.bind_2d(gl);
-          let verticies_in_a_square = 6;
-          self.texture_triangles.draw_slice(
-            gl,
-            i*verticies_in_a_square,
-            verticies_in_a_square);
+          self.texture_triangles.draw_slice(gl, i * 2, 2);
         }
       });
 
@@ -758,7 +754,7 @@ impl<'a> App<'a> {
     }
 
     let line_of_sight = unsafe {
-      GLBuffer::new(
+      GLSliceBuffer::new(
           &gl,
           color_shader.clone(),
           [ vertex::AttribData { name: "position", size: 3 },
@@ -771,7 +767,7 @@ impl<'a> App<'a> {
     };
 
     let hud_triangles = unsafe {
-      GLBuffer::new(
+      GLSliceBuffer::new(
           &gl,
           color_shader.clone(),
           [ vertex::AttribData { name: "position", size: 3 },
@@ -784,7 +780,7 @@ impl<'a> App<'a> {
     };
 
     let texture_triangles = unsafe {
-      GLBuffer::new(
+      GLSliceBuffer::new(
           &gl,
           texture_shader.clone(),
           [ vertex::AttribData { name: "position", size: 3 },

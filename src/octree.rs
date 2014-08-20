@@ -11,7 +11,7 @@ use std::ptr::RawPtr;
 use std::rc::Rc;
 use vertex;
 use vertex::ColoredVertex;
-use glw::{GLBuffer,GLContext,Shader,Lines};
+use glw::{GLSliceBuffer,GLContext,Shader,Lines};
 
 type F = f32;
 
@@ -72,7 +72,7 @@ pub struct OctreeBuffers<V> {
   entry_to_index: HashMap<OctreeId, uint>,
   index_to_entry: Vec<OctreeId>,
 
-  outlines: GLBuffer<ColoredVertex>,
+  outlines: GLSliceBuffer<ColoredVertex>,
 }
 
 impl<V> OctreeBuffers<V> {
@@ -81,7 +81,7 @@ impl<V> OctreeBuffers<V> {
       entry_to_index: HashMap::new(),
       index_to_entry: Vec::new(),
 
-      outlines: GLBuffer::new(
+      outlines: GLSliceBuffer::new(
         gl,
         shader_program.clone(),
         [ vertex::AttribData { name: "position", size: 3 },

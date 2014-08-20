@@ -107,18 +107,11 @@ unsafe fn aligned_slice_to_ptr<T>(vs: &[T], alignment: uint) -> *const c95::c_vo
 pub struct GLBuffer<T> {
   pub vertex_array: u32,
   pub vertex_buffer: u32,
-  /// Each index in the GLBuffer is the index of a contiguous block of
-  /// t_span elements.
-  pub t_span: uint,
-  /// in units of single Ts.
   pub length:   uint,
   pub capacity: uint,
   pub shader: Rc<Shader>,
   /// How to draw this buffer. Ex: gl::LINES, gl::TRIANGLES, etc.
   pub mode: GLenum,
-
-  /// in-memory buffer before sending to OpenGL.
-  pub buffer: Queue<T>,
 }
 
 pub enum DrawMode {
@@ -138,15 +131,13 @@ impl DrawMode {
 impl<T: Clone> GLBuffer<T> {
   #[inline]
   /// Creates a new array of objects on the GPU.
-  /// capacity is provided in units of size t_span.
+  /// capacity is provided in units of size slice_span.
   pub unsafe fn new(
       _gl: &GLContext,
       shader_program: Rc<Shader>,
       attribs: &[vertex::AttribData],
-      t_span: uint,
       capacity: uint,
       mode: DrawMode) -> GLBuffer<T> {
-    let capacity = capacity * t_span;
     let mut vertex_array = 0;
     let mut vertex_buffer = 0;
 
@@ -217,21 +208,35 @@ impl<T: Clone> GLBuffer<T> {
     GLBuffer {
       vertex_array:  vertex_array,
       vertex_buffer: vertex_buffer,
-      t_span: t_span,
       length: 0,
       capacity: capacity,
       shader: shader_program,
       mode: mode.to_enum(),
-      buffer: Queue::new(capacity),
     }
   }
 
+  pub fn len(&self) -> uint {
+    self.length
+  }
+
+  pub fn capacity(&self) -> uint {
+    self.capacity
+  }
+
   /// Analog of `std::vec::Vec::swap_remove`, but for GLBuffer data.
-  pub fn swap_remove(&mut self, _gl: &GLContext, i: uint) {
-    let i = i * self.t_span;
-    assert!(i < self.length + self.buffer.len());
+  pub fn swap_remove(&mut self, _gl: &GLContext, i: uint, count: uint) {
+    self.length -= count;
+    assert!(i <= self.length);
+
+    // In the `i == self.length` case, we don't bother with the swap;
+    // decreasing `self.length` is enough.
+
     if i < self.length {
-      self.length -= self.t_span;
+      assert!(
+        i <= self.length - count,
+        "GLBuffer::swap_remove would cause copy in overlapping regions"
+      );
+
       if i == self.length {
         // just remove, no swap.
         return;
@@ -249,51 +254,28 @@ impl<T: Clone> GLBuffer<T> {
         gl::ARRAY_BUFFER,
         self.length as i64 * byte_size,
         i as i64 * byte_size,
-        self.t_span as i64 * byte_size
+        count as i64 * byte_size
       );
-    } else {
-      self.buffer.swap_remove(i - self.length, self.t_span);
     }
   }
 
-  /// Add more data into this buffer; the data are not pushed to OpenGL until
-  /// flush() is called!
-  pub fn push(&mut self, vs: &[T]) {
-    assert!(vs.len() % self.t_span == 0);
+  /// Add more data into this buffer.
+  pub fn push(&mut self, gl: &GLContext, vs: &[T]) {
     assert!(
-      self.length + self.buffer.len() + vs.len() <= self.capacity,
-      "GLBuffer::push {} into a {}/{} full GLbuffer",
+      self.length + vs.len() <= self.capacity,
+      "GLBuffer::push {} into a {}/{} full GLBuffer",
       vs.len(),
-      self.length + self.buffer.len(),
+      self.length,
       self.capacity
     );
 
-    self.buffer.push_all(vs);
-  }
-
-  /// Send in-memory buffered data to OpenGL buffers.
-  pub fn flush(&mut self, _gl: &GLContext, max: Option<uint>) {
-    if self.buffer.is_empty() {
-      return;
-    }
-
-    assert!(self.buffer.len() % self.t_span == 0);
-    assert!(self.length + self.buffer.len() <= self.capacity);
-    let max = max.map(|x| x * self.t_span);
-    let count = max.map_or(self.buffer.len(), |x| cmp::min(x, self.buffer.len()));
-    {
-      let (l, h) = self.buffer.slices(0, count);
-      self.update_inner(_gl, self.length, l);
-      self.update_inner(_gl, self.length + l.len(), h);
-    }
-
-    self.length += count;
-    self.buffer.pop(count);
+    self.update_inner(gl, self.length, vs);
+    self.length += vs.len();
   }
 
   pub fn update(&self, gl: &GLContext, idx: uint, vs: &[T]) {
-    assert!(vs.len() % self.t_span == 0);
-    self.update_inner(gl, idx * self.t_span, vs);
+    assert!(idx + vs.len() <= self.length);
+    self.update_inner(gl, idx, vs);
   }
 
   fn update_inner(&self, _gl: &GLContext, idx: uint, vs: &[T]) {
@@ -329,6 +311,8 @@ impl<T: Clone> GLBuffer<T> {
 
   /// Draw some subset of the triangle array.
   pub fn draw_slice(&self, gl: &GLContext, start: uint, len: uint) {
+    assert!(start + len <= self.len());
+
     gl.use_shader(self.shader.deref(), |_gl| {
       gl::BindVertexArray(self.vertex_array);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
@@ -346,6 +330,117 @@ impl<T> Drop for GLBuffer<T> {
       gl::DeleteBuffers(1, &self.vertex_buffer);
       gl::DeleteVertexArrays(1, &self.vertex_array);
     }
+  }
+}
+
+/// A `GLBuffer` that pushes slices of data at a time.
+/// These slices are expected to be a fixed size (or multiples of that size).
+/// Indexing operations and lengths are in terms of contiguous blocks of that
+/// size (i.e. refering to index 2 when `slice_span` is 3 means referring to a
+/// contiguous block of size 3 starting at index 6 in the underlying GLBuffer.
+pub struct GLSliceBuffer<T> {
+  pub gl_buffer: GLBuffer<T>,
+  /// Each index in the GLBuffer is the index of a contiguous block of
+  /// `slice_span` elements.
+  pub slice_span: uint,
+
+  /// in-memory buffer before sending to OpenGL.
+  pub buffer: Queue<T>,
+}
+
+impl<T: Clone> GLSliceBuffer<T> {
+  pub unsafe fn new(
+    gl: &GLContext,
+    shader_program: Rc<Shader>,
+    attribs: &[vertex::AttribData],
+    slice_span: uint,
+    capacity: uint,
+    mode: DrawMode
+  ) -> GLSliceBuffer<T> {
+    let capacity = capacity * slice_span;
+    let gl_buffer = GLBuffer::new(gl, shader_program, attribs, capacity, mode);
+    GLSliceBuffer {
+      gl_buffer: gl_buffer,
+      slice_span: slice_span,
+      buffer: Queue::new(capacity),
+    }
+  }
+
+  pub fn len(&self) -> uint {
+    self.gl_buffer.len() + self.buffer.len()
+  }
+
+  pub fn capacity(&self) -> uint {
+    self.gl_buffer.capacity()
+  }
+
+  pub fn swap_remove(&mut self, gl: &GLContext, i: uint) {
+    let i = i * self.slice_span;
+    assert!(i < self.len());
+    if i < self.gl_buffer.len() {
+      self.gl_buffer.swap_remove(gl, i, self.slice_span);
+    } else {
+      let slice_span = self.slice_span;
+      let len = self.gl_buffer.len();
+      self.buffer.swap_remove(i - len, slice_span);
+    }
+  }
+
+  /// Add more data into this buffer; the data are not pushed to OpenGL until
+  /// flush() is called!
+  pub fn push(&mut self, vs: &[T]) {
+    assert!(vs.len() % self.slice_span == 0);
+    assert!(self.len() + vs.len() <= self.capacity(),
+      "GLSliceBuffer::push {} into a {}/{} full GLSliceBuffer",
+      vs.len(),
+      self.len(),
+      self.capacity()
+    );
+
+    let prev_len = self.len();
+
+    self.buffer.push_all(vs);
+
+    assert!(self.len() == prev_len + vs.len());
+  }
+
+  pub fn flush(&mut self, gl: &GLContext, max: Option<uint>) {
+    if self.buffer.is_empty() {
+      return;
+    }
+
+    assert!(self.buffer.len() % self.slice_span == 0);
+    assert!(self.len() <= self.capacity());
+
+    let prev_len = self.len();
+
+    let count = match max {
+      None => self.buffer.len(),
+      Some(x) => cmp::min(x * self.slice_span, self.buffer.len()),
+    };
+
+    {
+      let (l, h) = self.buffer.slices(0, count);
+      self.gl_buffer.push(gl, l);
+      self.gl_buffer.push(gl, h);
+    }
+
+    self.buffer.pop(count);
+
+    assert!(self.len() == prev_len);
+  }
+
+  pub fn update(&self, gl: &GLContext, idx: uint, vs: &[T]) {
+    assert!(vs.len() % self.slice_span == 0);
+    self.gl_buffer.update(gl, idx * self.slice_span, vs);
+  }
+
+  pub fn draw(&self, gl: &GLContext) {
+    self.gl_buffer.draw(gl);
+  }
+
+  pub fn draw_slice(&self, gl: &GLContext, start: uint, len: uint) {
+    self.gl_buffer.draw_slice(gl, start * self.slice_span, len * self.slice_span);
   }
 }
 
