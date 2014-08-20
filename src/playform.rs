@@ -12,6 +12,7 @@
 #![allow(unused_unsafe)]
 
 extern crate gl;
+extern crate input;
 extern crate libc;
 extern crate nalgebra;
 extern crate ncollide3df32;

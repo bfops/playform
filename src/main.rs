@@ -5,16 +5,16 @@ use gl;
 use gl::types::GLfloat;
 use glw;
 use glw::{Camera,Lines,Triangles,Shader,Texture,GLBuffer,GLContext,translation};
+use input;
+use input::{KeyPress,KeyRelease,MousePress,MouseRelease,MouseMove};
 use ncollide3df32::bounding_volume::LooseBoundingVolume;
 use ncollide3df32::bounding_volume::aabb::AABB;
 use nalgebra::na::{Vec2, Vec3, RMul, Norm};
 use ncollide3df32::ray::{Ray, RayCast};
 use octree;
 use physics::Physics;
-use piston;
 use piston::{GameEvent,GameWindowSettings,GameIterator,GameIteratorSettings};
-use piston::{MouseMoveArgs,MousePressArgs,MouseReleaseArgs,KeyPressArgs,KeyReleaseArgs,UpdateArgs,RenderArgs};
-use piston::{Render,Update,KeyPress,KeyRelease,MousePress,MouseRelease,MouseMove};
+use piston::{Render,Update,Input,UpdateArgs,RenderArgs};
 use png;
 use sdl2_game_window::{GameWindowSDL2};
 use sdl2::mouse;
@@ -380,7 +380,7 @@ pub struct App<'a> {
   texture_shader: Rc<Shader>,
 
   // which mouse buttons are currently pressed
-  mouse_buttons_pressed: Vec<piston::mouse::Button>,
+  mouse_buttons_pressed: Vec<input::mouse::Button>,
 
   render_octree: bool,
 
@@ -390,37 +390,37 @@ pub struct App<'a> {
 }
 
 impl<'a> App<'a> {
-  fn key_press(&mut self, _: &mut GameWindowSDL2, args: &KeyPressArgs) {
+  fn key_press(&mut self, key: input::keyboard::Key) {
     time!(&self.timers, "event.key_press", || {
-      match args.key {
-        piston::keyboard::A => {
+      match key {
+        input::keyboard::A => {
           self.walk(Vec3::new(-1.0, 0.0, 0.0));
         },
-        piston::keyboard::D => {
+        input::keyboard::D => {
           self.walk(Vec3::new(1.0, 0.0, 0.0));
         },
-        piston::keyboard::Space => {
+        input::keyboard::Space => {
           if !self.player.is_jumping {
             self.player.is_jumping = true;
             // this 0.3 is duplicated in a few places
             self.player.accel.y = self.player.accel.y + 0.3;
           }
         },
-        piston::keyboard::W => {
+        input::keyboard::W => {
           self.walk(Vec3::new(0.0, 0.0, -1.0));
         },
-        piston::keyboard::S => {
+        input::keyboard::S => {
           self.walk(Vec3::new(0.0, 0.0, 1.0));
         },
-        piston::keyboard::Left =>
+        input::keyboard::Left =>
           self.rotate_lateral(PI / 12.0),
-        piston::keyboard::Right =>
+        input::keyboard::Right =>
           self.rotate_lateral(-PI / 12.0),
-        piston::keyboard::Up =>
+        input::keyboard::Up =>
           self.rotate_vertical(PI / 12.0),
-        piston::keyboard::Down =>
+        input::keyboard::Down =>
           self.rotate_vertical(-PI / 12.0),
-        piston::keyboard::M => {
+        input::keyboard::M => {
           let updates = [
             ColoredVertex {
               position: self.player.camera.position,
@@ -433,7 +433,7 @@ impl<'a> App<'a> {
           ];
           self.line_of_sight.update(&self.gl, 0, updates);
         },
-        piston::keyboard::O => {
+        input::keyboard::O => {
           self.render_octree = !self.render_octree;
         }
         _ => {},
@@ -441,27 +441,27 @@ impl<'a> App<'a> {
     })
   }
 
-  fn key_release(&mut self, _: &mut GameWindowSDL2, args: &KeyReleaseArgs) {
+  fn key_release(&mut self, key: input::keyboard::Key) {
     time!(&self.timers, "event.key_release", || {
-      match args.key {
+      match key {
         // accelerations are negated from those in key_press.
-        piston::keyboard::A => {
+        input::keyboard::A => {
           self.walk(Vec3::new(1.0, 0.0, 0.0));
         },
-        piston::keyboard::D => {
+        input::keyboard::D => {
           self.walk(Vec3::new(-1.0, 0.0, 0.0));
         },
-        piston::keyboard::Space => {
+        input::keyboard::Space => {
           if self.player.is_jumping {
             self.player.is_jumping = false;
             // this 0.3 is duplicated in a few places
             self.player.accel.y = self.player.accel.y - 0.3;
           }
         },
-        piston::keyboard::W => {
+        input::keyboard::W => {
           self.walk(Vec3::new(0.0, 0.0, 1.0));
         },
-        piston::keyboard::S => {
+        input::keyboard::S => {
           self.walk(Vec3::new(0.0, 0.0, -1.0));
         },
         _ => { }
@@ -469,13 +469,13 @@ impl<'a> App<'a> {
     })
   }
 
-  fn mouse_move(&mut self, w: &mut GameWindowSDL2, args: &MouseMoveArgs) {
+  fn mouse_move(&mut self, w: &mut GameWindowSDL2, x: f64, y: f64) {
     time!(&self.timers, "event.mouse_move", || {
       let (cx, cy) = (WINDOW_WIDTH as f32 / 2.0, WINDOW_HEIGHT as f32 / 2.0);
       // args.y = h - args.y;
       // dy = args.y - cy;
       //  => dy = cy - args.y;
-      let (dx, dy) = (args.x as f32 - cx, cy - args.y as f32);
+      let (dx, dy) = (x as f32 - cx, cy - y as f32);
       let (rx, ry) = (dx * -3.14 / 2048.0, dy * 3.14 / 1600.0);
       self.rotate_lateral(rx);
       self.rotate_vertical(ry);
@@ -488,14 +488,14 @@ impl<'a> App<'a> {
     })
   }
 
-  fn mouse_press(&mut self, _: &mut GameWindowSDL2, args: &MousePressArgs) {
+  fn mouse_press(&mut self, button: input::mouse::Button) {
     time!(&self.timers, "event.mouse_press", || {
-      self.mouse_buttons_pressed.push(args.button);
+      self.mouse_buttons_pressed.push(button);
     })
   }
 
-  fn mouse_release(&mut self, _: &mut GameWindowSDL2, args: &MouseReleaseArgs) {
-    swap_remove_first(&mut self.mouse_buttons_pressed, args.button)
+  fn mouse_release(&mut self, button: input::mouse::Button) {
+    swap_remove_first(&mut self.mouse_buttons_pressed, button)
   }
 
   fn load(&mut self) {
@@ -659,7 +659,7 @@ impl<'a> App<'a> {
       });
 
       // Block deletion
-      if self.is_mouse_pressed(piston::mouse::Left) {
+      if self.is_mouse_pressed(input::mouse::Left) {
         time!(&self.timers, "update.delete_block", || {
           self.entity_in_front().map(|id| {
             if self.blocks.contains_key(&id) {
@@ -668,7 +668,7 @@ impl<'a> App<'a> {
           });
         })
       }
-      if self.is_mouse_pressed(piston::mouse::Right) {
+      if self.is_mouse_pressed(input::mouse::Right) {
         time!(&self.timers, "update.place_block", || {
           match self.entity_in_front() {
             None => {},
@@ -992,7 +992,7 @@ impl<'a> App<'a> {
   }
 
   #[inline]
-  pub fn is_mouse_pressed(&self, b: piston::mouse::Button) -> bool {
+  pub fn is_mouse_pressed(&self, b: input::mouse::Button) -> bool {
     self.mouse_buttons_pressed.iter().any(|x| *x == b)
   }
 
@@ -1164,12 +1164,14 @@ impl<'a> App<'a> {
     match *event {
       Render(ref mut args) => self.render(game_window, args),
       Update(ref mut args) => self.update(game_window, args),
-      KeyPress(ref args) => self.key_press(game_window, args),
-      KeyRelease(ref args) => self.key_release(game_window, args),
-      MousePress(ref args) => self.mouse_press(game_window, args),
-      MouseRelease(ref args) => self.mouse_release(game_window, args),
-      MouseMove(ref args) => self.mouse_move(game_window, args),
-      _ => {},
+      Input(ref i) => match *i {
+        KeyPress { key: key } => self.key_press(key),
+        KeyRelease { key: key } => self.key_release(key),
+        MousePress { button: button } => self.mouse_press(button),
+        MouseRelease { button: button } => self.mouse_release(button),
+        MouseMove { x: x, y: y, draw_x: _, draw_y: _ } => self.mouse_move(game_window, x, y),
+        _ => {},
+      },
     }
   }
 

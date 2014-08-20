@@ -22,6 +22,9 @@ git = "https://github.com/PistonDevelopers/sdl2_game_window"
 [dependencies.piston]
 git = "https://github.com/PistonDevelopers/piston"
 
+[dependencies.input]
+git = "https://github.com/PistonDevelopers/input"
+
 [dependencies.nalgebra]
 git = "https://github.com/sebcrozet/nalgebra"
 
