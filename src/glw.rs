@@ -8,11 +8,13 @@ use libc::types::common::c95;
 use nalgebra::na::{Mat3, Mat4, Vec3, Eye, Outer};
 use gl;
 use gl::types::*;
+use std::cmp;
 use std::mem;
 use std::ptr;
 use std::raw;
 use std::rc::Rc;
 use std::str;
+use queue::Queue;
 use vertex;
 
 pub struct Shader {
@@ -116,7 +118,7 @@ pub struct GLBuffer<T> {
   pub mode: GLenum,
 
   /// in-memory buffer before sending to OpenGL.
-  pub buffer: Vec<T>,
+  pub buffer: Queue<T>,
 }
 
 pub enum DrawMode {
@@ -220,7 +222,7 @@ impl<T: Clone> GLBuffer<T> {
       capacity: capacity,
       shader: shader_program,
       mode: mode.to_enum(),
-      buffer: Vec::new(),
+      buffer: Queue::new(capacity),
     }
   }
 
@@ -228,27 +230,30 @@ impl<T: Clone> GLBuffer<T> {
   pub fn swap_remove(&mut self, _gl: &GLContext, i: uint) {
     let i = i * self.t_span;
     assert!(i < self.length + self.buffer.len());
-    assert!(i < self.length, "GLBuffer::swap_remove on unflushed data");
-    self.length -= self.t_span;
-    if i == self.length {
-      // just remove, no swap.
-      return;
+    if i < self.length {
+      self.length -= self.t_span;
+      if i == self.length {
+        // just remove, no swap.
+        return;
+      }
+
+      let va = self.vertex_array;
+      let vb = self.vertex_buffer;
+
+      gl::BindVertexArray(va);
+      gl::BindBuffer(gl::ARRAY_BUFFER, vb);
+
+      let byte_size = mem::size_of::<T>() as i64;
+      gl::CopyBufferSubData(
+        gl::ARRAY_BUFFER,
+        gl::ARRAY_BUFFER,
+        self.length as i64 * byte_size,
+        i as i64 * byte_size,
+        self.t_span as i64 * byte_size
+      );
+    } else {
+      self.buffer.swap_remove(i - self.length, self.t_span);
     }
-
-    let va = self.vertex_array;
-    let vb = self.vertex_buffer;
-
-    gl::BindVertexArray(va);
-    gl::BindBuffer(gl::ARRAY_BUFFER, vb);
-
-    let byte_size = mem::size_of::<T>() as i64;
-    gl::CopyBufferSubData(
-      gl::ARRAY_BUFFER,
-      gl::ARRAY_BUFFER,
-      self.length as i64 * byte_size,
-      i as i64 * byte_size,
-      self.t_span as i64 * byte_size
-    );
   }
 
   /// Add more data into this buffer; the data are not pushed to OpenGL until
@@ -257,7 +262,8 @@ impl<T: Clone> GLBuffer<T> {
     assert!(vs.len() % self.t_span == 0);
     assert!(
       self.length + self.buffer.len() + vs.len() <= self.capacity,
-      "GLBuffer::push into a {}/{} full GLbuffer",
+      "GLBuffer::push {} into a {}/{} full GLbuffer",
+      vs.len(),
       self.length + self.buffer.len(),
       self.capacity
     );
@@ -265,20 +271,33 @@ impl<T: Clone> GLBuffer<T> {
     self.buffer.push_all(vs);
   }
 
-  /// Send all the in-memory buffered data to OpenGL buffers.
-  pub fn flush(&mut self, _gl: &GLContext) {
-    assert!(self.buffer.len() % self.t_span == 0);
-    if self.buffer.len() > 0 {
-      self.update(_gl, self.length / self.t_span, self.buffer.as_slice());
-
-      self.length += self.buffer.len();
-      self.buffer.clear();
+  /// Send in-memory buffered data to OpenGL buffers.
+  pub fn flush(&mut self, _gl: &GLContext, max: Option<uint>) {
+    if self.buffer.is_empty() {
+      return;
     }
+
+    assert!(self.buffer.len() % self.t_span == 0);
+    assert!(self.length + self.buffer.len() <= self.capacity);
+    let max = max.map(|x| x * self.t_span);
+    let count = max.map_or(self.buffer.len(), |x| cmp::min(x, self.buffer.len()));
+    {
+      let (l, h) = self.buffer.slices(0, count);
+      self.update_inner(_gl, self.length, l);
+      self.update_inner(_gl, self.length + l.len(), h);
+    }
+
+    self.length += count;
+    self.buffer.pop(count);
   }
 
-  pub fn update(&self, _gl: &GLContext, idx: uint, vs: &[T]) {
+  pub fn update(&self, gl: &GLContext, idx: uint, vs: &[T]) {
     assert!(vs.len() % self.t_span == 0);
-    assert!(idx * self.t_span + vs.len() <= self.capacity);
+    self.update_inner(gl, idx * self.t_span, vs);
+  }
+
+  fn update_inner(&self, _gl: &GLContext, idx: uint, vs: &[T]) {
+    assert!(idx + vs.len() <= self.capacity);
 
     gl::BindVertexArray(self.vertex_array);
     gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
@@ -287,7 +306,7 @@ impl<T: Clone> GLBuffer<T> {
     unsafe {
       gl::BufferSubData(
           gl::ARRAY_BUFFER,
-          (byte_size * idx * self.t_span) as i64,
+          (byte_size * idx) as i64,
           (byte_size * vs.len()) as i64,
           aligned_slice_to_ptr(vs.as_slice(), mem::size_of::<GLfloat>())
       );

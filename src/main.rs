@@ -20,6 +20,7 @@ use sdl2_game_window::{GameWindowSDL2};
 use sdl2::mouse;
 use shader_version::opengl::*;
 use stopwatch;
+use stopwatch::*;
 use std::cell;
 use std::collections::HashMap;
 use std::f32::consts::PI;
@@ -36,7 +37,7 @@ static MAX_WORLD_SIZE: uint = 100000;
 static MAX_JUMP_FUEL: uint = 4;
 
 // how many blocks to load during every update step
-static LOAD_SPEED:uint = 1 << 12;
+static LOAD_SPEED:uint = 1 << 10;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
 #[deriving(Copy, PartialEq, Eq, Hash)]
@@ -222,8 +223,8 @@ impl BlockBuffers {
   }
 
   pub fn flush(&mut self, gl: &GLContext) {
-    self.triangles.flush(gl);
-    self.outlines.flush(gl);
+    self.triangles.flush(gl, Some(LOAD_SPEED));
+    self.outlines.flush(gl, Some(LOAD_SPEED));
   }
 
   pub fn swap_remove(&mut self, gl: &GLContext, id: Id) {
@@ -309,7 +310,7 @@ impl MobBuffers {
   }
 
   pub fn flush(&mut self, gl: &GLContext) {
-    self.triangles.flush(gl);
+    self.triangles.flush(gl, Some(LOAD_SPEED));
   }
 
   pub fn update(
@@ -351,14 +352,12 @@ fn first_face(bounds: &AABB, ray: &Ray) -> uint {
 }
 
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
-pub struct App {
+pub struct App<'a> {
   physics: Physics<Id>,
   blocks: HashMap<Id, Block>,
   player: Player,
   mobs: HashMap<Id, cell::RefCell<Mob>>,
 
-  // id of the next block to load
-  next_load_id: Id,
   // next block id to assign
   next_id: Id,
 
@@ -390,7 +389,7 @@ pub struct App {
   gl: GLContext,
 }
 
-impl App {
+impl<'a> App<'a> {
   fn key_press(&mut self, _: &mut GameWindowSDL2, args: &KeyPressArgs) {
     time!(&self.timers, "event.key_press", || {
       match args.key {
@@ -585,7 +584,8 @@ impl App {
           color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
         },
       ]);
-      self.line_of_sight.flush(&self.gl);
+
+      self.line_of_sight.flush(&self.gl, None);
     })
 
     println!("load() finished with {} blocks", self.blocks.len());
@@ -596,28 +596,11 @@ impl App {
       // TODO(cgaebel): Ideally, the update thread should not be touching OpenGL.
 
       // if there are more blocks to be loaded, add them into the OpenGL buffers.
-      if self.next_load_id < self.next_id {
-        time!(&self.timers, "update.load", || {
-          let mut i = 0;
-          while i < LOAD_SPEED && self.next_load_id < self.next_id {
-            match self.blocks.find_mut(&self.next_load_id) {
-              None => {},
-              Some(block) => {
-                let bounds = unwrap!(self.physics.get_bounds(self.next_load_id));
-                let buffers = unwrap!(self.block_buffers.find_mut(&block.block_type));
-                buffers.push(block.id, Block::to_texture_triangles(bounds), Block::to_outlines(bounds));
-              },
-            }
-
-            self.next_load_id = self.next_load_id + Id(1);
-            i += 1;
-          }
-
-          for (_, buffers) in self.block_buffers.mut_iter() {
-            buffers.flush(&self.gl);
-          }
-        });
+      for (_, buffers) in self.block_buffers.mut_iter() {
+        buffers.flush(&self.gl);
       }
+
+      self.octree_buffers.deref().borrow_mut().deref_mut().flush(&self.gl);
 
       time!(&self.timers, "update.player", || {
         if self.player.is_jumping {
@@ -759,7 +742,7 @@ impl App {
   }
 
   /// Initializes an empty app.
-  pub fn new(gl: GLContext) -> App {
+  pub fn new(gl: GLContext) -> App<'a> {
     let mut gl = gl;
     let world_bounds = AABB::new(
       Vec3 { x: -512.0, y: -32.0, z: -512.0 },
@@ -843,7 +826,6 @@ impl App {
         id: Id(0),
       },
       mobs: HashMap::new(),
-      next_load_id: Id(1),
       // Start assigning block_ids at 1.
       // block_id 0 corresponds to no block.
       next_id: Id(1),
@@ -925,7 +907,7 @@ impl App {
       y -= 0.2;
     }
 
-    self.texture_triangles.flush(&self.gl);
+    self.texture_triangles.flush(&self.gl, None);
   }
 
   fn make_hud(&mut self) {
@@ -938,7 +920,7 @@ impl App {
         cursor_color
       ));
 
-    self.hud_triangles.flush(&self.gl);
+    self.hud_triangles.flush(&self.gl, None);
   }
 
   fn make_world(&mut self) {
@@ -1073,18 +1055,24 @@ impl App {
         block.id = self.alloc_id();
         self.physics.insert(&self.gl, block.id, &bounds);
         self.blocks.insert(block.id, block);
+
+        let buffers = unwrap!(self.block_buffers.find_mut(&block_type));
+        // TODO: let us control when time is devoted to calculating triangles and outlines.
+        buffers.push(
+            block.id,
+            Block::to_texture_triangles(&bounds),
+            Block::to_outlines(&bounds)
+        );
       }
     })
   }
 
   fn remove_block(&mut self, id: Id) {
-    {
-      let block = unwrap!(self.blocks.find(&id));
-      let r = unwrap!(self.block_buffers.find_mut(&block.block_type));
-      r.swap_remove(&self.gl, id);
-    }
     self.physics.remove(&self.gl, id);
+    let block_type = unwrap!(self.blocks.find(&id)).block_type;
     self.blocks.remove(&id);
+    let r = unwrap!(self.block_buffers.find_mut(&block_type));
+    r.swap_remove(&self.gl, id);
   }
 
   /// Changes the camera's acceleration by the given `da`.
@@ -1208,7 +1196,7 @@ impl App {
 
 // TODO(cgaebel): This should be removed when rustc bug #8861 is patched.
 #[unsafe_destructor]
-impl Drop for App {
+impl<'a> Drop for App<'a> {
   fn drop(&mut self) {
     println!("Update Stats");
     println!("====================");

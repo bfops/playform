@@ -106,7 +106,7 @@ impl<V> OctreeBuffers<V> {
   }
 
   pub fn flush(&mut self, gl: &GLContext) {
-    self.outlines.flush(gl);
+    self.outlines.flush(gl, Some(1 << 12));
   }
 
   pub fn swap_remove(&mut self, gl: &GLContext, entry: OctreeId) {
@@ -189,7 +189,6 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
         let id = Octree::<V>::alloc_id();
         vs.push((bounds, id, v));
         self.buffers.deref().borrow_mut().deref_mut().push(id, to_outlines(&bounds));
-        self.buffers.deref().borrow_mut().deref_mut().flush(gl);
 
         let d = self.dimension;
         let avg_length =

@@ -5,6 +5,7 @@
 #![feature(globs)]
 #![feature(macro_rules)]
 #![feature(unsafe_destructor)]
+#![feature(phase)]
 
 // TODO(cgaebel): This is just to make the `time` macro work. I'm not sure how
 // to disable warnings only in a macro.
@@ -29,6 +30,7 @@ mod stopwatch;
 mod main;
 mod octree;
 mod physics;
+mod queue;
 mod ttf;
 mod vertex;
 
