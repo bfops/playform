@@ -20,7 +20,7 @@ fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
 }
 
 /// Ensures a slice has a given alignment, and converts it to a raw pointer.
-unsafe fn aligned_slice_to_ptr<T>(vs: &[T], alignment: uint) -> *const c95::c_void {
+unsafe fn aligned_slice_to_ptr<T, U>(vs: &[T], alignment: uint) -> *const U {
   let vs_as_slice : raw::Slice<T> = mem::transmute(vs);
   assert!(
     (vs_as_slice.data as uint & (alignment - 1) == 0),
@@ -29,18 +29,20 @@ unsafe fn aligned_slice_to_ptr<T>(vs: &[T], alignment: uint) -> *const c95::c_vo
     alignment
   );
   assert!(vs_as_slice.data != ptr::null());
-  vs_as_slice.data as *const c95::c_void
+  vs_as_slice.data as *const U
 }
 
-/// A fixed-capacity array of GLfloat-based structures passed to OpenGL.
-pub struct GLBuffer<T> {
+/// A fixed-capacity array of GLfloats passed to OpenGL.
+pub struct GLfloatBuffer {
   pub vertex_array: u32,
   pub vertex_buffer: u32,
-  pub length:   uint,
+  pub length: uint,
   pub capacity: uint,
   pub shader: Rc<Shader>,
   /// How to draw this buffer. Ex: gl::LINES, gl::TRIANGLES, etc.
   pub mode: GLenum,
+  /// size of vertex attribs, in GLfloats.
+  pub attrib_span: uint,
 }
 
 pub enum DrawMode {
@@ -57,7 +59,7 @@ impl DrawMode {
   }
 }
 
-impl<T: Clone> GLBuffer<T> {
+impl GLfloatBuffer {
   #[inline]
   /// Creates a new array of objects on the GPU.
   /// capacity is provided in units of size slice_span.
@@ -66,7 +68,7 @@ impl<T: Clone> GLBuffer<T> {
       shader_program: Rc<Shader>,
       attribs: &[vertex::AttribData],
       capacity: uint,
-      mode: DrawMode) -> GLBuffer<T> {
+      mode: DrawMode) -> GLfloatBuffer {
     let mut vertex_array = 0;
     let mut vertex_buffer = 0;
 
@@ -74,8 +76,6 @@ impl<T: Clone> GLBuffer<T> {
 
     unsafe {
       gl::GenVertexArrays(1, &mut vertex_array);
-
-
       gl::GenBuffers(1, &mut vertex_buffer);
     }
 
@@ -93,6 +93,13 @@ impl<T: Clone> GLBuffer<T> {
     }
 
     let mut offset = 0;
+    let attrib_span = {
+      let mut attrib_span = 0;
+      for attrib in attribs.iter() {
+        attrib_span += attrib.size;
+      }
+      attrib_span * mem::size_of::<GLfloat>()
+    };
     for attrib in attribs.iter() {
       let shader_attrib = glGetAttribLocation((*shader_program).id, attrib.name) as GLuint;
       assert!(shader_attrib != -1, "shader attribute \"{}\" not found", attrib.name);
@@ -104,7 +111,7 @@ impl<T: Clone> GLBuffer<T> {
           attrib.size as i32,
           gl::FLOAT,
           gl::FALSE as GLboolean,
-          mem::size_of::<T>() as i32,
+          attrib_span as i32,
           ptr::null().offset(offset),
         );
       }
@@ -117,14 +124,9 @@ impl<T: Clone> GLBuffer<T> {
     }
 
     unsafe {
-      assert!(
-        offset == mem::size_of::<T>() as int,
-        "GLBuffer attribs incorrectly sized"
-      );
-
       gl::BufferData(
         gl::ARRAY_BUFFER,
-        (capacity * mem::size_of::<T>()) as GLsizeiptr,
+        (capacity * mem::size_of::<GLfloat>()) as GLsizeiptr,
         ptr::null(),
         gl::DYNAMIC_DRAW,
       );
@@ -136,13 +138,14 @@ impl<T: Clone> GLBuffer<T> {
       }
     }
 
-    GLBuffer {
+    GLfloatBuffer {
       vertex_array:  vertex_array,
       vertex_buffer: vertex_buffer,
       length: 0,
       capacity: capacity,
       shader: shader_program,
       mode: mode.to_enum(),
+      attrib_span: attrib_span / mem::size_of::<GLfloat>(),
     }
   }
 
@@ -154,7 +157,7 @@ impl<T: Clone> GLBuffer<T> {
     self.capacity
   }
 
-  /// Analog of `std::vec::Vec::swap_remove`, but for GLBuffer data.
+  /// Analog of `std::vec::Vec::swap_remove`, but for GLfloatBuffer data.
   pub fn swap_remove(&mut self, _gl: &GLContext, i: uint, count: uint) {
     self.length -= count;
     assert!(i <= self.length);
@@ -165,13 +168,8 @@ impl<T: Clone> GLBuffer<T> {
     if i < self.length {
       assert!(
         i <= self.length - count,
-        "GLBuffer::swap_remove would cause copy in overlapping regions"
+        "GLfloatBuffer::swap_remove would cause copy in overlapping regions"
       );
-
-      if i == self.length {
-        // just remove, no swap.
-        return;
-      }
 
       let va = self.vertex_array;
       let vb = self.vertex_buffer;
@@ -179,7 +177,7 @@ impl<T: Clone> GLBuffer<T> {
       gl::BindVertexArray(va);
       gl::BindBuffer(gl::ARRAY_BUFFER, vb);
 
-      let byte_size = mem::size_of::<T>() as i64;
+      let byte_size = mem::size_of::<GLfloat>() as i64;
       gl::CopyBufferSubData(
         gl::ARRAY_BUFFER,
         gl::ARRAY_BUFFER,
@@ -191,37 +189,37 @@ impl<T: Clone> GLBuffer<T> {
   }
 
   /// Add more data into this buffer.
-  pub fn push(&mut self, gl: &GLContext, vs: &[T]) {
+  pub unsafe fn push(&mut self, gl: &GLContext, vs: *const GLfloat, count: uint) {
     assert!(
-      self.length + vs.len() <= self.capacity,
-      "GLBuffer::push {} into a {}/{} full GLBuffer",
-      vs.len(),
+      self.length + count <= self.capacity,
+      "GLfloatBuffer::push {} into a {}/{} full GLfloatBuffer",
+      count,
       self.length,
       self.capacity
     );
 
-    self.update_inner(gl, self.length, vs);
-    self.length += vs.len();
+    self.update_inner(gl, self.length, vs, count);
+    self.length += count;
   }
 
-  pub fn update(&self, gl: &GLContext, idx: uint, vs: &[T]) {
-    assert!(idx + vs.len() <= self.length);
-    self.update_inner(gl, idx, vs);
+  pub fn update(&self, gl: &GLContext, idx: uint, vs: *const GLfloat, count: uint) {
+    assert!(idx + count <= self.length);
+    self.update_inner(gl, idx, vs, count);
   }
 
-  fn update_inner(&self, _gl: &GLContext, idx: uint, vs: &[T]) {
-    assert!(idx + vs.len() <= self.capacity);
+  fn update_inner(&self, _gl: &GLContext, idx: uint, vs: *const GLfloat, count: uint) {
+    assert!(idx + count <= self.capacity);
 
     gl::BindVertexArray(self.vertex_array);
     gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
 
-    let byte_size = mem::size_of::<T>();
+    let byte_size = mem::size_of::<GLfloat>();
     unsafe {
       gl::BufferSubData(
           gl::ARRAY_BUFFER,
           (byte_size * idx) as i64,
-          (byte_size * vs.len()) as i64,
-          aligned_slice_to_ptr(vs.as_slice(), mem::size_of::<GLfloat>())
+          (byte_size * count) as i64,
+          mem::transmute(vs)
       );
     }
 
@@ -230,7 +228,7 @@ impl<T: Clone> GLBuffer<T> {
 
     match gl::GetError() {
       gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x} in GLBuffer::update", err),
+      err => fail!("OpenGL error 0x{:x} in GLfloatBuffer::update", err),
     }
   }
 
@@ -248,13 +246,13 @@ impl<T: Clone> GLBuffer<T> {
       gl::BindVertexArray(self.vertex_array);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
 
-      gl::DrawArrays(self.mode, start as i32, len as i32);
+      gl::DrawArrays(self.mode, start as i32, (len / self.attrib_span) as i32);
     });
   }
 }
 
 #[unsafe_destructor]
-impl<T> Drop for GLBuffer<T> {
+impl Drop for GLfloatBuffer {
   #[inline]
   fn drop(&mut self) {
     unsafe {
@@ -264,14 +262,14 @@ impl<T> Drop for GLBuffer<T> {
   }
 }
 
-/// A `GLBuffer` that pushes slices of data at a time.
+/// A `GLfloatBuffer` that pushes slices of data at a time.
 /// These slices are expected to be a fixed size (or multiples of that size).
 /// Indexing operations and lengths are in terms of contiguous blocks of that
 /// size (i.e. refering to index 2 when `slice_span` is 3 means referring to a
-/// contiguous block of size 3 starting at index 6 in the underlying GLBuffer.
+/// contiguous block of size 3 starting at index 6 in the underlying GLfloatBuffer.
 pub struct GLSliceBuffer<T> {
-  pub gl_buffer: GLBuffer<T>,
-  /// Each index in the GLBuffer is the index of a contiguous block of
+  pub gl_buffer: GLfloatBuffer,
+  /// Each index in the GLfloatBuffer is the index of a contiguous block of
   /// `slice_span` elements.
   pub slice_span: uint,
 
@@ -280,6 +278,11 @@ pub struct GLSliceBuffer<T> {
 }
 
 impl<T: Clone> GLSliceBuffer<T> {
+  fn glfloat_ratio() -> uint {
+    assert!(mem::size_of::<T>() % mem::size_of::<GLfloat>() == 0);
+    mem::size_of::<T>() / mem::size_of::<GLfloat>()
+  }
+
   pub unsafe fn new(
     gl: &GLContext,
     shader_program: Rc<Shader>,
@@ -289,7 +292,14 @@ impl<T: Clone> GLSliceBuffer<T> {
     mode: DrawMode
   ) -> GLSliceBuffer<T> {
     let capacity = capacity * slice_span;
-    let gl_buffer = GLBuffer::new(gl, shader_program, attribs, capacity, mode);
+    let gl_buffer =
+      GLfloatBuffer::new(
+        gl,
+        shader_program,
+        attribs,
+        capacity * GLSliceBuffer::<T>::glfloat_ratio(),
+        mode
+      );
     GLSliceBuffer {
       gl_buffer: gl_buffer,
       slice_span: slice_span,
@@ -298,22 +308,23 @@ impl<T: Clone> GLSliceBuffer<T> {
   }
 
   pub fn len(&self) -> uint {
-    self.gl_buffer.len() + self.buffer.len()
+    self.gl_buffer.len() / GLSliceBuffer::<T>::glfloat_ratio() + self.buffer.len()
   }
 
   pub fn capacity(&self) -> uint {
-    self.gl_buffer.capacity()
+    self.gl_buffer.capacity() / GLSliceBuffer::<T>::glfloat_ratio()
   }
 
   pub fn swap_remove(&mut self, gl: &GLContext, i: uint) {
     let i = i * self.slice_span;
     assert!(i < self.len());
-    if i < self.gl_buffer.len() {
-      self.gl_buffer.swap_remove(gl, i, self.slice_span);
+    assert!(self.gl_buffer.len() % GLSliceBuffer::<T>::glfloat_ratio() == 0);
+    let gl_len = self.gl_buffer.len() / GLSliceBuffer::<T>::glfloat_ratio();
+    if i < gl_len {
+      let i = i * GLSliceBuffer::<T>::glfloat_ratio();
+      self.gl_buffer.swap_remove(gl, i, self.slice_span * GLSliceBuffer::<T>::glfloat_ratio());
     } else {
-      let slice_span = self.slice_span;
-      let len = self.gl_buffer.len();
-      self.buffer.swap_remove(i - len, slice_span);
+      self.buffer.swap_remove(i - gl_len, self.slice_span);
     }
   }
 
@@ -350,10 +361,19 @@ impl<T: Clone> GLSliceBuffer<T> {
       Some(x) => cmp::min(x * self.slice_span, self.buffer.len()),
     };
 
-    {
+    unsafe {
       let (l, h) = self.buffer.slices(0, count);
-      self.gl_buffer.push(gl, l);
-      self.gl_buffer.push(gl, h);
+      let s = mem::size_of::<GLfloat>();
+      self.gl_buffer.push(
+        gl,
+        aligned_slice_to_ptr(l, s),
+        l.len() * GLSliceBuffer::<T>::glfloat_ratio()
+      );
+      self.gl_buffer.push(
+        gl,
+        aligned_slice_to_ptr(h, s),
+        h.len() * GLSliceBuffer::<T>::glfloat_ratio()
+      );
     }
 
     self.buffer.pop(count);
@@ -363,7 +383,15 @@ impl<T: Clone> GLSliceBuffer<T> {
 
   pub fn update(&self, gl: &GLContext, idx: uint, vs: &[T]) {
     assert!(vs.len() % self.slice_span == 0);
-    self.gl_buffer.update(gl, idx * self.slice_span, vs);
+    let s = mem::size_of::<GLfloat>();
+    unsafe {
+      self.gl_buffer.update(
+        gl,
+        idx * self.slice_span * GLSliceBuffer::<T>::glfloat_ratio(),
+        aligned_slice_to_ptr(vs, s),
+        vs.len() * GLSliceBuffer::<T>::glfloat_ratio()
+      );
+    }
   }
 
   pub fn draw(&self, gl: &GLContext) {
@@ -371,6 +399,7 @@ impl<T: Clone> GLSliceBuffer<T> {
   }
 
   pub fn draw_slice(&self, gl: &GLContext, start: uint, len: uint) {
-    self.gl_buffer.draw_slice(gl, start * self.slice_span, len * self.slice_span);
+    let s = self.slice_span * GLSliceBuffer::<T>::glfloat_ratio();
+    self.gl_buffer.draw_slice(gl, start * s, len * s);
   }
 }
