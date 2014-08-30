@@ -4,9 +4,13 @@ playform aspires to be an open-world sandbox game written in Rust.
 Right now, it renders a basic world and stops the player from colliding
 with it, as well as allowing the player to place and destroy blocks.
 
-Help is appreciated! I'm looking to incorporate parts of
-[https://github.com/rlane/cubeland](https://github.com/rlane/cubeland)
-once this is a little more developed.
+Help is appreciated! You can hop over to the [issues page](https://github.com/bfops/playform/issues) to see what needs doing.
+
+## What about [hematite](https://github.com/PistonDevelopers/hematite)?
+
+We're aware of each other! While hematite intends to reproduce Minecfrat behavior and interact with actual Minecraft, playform's design goal is just to be fun and Minecraft-inspired - we'll have no reservations about diverging.
+
+That said, these projects should probably keep a closer eye on each other than they do! If you notice redundancies, feel free to point them out.
 
 ## Making it work
 
