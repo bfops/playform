@@ -71,21 +71,19 @@ impl TimerSet {
   /// This function is not marked `mut` because borrow checking is done
   /// dynamically.
   pub fn time<T>(&self, name: &str, f: || -> T) -> T {
-    let has_key = self.timers.borrow().contains_key_equiv(&name);
+    if !self.timers.borrow().contains_key_equiv(&name) {
+      self.timers
+          .borrow_mut()
+          .insert(String::from_str(name), Rc::new(RefCell::new(Stopwatch::new())));
+    };
 
     let timer : Rc<RefCell<Stopwatch>> =
-      if has_key {
-        self.timers.borrow().find_equiv(&name).unwrap().clone()
-      } else {
-        {
-          self.timers
-              .borrow_mut()
-              .insert(String::from_str(name), Rc::new(RefCell::new(Stopwatch::new())));
-        }
-        self.timers.borrow().find_equiv(&name).unwrap().clone()
-      };
+      self.timers.borrow().find_equiv(&name).unwrap().clone();
 
-    timer.borrow_mut().timed(f)
+    match timer.try_borrow_mut() {
+      None => fail!("timer \"{}\" used recursively", name),
+      Some(mut timer) => timer.timed(f),
+    }
   }
 
   /// Prints all the timer statistics to stdout, each tagged with their name.
