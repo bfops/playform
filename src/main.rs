@@ -12,7 +12,7 @@ use glw::texture::Texture;
 use glw::vertex;
 use glw::vertex::{ColoredVertex, TextureVertex};
 use input;
-use input::{KeyPress,KeyRelease,MousePress,MouseRelease,MouseMove};
+use input::{Press,Release,Move,Keyboard,Mouse,MouseCursor};
 use ncollide3df32::bounding_volume::LooseBoundingVolume;
 use ncollide3df32::bounding_volume::aabb::AABB;
 use nalgebra::na::{Vec2, Vec3, RMul, Norm};
@@ -1165,11 +1165,11 @@ impl<'a> App<'a> {
       Render(ref mut args) => self.render(game_window, args),
       Update(ref mut args) => self.update(game_window, args),
       Input(ref i) => match *i {
-        KeyPress { key: key } => self.key_press(key),
-        KeyRelease { key: key } => self.key_release(key),
-        MousePress { button: button } => self.mouse_press(button),
-        MouseRelease { button: button } => self.mouse_release(button),
-        MouseMove { x: x, y: y, draw_x: _, draw_y: _ } => self.mouse_move(game_window, x, y),
+        Press(Keyboard(key)) => self.key_press(key),
+        Release(Keyboard(key)) => self.key_release(key),
+        Press(Mouse(button)) => self.mouse_press(button),
+        Release(Mouse(button)) => self.mouse_release(button),
+        Move(MouseCursor(x, y)) => self.mouse_move(game_window, x, y),
         _ => {},
       },
     }
