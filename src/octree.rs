@@ -137,7 +137,7 @@ struct Branches<V> {
   high_tree: Box<Octree<V>>,
 }
 
-type LeafContents<V> = Vec<(AABB, OctreeId, V)>;
+type LeafContents<V> = Vec<(AABB, V)>;
 
 enum OctreeContents<V> {
   Leaf(LeafContents<V>),
@@ -191,22 +191,16 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
           self.loader.deref().borrow_mut().deref_mut().push(Load((self.id, self.bounds.clone())));
         }
 
-        let id = Octree::<V>::alloc_id();
-        vs.push((bounds, id, v));
-        self.loader.deref().borrow_mut().deref_mut().push(Load((id, bounds.clone())));
+        vs.push((bounds, v));
 
         let d = self.dimension;
         let avg_length =
           vs.iter().fold(
             0.0,
-            |x, &(bounds, _, _)| x + length(&bounds, d)
+            |x, &(bounds, _)| x + length(&bounds, d)
           ) / unwrap!(NumCast::from(vs.len()));
 
         if avg_length < length(&self.bounds, self.dimension) / 2.0 {
-          for &(bounds, id, _) in vs.iter() {
-            self.loader.borrow_mut().deref_mut().push(Unload(id));
-          }
-
           self.loader.deref().borrow_mut().deref_mut().push(Unload(self.id));
 
           let (low, high) =
@@ -271,7 +265,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       loader: loader.clone(),
     };
 
-    for &(bounds, id, v) in vs.iter() {
+    for &(bounds, v) in vs.iter() {
       let (low_bounds, high_bounds) = split(mid, dimension, bounds);
       low_bounds.map(|bs| low.insert(gl, bs, v));
       high_bounds.map(|bs| high.insert(gl, bs, v));
@@ -306,7 +300,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   // this/child trees. Uses equality comparison on V to ignore "same" objects.
   pub fn intersect(&self, bounds: &AABB, self_v: V) -> bool {
     match self.contents {
-      Leaf(ref vs) => vs.iter().any(|&(bs, _, ref v)| *v != self_v && bounds.intersects(&bs)),
+      Leaf(ref vs) => vs.iter().any(|&(bs, ref v)| *v != self_v && bounds.intersects(&bs)),
       Branch(ref b) => {
         let mid = middle(&self.bounds, self.dimension);
         let (low_bounds, high_bounds) = split(mid, self.dimension, *bounds);
@@ -323,7 +317,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     match self.contents {
       Leaf(ref vs) => {
         let mut r = HashSet::new();
-        for &(bs, _, v) in vs.iter() {
+        for &(bs, v) in vs.iter() {
           if v != self_v {
             if bounds.intersects(&bs) {
               r.insert(v);
@@ -369,9 +363,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     assert!(self.bounds.contains(bounds));
     let collapse_contents = match self.contents {
       Leaf(ref mut vs) => {
-        let i = unwrap!(vs.iter().position(|&(_, _, ref x)| *x == v));
-        let (_, id, _) = (*vs)[i];
-        self.loader.deref().borrow_mut().deref_mut().push(Unload(id));
+        let i = unwrap!(vs.iter().position(|&(_, ref x)| *x == v));
         vs.swap_remove(i);
         if vs.is_empty() {
           self.loader.deref().borrow_mut().deref_mut().push(Unload(self.id));
@@ -412,7 +404,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
         // this leaf; filter out the objects it doesn't intersect at all. Then
         // find the object with the lowest TOI.
         partial_min_by(
-          vs.iter().filter_map(|&(bounds, _, v)| {
+          vs.iter().filter_map(|&(bounds, v)| {
               if v == self_v {
                 None
               } else {

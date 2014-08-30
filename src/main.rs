@@ -45,7 +45,7 @@ static MAX_JUMP_FUEL: uint = 4;
 
 // how many blocks to load during every update step
 static BLOCK_LOAD_SPEED:uint = 1 << 9;
-static OCTREE_LOAD_SPEED:uint = 1 << 8;
+static OCTREE_LOAD_SPEED:uint = 1 << 11;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
 #[deriving(Copy, Clone, PartialEq, Eq, Hash)]
