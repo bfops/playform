@@ -1,8 +1,8 @@
 extern crate rlibc;
 
+use std::default::Default;
 use std::iter::{Chain, range_inclusive};
 use std::mem;
-use std::raw;
 use std::slice;
 
 fn vec_copy<T>(v: &mut Vec<T>, to: uint, from: uint, n: uint) {
@@ -85,12 +85,16 @@ impl<T: Clone> Queue<T> {
         "Queue::swap_remove in overlapping regions"
       );
 
+      let idx = idx + self.head;
+
       // At this point, we have a guarantee that the regions do not overlap.
       // Therefore, either the copy-from or copy-to regions might be broken up
       // by the end of the vector, but not both.
 
       let buffer_wrap_point = self.contents.capacity() - count;
       if idx > buffer_wrap_point {
+        assert!(self.contents.len() == self.contents.capacity());
+
         // copy TO an area of the queue that crosses the end of the buffer.
 
         let count1 = self.contents.capacity() - idx;
@@ -98,6 +102,8 @@ impl<T: Clone> Queue<T> {
         let count2 = count - count1;
         vec_copy(&mut self.contents, 0, self.tail + count1, count2);
       } else if self.tail > buffer_wrap_point {
+        assert!(self.contents.len() == self.contents.capacity());
+
         // copy FROM an area of the queue that crosses the end of the buffer.
 
         let count1 = self.contents.capacity() - self.tail;
@@ -131,12 +137,17 @@ impl<T: Clone> Queue<T> {
   pub fn slices<'a>(&'a self, low: uint, high: uint) -> (&'a [T], &'a [T]) {
     assert!(low <= self.length);
     assert!(high <= self.length);
-    let head = (self.head + low) % self.contents.capacity();
-    let tail = (self.head + high) % self.contents.capacity();
-    if head <= tail {
-      (self.contents.slice(head, tail), self.contents.slice(tail, tail))
+    if low == high {
+      (Default::default(), Default::default())
     } else {
-      (self.contents.slice(head, self.contents.capacity()), self.contents.slice(0, tail))
+      let head = (self.head + low) % self.contents.capacity();
+      let tail = (self.head + high) % self.contents.capacity();
+      if head < tail {
+        (self.contents.slice(head, tail), Default::default())
+      } else {
+        assert!(self.contents.len() == self.contents.capacity());
+        (self.contents.slice(head, self.contents.capacity()), self.contents.slice(0, tail))
+      }
     }
   }
 }
@@ -145,15 +156,15 @@ impl<T: Clone> Queue<T> {
 fn push_then_slice() {
   let elems: Vec<int> = Vec::from_slice([1, 2, 3]);
   let mut q = Queue::new(32);
-  q.push_all(elems.as_slice());
+  q.push_all(elems.iter());
   assert!(q.len() == elems.len());
   let (l, h) = q.slices(0, q.len() - 1);
   assert!(l.len() + h.len() == elems.len() - 1);
   for (i, elem) in l.iter().enumerate() {
-    assert!(*elem == elems[i]);
+    assert!(**elem == elems[i]);
   }
   for (i, elem) in h.iter().enumerate() {
-    assert!(*elem == elems[i + l.len()]);
+    assert!(**elem == elems[i + l.len()]);
   }
 }
 
@@ -162,39 +173,109 @@ fn push_then_pop() {
   let popped_pushes: Vec<int> = Vec::from_slice([1, 2, 3]);
   let more_pushes: Vec<int> = Vec::from_slice([4, 5]);
   let mut q = Queue::new(32);
-  q.push_all(popped_pushes.as_slice());
-  q.push_all(more_pushes.as_slice());
+  q.push_all(popped_pushes.iter());
+  q.push_all(more_pushes.iter());
   assert!(q.len() == popped_pushes.len() + more_pushes.len());
   q.pop(popped_pushes.len());
   assert!(q.len() == more_pushes.len());
   let (l, h) = q.slices(0, q.len());
   assert!(l.len() + h.len() == more_pushes.len());
   for (i, elem) in l.iter().enumerate() {
-    assert!(*elem == more_pushes[i]);
+    assert!(**elem == more_pushes[i]);
   }
   for (i, elem) in h.iter().enumerate() {
-    assert!(*elem == more_pushes[i + l.len()]);
+    assert!(**elem == more_pushes[i + l.len()]);
   }
 }
 
 #[test]
 fn wrapped_pushes() {
   static capacity: uint = 32;
-  let popped_pushes = Vec::from_elem(capacity / 2, 0);
+  let popped_pushes = Vec::from_elem(capacity / 2, 0i);
   let more_pushes: Vec<int> = range_inclusive(1, capacity as int).collect();
   let mut q: Queue<int> = Queue::new(capacity);
-  q.push_all(popped_pushes.as_slice());
+  q.push_all(popped_pushes.iter().map(|&x| x));
   q.pop(popped_pushes.len());
-  q.push_all(more_pushes.as_slice());
+  q.push_all(more_pushes.iter().map(|&x| x));
   assert!(q.len() == more_pushes.len());
   let (l, h) = q.slices(0, q.len());
   assert!(l.len() + h.len() == more_pushes.len());
   assert!(h.len() > 0);
-  for (i, elem) in l.iter().enumerate() {
-    assert!(*elem == more_pushes[i]);
+  for (x, y) in l.iter().chain(h.iter()).zip(more_pushes.iter()) {
+    assert!(x == y);
   }
-  for (i, elem) in h.iter().enumerate() {
-    assert!(*elem == more_pushes[i + l.len()]);
+}
+
+#[test]
+// TODO: clean up this test, de-duplicate, etc.
+fn swap_remove_simple() {
+  let mut q: Queue<int> = Queue::new(32);
+  q.push_all([1,2,3,4,7,8,5,6i].iter().map(|&x| x));
+  q.swap_remove(4, 2);
+
+  let i = q.iter(0, q.len());
+  let elems = [1,2,3,4,5,6i];
+  let r = elems.iter();
+  assert!(i.size_hint() == r.size_hint());
+  for (x, y) in i.zip(r) {
+    assert!(x == y);
+  }
+}
+
+#[test]
+// TODO: clean up this test, de-duplicate, etc.
+fn swap_remove_end() {
+  let mut q: Queue<int> = Queue::new(8);
+  let popped = [11, 12i];
+  let elems = [1,2,3,4,5,6,7,8i];
+
+  q.push_all(popped.iter().map(|&x| x));
+  q.pop(popped.len());
+  q.push_all(elems.iter().map(|&x| x));
+  q.swap_remove(4, 4);
+
+  let mut i = q.iter(0, q.len());
+  let mut r = elems.iter();
+  for (x, y) in i.zip(r) {
+    assert!(x == y);
+  }
+}
+
+// TODO: clean up this test, de-duplicate, etc.
+#[test]
+fn swap_remove_to_broken() {
+  let mut q: Queue<int> = Queue::new(8);
+  let popped = [9,9,9,9i];
+  q.push_all(popped.iter().map(|&x| x));
+  q.pop(popped.len());
+  q.push_all([1,2,3,7,8,6,4,5i].iter().map(|&x| x));
+  q.swap_remove(3, 2);
+
+  let i = q.iter(0, q.len());
+  let elems = [1,2,3,4,5,6i];
+  let r = elems.iter();
+  assert!(i.size_hint() == r.size_hint());
+  for (x, y) in i.zip(r) {
+    assert!(x == y);
+  }
+}
+
+#[test]
+// TODO: clean up this test, de-duplicate, etc.
+fn swap_remove_from_broken() {
+  let mut q: Queue<int> = Queue::new(8);
+  let popped = [9,9,9,9i];
+  q.push_all(popped.iter().map(|&x| x));
+  q.pop(popped.len());
+  q.push_all([4,5,6,1,2,3i].iter().map(|&x| x));
+  q.swap_remove(0, 3);
+
+  let i = q.iter(0, q.len());
+  let elems = [1,2,3i];
+  let r = elems.iter();
+  assert!(i.size_hint() == r.size_hint());
+  for (x, y) in i.zip(r) {
+    assert!(x == y);
   }
 }
 
