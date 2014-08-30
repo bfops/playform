@@ -246,7 +246,7 @@ impl GLfloatBuffer {
       gl::BindVertexArray(self.vertex_array);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
 
-      gl::DrawArrays(self.mode, start as i32, (len / self.attrib_span) as i32);
+      gl::DrawArrays(self.mode, (start / self.attrib_span) as i32, (len / self.attrib_span) as i32);
     });
   }
 }
