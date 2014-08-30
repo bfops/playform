@@ -7,12 +7,14 @@ use glw::camera::Camera;
 use glw::color::Color4;
 use glw::gl_buffer::*;
 use glw::gl_context::GLContext;
+use glw::queue::Queue;
 use glw::shader::Shader;
 use glw::texture::Texture;
 use glw::vertex;
 use glw::vertex::{ColoredVertex, TextureVertex};
 use input;
 use input::{Press,Release,Move,Keyboard,Mouse,MouseCursor};
+use loader::{Loader, Load, Unload};
 use ncollide3df32::bounding_volume::LooseBoundingVolume;
 use ncollide3df32::bounding_volume::aabb::AABB;
 use nalgebra::na::{Vec2, Vec3, RMul, Norm};
@@ -28,6 +30,7 @@ use shader_version::opengl::*;
 use stopwatch;
 use stopwatch::*;
 use std::cell;
+use std::cmp;
 use std::collections::HashMap;
 use std::f32::consts::PI;
 use std::iter::{range,range_inclusive};
@@ -41,7 +44,8 @@ static MAX_WORLD_SIZE: uint = 40000;
 static MAX_JUMP_FUEL: uint = 4;
 
 // how many blocks to load during every update step
-static LOAD_SPEED:uint = 1 << 10;
+static BLOCK_LOAD_SPEED:uint = 1 << 10;
+static OCTREE_LOAD_SPEED:uint = 1 << 8;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
 #[deriving(Copy, Clone, PartialEq, Eq, Hash)]
@@ -228,8 +232,8 @@ impl BlockBuffers {
   }
 
   pub fn flush(&mut self, gl: &GLContext) {
-    self.triangles.flush(gl, Some(LOAD_SPEED));
-    self.outlines.flush(gl, Some(LOAD_SPEED));
+    self.triangles.flush(gl, Some(BLOCK_LOAD_SPEED));
+    self.outlines.flush(gl, Some(BLOCK_LOAD_SPEED));
   }
 
   pub fn swap_remove(&mut self, gl: &GLContext, id: Id) {
@@ -315,7 +319,7 @@ impl MobBuffers {
   }
 
   pub fn flush(&mut self, gl: &GLContext) {
-    self.triangles.flush(gl, Some(LOAD_SPEED));
+    self.triangles.flush(gl, None);
   }
 
   pub fn update(
@@ -366,10 +370,13 @@ pub struct App<'a> {
   // next block id to assign
   next_id: Id,
 
+  block_loader: Loader<(Block, AABB), Id>,
+  octree_loader: Rc<cell::RefCell<Loader<(octree::OctreeId, AABB), octree::OctreeId>>>,
+
   // OpenGL buffers
   mob_buffers: MobBuffers,
   block_buffers: HashMap<BlockType, BlockBuffers>,
-  octree_buffers: Rc<cell::RefCell<octree::OctreeBuffers<Id>>>,
+  octree_buffers: octree::OctreeBuffers<Id>,
   block_textures: HashMap<BlockType, Rc<Texture>>,
   line_of_sight: GLSliceBuffer<ColoredVertex>,
   hud_triangles: GLSliceBuffer<ColoredVertex>,
@@ -600,12 +607,70 @@ impl<'a> App<'a> {
     time!(&self.timers, "update", || {
       // TODO(cgaebel): Ideally, the update thread should not be touching OpenGL.
 
-      // if there are more blocks to be loaded, add them into the OpenGL buffers.
-      for (_, buffers) in self.block_buffers.mut_iter() {
-        buffers.flush(&self.gl);
-      }
+      time!(&self.timers, "update.load", || {
+        time!(&self.timers, "update.load.blocks", || {
+          // block loading
+          let count = cmp::min(BLOCK_LOAD_SPEED, self.block_loader.len());
+          if count > 0 {
+            for op in self.block_loader.iter(0, count) {
+              let blocks = &mut self.blocks;
+              let block_buffers = &mut self.block_buffers;
+              let physics = &mut self.physics;
+              let gl = &self.gl;
+              match *op {
+                Load((block, bounds)) => {
+                  let id = block.id;
+                  physics.insert(gl, block.id, &bounds);
+                  block_buffers.find_mut(&block.block_type).unwrap().push(
+                    id,
+                    Block::to_texture_triangles(&bounds),
+                    Block::to_outlines(&bounds)
+                  );
+                  blocks.insert(block.id, block);
+                },
+                Unload(id) => {
+                  {
+                    let block = unwrap!(blocks.find(&id));
+                    let block_type = block.block_type;
+                    let buffer = unwrap!(block_buffers.find_mut(&block_type));
+                    buffer.swap_remove(gl, id);
+                  }
+                  physics.remove(gl, id);
+                  blocks.remove(&id);
+                },
+              }
+            }
 
-      self.octree_buffers.deref().borrow_mut().deref_mut().flush(&self.gl);
+            self.block_loader.pop(count);
+          }
+        });
+
+        time!(&self.timers, "update.load.octree", || {
+          // octree loading
+          let count = cmp::min(OCTREE_LOAD_SPEED, self.octree_loader.deref().borrow().deref().len());
+          if count > 0 {
+            for op in self.octree_loader.deref().borrow().deref().iter(0, count) {
+              match *op {
+                Load((id, bounds)) => {
+                  self.octree_buffers.push(id, to_outlines(&bounds));
+                },
+                Unload(id) => {
+                  self.octree_buffers.swap_remove(&self.gl, id);
+                }
+              }
+            }
+
+            self.octree_loader.deref().borrow_mut().deref_mut().pop(count);
+          }
+        });
+
+        // if there are more blocks to be loaded, add them into the OpenGL buffers.
+        for (_, buffers) in self.block_buffers.mut_iter() {
+          buffers.flush(&self.gl);
+        }
+
+        self.octree_buffers.flush(&self.gl);
+      });
 
       time!(&self.timers, "update.player", || {
         if self.player.is_jumping {
@@ -713,7 +778,7 @@ impl<'a> App<'a> {
       self.line_of_sight.draw(&self.gl);
 
       if self.render_octree {
-        self.octree_buffers.deref().borrow().draw(&self.gl);
+        self.octree_buffers.draw(&self.gl);
       }
 
       for (block_type, buffers) in self.block_buffers.iter() {
@@ -801,17 +866,21 @@ impl<'a> App<'a> {
       MobBuffers::new(&gl, &color_shader)
     };
 
+    let octree_loader = Rc::new(cell::RefCell::new(Queue::new(1 << 20)));
+
     let octree_buffers = unsafe {
-      Rc::new(cell::RefCell::new(octree::OctreeBuffers::new(&gl, &color_shader)))
+      octree::OctreeBuffers::new(&gl, &color_shader)
     };
 
     App {
       line_of_sight: line_of_sight,
       physics: Physics {
-        octree: octree::Octree::new(&octree_buffers, &world_bounds),
+        octree: octree::Octree::new(&octree_loader, &world_bounds),
         bounds: HashMap::new(),
         locations: HashMap::new(),
       },
+      block_loader: Queue::new(1 << 20),
+      octree_loader: octree_loader,
       mob_buffers: mob_buffers,
       octree_buffers: octree_buffers,
       block_buffers: HashMap::new(),
@@ -1054,26 +1123,13 @@ impl<'a> App<'a> {
 
       if !collided {
         block.id = self.alloc_id();
-        self.physics.insert(&self.gl, block.id, &bounds);
-        self.blocks.insert(block.id, block);
-
-        let buffers = unwrap!(self.block_buffers.find_mut(&block_type));
-        // TODO: let us control when time is devoted to calculating triangles and outlines.
-        buffers.push(
-            block.id,
-            Block::to_texture_triangles(&bounds),
-            Block::to_outlines(&bounds)
-        );
+        self.block_loader.push(Load((block, bounds)));
       }
     })
   }
 
   fn remove_block(&mut self, id: Id) {
-    self.physics.remove(&self.gl, id);
-    let block_type = unwrap!(self.blocks.find(&id)).block_type;
-    self.blocks.remove(&id);
-    let r = unwrap!(self.block_buffers.find_mut(&block_type));
-    r.swap_remove(&self.gl, id);
+    self.block_loader.push(Unload(id));
   }
 
   /// Changes the camera's acceleration by the given `da`.

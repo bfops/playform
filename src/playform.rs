@@ -27,6 +27,7 @@ mod common;
 mod fontloader;
 // so the time! macro is defined in main
 mod stopwatch;
+mod loader;
 mod main;
 mod octree;
 mod physics;

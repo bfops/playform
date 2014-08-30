@@ -1,4 +1,5 @@
 use common::*;
+use loader::{Loader,Load,Unload};
 use nalgebra::na::{Vec3};
 use ncollide3df32::bounding_volume::aabb::AABB;
 use ncollide3df32::bounding_volume::BoundingVolume;
@@ -145,6 +146,8 @@ enum OctreeContents<V> {
 
 static mut next_id: OctreeId = OctreeId(0);
 
+pub type OctreeLoader = Loader<(OctreeId, AABB), OctreeId>;
+
 // TODO: allow inserting things with a "mobile" flag; don't subdivide those objects.
 pub struct Octree<V> {
   parent: *mut Octree<V>,
@@ -154,20 +157,20 @@ pub struct Octree<V> {
 
   // for rendering
   id: OctreeId,
-  buffers: Rc<RefCell<OctreeBuffers<V>>>,
+  loader: Rc<RefCell<OctreeLoader>>,
 }
 
 // TODO: fix shaky octree outline insertion/removal conditions.
 
 impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
-  pub fn new(buffers: &Rc<RefCell<OctreeBuffers<V>>>, bounds: &AABB) -> Octree<V> {
+  pub fn new(loader: &Rc<RefCell<OctreeLoader>>, bounds: &AABB) -> Octree<V> {
     Octree {
       parent: RawPtr::null(),
       dimension: X,
       bounds: bounds.clone(),
       contents: Leaf(Vec::new()),
       id: Octree::<V>::alloc_id(),
-      buffers: buffers.clone(),
+      loader: loader.clone(),
     }
   }
 
@@ -185,12 +188,12 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     let contents = match self.contents {
       Leaf(ref mut vs) => {
         if vs.is_empty() {
-          self.buffers.deref().borrow_mut().deref_mut().push(self.id, to_outlines(&self.bounds));
+          self.loader.deref().borrow_mut().deref_mut().push(Load((self.id, self.bounds.clone())));
         }
 
         let id = Octree::<V>::alloc_id();
         vs.push((bounds, id, v));
-        self.buffers.deref().borrow_mut().deref_mut().push(id, to_outlines(&bounds));
+        self.loader.deref().borrow_mut().deref_mut().push(Load((id, bounds.clone())));
 
         let d = self.dimension;
         let avg_length =
@@ -200,17 +203,17 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
           ) / unwrap!(NumCast::from(vs.len()));
 
         if avg_length < length(&self.bounds, self.dimension) / 2.0 {
-          for &(_, id, _) in vs.iter() {
-            self.buffers.deref().borrow_mut().deref_mut().swap_remove(gl, id);
+          for &(bounds, id, _) in vs.iter() {
+            self.loader.borrow_mut().deref_mut().push(Unload(id));
           }
 
-          self.buffers.deref().borrow_mut().deref_mut().swap_remove(gl, self.id);
+          self.loader.deref().borrow_mut().deref_mut().push(Unload(self.id));
 
           let (low, high) =
             Octree::bisect(
               gl,
               self,
-              &self.buffers,
+              &self.loader,
               &self.bounds,
               self.dimension,
               vs
@@ -236,7 +239,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   fn bisect(
       gl: &GLContext,
       parent: *mut Octree<V>,
-      buffers: &Rc<RefCell<OctreeBuffers<V>>>,
+      loader: &Rc<RefCell<OctreeLoader>>,
       bounds: &AABB,
       dimension: Dimension,
       vs: &LeafContents<V>
@@ -257,7 +260,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       bounds: low_bounds.clone(),
       contents: Leaf(Vec::new()),
       id: Octree::<V>::alloc_id(),
-      buffers: buffers.clone(),
+      loader: loader.clone(),
     };
     let mut high = Octree {
       parent: parent,
@@ -265,7 +268,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       bounds: high_bounds.clone(),
       contents: Leaf(Vec::new()),
       id: Octree::<V>::alloc_id(),
-      buffers: buffers.clone(),
+      loader: loader.clone(),
     };
 
     for &(bounds, id, v) in vs.iter() {
@@ -368,10 +371,10 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       Leaf(ref mut vs) => {
         let i = unwrap!(vs.iter().position(|&(_, _, ref x)| *x == v));
         let (_, id, _) = (*vs)[i];
-        self.buffers.deref().borrow_mut().deref_mut().swap_remove(gl, id);
+        self.loader.deref().borrow_mut().deref_mut().push(Unload(id));
         vs.swap_remove(i);
         if vs.is_empty() {
-          self.buffers.deref().borrow_mut().deref_mut().swap_remove(gl, self.id);
+          self.loader.deref().borrow_mut().deref_mut().push(Unload(self.id));
           false
         } else {
           false
