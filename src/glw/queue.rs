@@ -1,5 +1,17 @@
+extern crate rlibc;
+
 use std::iter::{Chain, range_inclusive};
+use std::mem;
+use std::raw;
 use std::slice;
+
+fn vec_copy<T>(v: &mut Vec<T>, to: uint, from: uint, n: uint) {
+  unsafe {
+    let p_to = v.as_mut_ptr().offset(to as int);
+    let p_from = v.as_ptr().offset(from as int);
+    rlibc::memcpy(p_to as *mut u8, p_from as *const u8, n * mem::size_of::<T>());
+  }
+}
 
 /// Circular bounded queue.
 pub struct Queue<T> {
@@ -22,22 +34,11 @@ impl<T: Clone> Queue<T> {
     }
   }
 
-  fn wrap(&self, i: uint) -> uint {
-    let r =
-      if i >= self.contents.capacity() {
-        i - self.contents.capacity()
-      } else {
-        i
-      };
-    assert!(r < self.contents.capacity());
-    r
-  }
-
   pub fn push(&mut self, t: T) {
     assert!(
       self.length < self.contents.capacity(),
       "Bounded queue (capacity {}) exceeded",
-      self.contents.len()
+      self.contents.capacity()
     );
 
     if self.contents.len() < self.contents.capacity() {
@@ -46,7 +47,7 @@ impl<T: Clone> Queue<T> {
       *self.contents.get_mut(self.tail) = t;
     }
 
-    self.tail = self.wrap(self.tail + 1);
+    self.tail = (self.tail + 1) % self.contents.capacity();
     self.length += 1;
   }
 
@@ -59,7 +60,7 @@ impl<T: Clone> Queue<T> {
 
   pub fn pop(&mut self, count: uint) {
     assert!(count <= self.length);
-    self.head = self.wrap(self.head + count);
+    self.head = (self.head + count) % self.contents.capacity();
     self.length -= count;
   }
 
@@ -67,22 +68,46 @@ impl<T: Clone> Queue<T> {
     self.length == 0
   }
 
+  /// Swap `count` elements from `idx` with the last `count` elements of the
+  /// queue, then drop the last `count` elements.
+  /// The ordering amongst those `count` elements is maintained.
   pub fn swap_remove(&mut self, idx: uint, count: uint) {
     assert!(count <= self.length);
-    // TODO: do this in bigger chunks
-    for i in range(0, count) {
-      if self.tail > 0 {
-        self.tail -= 1;
-      } else {
-        self.tail = self.contents.len() - 1;
-      };
-
-      let swapped = self.contents[self.tail].clone();
-      let idx = self.wrap(self.head + idx + i);
-      *self.contents.get_mut(idx) = swapped;
-    }
-
     self.length -= count;
+
+    assert!(idx <= self.length);
+
+    self.tail = (self.tail + self.contents.capacity() - count) % self.contents.capacity();
+
+    if idx < self.length {
+      assert!(
+        idx + count <= self.length,
+        "Queue::swap_remove in overlapping regions"
+      );
+
+      // At this point, we have a guarantee that the regions do not overlap.
+      // Therefore, either the copy-from or copy-to regions might be broken up
+      // by the end of the vector, but not both.
+
+      let buffer_wrap_point = self.contents.capacity() - count;
+      if idx > buffer_wrap_point {
+        // copy TO an area of the queue that crosses the end of the buffer.
+
+        let count1 = self.contents.capacity() - idx;
+        vec_copy(&mut self.contents, idx, self.tail, count1);
+        let count2 = count - count1;
+        vec_copy(&mut self.contents, 0, self.tail + count1, count2);
+      } else if self.tail > buffer_wrap_point {
+        // copy FROM an area of the queue that crosses the end of the buffer.
+
+        let count1 = self.contents.capacity() - self.tail;
+        vec_copy(&mut self.contents, idx, self.tail, count1);
+        let count2 = count - count1;
+        vec_copy(&mut self.contents, idx + count1, 0, count2);
+      } else {
+        vec_copy(&mut self.contents, idx, self.tail, count);
+      }
+    }
   }
 
   pub fn len(&self) -> uint {
@@ -106,12 +131,12 @@ impl<T: Clone> Queue<T> {
   pub fn slices<'a>(&'a self, low: uint, high: uint) -> (&'a [T], &'a [T]) {
     assert!(low <= self.length);
     assert!(high <= self.length);
-    let head = self.wrap(self.head + low);
-    let tail = self.wrap(self.head + high);
+    let head = (self.head + low) % self.contents.capacity();
+    let tail = (self.head + high) % self.contents.capacity();
     if head <= tail {
       (self.contents.slice(head, tail), self.contents.slice(tail, tail))
     } else {
-      (self.contents.slice(head, self.contents.len()), self.contents.slice(0, tail))
+      (self.contents.slice(head, self.contents.capacity()), self.contents.slice(0, tail))
     }
   }
 }
