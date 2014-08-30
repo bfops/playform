@@ -22,7 +22,7 @@ automatically. `playform` can then be run from the `target` directory.
   * Look around: Mouse
   * Remove block: Left-click
   * Place dirt block: Right-click
-  * Toggle octree rendering: O
+  * Toggle octree rendering: O (**currently somewhat broken**)
   * Save line-of-sight: M
 
 One mob spawns that will play a tag-lke game with you: once you touch it, it
