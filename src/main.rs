@@ -44,7 +44,7 @@ static MAX_WORLD_SIZE: uint = 40000;
 static MAX_JUMP_FUEL: uint = 4;
 
 // how many blocks to load during every update step
-static BLOCK_LOAD_SPEED:uint = 1 << 10;
+static BLOCK_LOAD_SPEED:uint = 1 << 9;
 static OCTREE_LOAD_SPEED:uint = 1 << 8;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
@@ -603,73 +603,82 @@ impl<'a> App<'a> {
     println!("load() finished with {} blocks", self.blocks.len());
   }
 
+  fn load_blocks(&mut self, max: Option<uint>) {
+    time!(&self.timers, "load.blocks", || {
+      // block loading
+      let count = max.map_or(self.block_loader.len(), |x| cmp::min(x, self.block_loader.len()));
+      if count > 0 {
+        for op in self.block_loader.iter(0, count) {
+          let blocks = &mut self.blocks;
+          let block_buffers = &mut self.block_buffers;
+          let physics = &mut self.physics;
+          let gl = &self.gl;
+          match *op {
+            Load((block, bounds)) => {
+              let id = block.id;
+              physics.insert(gl, block.id, &bounds);
+              block_buffers.find_mut(&block.block_type).unwrap().push(
+                id,
+                Block::to_texture_triangles(&bounds),
+                Block::to_outlines(&bounds)
+              );
+              blocks.insert(block.id, block);
+            },
+            Unload(id) => {
+              {
+                let block = unwrap!(blocks.find(&id));
+                let block_type = block.block_type;
+                let buffer = unwrap!(block_buffers.find_mut(&block_type));
+                buffer.swap_remove(gl, id);
+              }
+              physics.remove(gl, id);
+              blocks.remove(&id);
+            },
+          }
+        }
+
+        self.block_loader.pop(count);
+      }
+    });
+  }
+
+  fn load_octree(&mut self) {
+    time!(&self.timers, "load.octree", || {
+      // octree loading
+      let count = cmp::min(OCTREE_LOAD_SPEED, self.octree_loader.deref().borrow().deref().len());
+      if count > 0 {
+        for op in self.octree_loader.deref().borrow().deref().iter(0, count) {
+          match *op {
+            Load((id, bounds)) => {
+              self.octree_buffers.push(id, to_outlines(&bounds));
+            },
+            Unload(id) => {
+              self.octree_buffers.swap_remove(&self.gl, id);
+            }
+          }
+        }
+
+        self.octree_loader.deref().borrow_mut().deref_mut().pop(count);
+      }
+    });
+  }
+
   fn update(&mut self, _: &mut GameWindowSDL2, _: &UpdateArgs) {
     time!(&self.timers, "update", || {
       // TODO(cgaebel): Ideally, the update thread should not be touching OpenGL.
 
       time!(&self.timers, "update.load", || {
-        time!(&self.timers, "update.load.blocks", || {
-          // block loading
-          let count = cmp::min(BLOCK_LOAD_SPEED, self.block_loader.len());
-          if count > 0 {
-            for op in self.block_loader.iter(0, count) {
-              let blocks = &mut self.blocks;
-              let block_buffers = &mut self.block_buffers;
-              let physics = &mut self.physics;
-              let gl = &self.gl;
-              match *op {
-                Load((block, bounds)) => {
-                  let id = block.id;
-                  physics.insert(gl, block.id, &bounds);
-                  block_buffers.find_mut(&block.block_type).unwrap().push(
-                    id,
-                    Block::to_texture_triangles(&bounds),
-                    Block::to_outlines(&bounds)
-                  );
-                  blocks.insert(block.id, block);
-                },
-                Unload(id) => {
-                  {
-                    let block = unwrap!(blocks.find(&id));
-                    let block_type = block.block_type;
-                    let buffer = unwrap!(block_buffers.find_mut(&block_type));
-                    buffer.swap_remove(gl, id);
-                  }
-                  physics.remove(gl, id);
-                  blocks.remove(&id);
-                },
-              }
-            }
+        self.load_blocks(Some(BLOCK_LOAD_SPEED));
+        self.load_octree();
 
-            self.block_loader.pop(count);
+        time!(&self.timers, "update.load.gl", || {
+          // if there are more blocks to be loaded, add them into the OpenGL buffers.
+          for (_, buffers) in self.block_buffers.mut_iter() {
+            buffers.flush(&self.gl);
           }
+
+          self.octree_buffers.flush(&self.gl);
         });
-
-        time!(&self.timers, "update.load.octree", || {
-          // octree loading
-          let count = cmp::min(OCTREE_LOAD_SPEED, self.octree_loader.deref().borrow().deref().len());
-          if count > 0 {
-            for op in self.octree_loader.deref().borrow().deref().iter(0, count) {
-              match *op {
-                Load((id, bounds)) => {
-                  self.octree_buffers.push(id, to_outlines(&bounds));
-                },
-                Unload(id) => {
-                  self.octree_buffers.swap_remove(&self.gl, id);
-                }
-              }
-            }
-
-            self.octree_loader.deref().borrow_mut().deref_mut().pop(count);
-          }
-        });
-
-        // if there are more blocks to be loaded, add them into the OpenGL buffers.
-        for (_, buffers) in self.block_buffers.mut_iter() {
-          buffers.flush(&self.gl);
-        }
-
-        self.octree_buffers.flush(&self.gl);
       });
 
       time!(&self.timers, "update.player", || {
@@ -1059,6 +1068,8 @@ impl<'a> App<'a> {
         }
       }
     });
+
+    self.load_blocks(None);
   }
 
   #[inline]
