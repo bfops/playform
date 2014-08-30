@@ -44,14 +44,14 @@ static MAX_JUMP_FUEL: uint = 4;
 static LOAD_SPEED:uint = 1 << 10;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
-#[deriving(Copy, PartialEq, Eq, Hash)]
+#[deriving(Copy, Clone, PartialEq, Eq, Hash)]
 enum BlockType {
   Grass,
   Dirt,
   Stone,
 }
 
-#[deriving(Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
+#[deriving(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
 pub struct Id(u32);
 
 impl Add<Id, Id> for Id {
@@ -130,6 +130,7 @@ macro_rules! translate_mob(
   );
 )
 
+#[deriving(Clone)]
 /// A voxel-ish block in the game world.
 pub struct Block {
   block_type: BlockType,

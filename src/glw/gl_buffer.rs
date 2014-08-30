@@ -36,7 +36,9 @@ unsafe fn aligned_slice_to_ptr<T, U>(vs: &[T], alignment: uint) -> *const U {
 pub struct GLfloatBuffer {
   pub vertex_array: u32,
   pub vertex_buffer: u32,
+  /// number of floats in the buffer.
   pub length: uint,
+  /// maximum number of GLfloats in the buffer.
   pub capacity: uint,
   pub shader: Rc<Shader>,
   /// How to draw this buffer. Ex: gl::LINES, gl::TRIANGLES, etc.
@@ -341,7 +343,7 @@ impl<T: Clone> GLSliceBuffer<T> {
 
     let prev_len = self.len();
 
-    self.buffer.push_all(vs);
+    self.buffer.push_all(vs.iter().map(|x| x.clone()));
 
     assert!(self.len() == prev_len + vs.len());
   }

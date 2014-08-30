@@ -1,6 +1,5 @@
-// for testing
-#[allow(unused_imports)]
-use std::iter::range_inclusive;
+use std::iter::{Chain, range_inclusive};
+use std::slice;
 
 /// Circular bounded queue.
 pub struct Queue<T> {
@@ -51,9 +50,10 @@ impl<T: Clone> Queue<T> {
     self.length += 1;
   }
 
-  pub fn push_all(&mut self, ts: &[T]) {
-    for t in ts.iter() {
-      self.push(t.clone());
+  pub fn push_all<'a, I: Iterator<T>>(&mut self, ts: I) {
+    let mut ts = ts;
+    for t in ts {
+      self.push(t);
     }
   }
 
@@ -97,15 +97,21 @@ impl<T: Clone> Queue<T> {
     self.length = 0;
   }
 
+  pub fn iter<'a>(&'a self, low: uint, high: uint) -> QueueItems<'a, T> {
+    let (l, h) = self.slices(low, high);
+    assert!(l.len() + h.len() <= self.len());
+    QueueItems { inner: l.iter().chain(h.iter()) }
+  }
+
   pub fn slices<'a>(&'a self, low: uint, high: uint) -> (&'a [T], &'a [T]) {
     assert!(low <= self.length);
     assert!(high <= self.length);
-    let low = self.wrap(self.head + low);
-    let high = self.wrap(self.head + high);
-    if low < high {
-      (self.contents.slice(low, high), self.contents.slice(high, high))
+    let head = self.wrap(self.head + low);
+    let tail = self.wrap(self.head + high);
+    if head <= tail {
+      (self.contents.slice(head, tail), self.contents.slice(tail, tail))
     } else {
-      (self.contents.slice(low, self.contents.len()), self.contents.slice(0, high))
+      (self.contents.slice(head, self.contents.len()), self.contents.slice(0, tail))
     }
   }
 }
@@ -165,4 +171,11 @@ fn wrapped_pushes() {
   for (i, elem) in h.iter().enumerate() {
     assert!(*elem == more_pushes[i + l.len()]);
   }
+}
+
+pub struct QueueItems<'a, T> { inner: Chain<slice::Items<'a, T>, slice::Items<'a, T>> }
+
+impl<'a, T> Iterator<&'a T> for QueueItems<'a, T> {
+  fn next(&mut self) -> Option<&'a T> { self.inner.next() }
+  fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }

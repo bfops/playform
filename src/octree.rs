@@ -60,7 +60,7 @@ fn split(mid: F, d: Dimension, bounds: AABB) -> (Option<AABB>, Option<AABB>) {
 
 pub enum Dimension { X, Y, Z }
 
-#[deriving(Copy, PartialEq, Eq, Hash, Show)]
+#[deriving(Copy, Clone, PartialEq, Eq, Hash, Show)]
 pub struct OctreeId(uint);
 
 impl Add<uint, OctreeId> for OctreeId {

@@ -9,16 +9,6 @@ extern crate gl;
 extern crate libc;
 extern crate nalgebra;
 
-use libc::types::common::c95;
-use nalgebra::na::{Mat3, Mat4, Vec3, Eye, Outer};
-use std::cmp;
-use std::mem;
-use std::ptr;
-use std::raw;
-use std::rc::Rc;
-use std::str;
-use queue::Queue;
-
 pub mod camera;
 pub mod color;
 mod cstr_cache;

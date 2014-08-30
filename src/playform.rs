@@ -25,6 +25,7 @@ extern crate shader_version;
 
 mod common;
 mod fontloader;
+// so the time! macro is defined in main
 mod stopwatch;
 mod main;
 mod octree;

@@ -1,6 +1,6 @@
 //! RGBA color.
 
-#[deriving(Clone, Copy)]
+#[deriving(Clone, Copy, PartialEq)]
 /// A color with red, green, blue, and alpha channels.
 pub struct Color4<T> {
   /// Red

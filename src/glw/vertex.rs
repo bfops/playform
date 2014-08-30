@@ -5,7 +5,7 @@ use nalgebra::na::{Vec2,Vec3};
 #[cfg(test)]
 use std::mem;
 
-#[deriving(Clone, Copy)]
+#[deriving(Clone, Copy, PartialEq)]
 /// An untextured rendering vertex, with position and color.
 pub struct ColoredVertex {
   /// The 3-d position of this vertex in world space.
@@ -35,7 +35,7 @@ impl ColoredVertex {
   }
 }
 
-#[deriving(Clone, Copy)]
+#[deriving(Clone, Copy, PartialEq)]
 /// A point on a texture, with both a world position and a texture position.
 ///
 /// The texture position is [0, 1].
