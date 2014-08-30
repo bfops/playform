@@ -1,17 +1,12 @@
 language: rust
 
 before_install:
-  - wget http://static.rust-lang.org/dist/rust-nightly-x86_64-unknown-linux-gnu.tar.gz
-  - wget http://static.rust-lang.org/cargo-dist/cargo-nightly-linux.tar.gz
-  - tar -zxf cargo-nightly-linux.tar.gz
-  - tar -zxf rust-nightly-x86_64-unknown-linux-gnu.tar.gz
   - sudo apt-add-repository --yes ppa:zoogie/sdl2-snapshots
   - sudo apt-get update -qq
 
 install:
-  - sudo ./rust-nightly-x86_64-unknown-linux-gnu/install.sh
   - sudo apt-get install -qq libportaudio-dev libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev
 
 script:
-  - ./cargo-nightly/bin/cargo build --verbose
-  - ./cargo-nightly/bin/cargo test --verbose
+  - cargo build --verbose
+  - cargo test --verbose
