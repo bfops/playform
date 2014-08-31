@@ -519,11 +519,11 @@ impl<'a> App<'a> {
     time!(&self.timers, "load", || {
       mouse::show_cursor(false);
 
-      let playerId = self.alloc_id();
-      self.player.id = playerId;
+      let player_id = self.alloc_id();
+      self.player.id = player_id;
       let min = Vec3::new(0.0, 0.0, 0.0);
       let max = Vec3::new(1.0, 2.0, 1.0);
-      self.physics.insert(&self.gl, playerId, &AABB::new(min, max));
+      self.physics.insert(&self.gl, player_id, &AABB::new(min, max));
 
       self.gl.enable_culling();
       self.gl.enable_alpha_blending();
@@ -692,15 +692,15 @@ impl<'a> App<'a> {
           }
         }
 
-        let dP = self.player.speed;
-        if dP.x != 0.0 {
-          self.translate_player(Vec3::new(dP.x, 0.0, 0.0));
+        let delta_p = self.player.speed;
+        if delta_p.x != 0.0 {
+          self.translate_player(Vec3::new(delta_p.x, 0.0, 0.0));
         }
-        if dP.y != 0.0 {
-          self.translate_player(Vec3::new(0.0, dP.y, 0.0));
+        if delta_p.y != 0.0 {
+          self.translate_player(Vec3::new(0.0, delta_p.y, 0.0));
         }
-        if dP.z != 0.0 {
-          self.translate_player(Vec3::new(0.0, 0.0, dP.z));
+        if delta_p.z != 0.0 {
+          self.translate_player(Vec3::new(0.0, 0.0, delta_p.z));
         }
 
         let y_axis = Vec3::new(0.0, 1.0, 0.0);
@@ -724,15 +724,15 @@ impl<'a> App<'a> {
 
           mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
 
-          let dP = mob.speed;
-          if dP.x != 0.0 {
-            translate_mob!(self, mob, Vec3::new(dP.x, 0.0, 0.0));
+          let delta_p = mob.speed;
+          if delta_p.x != 0.0 {
+            translate_mob!(self, mob, Vec3::new(delta_p.x, 0.0, 0.0));
           }
-          if dP.y != 0.0 {
-            translate_mob!(self, mob, Vec3::new(0.0, dP.y, 0.0));
+          if delta_p.y != 0.0 {
+            translate_mob!(self, mob, Vec3::new(0.0, delta_p.y, 0.0));
           }
-          if dP.z != 0.0 {
-            translate_mob!(self, mob, Vec3::new(0.0, 0.0, dP.z));
+          if delta_p.z != 0.0 {
+            translate_mob!(self, mob, Vec3::new(0.0, 0.0, delta_p.z));
           }
         }
       });
@@ -1167,9 +1167,9 @@ impl<'a> App<'a> {
     }
   }
 
-  fn translate_mob(gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut MobBuffers, mob: &mut Mob, dP: Vec3<GLfloat>) {
-    if unwrap!(physics.translate(gl, mob.id, dP)) {
-      mob.speed = mob.speed - dP;
+  fn translate_mob(gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut MobBuffers, mob: &mut Mob, delta_p: Vec3<GLfloat>) {
+    if unwrap!(physics.translate(gl, mob.id, delta_p)) {
+      mob.speed = mob.speed - delta_p;
     } else {
       let bounds = unwrap!(physics.get_bounds(mob.id));
       mob_buffers.update(
