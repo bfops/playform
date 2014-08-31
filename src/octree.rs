@@ -182,7 +182,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     }
   }
 
-  pub fn insert(&mut self, gl: &GLContext, bounds: AABB, v: V) -> *mut Octree<V> {
+  pub fn insert(&mut self, bounds: AABB, v: V) -> *mut Octree<V> {
     assert!(self.bounds.contains(&bounds));
     let contents = match self.contents {
       Leaf(ref mut vs) => {
@@ -204,7 +204,6 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
 
           let (low, high) =
             Octree::bisect(
-              gl,
               self,
               &self.loader,
               &self.bounds,
@@ -219,8 +218,8 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       Branch(ref mut b) => {
         // copied in remove()
         let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, bounds);
-        l.map(|low_half| b.low_tree.insert(gl, low_half, v));
-        h.map(|high_half| b.high_tree.insert(gl, high_half, v));
+        l.map(|low_half| b.low_tree.insert(low_half, v));
+        h.map(|high_half| b.high_tree.insert(high_half, v));
         None
       },
     };
@@ -230,7 +229,6 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
 
   // Split a leaf into two subtrees.
   fn bisect(
-      gl: &GLContext,
       parent: *mut Octree<V>,
       loader: &Rc<RefCell<OctreeLoader>>,
       bounds: &AABB,
@@ -266,8 +264,8 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
 
     for &(bounds, v) in vs.iter() {
       let (low_bounds, high_bounds) = split(mid, dimension, bounds);
-      low_bounds.map(|bs| low.insert(gl, bs, v));
-      high_bounds.map(|bs| high.insert(gl, bs, v));
+      low_bounds.map(|bs| low.insert(bs, v));
+      high_bounds.map(|bs| high.insert(bs, v));
     }
 
     (low, high)
@@ -354,11 +352,11 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
 
   // like insert, but before recursing downward, we recurse up the parents
   // until the bounds provided are inside the tree.
-  fn insert_from(&mut self, gl: &GLContext, bounds: AABB, v: V) -> *mut Octree<V> {
-    self.on_mut_ancestor(&bounds, |t| t.insert(gl, bounds.clone(), v))
+  fn insert_from(&mut self, bounds: AABB, v: V) -> *mut Octree<V> {
+    self.on_mut_ancestor(&bounds, |t| t.insert(bounds.clone(), v))
   }
 
-  pub fn remove(&mut self, gl: &GLContext, v: V, bounds: &AABB) {
+  pub fn remove(&mut self, v: V, bounds: &AABB) {
     assert!(self.bounds.contains(bounds));
     let collapse_contents = match self.contents {
       Leaf(ref mut vs) => {
@@ -373,8 +371,8 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       },
       Branch(ref mut bs) => {
         let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, *bounds);
-        l.map(|low_half| bs.low_tree.remove(gl, v, &low_half));
-        h.map(|high_half| bs.high_tree.remove(gl, v, &high_half));
+        l.map(|low_half| bs.low_tree.remove(v, &low_half));
+        h.map(|high_half| bs.high_tree.remove(v, &high_half));
         bs.low_tree.is_empty() && bs.high_tree.is_empty()
       }
     };
@@ -391,9 +389,9 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     }
   }
 
-  pub fn move(&mut self, gl: &GLContext, v: V, bounds: &AABB, new_bounds: AABB) -> *mut Octree<V> {
-    self.remove(gl, v, bounds);
-    self.insert_from(gl, new_bounds, v)
+  pub fn move(&mut self, v: V, bounds: &AABB, new_bounds: AABB) -> *mut Octree<V> {
+    self.remove(v, bounds);
+    self.insert_from(new_bounds, v)
   }
 
   pub fn cast_ray(&self, ray: &Ray, self_v: V) -> Option<V> {

@@ -523,7 +523,7 @@ impl<'a> App<'a> {
       self.player.id = player_id;
       let min = Vec3::new(0.0, 0.0, 0.0);
       let max = Vec3::new(1.0, 2.0, 1.0);
-      self.physics.insert(&self.gl, player_id, &AABB::new(min, max));
+      self.physics.insert(player_id, &AABB::new(min, max));
 
       self.gl.enable_culling();
       self.gl.enable_alpha_blending();
@@ -616,7 +616,7 @@ impl<'a> App<'a> {
           match *op {
             Load((block, bounds)) => {
               let id = block.id;
-              physics.insert(gl, block.id, &bounds);
+              physics.insert(block.id, &bounds);
               block_buffers.find_mut(&block.block_type).unwrap().push(
                 id,
                 Block::to_texture_triangles(&bounds),
@@ -631,7 +631,7 @@ impl<'a> App<'a> {
                 let buffer = unwrap!(block_buffers.find_mut(&block_type));
                 buffer.swap_remove(gl, id);
               }
-              physics.remove(gl, id);
+              physics.remove(id);
               blocks.remove(&id);
             },
           }
@@ -1115,7 +1115,7 @@ impl<'a> App<'a> {
     self.mob_buffers.push(id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
     self.mob_buffers.flush(&self.gl);
 
-    self.physics.insert(&self.gl, id, &bounds);
+    self.physics.insert(id, &bounds);
     self.mobs.insert(id, cell::RefCell::new(mob));
   }
 
@@ -1151,7 +1151,7 @@ impl<'a> App<'a> {
   /// Translates the player/camera by a vector.
   fn translate_player(&mut self, v: Vec3<GLfloat>) {
     let id = self.player.id;
-    let collided = unwrap!(self.physics.translate(&self.gl, id, v));
+    let collided = unwrap!(self.physics.translate(id, v));
     if collided {
       self.player.speed = self.player.speed - v;
 
@@ -1168,7 +1168,7 @@ impl<'a> App<'a> {
   }
 
   fn translate_mob(gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut MobBuffers, mob: &mut Mob, delta_p: Vec3<GLfloat>) {
-    if unwrap!(physics.translate(gl, mob.id, delta_p)) {
+    if unwrap!(physics.translate(mob.id, delta_p)) {
       mob.speed = mob.speed - delta_p;
     } else {
       let bounds = unwrap!(physics.get_bounds(mob.id));
