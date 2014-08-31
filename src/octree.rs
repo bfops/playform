@@ -99,6 +99,7 @@ impl<V> OctreeBuffers<V> {
 
   pub fn push(
     &mut self,
+    gl: &GLContext,
     entry: OctreeId,
     outlines: &[ColoredVertex]
   ) {
@@ -106,12 +107,7 @@ impl<V> OctreeBuffers<V> {
     self.entry_to_index.insert(entry, self.index_to_entry.len());
     self.index_to_entry.push(entry);
 
-    self.outlines.push(outlines);
-  }
-
-  pub fn flush(&mut self, gl: &GLContext) {
-    // TODO: use OCTREE_LOAD_SPEED
-    self.outlines.flush(gl, Some(1 << 12));
+    self.outlines.push(gl, outlines);
   }
 
   pub fn swap_remove(&mut self, gl: &GLContext, entry: OctreeId) {

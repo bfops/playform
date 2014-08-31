@@ -221,19 +221,15 @@ impl BlockBuffers {
 
   pub fn push(
     &mut self,
+    gl: &GLContext,
     id: Id,
     triangles: &[TextureVertex],
     outlines: &[ColoredVertex]
   ) {
     self.id_to_index.insert(id, self.index_to_id.len());
     self.index_to_id.push(id);
-    self.triangles.push(triangles);
-    self.outlines.push(outlines);
-  }
-
-  pub fn flush(&mut self, gl: &GLContext) {
-    self.triangles.flush(gl, Some(BLOCK_LOAD_SPEED));
-    self.outlines.flush(gl, Some(BLOCK_LOAD_SPEED));
+    self.triangles.push(gl, triangles);
+    self.outlines.push(gl, outlines);
   }
 
   pub fn swap_remove(&mut self, gl: &GLContext, id: Id) {
@@ -309,17 +305,14 @@ impl MobBuffers {
 
   pub fn push(
     &mut self,
+    gl: &GLContext,
     id: Id,
     triangles: &[ColoredVertex]
   ) {
     self.id_to_index.insert(id, self.index_to_id.len());
     self.index_to_id.push(id);
 
-    self.triangles.push(triangles);
-  }
-
-  pub fn flush(&mut self, gl: &GLContext) {
-    self.triangles.flush(gl, None);
+    self.triangles.push(gl, triangles);
   }
 
   pub fn update(
@@ -370,7 +363,7 @@ pub struct App<'a> {
   // next block id to assign
   next_id: Id,
 
-  block_loader: Loader<(Block, AABB), Id>,
+  block_loader: Loader<Id, Id>,
   octree_loader: Rc<cell::RefCell<Loader<(octree::OctreeId, AABB), octree::OctreeId>>>,
 
   // OpenGL buffers
@@ -586,18 +579,19 @@ impl<'a> App<'a> {
 
       self.add_mob(Vec3::new(0.0, 8.0, -1.0), mob_behavior);
 
-      self.line_of_sight.push([
-        ColoredVertex {
-          position: Vec3::new(0.0, 0.0, 0.0),
-          color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
-        },
-        ColoredVertex {
-          position: Vec3::new(0.0, 0.0, 0.0),
-          color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
-        },
-      ]);
-
-      self.line_of_sight.flush(&self.gl, None);
+      self.line_of_sight.push(
+        &self.gl,
+        [
+          ColoredVertex {
+            position: Vec3::new(0.0, 0.0, 0.0),
+            color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
+          },
+          ColoredVertex {
+            position: Vec3::new(0.0, 0.0, 0.0),
+            color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
+          },
+        ]
+      );
     })
 
     println!("load() finished with {} blocks", self.blocks.len());
@@ -614,15 +608,15 @@ impl<'a> App<'a> {
           let physics = &mut self.physics;
           let gl = &self.gl;
           match *op {
-            Load((block, bounds)) => {
-              let id = block.id;
-              physics.insert(block.id, &bounds);
+            Load(id) => {
+              let bounds = unwrap!(physics.get_bounds(id));
+              let block = unwrap!(blocks.find(&id));
               block_buffers.find_mut(&block.block_type).unwrap().push(
+                gl,
                 id,
-                Block::to_texture_triangles(&bounds),
-                Block::to_outlines(&bounds)
+                Block::to_texture_triangles(bounds),
+                Block::to_outlines(bounds)
               );
-              blocks.insert(block.id, block);
             },
             Unload(id) => {
               {
@@ -650,7 +644,7 @@ impl<'a> App<'a> {
         for op in self.octree_loader.deref().borrow().deref().iter(0, count) {
           match *op {
             Load((id, bounds)) => {
-              self.octree_buffers.push(id, to_outlines(&bounds));
+              self.octree_buffers.push(&self.gl, id, to_outlines(&bounds));
             },
             Unload(id) => {
               self.octree_buffers.swap_remove(&self.gl, id);
@@ -670,15 +664,6 @@ impl<'a> App<'a> {
       time!(&self.timers, "update.load", || {
         self.load_blocks(Some(BLOCK_LOAD_SPEED));
         self.load_octree();
-
-        time!(&self.timers, "update.load.gl", || {
-          // if there are more blocks to be loaded, add them into the OpenGL buffers.
-          for (_, buffers) in self.block_buffers.mut_iter() {
-            buffers.flush(&self.gl);
-          }
-
-          self.octree_buffers.flush(&self.gl);
-        });
       });
 
       time!(&self.timers, "update.player", || {
@@ -979,27 +964,27 @@ impl<'a> App<'a> {
       self.textures.push(self.font.sans.red(*line));
 
       self.texture_triangles.push(
+        &self.gl,
         TextureVertex::square(
           Vec2 { x: -0.97, y: y - 0.2 },
           Vec2 { x: 0.0,   y: y       }
-        ));
+        )
+      );
       y -= 0.2;
     }
-
-    self.texture_triangles.flush(&self.gl, None);
   }
 
   fn make_hud(&mut self) {
     let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
 
     self.hud_triangles.push(
+      &self.gl,
       ColoredVertex::square(
         Vec2 { x: -0.02, y: -0.02 },
         Vec2 { x:  0.02, y:  0.02 },
         cursor_color
-      ));
-
-    self.hud_triangles.flush(&self.gl, None);
+      )
+    );
   }
 
   fn make_world(&mut self) {
@@ -1068,8 +1053,6 @@ impl<'a> App<'a> {
         }
       }
     });
-
-    self.load_blocks(None);
   }
 
   #[inline]
@@ -1100,6 +1083,8 @@ impl<'a> App<'a> {
   }
 
   fn add_mob(&mut self, low_corner: Vec3<GLfloat>, behavior: fn(&App, &mut Mob)) {
+    // TODO: mob loader instead of pushing directly to gl buffers
+
     let id = self.alloc_id();
 
     let mob =
@@ -1112,8 +1097,7 @@ impl<'a> App<'a> {
       };
 
     let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
-    self.mob_buffers.push(id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
-    self.mob_buffers.flush(&self.gl);
+    self.mob_buffers.push(&self.gl, id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
 
     self.physics.insert(id, &bounds);
     self.mobs.insert(id, cell::RefCell::new(mob));
@@ -1134,7 +1118,9 @@ impl<'a> App<'a> {
 
       if !collided {
         block.id = self.alloc_id();
-        self.block_loader.push(Load((block, bounds)));
+        self.blocks.insert(block.id, block);
+        self.physics.insert(block.id, &bounds);
+        self.block_loader.push(Load(block.id));
       }
     })
   }

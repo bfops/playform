@@ -1,7 +1,6 @@
 use gl;
 use gl::types::*;
 use gl_context::*;
-use queue::Queue;
 use shader::*;
 use std::cmp;
 use std::mem;
@@ -197,7 +196,7 @@ impl GLfloatBuffer {
     self.length += count;
   }
 
-  pub fn update(&self, gl: &GLContext, idx: uint, vs: *const GLfloat, count: uint) {
+  pub unsafe fn update(&self, gl: &GLContext, idx: uint, vs: *const GLfloat, count: uint) {
     assert!(idx + count <= self.length);
     self.update_inner(gl, idx, vs, count);
   }
@@ -260,24 +259,17 @@ impl Drop for GLfloatBuffer {
 /// A `GLfloatBuffer` that pushes slices of data at a time.
 /// These slices are expected to be a fixed size (or multiples of that size).
 /// Indexing operations and lengths are in terms of contiguous blocks of that
-/// size (i.e. refering to index 2 when `slice_span` is 3 means referring to a
+/// size (i.e. refering to index 2 when the span slice is 3 means referring to a
 /// contiguous block of size 3 starting at index 6 in the underlying GLfloatBuffer.
 pub struct GLSliceBuffer<T> {
   pub gl_buffer: GLfloatBuffer,
   /// Each index in the GLfloatBuffer is the index of a contiguous block of
-  /// `slice_span` elements.
+  /// `slice_span` GLfloats. Note this is NOT the same as the `slice_span`
+  /// param provided to the constructor.
   pub slice_span: uint,
-
-  /// in-memory buffer before sending to OpenGL.
-  pub buffer: Queue<T>,
 }
 
 impl<T: Clone> GLSliceBuffer<T> {
-  fn glfloat_ratio() -> uint {
-    assert!(mem::size_of::<T>() % mem::size_of::<GLfloat>() == 0);
-    mem::size_of::<T>() / mem::size_of::<GLfloat>()
-  }
-
   pub unsafe fn new(
     gl: &GLContext,
     shader_program: Rc<Shader>,
@@ -286,105 +278,56 @@ impl<T: Clone> GLSliceBuffer<T> {
     capacity: uint,
     mode: DrawMode
   ) -> GLSliceBuffer<T> {
+    assert!(mem::size_of::<T>() % mem::size_of::<GLfloat>() == 0);
     let capacity = capacity * slice_span;
+    let glfloat_ratio = mem::size_of::<T>() / mem::size_of::<GLfloat>();
     let gl_buffer =
       GLfloatBuffer::new(
         gl,
         shader_program,
         attribs,
-        capacity * GLSliceBuffer::<T>::glfloat_ratio(),
+        capacity * glfloat_ratio,
         mode
       );
     GLSliceBuffer {
       gl_buffer: gl_buffer,
-      slice_span: slice_span,
-      buffer: Queue::new(capacity),
+      slice_span: slice_span * glfloat_ratio,
     }
   }
 
   pub fn len(&self) -> uint {
-    self.gl_buffer.len() / GLSliceBuffer::<T>::glfloat_ratio() + self.buffer.len()
+    self.gl_buffer.len() / self.slice_span
   }
 
   pub fn capacity(&self) -> uint {
-    self.gl_buffer.capacity() / GLSliceBuffer::<T>::glfloat_ratio()
+    self.gl_buffer.capacity() / self.slice_span
   }
 
   pub fn swap_remove(&mut self, gl: &GLContext, i: uint) {
-    let i = i * self.slice_span;
-    assert!(i < self.len());
-    assert!(self.gl_buffer.len() % GLSliceBuffer::<T>::glfloat_ratio() == 0);
-    let gl_len = self.gl_buffer.len() / GLSliceBuffer::<T>::glfloat_ratio();
-    if i < gl_len {
-      let i = i * GLSliceBuffer::<T>::glfloat_ratio();
-      self.gl_buffer.swap_remove(gl, i, self.slice_span * GLSliceBuffer::<T>::glfloat_ratio());
-    } else {
-      self.buffer.swap_remove(i - gl_len, self.slice_span);
-    }
+    self.gl_buffer.swap_remove(gl, i * self.slice_span, self.slice_span);
   }
 
-  /// Add more data into this buffer; the data are not pushed to OpenGL until
-  /// flush() is called!
-  pub fn push(&mut self, vs: &[T]) {
-    assert!(vs.len() % self.slice_span == 0);
-    assert!(self.len() + vs.len() <= self.capacity(),
-      "GLSliceBuffer::push {} into a {}/{} full GLSliceBuffer",
-      vs.len(),
-      self.len(),
-      self.capacity()
-    );
-
-    let prev_len = self.len();
-
-    self.buffer.push_all(vs.iter().map(|x| x.clone()));
-
-    assert!(self.len() == prev_len + vs.len());
-  }
-
-  pub fn flush(&mut self, gl: &GLContext, max: Option<uint>) {
-    if self.buffer.is_empty() {
-      return;
-    }
-
-    assert!(self.buffer.len() % self.slice_span == 0);
-    assert!(self.len() <= self.capacity());
-
-    let prev_len = self.len();
-
-    let count = match max {
-      None => self.buffer.len(),
-      Some(x) => cmp::min(x * self.slice_span, self.buffer.len()),
-    };
-
+  pub fn push(&mut self, gl: &GLContext, vs: &[T]) {
+    let glfloat_ratio = mem::size_of::<T>() / mem::size_of::<GLfloat>();
+    assert!((vs.len() * glfloat_ratio) % self.slice_span == 0);
     unsafe {
-      let (l, h) = self.buffer.slices(0, count);
-      let s = mem::size_of::<GLfloat>();
       self.gl_buffer.push(
         gl,
-        aligned_slice_to_ptr(l, s),
-        l.len() * GLSliceBuffer::<T>::glfloat_ratio()
-      );
-      self.gl_buffer.push(
-        gl,
-        aligned_slice_to_ptr(h, s),
-        h.len() * GLSliceBuffer::<T>::glfloat_ratio()
+        aligned_slice_to_ptr(vs, mem::size_of::<GLfloat>()),
+        vs.len() * glfloat_ratio
       );
     }
-
-    self.buffer.pop(count);
-
-    assert!(self.len() == prev_len);
   }
 
   pub fn update(&self, gl: &GLContext, idx: uint, vs: &[T]) {
-    assert!(vs.len() % self.slice_span == 0);
-    let s = mem::size_of::<GLfloat>();
+    let glfloat_ratio = mem::size_of::<T>() / mem::size_of::<GLfloat>();
+    assert!((vs.len() * glfloat_ratio) % self.slice_span == 0);
     unsafe {
       self.gl_buffer.update(
         gl,
-        idx * self.slice_span * GLSliceBuffer::<T>::glfloat_ratio(),
-        aligned_slice_to_ptr(vs, s),
-        vs.len() * GLSliceBuffer::<T>::glfloat_ratio()
+        idx * self.slice_span,
+        aligned_slice_to_ptr(vs, mem::size_of::<GLfloat>()),
+        vs.len() * glfloat_ratio,
       );
     }
   }
@@ -394,7 +337,6 @@ impl<T: Clone> GLSliceBuffer<T> {
   }
 
   pub fn draw_slice(&self, gl: &GLContext, start: uint, len: uint) {
-    let s = self.slice_span * GLSliceBuffer::<T>::glfloat_ratio();
-    self.gl_buffer.draw_slice(gl, start * s, len * s);
+    self.gl_buffer.draw_slice(gl, start * self.slice_span, len * self.slice_span);
   }
 }
