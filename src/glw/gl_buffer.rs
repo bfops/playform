@@ -259,7 +259,7 @@ impl Drop for GLfloatBuffer {
 /// A `GLfloatBuffer` that pushes slices of data at a time.
 /// These slices are expected to be a fixed size (or multiples of that size).
 /// Indexing operations and lengths are in terms of contiguous blocks of that
-/// size (i.e. refering to index 2 when the span slice is 3 means referring to a
+/// size (i.e. refering to index 2 when the slice span is 3 means referring to a
 /// contiguous block of size 3 starting at index 6 in the underlying GLfloatBuffer.
 pub struct GLSliceBuffer<T> {
   pub gl_buffer: GLfloatBuffer,
