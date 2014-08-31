@@ -102,6 +102,7 @@ impl<V> OctreeBuffers<V> {
     entry: OctreeId,
     outlines: &[ColoredVertex]
   ) {
+    assert!(!self.entry_to_index.contains_key(&entry));
     self.entry_to_index.insert(entry, self.index_to_entry.len());
     self.index_to_entry.push(entry);
 
@@ -109,21 +110,19 @@ impl<V> OctreeBuffers<V> {
   }
 
   pub fn flush(&mut self, gl: &GLContext) {
+    // TODO: use OCTREE_LOAD_SPEED
     self.outlines.flush(gl, Some(1 << 12));
   }
 
   pub fn swap_remove(&mut self, gl: &GLContext, entry: OctreeId) {
-    match self.entry_to_index.find(&entry) {
-      None => {},
-      Some(&idx) => {
-        let swapped_id = self.index_to_entry[self.index_to_entry.len() - 1];
-        unwrap!(self.index_to_entry.swap_remove(idx));
-        self.entry_to_index.remove(&entry);
-        self.outlines.swap_remove(gl, idx);
-        if entry != swapped_id {
-          self.entry_to_index.insert(swapped_id, idx);
-        }
-      },
+    let &idx = unwrap!(self.entry_to_index.find(&entry));
+    let swapped_id = self.index_to_entry[self.index_to_entry.len() - 1];
+    unwrap!(self.index_to_entry.swap_remove(idx));
+    self.entry_to_index.remove(&entry);
+    self.outlines.swap_remove(gl, idx);
+    if entry != swapped_id {
+      self.entry_to_index.insert(swapped_id, idx);
+      assert!(self.index_to_entry[idx] == swapped_id);
     }
   }
 

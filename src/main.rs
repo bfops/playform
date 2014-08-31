@@ -240,8 +240,8 @@ impl BlockBuffers {
     let idx = *unwrap!(self.id_to_index.find(&id));
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     unwrap!(self.index_to_id.swap_remove(idx));
-    self.triangles.swap_remove(gl, idx);
     self.id_to_index.remove(&id);
+    self.triangles.swap_remove(gl, idx);
     self.outlines.swap_remove(gl, idx);
     if id != swapped_id {
       self.id_to_index.insert(swapped_id, idx);

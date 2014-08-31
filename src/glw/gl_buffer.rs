@@ -1,7 +1,6 @@
 use gl;
 use gl::types::*;
 use gl_context::*;
-use libc::types::common::c95;
 use queue::Queue;
 use shader::*;
 use std::cmp;
@@ -76,10 +75,8 @@ impl GLfloatBuffer {
 
     // TODO(cgaebel): Error checking?
 
-    unsafe {
-      gl::GenVertexArrays(1, &mut vertex_array);
-      gl::GenBuffers(1, &mut vertex_buffer);
-    }
+    gl::GenVertexArrays(1, &mut vertex_array);
+    gl::GenBuffers(1, &mut vertex_buffer);
 
     match gl::GetError() {
       gl::NO_ERROR => {},
@@ -107,16 +104,14 @@ impl GLfloatBuffer {
       assert!(shader_attrib != -1, "shader attribute \"{}\" not found", attrib.name);
 
       gl::EnableVertexAttribArray(shader_attrib);
-      unsafe {
-        gl::VertexAttribPointer(
-          shader_attrib,
-          attrib.size as i32,
-          gl::FLOAT,
-          gl::FALSE as GLboolean,
-          attrib_span as i32,
-          ptr::null().offset(offset),
-        );
-      }
+      gl::VertexAttribPointer(
+        shader_attrib,
+        attrib.size as i32,
+        gl::FLOAT,
+        gl::FALSE as GLboolean,
+        attrib_span as i32,
+        ptr::null().offset(offset),
+      );
       offset += (attrib.size * mem::size_of::<GLfloat>()) as int;
     }
 
@@ -125,19 +120,17 @@ impl GLfloatBuffer {
       err => fail!("OpenGL error 0x{:x}", err),
     }
 
-    unsafe {
-      gl::BufferData(
-        gl::ARRAY_BUFFER,
-        (capacity * mem::size_of::<GLfloat>()) as GLsizeiptr,
-        ptr::null(),
-        gl::DYNAMIC_DRAW,
-      );
+    gl::BufferData(
+      gl::ARRAY_BUFFER,
+      (capacity * mem::size_of::<GLfloat>()) as GLsizeiptr,
+      ptr::null(),
+      gl::DYNAMIC_DRAW,
+    );
 
-      match gl::GetError() {
-        gl::NO_ERROR => {},
-        gl::OUT_OF_MEMORY => fail!("Out of VRAM"),
-        err => fail!("OpenGL error 0x{:x}", err),
-      }
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      gl::OUT_OF_MEMORY => fail!("Out of VRAM"),
+      err => fail!("OpenGL error 0x{:x}", err),
     }
 
     GLfloatBuffer {

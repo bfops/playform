@@ -130,25 +130,28 @@ impl<T: Clone> Queue<T> {
 
   pub fn iter<'a>(&'a self, low: uint, high: uint) -> QueueItems<'a, T> {
     let (l, h) = self.slices(low, high);
-    assert!(l.len() + h.len() <= self.len());
     QueueItems { inner: l.iter().chain(h.iter()) }
   }
 
   pub fn slices<'a>(&'a self, low: uint, high: uint) -> (&'a [T], &'a [T]) {
+    assert!(low <= high);
     assert!(low <= self.length);
     assert!(high <= self.length);
-    if low == high {
-      (Default::default(), Default::default())
-    } else {
-      let head = (self.head + low) % self.contents.capacity();
-      let tail = (self.head + high) % self.contents.capacity();
-      if head < tail {
-        (self.contents.slice(head, tail), Default::default())
+    let (l, h) =
+      if low == high {
+        (Default::default(), Default::default())
       } else {
-        assert!(self.contents.len() == self.contents.capacity());
-        (self.contents.slice(head, self.contents.capacity()), self.contents.slice(0, tail))
-      }
-    }
+        let head = (self.head + low) % self.contents.capacity();
+        let tail = (self.head + high) % self.contents.capacity();
+        if head < tail {
+          (self.contents.slice(head, tail), Default::default())
+        } else {
+          assert!(self.contents.len() == self.contents.capacity());
+          (self.contents.slice(head, self.contents.capacity()), self.contents.slice(0, tail))
+        }
+      };
+    assert!(l.len() + h.len() == high - low);
+    (l, h)
   }
 }
 
@@ -224,6 +227,26 @@ fn swap_remove_simple() {
 
 #[test]
 // TODO: clean up this test, de-duplicate, etc.
+fn push_swap_remove_push() {
+  let mut q: Queue<int> = Queue::new(32);
+  q.push_all([1, 9i].iter().map(|&x| x));
+  q.swap_remove(1, 1);
+  q.push_all([2, 3, 4, 5i].iter().map(|&x| x));
+
+  let elems = [1, 2, 3, 4, 5i];
+  let i = q.iter(0, q.len());
+  let mut count = 0;
+  for (i, &x) in i.enumerate() {
+    assert!(i < elems.len());
+    assert_eq!(x, elems[i]);
+    count += 1;
+  }
+  assert!(count == q.len());
+  assert!(count == elems.len());
+}
+
+#[test]
+// TODO: clean up this test, de-duplicate, etc.
 fn swap_remove_end() {
   let mut q: Queue<int> = Queue::new(8);
   let popped = [11, 12i];
@@ -233,12 +256,16 @@ fn swap_remove_end() {
   q.pop(popped.len());
   q.push_all(elems.iter().map(|&x| x));
   q.swap_remove(4, 4);
+  assert!(q.len() == 4);
 
-  let mut i = q.iter(0, q.len());
-  let mut r = elems.iter();
-  for (x, y) in i.zip(r) {
-    assert!(x == y);
+  let i = q.iter(0, q.len());
+  let mut count = 0;
+  for (i, &x) in i.enumerate() {
+    assert!(i < elems.len());
+    assert!(x == elems[i]);
+    count += 1;
   }
+  assert!(count == q.len());
 }
 
 // TODO: clean up this test, de-duplicate, etc.
@@ -277,6 +304,13 @@ fn swap_remove_from_broken() {
   for (x, y) in i.zip(r) {
     assert!(x == y);
   }
+}
+
+#[test]
+fn vec_copy_test() {
+  let mut v = Vec::from_slice([1,2,3,4,5i]);
+  vec_copy(&mut v, 1, 3, 2);
+  assert_eq!(v, Vec::from_slice([1, 4, 5, 4, 5i]));
 }
 
 pub struct QueueItems<'a, T> { inner: Chain<slice::Items<'a, T>, slice::Items<'a, T>> }
