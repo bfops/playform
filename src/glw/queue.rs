@@ -41,7 +41,8 @@ impl<T: Clone> Queue<T> {
       self.contents.capacity()
     );
 
-    if self.contents.len() < self.contents.capacity() {
+    if self.tail >= self.contents.len() {
+      assert!(self.contents.len() < self.contents.capacity());
       self.contents.push(t);
     } else {
       *self.contents.get_mut(self.tail) = t;
