@@ -159,9 +159,11 @@ impl BlockBuffers {
     }
   }
 
-  pub fn draw(&self, gl: &GLContext) {
+  pub fn draw(&self, gl: &GLContext, draw_outlines: bool) {
     self.triangles.draw(gl);
-    self.outlines.draw(gl);
+    if draw_outlines {
+      self.outlines.draw(gl);
+    }
   }
 }
 

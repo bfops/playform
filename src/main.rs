@@ -206,6 +206,7 @@ pub struct App<'a> {
   mouse_buttons_pressed: Vec<input::mouse::Button>,
 
   render_octree: bool,
+  render_outlines: bool,
 
   font: fontloader::FontLoader,
   timers: stopwatch::TimerSet,
@@ -258,6 +259,9 @@ impl<'a> App<'a> {
         },
         input::keyboard::O => {
           self.render_octree = !self.render_octree;
+        }
+        input::keyboard::L => {
+          self.render_outlines = !self.render_outlines;
         }
         _ => {},
       }
@@ -598,7 +602,7 @@ impl<'a> App<'a> {
       for (block_type, buffers) in self.block_buffers.iter() {
         let r = unwrap!(self.block_textures.find(block_type));
         r.bind_2d(&self.gl);
-        buffers.draw(&self.gl);
+        buffers.draw(&self.gl, self.render_outlines);
       }
 
       self.mob_buffers.draw(&self.gl);
@@ -748,6 +752,7 @@ impl<'a> App<'a> {
       hud_shader: hud_shader,
       mouse_buttons_pressed: Vec::new(),
       render_octree: false,
+      render_outlines: true,
       font: fontloader::FontLoader::new(),
       timers: stopwatch::TimerSet::new(),
       gl: gl,
