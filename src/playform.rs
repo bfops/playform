@@ -7,10 +7,6 @@
 #![feature(unsafe_destructor)]
 #![feature(phase)]
 
-// TODO(cgaebel): This is just to make the `time` macro work. I'm not sure how
-// to disable warnings only in a macro.
-#![allow(unused_unsafe)]
-
 extern crate gl;
 extern crate glw;
 extern crate input;
