@@ -46,7 +46,7 @@ impl Block {
 
     // hacky little solution so that we don't index right onto the edge of a
     // texture; if we do, we get edges showing up in rendering.
-    let d = 0.001;
+    let d = 0.01;
 
     // Remember: x increases to the right, y increases up, and z becomes more
     // negative as depth from the viewer increases.
