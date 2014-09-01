@@ -904,12 +904,10 @@ impl<'a> App<'a> {
     let id = self.alloc_id();
 
     let mob =
-      unsafe {
-        mob::Mob {
-          speed: Vec3::new(0.0, 0.0, 0.0),
-          behavior: behavior,
-          id: id,
-        }
+      mob::Mob {
+        speed: Vec3::new(0.0, 0.0, 0.0),
+        behavior: behavior,
+        id: id,
       };
 
     let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
@@ -920,7 +918,7 @@ impl<'a> App<'a> {
   }
 
   fn place_block(&mut self, min: Vec3<GLfloat>, max: Vec3<GLfloat>, block_type: block::BlockType, check_collisions: bool) {
-    time!(&self.timers, "place_block", || unsafe {
+    time!(&self.timers, "place_block", || {
       let mut block = block::Block {
         block_type: block_type,
         id: Id(0),
@@ -1139,9 +1137,7 @@ pub fn main() {
 
   gl.print_stats();
 
-  unsafe {
-    App::new(gl).run(&mut window);
-  }
+  App::new(gl).run(&mut window);
 
   println!("finished!");
   println!("");
