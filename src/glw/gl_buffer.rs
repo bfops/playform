@@ -289,6 +289,15 @@ impl<T: Clone> GLSliceBuffer<T> {
         capacity * glfloat_ratio,
         mode
       );
+    assert!(
+      gl_buffer.attrib_span == glfloat_ratio,
+      "{}{}{}{}{}",
+      "OpenGL Buffer created with incorrectly sized attribs. ",
+      "Buffer type has ",
+      glfloat_ratio,
+      " GLfloat components, but attribs are: ",
+      attribs
+    );
     GLSliceBuffer {
       gl_buffer: gl_buffer,
       slice_span: slice_span * glfloat_ratio,

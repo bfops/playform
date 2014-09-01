@@ -75,6 +75,7 @@ impl TextureVertex {
   }
 }
 
+#[deriving(Show)]
 /// A data structure which specifies how to pass data from opengl to the vertex
 /// shaders.
 pub struct AttribData<'a> {
