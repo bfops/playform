@@ -36,7 +36,7 @@ impl ColoredVertex {
 }
 
 #[deriving(Clone, Copy, PartialEq)]
-/// A point on a texture, with both a world position and a texture position.
+/// A point in the world with corresponding texture data.
 ///
 /// The texture position is [0, 1].
 pub struct TextureVertex {

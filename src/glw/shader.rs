@@ -19,26 +19,36 @@ impl Shader {
     Shader { id: id, vs: vs, fs: fs }
   }
 
-  /// Sets the variable `projection_matrix` in some shader.
-  pub fn set_projection_matrix(&self, gl: &mut GLContext, m: &Mat4<GLfloat>) {
-    let var_name = gl.scache.convert("projection_matrix").as_ptr();
-    gl.use_shader(self, |_gl| {
+  fn with_uniform_location(&self, gl: &mut GLContext, name: &'static str, f: |GLint|) {
+    let name = gl.scache.convert(name).as_ptr();
+    gl.use_shader(self, |_| {
       unsafe {
-        let loc = gl::GetUniformLocation(self.id, var_name);
-        assert!(loc != -1, "couldn't read projection_matrix");
+        let loc = gl::GetUniformLocation(self.id, name);
+        assert!(loc != -1, "couldn't find shader uniform {}", name);
 
         match gl::GetError() {
           gl::NO_ERROR => {},
           err => fail!("OpenGL error 0x{:x} in GetUniformLocation", err),
         }
 
+        f(loc);
+      }
+    })
+  }
+
+  // TODO: these functions should take a &mut self.
+
+  /// Sets the variable `projection_matrix` in some shader.
+  pub fn set_projection_matrix(&self, gl: &mut GLContext, m: &Mat4<GLfloat>) {
+    self.with_uniform_location(gl, "projection_matrix", |loc| {
+      unsafe {
         let p = mem::transmute(m);
         gl::UniformMatrix4fv(loc, 1, 0, p);
+      }
 
-        match gl::GetError() {
-          gl::NO_ERROR => {},
-          err => fail!("OpenGL error 0x{:x} in UniformMat4fv", err),
-        }
+      match gl::GetError() {
+        gl::NO_ERROR => {},
+        err => fail!("OpenGL error 0x{:x} in UniformMat4fv", err),
       }
     })
   }

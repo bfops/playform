@@ -198,6 +198,7 @@ pub struct App<'a> {
 
   // OpenGL shader "program" ids
   color_shader: Rc<Shader>,
+  hud_shader: Rc<Shader>,
   texture_shader: Rc<Shader>,
 
   // which mouse buttons are currently pressed
@@ -581,6 +582,7 @@ impl<'a> App<'a> {
       self.gl.clear_buffer();
 
       // draw the world
+
       self.color_shader.set_camera(&mut self.gl, &self.player.camera);
       self.texture_shader.set_camera(&mut self.gl, &self.player.camera);
 
@@ -591,6 +593,7 @@ impl<'a> App<'a> {
         self.octree_buffers.draw(&self.gl);
       }
 
+      // draw the blocks
       for (block_type, buffers) in self.block_buffers.iter() {
         let r = unwrap!(self.block_textures.find(block_type));
         r.bind_2d(&self.gl);
@@ -600,12 +603,12 @@ impl<'a> App<'a> {
       self.mob_buffers.draw(&self.gl);
 
       // draw the hud
+
       self.color_shader.set_camera(&mut self.gl, &self.hud_camera);
-      self.texture_shader.set_camera(&mut self.gl, &self.hud_camera);
       self.hud_triangles.draw(&self.gl);
 
-      // draw textures
-      self.gl.use_shader(self.texture_shader.deref(), |gl| {
+      // draw hud textures
+      self.gl.use_shader(self.hud_shader.deref(), |gl| {
         for (i, tex) in self.textures.iter().enumerate() {
           tex.bind_2d(gl);
           self.texture_triangles.draw_slice(gl, i * 2, 2);
@@ -627,6 +630,16 @@ impl<'a> App<'a> {
 
     let texture_shader = Rc::new(Shader::new(&mut gl, TX_VS_SRC, TX_FS_SRC));
     let color_shader = Rc::new(Shader::new(&mut gl, VS_SRC, FS_SRC));
+    let hud_shader = Rc::new(Shader::new(&mut gl, TX_VS_SRC, TX_FS_SRC));
+
+    let hud_camera = {
+      let mut c = Camera::unit();
+      c.fov = camera::sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
+      c.fov = camera::translation(Vec3::new(0.0, 0.0, -1.0)) * c.fov;
+      c
+    };
+
+    hud_shader.set_camera(&mut gl, &hud_camera);
 
     match gl::GetError() {
       gl::NO_ERROR => {},
@@ -662,7 +675,7 @@ impl<'a> App<'a> {
     let texture_triangles = unsafe {
       GLSliceBuffer::new(
           &gl,
-          texture_shader.clone(),
+          hud_shader.clone(),
           [ vertex::AttribData { name: "position", size: 3 },
             vertex::AttribData { name: "texture_position", size: 2 },
           ],
@@ -712,16 +725,12 @@ impl<'a> App<'a> {
       hud_triangles: hud_triangles,
       texture_triangles: texture_triangles,
       textures: Vec::new(),
-      hud_camera: {
-        let mut c = Camera::unit();
-        c.fov = camera::sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
-        c.fov = camera::translation(Vec3::new(0.0, 0.0, -1.0)) * c.fov;
-        c
-      },
+      hud_camera: hud_camera,
       lateral_rotation: 0.0,
       vertical_rotation: 0.0,
       color_shader: color_shader,
       texture_shader: texture_shader,
+      hud_shader: hud_shader,
       mouse_buttons_pressed: Vec::new(),
       render_octree: false,
       font: fontloader::FontLoader::new(),
@@ -1102,8 +1111,9 @@ void main() {
 static TX_VS_SRC: &'static str =
 r"#version 330 core
 uniform mat4 projection_matrix;
-in  vec3 position;
-in  vec2 texture_position;
+in vec3 position;
+in vec2 texture_position;
+
 out vec2 tex_position;
 void main() {
   tex_position = texture_position;
@@ -1112,7 +1122,7 @@ void main() {
 
 static TX_FS_SRC: &'static str =
 r"#version 330 core
-in  vec2 tex_position;
+in vec2 tex_position;
 out vec4 frag_color;
 
 uniform sampler2D texture_in;
