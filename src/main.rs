@@ -1,3 +1,4 @@
+use block;
 use common::*;
 use fontloader;
 use gl;
@@ -15,6 +16,7 @@ use glw::vertex::{ColoredVertex, TextureVertex};
 use input;
 use input::{Press,Release,Move,Keyboard,Mouse,MouseCursor};
 use loader::{Loader, Load, Unload};
+use mob;
 use ncollide3df32::bounding_volume::LooseBoundingVolume;
 use ncollide3df32::bounding_volume::aabb::AABB;
 use nalgebra::na::{Vec2, Vec3, RMul, Norm};
@@ -39,21 +41,12 @@ use std::raw;
 use std::rc::Rc;
 use libc::types::common::c95::c_void;
 
-static MAX_WORLD_SIZE: uint = 40000;
-
 static MAX_JUMP_FUEL: uint = 4;
 
 // how many blocks to load during every update step
 static BLOCK_LOAD_SPEED:uint = 1 << 9;
 static OCTREE_LOAD_SPEED:uint = 1 << 11;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
-
-#[deriving(Copy, Clone, PartialEq, Eq, Hash)]
-enum BlockType {
-  Grass,
-  Dirt,
-  Stone,
-}
 
 #[deriving(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
 pub struct Id(u32);
@@ -134,122 +127,6 @@ macro_rules! translate_mob(
   );
 )
 
-#[deriving(Clone)]
-/// A voxel-ish block in the game world.
-pub struct Block {
-  block_type: BlockType,
-  id: Id,
-}
-
-impl Block {
-  // Construct outlines for this Block, to sharpen the edges.
-  fn to_outlines(bounds: &AABB) -> [ColoredVertex, ..LINE_VERTICES_PER_BOX] {
-    to_outlines(&bounds.loosened(0.002))
-  }
-
-  fn to_texture_triangles(bounds: &AABB) -> [TextureVertex, ..TRIANGLE_VERTICES_PER_BOX] {
-    let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
-    let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
-
-    let vtx = |x, y, z, tx, ty| {
-      TextureVertex {
-        world_position: Vec3::new(x, y, z),
-        texture_position: Vec2::new(tx, ty),
-      }
-    };
-
-    // Remember: x increases to the right, y increases up, and z becomes more
-    // negative as depth from the viewer increases.
-    [
-      // front
-      vtx(x1, y1, z2, 0.0, 0.50), vtx(x2, y2, z2, 0.25, 0.25), vtx(x1, y2, z2, 0.25, 0.50),
-      vtx(x1, y1, z2, 0.0, 0.50), vtx(x2, y1, z2, 0.0, 0.25), vtx(x2, y2, z2, 0.25, 0.25),
-      // left
-      vtx(x1, y1, z1, 0.75, 0.0), vtx(x1, y2, z2, 0.5, 0.25), vtx(x1, y2, z1, 0.5, 0.0),
-      vtx(x1, y1, z1, 0.75, 0.0), vtx(x1, y1, z2, 0.75, 0.25), vtx(x1, y2, z2, 0.5, 0.25),
-      // top
-      vtx(x1, y2, z1, 0.25, 0.25), vtx(x2, y2, z2, 0.5, 0.50), vtx(x2, y2, z1, 0.25, 0.50),
-      vtx(x1, y2, z1, 0.25, 0.25), vtx(x1, y2, z2, 0.5, 0.25), vtx(x2, y2, z2, 0.5, 0.50),
-      // back
-      vtx(x1, y1, z1, 0.75, 0.50), vtx(x2, y2, z1, 0.5, 0.25), vtx(x2, y1, z1, 0.75, 0.25),
-      vtx(x1, y1, z1, 0.75, 0.50), vtx(x1, y2, z1, 0.5, 0.50), vtx(x2, y2, z1, 0.5, 0.25),
-      // right
-      vtx(x2, y1, z1, 0.75, 0.75), vtx(x2, y2, z2, 0.5, 0.50), vtx(x2, y1, z2, 0.75, 0.50),
-      vtx(x2, y1, z1, 0.75, 0.75), vtx(x2, y2, z1, 0.5, 0.75), vtx(x2, y2, z2, 0.5, 0.50),
-      // bottom
-      vtx(x1, y1, z1, 0.75, 0.50), vtx(x2, y1, z2, 1.0, 0.25), vtx(x1, y1, z2, 1.0, 0.50),
-      vtx(x1, y1, z1, 0.75, 0.50), vtx(x2, y1, z1, 0.75, 0.25), vtx(x2, y1, z2, 1.0, 0.25),
-    ]
-  }
-}
-
-struct BlockBuffers {
-  id_to_index: HashMap<Id, uint>,
-  index_to_id: Vec<Id>,
-
-  triangles: GLSliceBuffer<TextureVertex>,
-  outlines: GLSliceBuffer<ColoredVertex>,
-}
-
-impl BlockBuffers {
-  pub unsafe fn new(gl: &GLContext, color_shader: &Rc<Shader>, texture_shader: &Rc<Shader>) -> BlockBuffers {
-    BlockBuffers {
-      id_to_index: HashMap::new(),
-      index_to_id: Vec::new(),
-      triangles: GLSliceBuffer::new(
-        gl,
-        texture_shader.clone(),
-        [ vertex::AttribData { name: "position", size: 3 },
-          vertex::AttribData { name: "texture_position", size: 2 },
-        ],
-        TRIANGLE_VERTICES_PER_BOX,
-        MAX_WORLD_SIZE,
-        Triangles
-      ),
-      outlines: GLSliceBuffer::new(
-        gl,
-        color_shader.clone(),
-        [ vertex::AttribData { name: "position", size: 3 },
-          vertex::AttribData { name: "in_color", size: 4 },
-        ],
-        LINE_VERTICES_PER_BOX,
-        MAX_WORLD_SIZE,
-        Lines
-      ),
-    }
-  }
-
-  pub fn push(
-    &mut self,
-    gl: &GLContext,
-    id: Id,
-    triangles: &[TextureVertex],
-    outlines: &[ColoredVertex]
-  ) {
-    self.id_to_index.insert(id, self.index_to_id.len());
-    self.index_to_id.push(id);
-    self.triangles.push(gl, triangles);
-    self.outlines.push(gl, outlines);
-  }
-
-  pub fn swap_remove(&mut self, gl: &GLContext, id: Id) {
-    let idx = *unwrap!(self.id_to_index.find(&id));
-    let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
-    unwrap!(self.index_to_id.swap_remove(idx));
-    self.id_to_index.remove(&id);
-    self.triangles.swap_remove(gl, idx);
-    self.outlines.swap_remove(gl, idx);
-    if id != swapped_id {
-      self.id_to_index.insert(swapped_id, idx);
-    }
-  }
-
-  pub fn draw(&self, gl: &GLContext) {
-    self.triangles.draw(gl);
-    self.outlines.draw(gl);
-  }
-}
-
 fn center(bounds: &AABB) -> Vec3<GLfloat> {
   (bounds.mins() + *bounds.maxs()) / (2.0 as GLfloat)
 }
@@ -267,67 +144,6 @@ pub struct Player {
   // are we currently trying to jump? (e.g. holding the key).
   is_jumping: bool,
   id: Id,
-}
-
-type Behavior = fn(&App, &mut Mob);
-
-pub struct Mob {
-  speed: Vec3<f32>,
-  behavior: Behavior,
-  id: Id,
-}
-
-struct MobBuffers {
-  id_to_index: HashMap<Id, uint>,
-  index_to_id: Vec<Id>,
-
-  triangles: GLSliceBuffer<ColoredVertex>,
-}
-
-impl MobBuffers {
-  pub unsafe fn new(gl: &GLContext, color_shader: &Rc<Shader>) -> MobBuffers {
-    MobBuffers {
-      id_to_index: HashMap::new(),
-      index_to_id: Vec::new(),
-
-      triangles: GLSliceBuffer::new(
-        gl,
-        color_shader.clone(),
-        [ vertex::AttribData { name: "position", size: 3 },
-          vertex::AttribData { name: "in_color", size: 4 },
-        ],
-        TRIANGLE_VERTICES_PER_BOX,
-        32,
-        Triangles
-      ),
-    }
-  }
-
-  pub fn push(
-    &mut self,
-    gl: &GLContext,
-    id: Id,
-    triangles: &[ColoredVertex]
-  ) {
-    self.id_to_index.insert(id, self.index_to_id.len());
-    self.index_to_id.push(id);
-
-    self.triangles.push(gl, triangles);
-  }
-
-  pub fn update(
-    &mut self,
-    gl: &GLContext,
-    id: Id,
-    triangles: &[ColoredVertex]
-  ) {
-    let idx = *unwrap!(self.id_to_index.find(&id));
-    self.triangles.update(gl, idx, triangles);
-  }
-
-  pub fn draw(&self, gl: &GLContext) {
-    self.triangles.draw(gl);
-  }
 }
 
 #[inline]
@@ -356,9 +172,9 @@ fn first_face(bounds: &AABB, ray: &Ray) -> uint {
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App<'a> {
   physics: Physics<Id>,
-  blocks: HashMap<Id, Block>,
+  blocks: HashMap<Id, block::Block>,
   player: Player,
-  mobs: HashMap<Id, cell::RefCell<Mob>>,
+  mobs: HashMap<Id, cell::RefCell<mob::Mob>>,
 
   // next block id to assign
   next_id: Id,
@@ -367,10 +183,10 @@ pub struct App<'a> {
   octree_loader: Rc<cell::RefCell<Loader<(octree::OctreeId, AABB), octree::OctreeId>>>,
 
   // OpenGL buffers
-  mob_buffers: MobBuffers,
-  block_buffers: HashMap<BlockType, BlockBuffers>,
+  mob_buffers: mob::MobBuffers,
+  block_buffers: HashMap<block::BlockType, block::BlockBuffers>,
   octree_buffers: octree::OctreeBuffers<Id>,
-  block_textures: HashMap<BlockType, Rc<Texture>>,
+  block_textures: HashMap<block::BlockType, Rc<Texture>>,
   line_of_sight: GLSliceBuffer<ColoredVertex>,
   hud_triangles: GLSliceBuffer<ColoredVertex>,
   texture_triangles: GLSliceBuffer<TextureVertex>,
@@ -546,20 +362,20 @@ impl<'a> App<'a> {
       self.make_hud();
       self.make_world();
 
-      fn mob_behavior(world: &App, mob: &mut Mob) {
+      fn mob_behavior(world: &App, mob: &mut mob::Mob) {
         let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
         if Norm::norm(&to_player) < 2.0 {
           mob.behavior = wait_for_distance;
         }
 
-        fn wait_for_distance(world: &App, mob: &mut Mob) {
+        fn wait_for_distance(world: &App, mob: &mut mob::Mob) {
           let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
           if Norm::norm(&to_player) > 8.0 {
             mob.behavior = follow_player;
           }
         }
 
-        fn follow_player(world: &App, mob: &mut Mob) {
+        fn follow_player(world: &App, mob: &mut mob::Mob) {
           let mut to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
           if to_player.normalize() < 2.0 {
             mob.behavior = wait_to_reset;
@@ -569,7 +385,7 @@ impl<'a> App<'a> {
           }
         }
 
-        fn wait_to_reset(world: &App, mob: &mut Mob) {
+        fn wait_to_reset(world: &App, mob: &mut mob::Mob) {
           let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
           if Norm::norm(&to_player) >= 2.0 {
             mob.behavior = mob_behavior;
@@ -614,8 +430,8 @@ impl<'a> App<'a> {
               block_buffers.find_mut(&block.block_type).unwrap().push(
                 gl,
                 id,
-                Block::to_texture_triangles(bounds),
-                Block::to_outlines(bounds)
+                block::Block::to_texture_triangles(bounds),
+                block::Block::to_outlines(bounds)
               );
             },
             Unload(id) => {
@@ -722,7 +538,7 @@ impl<'a> App<'a> {
         }
       });
 
-      // Block deletion
+      // block::Block deletion
       if self.is_mouse_pressed(input::mouse::Left) {
         time!(&self.timers, "update.delete_block", || {
           self.entity_in_front().map(|id| {
@@ -752,7 +568,7 @@ impl<'a> App<'a> {
                 // against size B blocks.
                 (bounds.mins() + direction, bounds.maxs() + direction)
               };
-              self.place_block(mins, maxs, Dirt, true);
+              self.place_block(mins, maxs, block::Dirt, true);
             },
           }
         })
@@ -857,7 +673,7 @@ impl<'a> App<'a> {
     };
 
     let mob_buffers = unsafe {
-      MobBuffers::new(&gl, &color_shader)
+      mob::MobBuffers::new(&gl, &color_shader)
     };
 
     let octree_loader = Rc::new(cell::RefCell::new(Queue::new(1 << 20)));
@@ -915,7 +731,7 @@ impl<'a> App<'a> {
   }
 
   fn load_block_textures(&mut self) {
-    for &(block_type, path) in [(Grass, "textures/grass.png"), (Stone, "textures/stone.png"), (Dirt, "textures/dirt.png")].iter() {
+    for &(block_type, path) in [(block::Grass, "textures/grass.png"), (block::Stone, "textures/stone.png"), (block::Dirt, "textures/dirt.png")].iter() {
       let img = match png::load_png(&Path::new(path)) {
         Ok(i) => i,
         Err(s) => fail!("Could not load png {}: {}", path, s)
@@ -941,7 +757,7 @@ impl<'a> App<'a> {
       unsafe {
         self.block_buffers.insert(
           block_type,
-          BlockBuffers::new(
+          block::BlockBuffers::new(
             &self.gl,
             &self.color_shader,
             &self.texture_shader,
@@ -995,7 +811,7 @@ impl<'a> App<'a> {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (6.0 + i, 6.0, 0.0 + j);
           let (x2, y2, z2) = (6.5 + i, 6.5, 0.5 + j);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Dirt, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Dirt, false);
         }
       }
       // high dirt block
@@ -1004,7 +820,7 @@ impl<'a> App<'a> {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (0.0 + i, 12.0, 5.0 + j);
           let (x2, y2, z2) = (0.5 + i, 12.5, 5.5 + j);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Dirt, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Dirt, false);
         }
       }
       // ground
@@ -1013,7 +829,7 @@ impl<'a> App<'a> {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (i, 0.0, j);
           let (x2, y2, z2) = (i + 0.5, 0.5, j + 0.5);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Grass, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Grass, false);
         }
       }
       // front wall
@@ -1022,7 +838,7 @@ impl<'a> App<'a> {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (i, 0.5 + j, -32.0);
           let (x2, y2, z2) = (i + 0.5, 1.0 + j, -32.0 + 0.5);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Stone, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Stone, false);
         }
       }
       // back wall
@@ -1031,7 +847,7 @@ impl<'a> App<'a> {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (i, 0.5 + j, 32.0);
           let (x2, y2, z2) = (i + 0.5, 1.0 + j, 32.0 + 0.5);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Stone, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Stone, false);
         }
       }
       // left wall
@@ -1040,7 +856,7 @@ impl<'a> App<'a> {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (-32.0, 0.5 + j, i);
           let (x2, y2, z2) = (-32.0 + 0.5, 1.0 + j, i + 0.5);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Stone, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Stone, false);
         }
       }
       // right wall
@@ -1049,7 +865,7 @@ impl<'a> App<'a> {
           let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
           let (x1, y1, z1) = (32.0, 0.5 + j, i);
           let (x2, y2, z2) = (32.0 + 0.5, 1.0 + j, i + 0.5);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), Stone, false);
+          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Stone, false);
         }
       }
     });
@@ -1082,14 +898,14 @@ impl<'a> App<'a> {
     id
   }
 
-  fn add_mob(&mut self, low_corner: Vec3<GLfloat>, behavior: fn(&App, &mut Mob)) {
+  fn add_mob(&mut self, low_corner: Vec3<GLfloat>, behavior: fn(&App, &mut mob::Mob)) {
     // TODO: mob loader instead of pushing directly to gl buffers
 
     let id = self.alloc_id();
 
     let mob =
       unsafe {
-        Mob {
+        mob::Mob {
           speed: Vec3::new(0.0, 0.0, 0.0),
           behavior: behavior,
           id: id,
@@ -1103,9 +919,9 @@ impl<'a> App<'a> {
     self.mobs.insert(id, cell::RefCell::new(mob));
   }
 
-  fn place_block(&mut self, min: Vec3<GLfloat>, max: Vec3<GLfloat>, block_type: BlockType, check_collisions: bool) {
+  fn place_block(&mut self, min: Vec3<GLfloat>, max: Vec3<GLfloat>, block_type: block::BlockType, check_collisions: bool) {
     time!(&self.timers, "place_block", || unsafe {
-      let mut block = Block {
+      let mut block = block::Block {
         block_type: block_type,
         id: Id(0),
       };
@@ -1153,7 +969,7 @@ impl<'a> App<'a> {
     }
   }
 
-  fn translate_mob(gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut MobBuffers, mob: &mut Mob, delta_p: Vec3<GLfloat>) {
+  fn translate_mob(gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut mob::MobBuffers, mob: &mut mob::Mob, delta_p: Vec3<GLfloat>) {
     if unwrap!(physics.translate(mob.id, delta_p)) {
       mob.speed = mob.speed - delta_p;
     } else {
@@ -1305,7 +1121,6 @@ void main(){
   frag_color = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
 }
 ";
-
 
 pub fn main() {
   println!("starting");

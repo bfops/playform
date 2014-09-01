@@ -24,11 +24,13 @@ extern crate sdl2_game_window;
 extern crate shader_version;
 
 mod common;
+mod block;
 mod fontloader;
 // so the time! macro is defined in main
 mod stopwatch;
 mod loader;
 mod main;
+mod mob;
 mod octree;
 mod physics;
 mod ttf;
