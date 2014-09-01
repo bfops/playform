@@ -14,6 +14,7 @@ pub mod color;
 mod cstr_cache;
 pub mod gl_buffer;
 pub mod gl_context;
+pub mod light;
 pub mod queue;
 pub mod shader;
 pub mod texture;

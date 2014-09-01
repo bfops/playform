@@ -32,14 +32,15 @@ impl Block {
     to_outlines(&bounds.loosened(0.002))
   }
 
-  pub fn to_texture_triangles(bounds: &AABB) -> [vertex::TextureVertex, ..TRIANGLE_VERTICES_PER_BOX] {
+  pub fn to_texture_triangles(bounds: &AABB) -> [vertex::WorldTextureVertex, ..TRIANGLE_VERTICES_PER_BOX] {
     let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
     let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
 
-    let vtx = |x, y, z, tx, ty| {
-      vertex::TextureVertex {
+    let vtx = |x, y, z, nx, ny, nz, tx, ty| {
+      vertex::WorldTextureVertex {
         world_position: Vec3::new(x, y, z),
         texture_position: Vec2::new(tx, ty),
+        normal: Vec3::new(nx, ny, nz),
       }
     };
 
@@ -47,23 +48,47 @@ impl Block {
     // negative as depth from the viewer increases.
     [
       // front
-      vtx(x1, y1, z2, 0.0, 0.50), vtx(x2, y2, z2, 0.25, 0.25), vtx(x1, y2, z2, 0.25, 0.50),
-      vtx(x1, y1, z2, 0.0, 0.50), vtx(x2, y1, z2, 0.0, 0.25), vtx(x2, y2, z2, 0.25, 0.25),
+      vtx(x1, y1, z2,  0.0,  0.0,  1.0, 0.00, 0.50),
+      vtx(x2, y2, z2,  0.0,  0.0,  1.0, 0.25, 0.25),
+      vtx(x1, y2, z2,  0.0,  0.0,  1.0, 0.25, 0.50),
+      vtx(x1, y1, z2,  0.0,  0.0,  1.0, 0.00, 0.50),
+      vtx(x2, y1, z2,  0.0,  0.0,  1.0, 0.00, 0.25),
+      vtx(x2, y2, z2,  0.0,  0.0,  1.0, 0.25, 0.25),
       // left
-      vtx(x1, y1, z1, 0.75, 0.0), vtx(x1, y2, z2, 0.5, 0.25), vtx(x1, y2, z1, 0.5, 0.0),
-      vtx(x1, y1, z1, 0.75, 0.0), vtx(x1, y1, z2, 0.75, 0.25), vtx(x1, y2, z2, 0.5, 0.25),
+      vtx(x1, y1, z1, -1.0,  0.0,  0.0, 0.75, 0.00),
+      vtx(x1, y2, z2, -1.0,  0.0,  0.0, 0.50, 0.25),
+      vtx(x1, y2, z1, -1.0,  0.0,  0.0, 0.50, 0.00),
+      vtx(x1, y1, z1, -1.0,  0.0,  0.0, 0.75, 0.00),
+      vtx(x1, y1, z2, -1.0,  0.0,  0.0, 0.75, 0.25),
+      vtx(x1, y2, z2, -1.0,  0.0,  0.0, 0.50, 0.25),
       // top
-      vtx(x1, y2, z1, 0.25, 0.25), vtx(x2, y2, z2, 0.5, 0.50), vtx(x2, y2, z1, 0.25, 0.50),
-      vtx(x1, y2, z1, 0.25, 0.25), vtx(x1, y2, z2, 0.5, 0.25), vtx(x2, y2, z2, 0.5, 0.50),
+      vtx(x1, y2, z1,  0.0,  1.0,  0.0, 0.25, 0.25),
+      vtx(x2, y2, z2,  0.0,  1.0,  0.0, 0.50, 0.50),
+      vtx(x2, y2, z1,  0.0,  1.0,  0.0, 0.25, 0.50),
+      vtx(x1, y2, z1,  0.0,  1.0,  0.0, 0.25, 0.25),
+      vtx(x1, y2, z2,  0.0,  1.0,  0.0, 0.50, 0.25),
+      vtx(x2, y2, z2,  0.0,  1.0,  0.0, 0.50, 0.50),
       // back
-      vtx(x1, y1, z1, 0.75, 0.50), vtx(x2, y2, z1, 0.5, 0.25), vtx(x2, y1, z1, 0.75, 0.25),
-      vtx(x1, y1, z1, 0.75, 0.50), vtx(x1, y2, z1, 0.5, 0.50), vtx(x2, y2, z1, 0.5, 0.25),
+      vtx(x1, y1, z1,  0.0,  0.0, -1.0, 0.75, 0.50),
+      vtx(x2, y2, z1,  0.0,  0.0, -1.0, 0.50, 0.25),
+      vtx(x2, y1, z1,  0.0,  0.0, -1.0, 0.75, 0.25),
+      vtx(x1, y1, z1,  0.0,  0.0, -1.0, 0.75, 0.50),
+      vtx(x1, y2, z1,  0.0,  0.0, -1.0, 0.50, 0.50),
+      vtx(x2, y2, z1,  0.0,  0.0, -1.0, 0.50, 0.25),
       // right
-      vtx(x2, y1, z1, 0.75, 0.75), vtx(x2, y2, z2, 0.5, 0.50), vtx(x2, y1, z2, 0.75, 0.50),
-      vtx(x2, y1, z1, 0.75, 0.75), vtx(x2, y2, z1, 0.5, 0.75), vtx(x2, y2, z2, 0.5, 0.50),
+      vtx(x2, y1, z1,  1.0,  0.0,  0.0, 0.75, 0.75),
+      vtx(x2, y2, z2,  1.0,  0.0,  0.0, 0.50, 0.50),
+      vtx(x2, y1, z2,  1.0,  0.0,  0.0, 0.75, 0.50),
+      vtx(x2, y1, z1,  1.0,  0.0,  0.0, 0.75, 0.75),
+      vtx(x2, y2, z1,  1.0,  0.0,  0.0, 0.50, 0.75),
+      vtx(x2, y2, z2,  1.0,  0.0,  0.0, 0.50, 0.50),
       // bottom
-      vtx(x1, y1, z1, 0.75, 0.50), vtx(x2, y1, z2, 1.0, 0.25), vtx(x1, y1, z2, 1.0, 0.50),
-      vtx(x1, y1, z1, 0.75, 0.50), vtx(x2, y1, z1, 0.75, 0.25), vtx(x2, y1, z2, 1.0, 0.25),
+      vtx(x1, y1, z1,  0.0, -1.0,  0.0, 0.75, 0.50),
+      vtx(x2, y1, z2,  0.0, -1.0,  0.0, 1.00, 0.25),
+      vtx(x1, y1, z2,  0.0, -1.0,  0.0, 1.00, 0.50),
+      vtx(x1, y1, z1,  0.0, -1.0,  0.0, 0.75, 0.50),
+      vtx(x2, y1, z1,  0.0, -1.0,  0.0, 0.75, 0.25),
+      vtx(x2, y1, z2,  0.0, -1.0,  0.0, 1.00, 0.25),
     ]
   }
 }
@@ -72,7 +97,7 @@ pub struct BlockBuffers {
   id_to_index: HashMap<main::Id, uint>,
   index_to_id: Vec<main::Id>,
 
-  triangles: GLSliceBuffer<vertex::TextureVertex>,
+  triangles: GLSliceBuffer<vertex::WorldTextureVertex>,
   outlines: GLSliceBuffer<vertex::ColoredVertex>,
 }
 
@@ -86,6 +111,7 @@ impl BlockBuffers {
         texture_shader.clone(),
         [ vertex::AttribData { name: "position", size: 3 },
           vertex::AttribData { name: "texture_position", size: 2 },
+          vertex::AttribData { name: "vertex_normal", size: 3 },
         ],
         TRIANGLE_VERTICES_PER_BOX,
         MAX_WORLD_SIZE,
@@ -108,7 +134,7 @@ impl BlockBuffers {
     &mut self,
     gl: &GLContext,
     id: main::Id,
-    triangles: &[vertex::TextureVertex],
+    triangles: &[vertex::WorldTextureVertex],
     outlines: &[vertex::ColoredVertex]
   ) {
     self.id_to_index.insert(id, self.index_to_id.len());

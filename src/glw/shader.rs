@@ -2,6 +2,7 @@ use camera::Camera;
 use gl;
 use gl::types::*;
 use gl_context::GLContext;
+use light::Light;
 use nalgebra::na::Mat4;
 use std::mem;
 
@@ -51,6 +52,16 @@ impl Shader {
         err => fail!("OpenGL error 0x{:x} in UniformMat4fv", err),
       }
     })
+  }
+
+  /// Sets the variable `light` in some shader.
+  pub fn set_light(&self, gl: &mut GLContext, light: &Light) {
+    self.with_uniform_location(gl, "light.position", |light_pos| {
+      gl::Uniform3f(light_pos, light.position.x, light.position.y, light.position.z);
+    });
+    self.with_uniform_location(gl, "light.intensity", |light_intensity| {
+      gl::Uniform3f(light_intensity, light.intensity.x, light.intensity.y, light.intensity.z);
+    });
   }
 
   pub fn set_camera(&self, gl: &mut GLContext, c: &Camera) {

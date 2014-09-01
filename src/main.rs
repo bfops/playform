@@ -8,6 +8,7 @@ use glw::camera::Camera;
 use glw::color::Color4;
 use glw::gl_buffer::*;
 use glw::gl_context::GLContext;
+use glw::light::Light;
 use glw::queue::Queue;
 use glw::shader::Shader;
 use glw::texture::Texture;
@@ -628,9 +629,19 @@ impl<'a> App<'a> {
       Vec3 { x: 512.0, y: 512.0, z: 512.0 },
     );
 
-    let texture_shader = Rc::new(Shader::new(&mut gl, TX_VS_SRC, TX_FS_SRC));
+    let texture_shader = {
+      let texture_shader = Rc::new(Shader::new(&mut gl, TX_VS_SRC, TX_FS_SRC));
+      texture_shader.set_light(
+        &mut gl,
+        &Light {
+          position: Vec3::new(0.0, 11.0, 0.0),
+          intensity: Vec3::new(1.0, 1.0, 1.0),
+        }
+      );
+      texture_shader
+    };
     let color_shader = Rc::new(Shader::new(&mut gl, VS_SRC, FS_SRC));
-    let hud_shader = Rc::new(Shader::new(&mut gl, TX_VS_SRC, TX_FS_SRC));
+    let hud_shader = Rc::new(Shader::new(&mut gl, HUD_VS_SRC, HUD_FS_SRC));
 
     let hud_camera = {
       let mut c = Camera::unit();
@@ -1106,19 +1117,20 @@ void main() {
   frag_color = color;
 }";
 
-static TX_VS_SRC: &'static str =
+static HUD_VS_SRC: &'static str =
 r"#version 330 core
 uniform mat4 projection_matrix;
 in vec3 position;
 in vec2 texture_position;
 
 out vec2 tex_position;
+
 void main() {
   tex_position = texture_position;
   gl_Position = projection_matrix * vec4(position, 1.0);
 }";
 
-static TX_FS_SRC: &'static str =
+static HUD_FS_SRC: &'static str =
 r"#version 330 core
 in vec2 tex_position;
 out vec4 frag_color;
@@ -1127,6 +1139,51 @@ uniform sampler2D texture_in;
 
 void main(){
   frag_color = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
+}
+";
+
+static TX_VS_SRC: &'static str =
+r"#version 330 core
+uniform mat4 projection_matrix;
+in vec3 position;
+in vec2 texture_position;
+in vec3 vertex_normal;
+
+out vec2 tex_position;
+out vec3 world_position;
+out vec3 normal;
+
+void main() {
+  tex_position = texture_position;
+  world_position = position;
+  normal = vertex_normal;
+
+  gl_Position = projection_matrix * vec4(position, 1.0);
+}";
+
+static TX_FS_SRC: &'static str =
+r"#version 330 core
+in vec2 tex_position;
+in vec3 world_position;
+in vec3 normal;
+out vec4 frag_color;
+
+uniform struct Light {
+   vec3 position;
+   vec3 intensity;
+} light;
+
+uniform sampler2D texture_in;
+
+void main(){
+  // vector from this position to the light
+  vec3 light_path = light.position - world_position;
+  // length(normal) = 1, so don't bother dividing.
+  float brightness = dot(normal, light_path) / length(light_path);
+  brightness = clamp(brightness, 0, 1);
+  vec4 base_color = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
+  vec4 lighting = vec4(brightness * light.intensity, 1);
+  frag_color = lighting * base_color;
 }
 ";
 
