@@ -3,7 +3,7 @@ use gl;
 use gl::types::*;
 use gl_context::GLContext;
 use light::Light;
-use nalgebra::na::Mat4;
+use nalgebra::na::{Vec3, Mat4};
 use std::mem;
 
 pub struct Shader {
@@ -55,12 +55,18 @@ impl Shader {
   }
 
   /// Sets the variable `light` in some shader.
-  pub fn set_light(&self, gl: &mut GLContext, light: &Light) {
+  pub fn set_point_light(&self, gl: &mut GLContext, light: &Light) {
     self.with_uniform_location(gl, "light.position", |light_pos| {
       gl::Uniform3f(light_pos, light.position.x, light.position.y, light.position.z);
     });
     self.with_uniform_location(gl, "light.intensity", |light_intensity| {
       gl::Uniform3f(light_intensity, light.intensity.x, light.intensity.y, light.intensity.z);
+    });
+  }
+
+  pub fn set_ambient_light(&self, gl: &mut GLContext, intensity: Vec3<GLfloat>) {
+    self.with_uniform_location(gl, "ambient_light", |loc| {
+      gl::Uniform3f(loc, intensity.x, intensity.y, intensity.z);
     });
   }
 

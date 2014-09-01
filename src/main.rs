@@ -631,12 +631,16 @@ impl<'a> App<'a> {
 
     let texture_shader = {
       let texture_shader = Rc::new(Shader::new(&mut gl, TX_VS_SRC, TX_FS_SRC));
-      texture_shader.set_light(
+      texture_shader.set_point_light(
         &mut gl,
         &Light {
-          position: Vec3::new(0.0, 11.0, 0.0),
+          position: Vec3::new(0.0, 16.0, 0.0),
           intensity: Vec3::new(1.0, 1.0, 1.0),
         }
+      );
+      texture_shader.set_ambient_light(
+        &mut gl,
+        Vec3::new(0.4, 0.4, 0.4),
       );
       texture_shader
     };
@@ -1173,6 +1177,8 @@ uniform struct Light {
    vec3 intensity;
 } light;
 
+uniform vec3 ambient_light;
+
 uniform sampler2D texture_in;
 
 void main(){
@@ -1182,8 +1188,8 @@ void main(){
   float brightness = dot(normal, light_path) / length(light_path);
   brightness = clamp(brightness, 0, 1);
   vec4 base_color = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
-  vec4 lighting = vec4(brightness * light.intensity, 1);
-  frag_color = lighting * base_color;
+  vec3 lighting = brightness * light.intensity + ambient_light;
+  frag_color = vec4(clamp(lighting, 0, 1), 1) * base_color;
 }
 ";
 
