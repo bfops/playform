@@ -635,7 +635,7 @@ impl<'a> App<'a> {
         &mut gl,
         &Light {
           position: Vec3::new(0.0, 16.0, 0.0),
-          intensity: Vec3::new(1.0, 1.0, 1.0),
+          intensity: Vec3::new(0.6, 0.6, 0.6),
         }
       );
       texture_shader.set_ambient_light(
