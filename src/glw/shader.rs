@@ -4,6 +4,7 @@ use gl::types::*;
 use gl_context::GLContext;
 use light::Light;
 use nalgebra::na::{Vec3, Mat4};
+use std::io::fs::File;
 use std::mem;
 
 pub struct Shader {
@@ -13,11 +14,39 @@ pub struct Shader {
 }
 
 impl Shader {
-  pub fn new(gl: &mut GLContext, vertex_shader: &str, fragment_shader: &str) -> Shader {
+  pub fn new(gl: &mut GLContext, vertex_shader: String, fragment_shader: String) -> Shader {
     let vs = gl.compile_shader(vertex_shader, gl::VERTEX_SHADER);
     let fs = gl.compile_shader(fragment_shader, gl::FRAGMENT_SHADER);
     let id = gl.link_shader(vs, fs);
     Shader { id: id, vs: vs, fs: fs }
+  }
+
+  pub fn from_files(
+    gl: &mut GLContext,
+    vertex_shader_path: &str,
+    fragment_shader_path: &str,
+  ) -> Shader {
+    match (File::open(&Path::new(vertex_shader_path)), File::open(&Path::new(fragment_shader_path))) {
+      (Ok(mut vs), Ok(mut fs)) => {
+        match (vs.read_to_string(), fs.read_to_string()) {
+          (Ok(vs), Ok(fs)) => {
+            Shader::new(gl, vs, fs)
+          },
+          _ =>
+            fail!(
+              "error reading shader files: \"{}\", \"{}\"",
+              vertex_shader_path,
+              fragment_shader_path
+            ),
+        }
+      },
+      _ =>
+        fail!(
+          "Couldn't open shader files for shader: \"{}\", \"{}\"",
+          vertex_shader_path,
+          fragment_shader_path
+        ),
+    }
   }
 
   fn with_uniform_location(&self, gl: &mut GLContext, name: &'static str, f: |GLint|) {

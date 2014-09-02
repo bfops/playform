@@ -640,7 +640,12 @@ impl<'a> App<'a> {
     );
 
     let texture_shader = {
-      let texture_shader = Rc::new(Shader::new(&mut gl, TX_VS_SRC, TX_FS_SRC));
+      let texture_shader =
+        Rc::new(Shader::from_files(
+            &mut gl,
+            "shaders/world_texture_vs.glsl",
+            "shaders/world_texture_fs.glsl"
+        ));
       texture_shader.set_point_light(
         &mut gl,
         &Light {
@@ -654,8 +659,18 @@ impl<'a> App<'a> {
       );
       texture_shader
     };
-    let color_shader = Rc::new(Shader::new(&mut gl, VS_SRC, FS_SRC));
-    let hud_shader = Rc::new(Shader::new(&mut gl, HUD_VS_SRC, HUD_FS_SRC));
+    let color_shader =
+      Rc::new(Shader::from_files(
+          &mut gl,
+          "shaders/color_vs.glsl",
+          "shaders/color_fs.glsl"
+      ));
+    let hud_shader =
+      Rc::new(Shader::from_files(
+          &mut gl,
+          "shaders/hud_texture_vs.glsl",
+          "shaders/hud_texture_fs.glsl"
+      ));
 
     let hud_camera = {
       let mut c = Camera::unit();
@@ -1109,100 +1124,6 @@ impl<'a> Drop for App<'a> {
     println!("");
   }
 }
-
-// Shader sources
-static VS_SRC: &'static str =
-r"#version 330 core
-uniform mat4 projection_matrix;
-
-in  vec3 position;
-in  vec4 in_color;
-out vec4 color;
-
-void main() {
-  gl_Position = projection_matrix * vec4(position, 1.0);
-  color = in_color;
-}";
-
-static FS_SRC: &'static str =
-r"#version 330 core
-in  vec4 color;
-out vec4 frag_color;
-void main() {
-  frag_color = color;
-}";
-
-static HUD_VS_SRC: &'static str =
-r"#version 330 core
-uniform mat4 projection_matrix;
-in vec3 position;
-in vec2 texture_position;
-
-out vec2 tex_position;
-
-void main() {
-  tex_position = texture_position;
-  gl_Position = projection_matrix * vec4(position, 1.0);
-}";
-
-static HUD_FS_SRC: &'static str =
-r"#version 330 core
-in vec2 tex_position;
-out vec4 frag_color;
-
-uniform sampler2D texture_in;
-
-void main(){
-  frag_color = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
-}
-";
-
-static TX_VS_SRC: &'static str =
-r"#version 330 core
-uniform mat4 projection_matrix;
-in vec3 position;
-in vec2 texture_position;
-in vec3 vertex_normal;
-
-out vec2 tex_position;
-out vec3 world_position;
-out vec3 normal;
-
-void main() {
-  tex_position = texture_position;
-  world_position = position;
-  normal = vertex_normal;
-
-  gl_Position = projection_matrix * vec4(position, 1.0);
-}";
-
-static TX_FS_SRC: &'static str =
-r"#version 330 core
-in vec2 tex_position;
-in vec3 world_position;
-in vec3 normal;
-out vec4 frag_color;
-
-uniform struct Light {
-   vec3 position;
-   vec3 intensity;
-} light;
-
-uniform vec3 ambient_light;
-
-uniform sampler2D texture_in;
-
-void main(){
-  // vector from this position to the light
-  vec3 light_path = light.position - world_position;
-  // length(normal) = 1, so don't bother dividing.
-  float brightness = dot(normal, light_path) / length(light_path);
-  brightness = clamp(brightness, 0, 1);
-  vec4 base_color = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
-  vec3 lighting = brightness * light.intensity + ambient_light;
-  frag_color = vec4(clamp(lighting, 0, 1), 1) * base_color;
-}
-";
 
 pub fn main() {
   println!("starting");

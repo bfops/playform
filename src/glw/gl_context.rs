@@ -83,7 +83,7 @@ impl GLContext {
   }
 
   /// Compiles a shader for the current graphics card.
-  pub fn compile_shader(&self, src: &str, ty: GLenum) -> GLuint {
+  pub fn compile_shader(&self, src: String, ty: GLenum) -> GLuint {
     let shader = gl::CreateShader(ty);
     unsafe {
       // Attempt to compile the shader
