@@ -39,7 +39,7 @@ pub fn partial_min_by<A: Copy, T: Iterator<A>, B: PartialOrd>(t: T, f: |A| -> B)
 pub fn to_outlines<'a>(bounds: &AABB) -> [ColoredVertex, ..LINE_VERTICES_PER_BOX] {
   let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
   let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
-  let c = Color4::of_rgba(0.0, 0.0, 0.0, 1.0);
+  let c = Color4::of_rgba(0.0, 0.0, 0.0, 0.1);
 
   let vtx = |x: f32, y: f32, z: f32| -> ColoredVertex {
     ColoredVertex {
