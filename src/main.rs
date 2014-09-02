@@ -340,12 +340,6 @@ impl<'a> App<'a> {
       let max = Vec3::new(1.0, 2.0, 1.0);
       self.physics.insert(player_id, &AABB::new(min, max));
 
-      self.gl.enable_culling();
-      self.gl.enable_alpha_blending();
-      self.gl.enable_smooth_lines();
-      self.gl.enable_depth_buffer();
-      self.gl.set_background_color(SKY_COLOR);
-
       match gl::GetError() {
         gl::NO_ERROR => {},
         err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
@@ -415,6 +409,11 @@ impl<'a> App<'a> {
         ]
       );
     })
+
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      err => fail!("OpenGL error 0x{:x} in load()", err),
+    }
 
     println!("load() finished with {} blocks", self.blocks.len());
   }
@@ -628,6 +627,13 @@ impl<'a> App<'a> {
   /// Initializes an empty app.
   pub fn new(gl: GLContext) -> App<'a> {
     let mut gl = gl;
+
+    gl.enable_culling();
+    gl.enable_alpha_blending();
+    gl.enable_smooth_lines();
+    gl.enable_depth_buffer(100.0);
+    gl.set_background_color(SKY_COLOR);
+
     let world_bounds = AABB::new(
       Vec3 { x: -512.0, y: -32.0, z: -512.0 },
       Vec3 { x: 512.0, y: 512.0, z: 512.0 },

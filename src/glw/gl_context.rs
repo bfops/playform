@@ -59,10 +59,10 @@ impl GLContext {
   /// Allows us to use the OpenGL depth buffer, which makes OpenGL do logical
   /// things when two things are rendered at the same x and y coordinates, but
   /// different z coordinates.
-  pub fn enable_depth_buffer(&self) {
+  pub fn enable_depth_buffer(&self, depth: GLclampd) {
     gl::Enable(gl::DEPTH_TEST);
     gl::DepthFunc(gl::LESS);
-    gl::ClearDepth(100.0);
+    gl::ClearDepth(depth);
   }
 
   /// At the beginning of each frame, OpenGL clears the buffer. This sets the
