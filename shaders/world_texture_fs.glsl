@@ -1,8 +1,4 @@
 #version 330 core
-in vec2 tex_position;
-in vec3 world_position;
-in vec3 normal;
-out vec4 frag_color;
 
 uniform struct Light {
    vec3 position;
@@ -13,7 +9,13 @@ uniform vec3 ambient_light;
 
 uniform sampler2D texture_in;
 
-void main(){
+in vec2 tex_position;
+in vec3 world_position;
+in vec3 normal;
+
+out vec4 frag_color;
+
+void main() {
   // vector from this position to the light
   vec3 light_path = light.position - world_position;
   // length(normal) = 1, so don't bother dividing.

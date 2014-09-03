@@ -1,5 +1,7 @@
 #version 330 core
+
 uniform mat4 projection_matrix;
+
 in vec3 position;
 in vec2 texture_position;
 

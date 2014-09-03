@@ -1,8 +1,10 @@
 #version 330 core
+
 uniform mat4 projection_matrix;
 
-in  vec3 position;
-in  vec4 in_color;
+in vec3 position;
+in vec4 in_color;
+
 out vec4 color;
 
 void main() {
