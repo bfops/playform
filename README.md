@@ -14,11 +14,9 @@ That said, these projects should probably keep a closer eye on each other than t
 
 ## Making it work
 
-It can be built with `cargo build`, which should grab dependencies
-automatically. `playform` can then be run from the `target` directory.
-
-If you're on Mac OS X you'll need to install libpng and SDL first.
-`brew install libpng SDL2 SDL2_TTF`
+Install libpng, SDL2 and SDL2_ttf.
+Build with `cargo build`, which will grab all other dependencies.
+Run with `cargo run` and `playform` will start!
 
 ## How to play
 

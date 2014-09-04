@@ -1140,7 +1140,7 @@ pub fn main() {
       size: [WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32],
       fullscreen: false,
       exit_on_esc: false,
-      samples: 4
+      samples: 0
     }
   );
 
