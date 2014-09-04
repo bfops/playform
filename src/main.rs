@@ -24,10 +24,9 @@ use nalgebra::na::{Vec2, Vec3, RMul, Norm};
 use ncollide3df32::ray::{Ray, RayCast};
 use octree;
 use physics::Physics;
-use piston::{GameEvent,GameWindowSettings,GameIterator,GameIteratorSettings};
-use piston::{Render,Update,Input,UpdateArgs,RenderArgs};
+use piston::{WindowSettings, RenderArgs, Event, EventIterator, EventSettings, Update, Input, Render};
 use png;
-use sdl2_game_window::{GameWindowSDL2};
+use sdl2_game_window::{WindowSDL2};
 use sdl2::mouse;
 use shader_version::opengl::*;
 use stopwatch;
@@ -296,7 +295,7 @@ impl<'a> App<'a> {
     })
   }
 
-  fn mouse_move(&mut self, w: &mut GameWindowSDL2, x: f64, y: f64) {
+  fn mouse_move(&mut self, w: &mut WindowSDL2, x: f64, y: f64) {
     time!(&self.timers, "event.mouse_move", || {
       let (cx, cy) = (WINDOW_WIDTH as f32 / 2.0, WINDOW_HEIGHT as f32 / 2.0);
       // args.y = h - args.y;
@@ -478,7 +477,7 @@ impl<'a> App<'a> {
     });
   }
 
-  fn update(&mut self, _: &mut GameWindowSDL2, _: &UpdateArgs) {
+  fn update(&mut self) {
     time!(&self.timers, "update", || {
       // TODO(cgaebel): Ideally, the update thread should not be touching OpenGL.
 
@@ -581,7 +580,7 @@ impl<'a> App<'a> {
     })
   }
 
-  fn render(&mut self, _: &mut GameWindowSDL2, _: &RenderArgs) {
+  fn render(&mut self, _: &mut WindowSDL2, _: &RenderArgs) {
     time!(&self.timers, "render", || {
       self.gl.clear_buffer();
 
@@ -1084,10 +1083,10 @@ impl<'a> App<'a> {
   }
 
   /// Handles a game event.
-  fn event(&mut self, game_window: &mut GameWindowSDL2, event: &mut GameEvent) {
+  fn event(&mut self, game_window: &mut WindowSDL2, event: &mut Event) {
     match *event {
       Render(ref mut args) => self.render(game_window, args),
-      Update(ref mut args) => self.update(game_window, args),
+      Update(_) => self.update(),
       Input(ref i) => match *i {
         Press(Keyboard(key)) => self.key_press(key),
         Release(Keyboard(key)) => self.key_release(key),
@@ -1100,13 +1099,13 @@ impl<'a> App<'a> {
   }
 
   /// Executes a game loop.
-  fn run(&mut self, w: &mut GameWindowSDL2) {
+  fn run(&mut self, w: &mut WindowSDL2) {
     self.load();
 
     let mut game_iter =
-      GameIterator::new(
+      EventIterator::new(
         w,
-        &GameIteratorSettings {
+        &EventSettings {
           updates_per_second: 30,
           max_frames_per_second: 30,
         });
@@ -1114,7 +1113,7 @@ impl<'a> App<'a> {
     loop {
       match game_iter.next() {
         None => break,
-        Some(mut e) => self.event(game_iter.game_window, &mut e)
+        Some(mut e) => self.event(game_iter.window, &mut e)
       }
     }
   }
@@ -1134,13 +1133,14 @@ impl<'a> Drop for App<'a> {
 pub fn main() {
   println!("starting");
 
-  let mut window = GameWindowSDL2::new(
+  let mut window = WindowSDL2::new(
     OpenGL_3_3,
-    GameWindowSettings {
+    WindowSettings {
       title: "playform".to_string(),
       size: [WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32],
       fullscreen: false,
       exit_on_esc: false,
+      samples: 4
     }
   );
 

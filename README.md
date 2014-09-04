@@ -8,7 +8,7 @@ Help is appreciated! You can hop over to the [issues page](https://github.com/bf
 
 ## What about [hematite](https://github.com/PistonDevelopers/hematite)?
 
-We're aware of each other! While hematite intends to reproduce Minecfrat behavior and interact with actual Minecraft, playform's design goal is just to be fun and Minecraft-inspired - we'll have no reservations about diverging.
+We're aware of each other! While hematite intends to reproduce Minecraft behavior and interact with actual Minecraft, playform's design goal is just to be fun and Minecraft-inspired - we'll have no reservations about diverging.
 
 That said, these projects should probably keep a closer eye on each other than they do! If you notice redundancies, feel free to point them out.
 
@@ -16,6 +16,11 @@ That said, these projects should probably keep a closer eye on each other than t
 
 It can be built with `cargo build`, which should grab dependencies
 automatically. `playform` can then be run from the `target` directory.
+
+If you're on Mac OS X you'll need to install libpng and SDL first.
+`brew install libpng SDL2 SDL2_TTF`
+
+## How to play
 
   * Move: WASD
   * Jump: Space
@@ -26,8 +31,7 @@ automatically. `playform` can then be run from the `target` directory.
   * Toggle block outline rendering: L
   * Save line-of-sight: M
 
-One mob spawns that will play a tag-lke game with you: once you touch it, it
-will follow you until it touches you, at which point it will stop again.
+One mob spawns that will play a tag-like game with you: touch it and will chase you until it touches you back.
 
 ## Screenshots
 
