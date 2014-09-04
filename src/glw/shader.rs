@@ -6,47 +6,75 @@ use light::Light;
 use nalgebra::na::{Vec3, Mat4};
 use std::io::fs::File;
 use std::mem;
+use std::ptr;
+use std::str;
 
 pub struct Shader {
   pub id: GLuint,
-  pub vs: GLuint,
-  pub fs: GLuint,
+  pub components: Vec<GLuint>,
 }
 
 impl Shader {
-  pub fn new(gl: &mut GLContext, vertex_shader: String, fragment_shader: String) -> Shader {
-    let vs = gl.compile_shader(vertex_shader, gl::VERTEX_SHADER);
-    let fs = gl.compile_shader(fragment_shader, gl::FRAGMENT_SHADER);
-    let id = gl.link_shader(vs, fs);
-    Shader { id: id, vs: vs, fs: fs }
+  pub fn new(gl: &mut GLContext, shader_components: Vec<(String, GLenum)>) -> Shader {
+    let program = gl::CreateProgram();
+
+    let mut components = Vec::new();
+    for (content, component) in shader_components.move_iter() {
+      let s = gl.compile_shader(content, component);
+      gl::AttachShader(program, s);
+      components.push(s);
+    }
+
+    gl::LinkProgram(program);
+
+    // Get the link status
+    let mut status = gl::FALSE as GLint;
+    unsafe {
+      gl::GetProgramiv(program, gl::LINK_STATUS, &mut status);
+    }
+
+    // Fail on error
+    if status != (gl::TRUE as GLint) {
+        let mut len: GLint = 0;
+        unsafe {
+          gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
+        }
+        let mut buf = Vec::from_elem(len as uint - 1, 0u8); // subtract 1 to skip the trailing null character
+        unsafe {
+          gl::GetProgramInfoLog(program, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
+        }
+        fail!("{}", str::from_utf8(buf.as_slice()).expect("ProgramInfoLog not valid utf8"));
+    }
+
+    Shader {
+      id: program,
+      components: components,
+    }
   }
 
   pub fn from_files(
     gl: &mut GLContext,
-    vertex_shader_path: &str,
-    fragment_shader_path: &str,
+    component_paths: &[(&str, GLenum)],
   ) -> Shader {
-    match (File::open(&Path::new(vertex_shader_path)), File::open(&Path::new(fragment_shader_path))) {
-      (Ok(mut vs), Ok(mut fs)) => {
-        match (vs.read_to_string(), fs.read_to_string()) {
-          (Ok(vs), Ok(fs)) => {
-            Shader::new(gl, vs, fs)
+    let mut components = Vec::new();
+    for &(path, component_type) in component_paths.iter() {
+      match File::open(&Path::new(path)) {
+        Ok(mut f) =>
+          match f.read_to_string() {
+            Ok(s) => {
+              components.push((s, component_type));
+            },
+            Err(e) => {
+              fail!("Couldn't read shader file \"{}\": {}", path, e);
+            }
           },
-          _ =>
-            fail!(
-              "error reading shader files: \"{}\", \"{}\"",
-              vertex_shader_path,
-              fragment_shader_path
-            ),
+        Err(e) => {
+          fail!("Couldn't open shader file \"{}\" for reading: {}", path, e);
         }
-      },
-      _ =>
-        fail!(
-          "Couldn't open shader files for shader: \"{}\", \"{}\"",
-          vertex_shader_path,
-          fragment_shader_path
-        ),
+      }
     }
+
+    Shader::new(gl, components)
   }
 
   fn with_uniform_location(&self, gl: &mut GLContext, name: &'static str, f: |GLint|) {
@@ -107,7 +135,8 @@ impl Shader {
 impl Drop for Shader {
   fn drop(&mut self) {
     gl::DeleteProgram(self.id);
-    gl::DeleteShader(self.vs);
-    gl::DeleteShader(self.fs);
+    for &s in self.components.iter() {
+      gl::DeleteShader(s);
+    }
   }
 }

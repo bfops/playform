@@ -106,33 +106,6 @@ impl GLContext {
     shader
   }
 
-  /// Links a vertex and fragment shader, returning the id of the
-  /// resulting program.
-  pub fn link_shader(&self, vertex_shader: GLuint, fragment_shader: GLuint) -> GLuint {
-    let program = gl::CreateProgram();
-
-    gl::AttachShader(program, vertex_shader);
-    gl::AttachShader(program, fragment_shader);
-    gl::LinkProgram(program);
-
-    unsafe {
-        // Get the link status
-        let mut status = gl::FALSE as GLint;
-        gl::GetProgramiv(program, gl::LINK_STATUS, &mut status);
-
-        // Fail on error
-        if status != (gl::TRUE as GLint) {
-            let mut len: GLint = 0;
-            gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
-            let mut buf = Vec::from_elem(len as uint - 1, 0u8); // subtract 1 to skip the trailing null character
-            gl::GetProgramInfoLog(program, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
-            fail!("{}", str::from_utf8(buf.as_slice()).expect("ProgramInfoLog not valid utf8"));
-        }
-    }
-
-    program
-  }
-
   fn get_current_shader(&self) -> GLuint {
     unsafe {
       let mut ret: GLint = -1;

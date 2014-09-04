@@ -642,9 +642,11 @@ impl<'a> App<'a> {
     let texture_shader = {
       let texture_shader =
         Rc::new(Shader::from_files(
-            &mut gl,
-            "shaders/world_texture_vs.glsl",
-            "shaders/world_texture_fs.glsl"
+          &mut gl,
+          [
+            ("shaders/world_texture_vs.glsl", gl::VERTEX_SHADER),
+            ("shaders/world_texture_fs.glsl", gl::FRAGMENT_SHADER),
+          ],
         ));
       texture_shader.set_point_light(
         &mut gl,
@@ -661,15 +663,19 @@ impl<'a> App<'a> {
     };
     let color_shader =
       Rc::new(Shader::from_files(
-          &mut gl,
-          "shaders/color_vs.glsl",
-          "shaders/color_fs.glsl"
+        &mut gl,
+        [
+          ("shaders/color_vs.glsl", gl::VERTEX_SHADER),
+          ("shaders/color_fs.glsl", gl::FRAGMENT_SHADER),
+        ],
       ));
     let hud_shader =
       Rc::new(Shader::from_files(
-          &mut gl,
-          "shaders/hud_texture_vs.glsl",
-          "shaders/hud_texture_fs.glsl"
+        &mut gl,
+        [
+          ("shaders/hud_texture_vs.glsl", gl::VERTEX_SHADER),
+          ("shaders/hud_texture_fs.glsl", gl::FRAGMENT_SHADER),
+        ],
       ));
 
     let hud_camera = {
