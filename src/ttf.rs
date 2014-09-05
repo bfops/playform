@@ -105,7 +105,7 @@ impl Font {
           ffi::TTF_RenderUTF8_Blended(self.p as *const ffi::c_void, c_txt, sdl_color)
         });
 
-      let tex = surface_ptr.to_option().expect("Cannot render text.");
+      let tex = surface_ptr.as_ref().expect("Cannot render text.");
 
       assert_eq!((*tex.format).format, SDL_PIXELFORMAT_ARGB8888);
 
