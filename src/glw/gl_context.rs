@@ -100,7 +100,7 @@ impl GLContext {
         gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
         let mut buf = Vec::from_elem(len as uint - 1, 0u8); // subtract 1 to skip the trailing null character
         gl::GetShaderInfoLog(shader, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
-        fail!("{}", str::from_utf8(buf.as_slice()).expect("ShaderInfoLog not valid utf8"));
+        fail!("error compiling 0x{:x} shader: {}", ty, str::from_utf8(buf.as_slice()).expect("ShaderInfoLog not valid utf8"));
       }
     }
     shader
