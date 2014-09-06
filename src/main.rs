@@ -434,7 +434,7 @@ impl<'a> App<'a> {
               block_buffers.find_mut(&block.block_type).unwrap().push(
                 gl,
                 id,
-                block::Block::to_texture_triangles(bounds),
+                bounds.mins().clone(),
                 block::Block::to_outlines(bounds)
               );
             },
@@ -644,6 +644,7 @@ impl<'a> App<'a> {
           &mut gl,
           [
             ("shaders/world_texture_vs.glsl", gl::VERTEX_SHADER),
+            ("shaders/world_texture_gs.glsl", gl::GEOMETRY_SHADER),
             ("shaders/world_texture_fs.glsl", gl::FRAGMENT_SHADER),
           ],
         ));

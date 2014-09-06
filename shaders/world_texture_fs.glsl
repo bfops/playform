@@ -9,9 +9,9 @@ uniform vec3 ambient_light;
 
 uniform sampler2D texture_in;
 
-in vec2 tex_position;
 in vec3 world_position;
 in vec3 normal;
+in vec2 tex_position;
 
 out vec4 frag_color;
 

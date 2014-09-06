@@ -48,6 +48,7 @@ pub struct GLfloatBuffer {
 pub enum DrawMode {
   Lines,
   Triangles,
+  Points,
 }
 
 impl DrawMode {
@@ -55,6 +56,7 @@ impl DrawMode {
     match self {
       &Lines     => gl::LINES,
       &Triangles => gl::TRIANGLES,
+      &Points    => gl::POINTS,
     }
   }
 }
