@@ -77,7 +77,7 @@ impl Shader {
     Shader::new(gl, components)
   }
 
-  fn with_uniform_location(&self, gl: &mut GLContext, name: &'static str, f: |GLint|) {
+  pub fn with_uniform_location(&self, gl: &mut GLContext, name: &'static str, f: |GLint|) {
     let name = gl.scache.convert(name).as_ptr();
     gl.use_shader(self, |_| {
       unsafe {

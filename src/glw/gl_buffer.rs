@@ -13,7 +13,7 @@ use vertex;
 
 /// Gets the id number for a given input of the shader program.
 #[allow(non_snake_case_functions)]
-fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
+pub fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
   name.with_c_str(|ptr| unsafe { gl::GetAttribLocation(shader_program, ptr) })
 }
 
