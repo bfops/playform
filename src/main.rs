@@ -31,7 +31,7 @@ use sdl2::mouse;
 use shader_version::opengl::*;
 use stopwatch;
 use stopwatch::*;
-use std::cell;
+use std::cell::RefCell;
 use std::cmp;
 use std::collections::HashMap;
 use std::f32::consts::PI;
@@ -174,13 +174,13 @@ pub struct App<'a> {
   physics: Physics<Id>,
   blocks: HashMap<Id, block::Block>,
   player: Player,
-  mobs: HashMap<Id, cell::RefCell<mob::Mob>>,
+  mobs: HashMap<Id, RefCell<mob::Mob>>,
 
   // next block id to assign
   next_id: Id,
 
   block_loader: Loader<Id, Id>,
-  octree_loader: Rc<cell::RefCell<Loader<(octree::OctreeId, AABB), octree::OctreeId>>>,
+  octree_loader: Rc<RefCell<Loader<(octree::OctreeId, AABB), octree::OctreeId>>>,
 
   // OpenGL buffers
   mob_buffers: mob::MobBuffers,
@@ -197,9 +197,9 @@ pub struct App<'a> {
   vertical_rotation: f32, // in radians
 
   // OpenGL shader "program" ids
-  color_shader: Rc<Shader>,
-  hud_shader: Rc<Shader>,
-  texture_shader: Rc<Shader>,
+  color_shader: Rc<RefCell<Shader>>,
+  hud_shader: Rc<RefCell<Shader>>,
+  texture_shader: Rc<RefCell<Shader>>,
 
   // which mouse buttons are currently pressed
   mouse_buttons_pressed: Vec<input::mouse::Button>,
@@ -586,8 +586,8 @@ impl<'a> App<'a> {
 
       // draw the world
 
-      self.color_shader.set_camera(&mut self.gl, &self.player.camera);
-      self.texture_shader.set_camera(&mut self.gl, &self.player.camera);
+      self.color_shader.borrow_mut().set_camera(&mut self.gl, &self.player.camera);
+      self.texture_shader.borrow_mut().set_camera(&mut self.gl, &self.player.camera);
 
       // debug stuff
       self.line_of_sight.draw(&self.gl);
@@ -607,11 +607,11 @@ impl<'a> App<'a> {
 
       // draw the hud
 
-      self.color_shader.set_camera(&mut self.gl, &self.hud_camera);
+      self.color_shader.borrow_mut().set_camera(&mut self.gl, &self.hud_camera);
       self.hud_triangles.draw(&self.gl);
 
       // draw hud textures
-      self.gl.use_shader(self.hud_shader.deref(), |gl| {
+      self.gl.use_shader(self.hud_shader.borrow().deref(), |gl| {
         for (i, tex) in self.textures.iter().enumerate() {
           tex.bind_2d(gl);
           self.texture_triangles.draw_slice(gl, i * 2, 2);
@@ -640,43 +640,43 @@ impl<'a> App<'a> {
 
     let texture_shader = {
       let texture_shader =
-        Rc::new(Shader::from_files(
+        Rc::new(RefCell::new(Shader::from_files(
           &mut gl,
           [
             ("shaders/world_texture_vs.glsl", gl::VERTEX_SHADER),
             ("shaders/world_texture_gs.glsl", gl::GEOMETRY_SHADER),
             ("shaders/world_texture_fs.glsl", gl::FRAGMENT_SHADER),
           ],
-        ));
-      texture_shader.set_point_light(
+        )));
+      texture_shader.borrow_mut().deref_mut().set_point_light(
         &mut gl,
         &Light {
           position: Vec3::new(0.0, 16.0, 0.0),
           intensity: Vec3::new(0.6, 0.6, 0.6),
         }
       );
-      texture_shader.set_ambient_light(
+      texture_shader.borrow_mut().deref_mut().set_ambient_light(
         &mut gl,
         Vec3::new(0.4, 0.4, 0.4),
       );
       texture_shader
     };
     let color_shader =
-      Rc::new(Shader::from_files(
+      Rc::new(RefCell::new(Shader::from_files(
         &mut gl,
         [
           ("shaders/color_vs.glsl", gl::VERTEX_SHADER),
           ("shaders/color_fs.glsl", gl::FRAGMENT_SHADER),
         ],
-      ));
+      )));
     let hud_shader =
-      Rc::new(Shader::from_files(
+      Rc::new(RefCell::new(Shader::from_files(
         &mut gl,
         [
           ("shaders/hud_texture_vs.glsl", gl::VERTEX_SHADER),
           ("shaders/hud_texture_fs.glsl", gl::FRAGMENT_SHADER),
         ],
-      ));
+      )));
 
     let hud_camera = {
       let mut c = Camera::unit();
@@ -685,7 +685,7 @@ impl<'a> App<'a> {
       c
     };
 
-    hud_shader.set_camera(&mut gl, &hud_camera);
+    hud_shader.borrow_mut().deref_mut().set_camera(&mut gl, &hud_camera);
 
     match gl::GetError() {
       gl::NO_ERROR => {},
@@ -735,7 +735,7 @@ impl<'a> App<'a> {
       mob::MobBuffers::new(&gl, &color_shader)
     };
 
-    let octree_loader = Rc::new(cell::RefCell::new(Queue::new(1 << 20)));
+    let octree_loader = Rc::new(RefCell::new(Queue::new(1 << 20)));
 
     let octree_buffers = unsafe {
       octree::OctreeBuffers::new(&gl, &color_shader)
@@ -970,7 +970,7 @@ impl<'a> App<'a> {
     self.mob_buffers.push(&self.gl, id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
 
     self.physics.insert(id, &bounds);
-    self.mobs.insert(id, cell::RefCell::new(mob));
+    self.mobs.insert(id, RefCell::new(mob));
   }
 
   fn place_block(&mut self, min: Vec3<GLfloat>, max: Vec3<GLfloat>, block_type: block::BlockType, check_collisions: bool) {

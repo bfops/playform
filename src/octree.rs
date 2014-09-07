@@ -79,7 +79,10 @@ pub struct OctreeBuffers<V> {
 }
 
 impl<V> OctreeBuffers<V> {
-  pub unsafe fn new(gl: &GLContext, shader_program: &Rc<Shader>) -> OctreeBuffers<V> {
+  pub unsafe fn new(
+      gl: &GLContext,
+      shader_program: &Rc<RefCell<Shader>>
+  ) -> OctreeBuffers<V> {
     OctreeBuffers {
       entry_to_index: HashMap::new(),
       index_to_entry: Vec::new(),

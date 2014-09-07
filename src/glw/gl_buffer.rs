@@ -2,6 +2,7 @@ use gl;
 use gl::types::*;
 use gl_context::*;
 use shader::*;
+use std::cell::RefCell;
 use std::cmp;
 use std::mem;
 use std::ptr;
@@ -38,7 +39,7 @@ pub struct GLfloatBuffer {
   pub length: uint,
   /// maximum number of GLfloats in the buffer.
   pub capacity: uint,
-  pub shader: Rc<Shader>,
+  pub shader: Rc<RefCell<Shader>>,
   /// How to draw this buffer. Ex: gl::LINES, gl::TRIANGLES, etc.
   pub mode: GLenum,
   /// size of vertex attribs, in GLfloats.
@@ -67,7 +68,7 @@ impl GLfloatBuffer {
   /// capacity is provided in units of size slice_span.
   pub unsafe fn new(
       _gl: &GLContext,
-      shader_program: Rc<Shader>,
+      shader_program: Rc<RefCell<Shader>>,
       attribs: &[vertex::AttribData],
       capacity: uint,
       mode: DrawMode) -> GLfloatBuffer {
@@ -101,7 +102,7 @@ impl GLfloatBuffer {
       attrib_span * mem::size_of::<GLfloat>()
     };
     for attrib in attribs.iter() {
-      let shader_attrib = glGetAttribLocation((*shader_program).id, attrib.name) as GLuint;
+      let shader_attrib = glGetAttribLocation(shader_program.deref().borrow().deref().id, attrib.name) as GLuint;
       assert!(shader_attrib != -1, "shader attribute \"{}\" not found", attrib.name);
 
       gl::EnableVertexAttribArray(shader_attrib);
@@ -238,7 +239,7 @@ impl GLfloatBuffer {
   pub fn draw_slice(&self, gl: &GLContext, start: uint, len: uint) {
     assert!(start + len <= self.len());
 
-    gl.use_shader(self.shader.deref(), |_gl| {
+    gl.use_shader(self.shader.deref().borrow().deref(), |_gl| {
       gl::BindVertexArray(self.vertex_array);
       gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
 
@@ -274,7 +275,7 @@ pub struct GLSliceBuffer<T> {
 impl<T: Clone> GLSliceBuffer<T> {
   pub unsafe fn new(
     gl: &GLContext,
-    shader_program: Rc<Shader>,
+    shader_program: Rc<RefCell<Shader>>,
     attribs: &[vertex::AttribData],
     slice_span: uint,
     capacity: uint,

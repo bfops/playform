@@ -8,6 +8,7 @@ use glw::vertex;
 use nalgebra::na::Vec3;
 use ncollide3df32::bounding_volume::LooseBoundingVolume;
 use ncollide3df32::bounding_volume::aabb::AABB;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -43,7 +44,11 @@ pub struct BlockBuffers {
 }
 
 impl BlockBuffers {
-  pub unsafe fn new(gl: &GLContext, color_shader: &Rc<Shader>, texture_shader: &Rc<Shader>) -> BlockBuffers {
+  pub unsafe fn new(
+      gl: &GLContext,
+      color_shader: &Rc<RefCell<Shader>>,
+      texture_shader: &Rc<RefCell<Shader>>
+  ) -> BlockBuffers {
     BlockBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),

@@ -5,6 +5,7 @@ use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
 use nalgebra::na::Vec3;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -24,7 +25,7 @@ pub struct MobBuffers {
 }
 
 impl MobBuffers {
-  pub unsafe fn new(gl: &GLContext, color_shader: &Rc<Shader>) -> MobBuffers {
+  pub unsafe fn new(gl: &GLContext, color_shader: &Rc<RefCell<Shader>>) -> MobBuffers {
     MobBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
