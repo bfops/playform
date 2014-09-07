@@ -90,8 +90,8 @@ impl<V> OctreeBuffers<V> {
       outlines: GLSliceBuffer::new(
         gl,
         shader_program.clone(),
-        [ vertex::AttribData { name: "position", size: 3 },
-          vertex::AttribData { name: "in_color", size: 4 },
+        [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+          vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
         ],
         LINE_VERTICES_PER_BOX,
         1 << 18,

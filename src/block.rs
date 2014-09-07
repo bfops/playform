@@ -14,7 +14,7 @@ use std::rc::Rc;
 
 static MAX_WORLD_SIZE: uint = 40000;
 
-#[deriving(Copy, Clone, PartialEq, Eq, Hash)]
+#[deriving(Show, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum BlockType {
   Grass,
   Dirt,
@@ -44,7 +44,7 @@ pub struct BlockBuffers {
 }
 
 impl BlockBuffers {
-  pub unsafe fn new(
+  pub fn new(
       gl: &GLContext,
       color_shader: &Rc<RefCell<Shader>>,
       texture_shader: &Rc<RefCell<Shader>>
@@ -55,7 +55,7 @@ impl BlockBuffers {
       triangles: GLSliceBuffer::new(
         gl,
         texture_shader.clone(),
-        [ vertex::AttribData { name: "position", size: 3 },
+        [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
         ],
         1,
         MAX_WORLD_SIZE,
@@ -64,8 +64,8 @@ impl BlockBuffers {
       outlines: GLSliceBuffer::new(
         gl,
         color_shader.clone(),
-        [ vertex::AttribData { name: "position", size: 3 },
-          vertex::AttribData { name: "in_color", size: 4 },
+        [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+          vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
         ],
         LINE_VERTICES_PER_BOX,
         MAX_WORLD_SIZE,

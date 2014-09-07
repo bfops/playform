@@ -33,8 +33,8 @@ impl MobBuffers {
       triangles: GLSliceBuffer::new(
         gl,
         color_shader.clone(),
-        [ vertex::AttribData { name: "position", size: 3 },
-          vertex::AttribData { name: "in_color", size: 4 },
+        [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+          vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
         ],
         TRIANGLE_VERTICES_PER_BOX,
         32,

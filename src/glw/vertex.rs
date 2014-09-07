@@ -1,8 +1,8 @@
 //! A vertex with and without textures attached.
-use gl::types::GLfloat;
+use gl;
+use gl::types::*;
 use color::Color4;
 use nalgebra::na::{Vec2,Vec3};
-#[cfg(test)]
 use std::mem;
 
 #[deriving(Clone, Copy, PartialEq)]
@@ -92,11 +92,31 @@ pub struct WorldTextureVertex {
 }
 
 #[deriving(Show)]
+pub enum GLType {
+  Float,
+}
+
+impl GLType {
+  pub fn size(&self) -> uint {
+    match *self {
+      Float => mem::size_of::<GLfloat>(),
+    }
+  }
+
+  pub fn gl_enum(&self) -> GLenum {
+    match *self {
+      Float => gl::FLOAT,
+    }
+  }
+}
+
+#[deriving(Show)]
 /// A data structure which specifies how to pass data from opengl to the vertex
 /// shaders.
 pub struct AttribData<'a> {
   /// Cooresponds to the shader's `input variable`.
   pub name: &'a str,
-  /// The size (in floats) of this attribute.
+  /// The size of this attribute, in the provided units.
   pub size: uint,
+  pub unit: GLType,
 }

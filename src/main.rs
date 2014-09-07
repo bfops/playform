@@ -692,12 +692,12 @@ impl<'a> App<'a> {
       err => fail!("OpenGL error 0x{:x} setting up shaders", err),
     }
 
-    let line_of_sight = unsafe {
+    let line_of_sight = {
       GLSliceBuffer::new(
           &gl,
           color_shader.clone(),
-          [ vertex::AttribData { name: "position", size: 3 },
-            vertex::AttribData { name: "in_color", size: 4 },
+          [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+            vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
           ],
           2,
           2,
@@ -705,12 +705,12 @@ impl<'a> App<'a> {
       )
     };
 
-    let hud_triangles = unsafe {
+    let hud_triangles = {
       GLSliceBuffer::new(
           &gl,
           color_shader.clone(),
-          [ vertex::AttribData { name: "position", size: 3 },
-            vertex::AttribData { name: "in_color", size: 4 },
+          [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+            vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
           ],
           VERTICES_PER_TRIANGLE,
           16,
@@ -718,12 +718,12 @@ impl<'a> App<'a> {
       )
     };
 
-    let texture_triangles = unsafe {
+    let texture_triangles = {
       GLSliceBuffer::new(
           &gl,
           hud_shader.clone(),
-          [ vertex::AttribData { name: "position", size: 3 },
-            vertex::AttribData { name: "texture_position", size: 2 },
+          [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+            vertex::AttribData { name: "texture_position", size: 2, unit: vertex::Float },
           ],
           VERTICES_PER_TRIANGLE,
           8,
@@ -810,16 +810,14 @@ impl<'a> App<'a> {
       };
 
       self.block_textures.insert(block_type, Rc::new(Texture { id: texture }));
-      unsafe {
-        self.block_buffers.insert(
-          block_type,
-          block::BlockBuffers::new(
-            &self.gl,
-            &self.color_shader,
-            &self.texture_shader,
-          )
-        );
-      }
+      self.block_buffers.insert(
+        block_type,
+        block::BlockBuffers::new(
+          &self.gl,
+          &self.color_shader,
+          &self.texture_shader,
+        )
+      );
     }
   }
 
