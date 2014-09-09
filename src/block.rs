@@ -1,11 +1,10 @@
 use common::*;
 use main;
-use gl::types::GLfloat;
-use glw::gl_buffer::{GLSliceBuffer, Points, Lines};
+use glw::gl_buffer::{GLSliceBuffer, Triangles, Lines};
 use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
-use nalgebra::na::Vec3;
+use nalgebra::na::{Vec2, Vec3};
 use ncollide3df32::bounding_volume::LooseBoundingVolume;
 use ncollide3df32::bounding_volume::aabb::AABB;
 use std::cell::RefCell;
@@ -33,13 +32,77 @@ impl Block {
   pub fn to_outlines(bounds: &AABB) -> [vertex::ColoredVertex, ..LINE_VERTICES_PER_BOX] {
     to_outlines(&bounds.loosened(0.002))
   }
+
+  pub fn to_texture_triangles(bounds: &AABB) -> [vertex::WorldTextureVertex, ..TRIANGLE_VERTICES_PER_BOX] {
+    let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
+    let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
+
+    let vtx = |x, y, z, nx, ny, nz, tx, ty| {
+      vertex::WorldTextureVertex {
+        world_position: Vec3::new(x, y, z),
+        texture_position: Vec2::new(tx, ty),
+        normal: Vec3::new(nx, ny, nz),
+      }
+    };
+
+    // hacky little solution so that we don't index right onto the edge of a
+    // texture; if we do, we get edges showing up in rendering.
+    let d = 0.01;
+
+    // Remember: x increases to the right, y increases up, and z becomes more
+    // negative as depth from the viewer increases.
+    [
+      // front
+      vtx(x1, y1, z2,  0.0,  0.0,  1.0, 0.00 + d, 0.50 + d),
+      vtx(x2, y2, z2,  0.0,  0.0,  1.0, 0.25 - d, 0.75 - d),
+      vtx(x1, y2, z2,  0.0,  0.0,  1.0, 0.25 - d, 0.50 + d),
+      vtx(x1, y1, z2,  0.0,  0.0,  1.0, 0.00 + d, 0.50 + d),
+      vtx(x2, y1, z2,  0.0,  0.0,  1.0, 0.00 + d, 0.75 - d),
+      vtx(x2, y2, z2,  0.0,  0.0,  1.0, 0.25 - d, 0.75 - d),
+      // left
+      vtx(x1, y1, z1, -1.0,  0.0,  0.0, 0.75 - d, 1.00 - d),
+      vtx(x1, y2, z2, -1.0,  0.0,  0.0, 0.50 + d, 0.75 + d),
+      vtx(x1, y2, z1, -1.0,  0.0,  0.0, 0.50 + d, 1.00 - d),
+      vtx(x1, y1, z1, -1.0,  0.0,  0.0, 0.75 - d, 1.00 - d),
+      vtx(x1, y1, z2, -1.0,  0.0,  0.0, 0.75 - d, 0.75 + d),
+      vtx(x1, y2, z2, -1.0,  0.0,  0.0, 0.50 + d, 0.75 + d),
+      // top
+      vtx(x1, y2, z1,  0.0,  1.0,  0.0, 0.25 + d, 0.75 - d),
+      vtx(x2, y2, z2,  0.0,  1.0,  0.0, 0.50 - d, 0.50 + d),
+      vtx(x2, y2, z1,  0.0,  1.0,  0.0, 0.25 + d, 0.50 + d),
+      vtx(x1, y2, z1,  0.0,  1.0,  0.0, 0.25 + d, 0.75 - d),
+      vtx(x1, y2, z2,  0.0,  1.0,  0.0, 0.50 - d, 0.75 - d),
+      vtx(x2, y2, z2,  0.0,  1.0,  0.0, 0.50 - d, 0.50 + d),
+      // back
+      vtx(x1, y1, z1,  0.0,  0.0, -1.0, 0.75 - d, 0.50 + d),
+      vtx(x2, y2, z1,  0.0,  0.0, -1.0, 0.50 + d, 0.75 - d),
+      vtx(x2, y1, z1,  0.0,  0.0, -1.0, 0.75 - d, 0.75 - d),
+      vtx(x1, y1, z1,  0.0,  0.0, -1.0, 0.75 - d, 0.50 + d),
+      vtx(x1, y2, z1,  0.0,  0.0, -1.0, 0.50 + d, 0.50 + d),
+      vtx(x2, y2, z1,  0.0,  0.0, -1.0, 0.50 + d, 0.75 - d),
+      // right
+      vtx(x2, y1, z1,  1.0,  0.0,  0.0, 0.75 - d, 0.25 + d),
+      vtx(x2, y2, z2,  1.0,  0.0,  0.0, 0.50 + d, 0.50 - d),
+      vtx(x2, y1, z2,  1.0,  0.0,  0.0, 0.75 - d, 0.50 - d),
+      vtx(x2, y1, z1,  1.0,  0.0,  0.0, 0.75 - d, 0.25 + d),
+      vtx(x2, y2, z1,  1.0,  0.0,  0.0, 0.50 + d, 0.25 + d),
+      vtx(x2, y2, z2,  1.0,  0.0,  0.0, 0.50 + d, 0.50 - d),
+      // bottom
+      vtx(x1, y1, z1,  0.0, -1.0,  0.0, 0.75 + d, 0.50 + d),
+      vtx(x2, y1, z2,  0.0, -1.0,  0.0, 1.00 - d, 0.75 - d),
+      vtx(x1, y1, z2,  0.0, -1.0,  0.0, 1.00 - d, 0.50 + d),
+      vtx(x1, y1, z1,  0.0, -1.0,  0.0, 0.75 + d, 0.50 + d),
+      vtx(x2, y1, z1,  0.0, -1.0,  0.0, 0.75 + d, 0.75 - d),
+      vtx(x2, y1, z2,  0.0, -1.0,  0.0, 1.00 - d, 0.75 - d),
+    ]
+  }
 }
 
 pub struct BlockBuffers {
   id_to_index: HashMap<main::Id, uint>,
   index_to_id: Vec<main::Id>,
 
-  triangles: GLSliceBuffer<Vec3<GLfloat>>,
+  triangles: GLSliceBuffer<vertex::WorldTextureVertex>,
   outlines: GLSliceBuffer<vertex::ColoredVertex>,
 }
 
@@ -55,11 +118,14 @@ impl BlockBuffers {
       triangles: GLSliceBuffer::new(
         gl,
         texture_shader.clone(),
-        [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+        [
+          vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+          vertex::AttribData { name: "texture_position", size: 2, unit: vertex::Float },
+          vertex::AttribData { name: "vertex_normal", size: 3, unit: vertex::Float },
         ],
-        1,
+        TRIANGLE_VERTICES_PER_BOX,
         MAX_WORLD_SIZE,
-        Points,
+        Triangles
       ),
       outlines: GLSliceBuffer::new(
         gl,
@@ -78,12 +144,12 @@ impl BlockBuffers {
     &mut self,
     gl: &GLContext,
     id: main::Id,
-    low_corner: Vec3<GLfloat>,
+    triangles: &[vertex::WorldTextureVertex],
     outlines: &[vertex::ColoredVertex]
   ) {
     self.id_to_index.insert(id, self.index_to_id.len());
     self.index_to_id.push(id);
-    self.triangles.push(gl, &[low_corner]);
+    self.triangles.push(gl, triangles);
     self.outlines.push(gl, outlines);
   }
 
