@@ -105,11 +105,11 @@ impl Shader {
   ) -> T {
     let s_name = String::from_str(name);
     let name = gl.scache.convert(name).as_ptr();
-    match self.uniforms.find(&s_name) {
+    let t = match self.uniforms.find(&s_name) {
       None => {
         let (loc, t) = gl.use_shader(self, |_| {
           let loc = unsafe { gl::GetUniformLocation(self.id, name) };
-          assert!(loc != -1, "couldn't find shader uniform {}", name);
+          assert!(loc != -1, "couldn't find shader uniform {}", s_name);
 
           match gl::GetError() {
             gl::NO_ERROR => {},
@@ -123,7 +123,14 @@ impl Shader {
         t
       },
       Some(&loc) => gl.use_shader(self, |_| f(loc)),
+    };
+
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      err => fail!("OpenGL error 0x{:x} in with_uniform_location callback", err),
     }
+
+    t
   }
 
   /// Sets the variable `light` in some shader.
