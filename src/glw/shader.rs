@@ -17,11 +17,15 @@ pub struct Shader {
 }
 
 impl Shader {
-  pub fn new(gl: &mut GLContext, shader_components: Vec<(String, GLenum)>) -> Shader {
+  pub fn new<T: Iterator<(String, GLenum)>>(
+      gl: &mut GLContext,
+      shader_components: T,
+  ) -> Shader {
+    let mut shader_components = shader_components;
     let program = gl::CreateProgram();
 
     let mut components = Vec::new();
-    for (content, component) in shader_components.move_iter() {
+    for (content, component) in shader_components {
       let s = gl.compile_shader(content, component);
       gl::AttachShader(program, s);
       components.push(s);
@@ -55,17 +59,16 @@ impl Shader {
     }
   }
 
-  pub fn from_files(
+  pub fn from_files<T: Iterator<(String, GLenum)>>(
     gl: &mut GLContext,
-    component_paths: &[(&str, GLenum)],
+    component_paths: T,
   ) -> Shader {
-    let mut components = Vec::new();
-    for &(path, component_type) in component_paths.iter() {
-      match File::open(&Path::new(path)) {
+    Shader::new(gl, component_paths.map(|(path, component_type)| {
+      match File::open(&Path::new(path.as_slice())) {
         Ok(mut f) =>
           match f.read_to_string() {
             Ok(s) => {
-              components.push((s, component_type));
+              (s, component_type)
             },
             Err(e) => {
               fail!("Couldn't read shader file \"{}\": {}", path, e);
@@ -75,9 +78,23 @@ impl Shader {
           fail!("Couldn't open shader file \"{}\" for reading: {}", path, e);
         }
       }
-    }
+    }))
+  }
 
-    Shader::new(gl, components)
+  pub fn from_file_prefix<T: Iterator<GLenum>>(
+    gl: &mut GLContext,
+    prefix: String,
+    components: T
+  ) -> Shader {
+    Shader::from_files(gl, components.map(|component| {
+      let suffix = match component {
+        gl::VERTEX_SHADER => "vert",
+        gl::FRAGMENT_SHADER => "frag",
+        gl::GEOMETRY_SHADER => "geom",
+        _ => fail!("Unknown shader component type: {}", component),
+      };
+      ((prefix + "." + suffix), component)
+    }))
   }
 
   pub fn with_uniform_location<T>(
