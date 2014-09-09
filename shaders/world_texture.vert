@@ -2,18 +2,20 @@
 
 uniform mat4 projection_matrix;
 
-in vec3 position;
-in vec2 texture_position;
-in vec3 vertex_normal;
+uniform vec2 texture_positions[36];
+uniform vec3 normals[6];
 
-out vec2 tex_position;
+in vec3 position;
+
+out vec2 texture_position;
 out vec3 world_position;
 out vec3 normal;
 
 void main() {
-  tex_position = texture_position;
   world_position = position;
-  normal = vertex_normal;
+  int id = gl_VertexID % 36;
+  texture_position = texture_positions[id];
+  normal = normals[id / 6];
 
   gl_Position = projection_matrix * vec4(position, 1.0);
 }

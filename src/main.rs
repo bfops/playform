@@ -2,7 +2,7 @@ use block;
 use common::*;
 use fontloader;
 use gl;
-use gl::types::GLfloat;
+use gl::types::*;
 use glw::camera;
 use glw::camera::Camera;
 use glw::color::Color4;
@@ -655,6 +655,30 @@ impl<'a> App<'a> {
       texture_shader.borrow_mut().deref_mut().set_ambient_light(
         &mut gl,
         Vec3::new(0.4, 0.4, 0.4),
+      );
+      texture_shader.borrow_mut().deref_mut().set_ambient_light(
+        &mut gl,
+        Vec3::new(0.4, 0.4, 0.4),
+      );
+      texture_shader.borrow_mut().deref_mut().with_uniform_location(
+        &mut gl,
+        "texture_positions",
+        |loc| {
+          let v = block::Block::texture_positions();
+          unsafe {
+            gl::Uniform2fv(loc, v.len() as GLint, mem::transmute(v.as_ptr()));
+          }
+        }
+      );
+      texture_shader.borrow_mut().deref_mut().with_uniform_location(
+        &mut gl,
+        "normals",
+        |loc| {
+          let v = block::Block::vertex_normals();
+          unsafe {
+            gl::Uniform3fv(loc, v.len() as GLint, mem::transmute(v.as_ptr()));
+          }
+        }
       );
       texture_shader
     };
