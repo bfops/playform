@@ -12,7 +12,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-static MAX_WORLD_SIZE: uint = 40000;
+static MAX_WORLD_SIZE: uint = 100000;
 
 #[deriving(Show, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum BlockType {
@@ -92,44 +92,57 @@ impl Block {
   }
 
   // Construct outlines for this Block, to sharpen the edges.
-  pub fn to_outlines(bounds: &AABB) -> [vertex::ColoredVertex, ..LINE_VERTICES_PER_BOX] {
+  pub fn to_outlines(&self, bounds: &AABB) -> [vertex::ColoredVertex, ..LINE_VERTICES_PER_BOX] {
     to_outlines(&bounds.loosened(0.002))
   }
 
-  pub fn to_texture_triangles(bounds: &AABB) -> [Vec3<GLfloat>, ..TRIANGLE_VERTICES_PER_BOX] {
+  pub fn to_texture_triangles(&self, bounds: &AABB) -> [BlockVertex, ..TRIANGLE_VERTICES_PER_BOX] {
     let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
     let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
+
+    let vtx = |x, y, z| {
+      BlockVertex {
+        position: Vec3::new(x, y, z),
+        block_type: self.block_type as GLuint,
+      }
+    };
 
     // Remember: x increases to the right, y increases up, and z becomes more
     // negative as depth from the viewer increases.
     [
       // front
-      Vec3::new(x1, y1, z2), Vec3::new(x2, y2, z2), Vec3::new(x1, y2, z2),
-      Vec3::new(x1, y1, z2), Vec3::new(x2, y1, z2), Vec3::new(x2, y2, z2),
+      vtx(x1, y1, z2), vtx(x2, y2, z2), vtx(x1, y2, z2),
+      vtx(x1, y1, z2), vtx(x2, y1, z2), vtx(x2, y2, z2),
       // left
-      Vec3::new(x1, y1, z1), Vec3::new(x1, y2, z2), Vec3::new(x1, y2, z1),
-      Vec3::new(x1, y1, z1), Vec3::new(x1, y1, z2), Vec3::new(x1, y2, z2),
+      vtx(x1, y1, z1), vtx(x1, y2, z2), vtx(x1, y2, z1),
+      vtx(x1, y1, z1), vtx(x1, y1, z2), vtx(x1, y2, z2),
       // top
-      Vec3::new(x1, y2, z1), Vec3::new(x2, y2, z2), Vec3::new(x2, y2, z1),
-      Vec3::new(x1, y2, z1), Vec3::new(x1, y2, z2), Vec3::new(x2, y2, z2),
+      vtx(x1, y2, z1), vtx(x2, y2, z2), vtx(x2, y2, z1),
+      vtx(x1, y2, z1), vtx(x1, y2, z2), vtx(x2, y2, z2),
       // back
-      Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z1), Vec3::new(x2, y1, z1),
-      Vec3::new(x1, y1, z1), Vec3::new(x1, y2, z1), Vec3::new(x2, y2, z1),
+      vtx(x1, y1, z1), vtx(x2, y2, z1), vtx(x2, y1, z1),
+      vtx(x1, y1, z1), vtx(x1, y2, z1), vtx(x2, y2, z1),
       // right
-      Vec3::new(x2, y1, z1), Vec3::new(x2, y2, z2), Vec3::new(x2, y1, z2),
-      Vec3::new(x2, y1, z1), Vec3::new(x2, y2, z1), Vec3::new(x2, y2, z2),
+      vtx(x2, y1, z1), vtx(x2, y2, z2), vtx(x2, y1, z2),
+      vtx(x2, y1, z1), vtx(x2, y2, z1), vtx(x2, y2, z2),
       // bottom
-      Vec3::new(x1, y1, z1), Vec3::new(x2, y1, z2), Vec3::new(x1, y1, z2),
-      Vec3::new(x1, y1, z1), Vec3::new(x2, y1, z1), Vec3::new(x2, y1, z2),
+      vtx(x1, y1, z1), vtx(x2, y1, z2), vtx(x1, y1, z2),
+      vtx(x1, y1, z1), vtx(x2, y1, z1), vtx(x2, y1, z2),
     ]
   }
+}
+
+#[deriving(Show, Clone)]
+pub struct BlockVertex {
+  pub position: Vec3<GLfloat>,
+  pub block_type: GLuint,
 }
 
 pub struct BlockBuffers {
   id_to_index: HashMap<main::Id, uint>,
   index_to_id: Vec<main::Id>,
 
-  triangles: GLSliceBuffer<Vec3<GLfloat>>,
+  triangles: GLSliceBuffer<BlockVertex>,
   outlines: GLSliceBuffer<vertex::ColoredVertex>,
 }
 
@@ -147,6 +160,7 @@ impl BlockBuffers {
         texture_shader.clone(),
         [
           vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+          vertex::AttribData { name: "block_type", size: 1, unit: vertex::UInt },
         ],
         TRIANGLE_VERTICES_PER_BOX,
         MAX_WORLD_SIZE,
@@ -169,7 +183,7 @@ impl BlockBuffers {
     &mut self,
     gl: &GLContext,
     id: main::Id,
-    triangles: &[Vec3<GLfloat>],
+    triangles: &[BlockVertex],
     outlines: &[vertex::ColoredVertex]
   ) {
     self.id_to_index.insert(id, self.index_to_id.len());

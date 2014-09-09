@@ -109,14 +109,24 @@ impl GLBuffer {
 
       gl::EnableVertexAttribArray(shader_attrib);
       unsafe {
-        gl::VertexAttribPointer(
-          shader_attrib,
-          attrib.size as i32,
-          attrib.unit.gl_enum(),
-          gl::FALSE as GLboolean,
-          attrib_span as i32,
-          ptr::null().offset(offset),
-        );
+        if attrib.unit.is_integral() {
+          gl::VertexAttribIPointer(
+            shader_attrib,
+            attrib.size as i32,
+            attrib.unit.gl_enum(),
+            attrib_span as i32,
+            ptr::null().offset(offset),
+          );
+        } else {
+          gl::VertexAttribPointer(
+            shader_attrib,
+            attrib.size as i32,
+            attrib.unit.gl_enum(),
+            gl::FALSE as GLboolean,
+            attrib_span as i32,
+            ptr::null().offset(offset),
+          );
+        }
       }
       offset += (attrib.size * attrib.unit.size()) as int;
     }

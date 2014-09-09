@@ -184,7 +184,7 @@ pub struct App<'a> {
 
   // OpenGL buffers
   mob_buffers: mob::MobBuffers,
-  block_buffers: HashMap<block::BlockType, block::BlockBuffers>,
+  block_buffers: block::BlockBuffers,
   octree_buffers: octree::OctreeBuffers<Id>,
   block_textures: HashMap<block::BlockType, Rc<Texture>>,
   line_of_sight: GLSliceBuffer<ColoredVertex>,
@@ -431,20 +431,15 @@ impl<'a> App<'a> {
             Load(id) => {
               let bounds = unwrap!(physics.get_bounds(id));
               let block = unwrap!(blocks.find(&id));
-              block_buffers.find_mut(&block.block_type).unwrap().push(
+              block_buffers.push(
                 gl,
                 id,
-                block::Block::to_texture_triangles(bounds),
-                block::Block::to_outlines(bounds)
+                block.to_texture_triangles(bounds),
+                block.to_outlines(bounds),
               );
             },
             Unload(id) => {
-              {
-                let block = unwrap!(blocks.find(&id));
-                let block_type = block.block_type;
-                let buffer = unwrap!(block_buffers.find_mut(&block_type));
-                buffer.swap_remove(gl, id);
-              }
+              block_buffers.swap_remove(gl, id);
               physics.remove(id);
               blocks.remove(&id);
             },
@@ -597,11 +592,7 @@ impl<'a> App<'a> {
       }
 
       // draw the blocks
-      for (block_type, buffers) in self.block_buffers.iter() {
-        let r = unwrap!(self.block_textures.find(block_type));
-        r.bind_2d(&self.gl);
-        buffers.draw(&self.gl, self.render_outlines);
-      }
+      self.block_buffers.draw(&self.gl, self.render_outlines);
 
       self.mob_buffers.draw(&self.gl);
 
@@ -612,6 +603,7 @@ impl<'a> App<'a> {
 
       // draw hud textures
       self.gl.use_shader(self.hud_shader.borrow().deref(), |gl| {
+        gl::ActiveTexture(gl::TEXTURE0 + self.block_textures.len() as GLuint);
         for (i, tex) in self.textures.iter().enumerate() {
           tex.bind_2d(gl);
           self.texture_triangles.draw_slice(gl, i * 2, 2);
@@ -769,7 +761,12 @@ impl<'a> App<'a> {
       octree_loader: octree_loader,
       mob_buffers: mob_buffers,
       octree_buffers: octree_buffers,
-      block_buffers: HashMap::new(),
+      block_buffers:
+        block::BlockBuffers::new(
+          &gl,
+          &color_shader,
+          &texture_shader,
+        ),
       block_textures: HashMap::new(),
       blocks: HashMap::new(),
       player: Player {
@@ -804,7 +801,11 @@ impl<'a> App<'a> {
   }
 
   fn load_block_textures(&mut self) {
-    for &(block_type, path) in [(block::Grass, "textures/grass.png"), (block::Stone, "textures/stone.png"), (block::Dirt, "textures/dirt.png")].iter() {
+    for &(block_type, path) in [
+          (block::Grass, "textures/grass.png"),
+          (block::Stone, "textures/stone.png"),
+          (block::Dirt, "textures/dirt.png")
+        ].iter() {
       let img = match png::load_png(&Path::new(path)) {
         Ok(i) => i,
         Err(s) => fail!("Could not load png {}: {}", path, s)
@@ -814,6 +815,7 @@ impl<'a> App<'a> {
       }
       println!("loaded rgba8 png file {}", path);
 
+      gl::ActiveTexture(gl::TEXTURE0 + block_type as GLuint);
       let texture = unsafe {
         let mut texture = 0;
         gl::GenTextures(1, &mut texture);
@@ -826,19 +828,26 @@ impl<'a> App<'a> {
         texture
       };
 
-      self.block_textures.insert(block_type, Rc::new(Texture { id: texture }));
-      self.block_buffers.insert(
-        block_type,
-        block::BlockBuffers::new(
-          &self.gl,
-          &self.color_shader,
-          &self.texture_shader,
-        )
-      );
+      let texture = Texture { id: texture };
+      self.block_textures.insert(block_type, Rc::new(texture));
     }
+
+    let uniforms: Vec<GLint> = range(0, self.block_textures.len() as GLint).collect();
+    self.texture_shader.deref().borrow_mut().deref_mut().with_uniform_location(
+      &mut self.gl,
+      "textures",
+      |loc| unsafe {
+        gl::Uniform1iv(
+          loc,
+          uniforms.len() as GLsizei,
+          uniforms.as_ptr(),
+        );
+      },
+    );
+
+    gl::ActiveTexture(gl::TEXTURE0 + self.block_textures.len() as GLuint);
   }
 
-  /// Makes some basic textures in the world.
   fn make_textures(&mut self) {
     let instructions = Vec::from_slice([
             "Use WASD to move, and spacebar to jump.",
@@ -859,6 +868,15 @@ impl<'a> App<'a> {
       );
       y -= 0.2;
     }
+
+    let hud_texture_unit = self.block_textures.len() as GLint;
+    self.hud_shader.deref().borrow_mut().deref_mut().with_uniform_location(
+      &mut self.gl,
+      "texture_in",
+      |loc| {
+        gl::Uniform1i(loc, hud_texture_unit);
+      }
+    );
   }
 
   fn make_hud(&mut self) {

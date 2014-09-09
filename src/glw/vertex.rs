@@ -94,18 +94,32 @@ pub struct WorldTextureVertex {
 #[deriving(Show)]
 pub enum GLType {
   Float,
+  UInt,
+  Int,
 }
 
 impl GLType {
   pub fn size(&self) -> uint {
     match *self {
       Float => mem::size_of::<GLfloat>(),
+      UInt => mem::size_of::<GLuint>(),
+      Int => mem::size_of::<GLint>(),
     }
   }
 
   pub fn gl_enum(&self) -> GLenum {
     match *self {
       Float => gl::FLOAT,
+      UInt => gl::UNSIGNED_INT,
+      Int => gl::INT,
+    }
+  }
+
+  pub fn is_integral(&self) -> bool {
+    match *self {
+      Float => false,
+      UInt => true,
+      Int => true,
     }
   }
 }
