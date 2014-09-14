@@ -4,6 +4,7 @@ use glw::gl_buffer::{GLSliceBuffer, Triangles};
 use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
+use id_allocator::Id;
 use nalgebra::na::Vec3;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -14,12 +15,12 @@ type Behavior = fn(&main::App, &mut Mob);
 pub struct Mob {
   pub speed: Vec3<f32>,
   pub behavior: Behavior,
-  pub id: main::Id,
+  pub id: Id,
 }
 
 pub struct MobBuffers {
-  id_to_index: HashMap<main::Id, uint>,
-  index_to_id: Vec<main::Id>,
+  id_to_index: HashMap<Id, uint>,
+  index_to_id: Vec<Id>,
 
   triangles: GLSliceBuffer<vertex::ColoredVertex>,
 }
@@ -46,7 +47,7 @@ impl MobBuffers {
   pub fn push(
     &mut self,
     gl: &GLContext,
-    id: main::Id,
+    id: Id,
     triangles: &[vertex::ColoredVertex]
   ) {
     self.id_to_index.insert(id, self.index_to_id.len());
@@ -58,7 +59,7 @@ impl MobBuffers {
   pub fn update(
     &mut self,
     gl: &GLContext,
-    id: main::Id,
+    id: Id,
     triangles: &[vertex::ColoredVertex]
   ) {
     let idx = *unwrap!(self.id_to_index.find(&id));

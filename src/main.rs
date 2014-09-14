@@ -14,6 +14,7 @@ use glw::shader::Shader;
 use glw::texture::Texture;
 use glw::vertex;
 use glw::vertex::{ColoredVertex, TextureVertex};
+use id_allocator::{Id, IdAllocator};
 use input;
 use input::{Press,Release,Move,Keyboard,Mouse,MouseCursor};
 use loader::{Loader, Load, Unload};
@@ -47,24 +48,6 @@ static MAX_JUMP_FUEL: uint = 4;
 static BLOCK_LOAD_SPEED:uint = 1 << 9;
 static OCTREE_LOAD_SPEED:uint = 1 << 11;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
-
-#[deriving(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
-pub struct Id(u32);
-
-impl Add<Id, Id> for Id {
-  fn add(&self, rhs: &Id) -> Id {
-    let Id(i1) = *self;
-    let Id(i2) = *rhs;
-    Id(i1 + i2)
-  }
-}
-
-impl Mul<u32, Id> for Id {
-  fn mul(&self, rhs: &u32) -> Id {
-    let Id(i) = *self;
-    Id(i * *rhs)
-  }
-}
 
 fn to_faces(bounds: &AABB) -> [AABB, ..6] {
   let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
@@ -176,8 +159,7 @@ pub struct App<'a> {
   player: Player,
   mobs: HashMap<Id, RefCell<mob::Mob>>,
 
-  // next block id to assign
-  next_id: Id,
+  id_allocator: IdAllocator,
 
   block_loader: Loader<Id, Id>,
   octree_loader: Rc<RefCell<Loader<(octree::OctreeId, AABB), octree::OctreeId>>>,
@@ -333,7 +315,7 @@ impl<'a> App<'a> {
     time!(&self.timers, "load", || {
       mouse::show_cursor(false);
 
-      let player_id = self.alloc_id();
+      let player_id = self.id_allocator.allocate();
       self.player.id = player_id;
       let min = Vec3::new(0.0, 0.0, 0.0);
       let max = Vec3::new(1.0, 2.0, 1.0);
@@ -776,12 +758,12 @@ impl<'a> App<'a> {
         walk_accel: Vec3::new(0.0, 0.0, 0.0),
         jump_fuel: 0,
         is_jumping: false,
-        id: Id(0),
+        id: Id::none(),
       },
       mobs: HashMap::new(),
       // Start assigning block_ids at 1.
       // block_id 0 corresponds to no block.
-      next_id: Id(1),
+      id_allocator: IdAllocator::new(),
       hud_triangles: hud_triangles,
       texture_triangles: texture_triangles,
       textures: Vec::new(),
@@ -981,16 +963,10 @@ impl<'a> App<'a> {
     })
   }
 
-  fn alloc_id(&mut self) -> Id {
-    let id = self.next_id;
-    self.next_id = self.next_id + Id(1);
-    id
-  }
-
   fn add_mob(&mut self, low_corner: Vec3<GLfloat>, behavior: fn(&App, &mut mob::Mob)) {
     // TODO: mob loader instead of pushing directly to gl buffers
 
-    let id = self.alloc_id();
+    let id = self.id_allocator.allocate();
 
     let mob =
       mob::Mob {
@@ -1010,17 +986,17 @@ impl<'a> App<'a> {
     time!(&self.timers, "place_block", || {
       let mut block = block::Block {
         block_type: block_type,
-        id: Id(0),
+        id: Id::none(),
       };
 
       // hacky solution to make sure blocks have "breathing room" and don't
       // collide with their neighbours.
       let epsilon: GLfloat = 0.00001;
       let bounds = AABB::new(min, max).loosened(-epsilon);
-      let collided = check_collisions && self.collides_with(Id(0), &bounds);
+      let collided = check_collisions && self.collides_with(Id::none(), &bounds);
 
       if !collided {
-        block.id = self.alloc_id();
+        block.id = self.id_allocator.allocate();
         self.blocks.insert(block.id, block);
         self.physics.insert(block.id, &bounds);
         self.block_loader.push(Load(block.id));

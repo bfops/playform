@@ -1,10 +1,10 @@
 use common::*;
-use main;
 use gl::types::*;
 use glw::gl_buffer::{GLSliceBuffer, Triangles, Lines};
 use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
+use id_allocator::Id;
 use nalgebra::na::{Vec2, Vec3};
 use ncollide3df32::bounding_volume::LooseBoundingVolume;
 use ncollide3df32::bounding_volume::aabb::AABB;
@@ -25,7 +25,7 @@ pub enum BlockType {
 /// A voxel-ish block in the game world.
 pub struct Block {
   pub block_type: BlockType,
-  pub id: main::Id,
+  pub id: Id,
 }
 
 impl Block {
@@ -139,8 +139,8 @@ pub struct BlockVertex {
 }
 
 pub struct BlockBuffers {
-  id_to_index: HashMap<main::Id, uint>,
-  index_to_id: Vec<main::Id>,
+  id_to_index: HashMap<Id, uint>,
+  index_to_id: Vec<Id>,
 
   triangles: GLSliceBuffer<BlockVertex>,
   outlines: GLSliceBuffer<vertex::ColoredVertex>,
@@ -182,7 +182,7 @@ impl BlockBuffers {
   pub fn push(
     &mut self,
     gl: &GLContext,
-    id: main::Id,
+    id: Id,
     triangles: &[BlockVertex],
     outlines: &[vertex::ColoredVertex]
   ) {
@@ -192,7 +192,7 @@ impl BlockBuffers {
     self.outlines.push(gl, outlines);
   }
 
-  pub fn swap_remove(&mut self, gl: &GLContext, id: main::Id) {
+  pub fn swap_remove(&mut self, gl: &GLContext, id: Id) {
     let idx = *unwrap!(self.id_to_index.find(&id));
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     unwrap!(self.index_to_id.swap_remove(idx));
