@@ -157,7 +157,7 @@ pub struct App<'a> {
   physics: Physics<Id>,
   blocks: HashMap<Id, block::Block>,
   player: Player,
-  mobs: HashMap<Id, RefCell<mob::Mob>>,
+  mobs: HashMap<Id, mob::Mob>,
 
   id_allocator: IdAllocator,
 
@@ -495,14 +495,11 @@ impl<'a> App<'a> {
       });
 
       time!(&self.timers, "update.mobs", || {
-        for (&id, mob) in self.mobs.iter() {
+        for (&id, mob) in self.mobs.mut_iter() {
           {
-            let behavior = mob.borrow().behavior.clone();
-            let mut mob = mob.borrow_mut();
-            (behavior)(self, mob.deref_mut());
+            let behavior = mob.behavior.clone();
+            (behavior)(self, mob);
           }
-          let mut mob = mob.borrow_mut();
-          let mob = mob.deref_mut();
 
           mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
 
@@ -979,7 +976,7 @@ impl<'a> App<'a> {
     self.mob_buffers.push(&self.gl, id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
 
     self.physics.insert(id, &bounds);
-    self.mobs.insert(id, RefCell::new(mob));
+    self.mobs.insert(id, mob);
   }
 
   fn place_block(&mut self, min: Vec3<GLfloat>, max: Vec3<GLfloat>, block_type: block::BlockType, check_collisions: bool) {
