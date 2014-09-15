@@ -161,14 +161,14 @@ pub struct Octree<V> {
 // TODO: fix shaky octree outline insertion/removal conditions.
 
 impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
-  pub fn new(loader: &Rc<RefCell<OctreeLoader>>, bounds: &AABB) -> Octree<V> {
+  pub fn new(loader: Rc<RefCell<OctreeLoader>>, bounds: &AABB) -> Octree<V> {
     Octree {
       parent: RawPtr::null(),
       dimension: X,
       bounds: bounds.clone(),
       contents: Leaf(Vec::new()),
       id: Octree::<V>::alloc_id(),
-      loader: loader.clone(),
+      loader: loader,
     }
   }
 

@@ -26,7 +26,7 @@ pub struct MobBuffers {
 }
 
 impl MobBuffers {
-  pub unsafe fn new(gl: &GLContext, color_shader: &Rc<RefCell<Shader>>) -> MobBuffers {
+  pub fn new(gl: &GLContext, color_shader: Rc<RefCell<Shader>>) -> MobBuffers {
     MobBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),

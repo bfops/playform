@@ -149,8 +149,8 @@ pub struct BlockBuffers {
 impl BlockBuffers {
   pub fn new(
       gl: &GLContext,
-      color_shader: &Rc<RefCell<Shader>>,
-      texture_shader: &Rc<RefCell<Shader>>
+      color_shader: Rc<RefCell<Shader>>,
+      texture_shader: Rc<RefCell<Shader>>
   ) -> BlockBuffers {
     BlockBuffers {
       id_to_index: HashMap::new(),

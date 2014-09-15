@@ -719,9 +719,7 @@ impl<'a> App<'a> {
       )
     };
 
-    let mob_buffers = unsafe {
-      mob::MobBuffers::new(&gl, &color_shader)
-    };
+    let mob_buffers = mob::MobBuffers::new(&gl, color_shader.clone());
 
     let octree_loader = Rc::new(RefCell::new(Queue::new(1 << 20)));
 
@@ -732,7 +730,7 @@ impl<'a> App<'a> {
     App {
       line_of_sight: line_of_sight,
       physics: Physics {
-        octree: octree::Octree::new(&octree_loader, &world_bounds),
+        octree: octree::Octree::new(octree_loader.clone(), &world_bounds),
         bounds: HashMap::new(),
         locations: HashMap::new(),
       },
@@ -743,8 +741,8 @@ impl<'a> App<'a> {
       block_buffers:
         block::BlockBuffers::new(
           &gl,
-          &color_shader,
-          &texture_shader,
+          color_shader.clone(),
+          texture_shader.clone(),
         ),
       block_textures: HashMap::new(),
       blocks: HashMap::new(),
