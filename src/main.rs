@@ -174,14 +174,13 @@ pub struct App<'a> {
   texture_triangles: GLSliceBuffer<TextureVertex>,
 
   textures: Vec<Texture>,
-  hud_camera: Camera,
   lateral_rotation: f32, // in radians
   vertical_rotation: f32, // in radians
 
   // OpenGL shader "program" ids
   color_shader: Rc<RefCell<Shader>>,
-  hud_shader: Rc<RefCell<Shader>>,
   texture_shader: Rc<RefCell<Shader>>,
+  hud_texture_shader: Rc<RefCell<Shader>>,
 
   // which mouse buttons are currently pressed
   mouse_buttons_pressed: Vec<input::mouse::Button>,
@@ -558,8 +557,6 @@ impl<'a> App<'a> {
     time!(&self.timers, "render", || {
       self.gl.clear_buffer();
 
-      // draw the world
-
       self.color_shader.borrow_mut().set_camera(&mut self.gl, &self.player.camera);
       self.texture_shader.borrow_mut().set_camera(&mut self.gl, &self.player.camera);
 
@@ -577,11 +574,10 @@ impl<'a> App<'a> {
 
       // draw the hud
 
-      self.color_shader.borrow_mut().set_camera(&mut self.gl, &self.hud_camera);
       self.hud_triangles.draw(&self.gl);
 
       // draw hud textures
-      self.gl.use_shader(self.hud_shader.borrow().deref(), |gl| {
+      self.gl.use_shader(self.hud_texture_shader.borrow().deref(), |gl| {
         gl::ActiveTexture(gl::TEXTURE0 + self.block_textures.len() as GLuint);
         for (i, tex) in self.textures.iter().enumerate() {
           tex.bind_2d(gl);
@@ -659,21 +655,30 @@ impl<'a> App<'a> {
         String::from_str("shaders/world_color"),
         Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).move_iter(),
       )));
-    let hud_shader =
+    let hud_color_shader =
+      Rc::new(RefCell::new(Shader::from_file_prefix(
+        &mut gl,
+        String::from_str("shaders/hud_color"),
+        Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).move_iter(),
+      )));
+    let hud_texture_shader =
       Rc::new(RefCell::new(Shader::from_file_prefix(
         &mut gl,
         String::from_str("shaders/hud_texture"),
         Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).move_iter(),
       )));
 
-    let hud_camera = {
-      let mut c = Camera::unit();
-      c.fov = camera::sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
-      c.fov = camera::translation(Vec3::new(0.0, 0.0, -1.0)) * c.fov;
-      c
-    };
+    {
+      let hud_camera = {
+        let mut c = Camera::unit();
+        c.fov = camera::sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
+        c.fov = camera::translation(Vec3::new(0.0, 0.0, -1.0)) * c.fov;
+        c
+      };
 
-    hud_shader.borrow_mut().deref_mut().set_camera(&mut gl, &hud_camera);
+      hud_color_shader.borrow_mut().deref_mut().set_camera(&mut gl, &hud_camera);
+      hud_texture_shader.borrow_mut().deref_mut().set_camera(&mut gl, &hud_camera);
+    }
 
     match gl::GetError() {
       gl::NO_ERROR => {},
@@ -696,7 +701,7 @@ impl<'a> App<'a> {
     let hud_triangles = {
       GLSliceBuffer::new(
           &gl,
-          color_shader.clone(),
+          hud_color_shader.clone(),
           [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
             vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
           ],
@@ -709,7 +714,7 @@ impl<'a> App<'a> {
     let texture_triangles = {
       GLSliceBuffer::new(
           &gl,
-          hud_shader.clone(),
+          hud_texture_shader.clone(),
           [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
             vertex::AttribData { name: "texture_position", size: 2, unit: vertex::Float },
           ],
@@ -762,12 +767,11 @@ impl<'a> App<'a> {
       hud_triangles: hud_triangles,
       texture_triangles: texture_triangles,
       textures: Vec::new(),
-      hud_camera: hud_camera,
       lateral_rotation: 0.0,
       vertical_rotation: 0.0,
       color_shader: color_shader,
       texture_shader: texture_shader,
-      hud_shader: hud_shader,
+      hud_texture_shader: hud_texture_shader,
       mouse_buttons_pressed: Vec::new(),
       render_octree: false,
       render_outlines: true,
@@ -847,7 +851,7 @@ impl<'a> App<'a> {
     }
 
     let hud_texture_unit = self.block_textures.len() as GLint;
-    self.hud_shader.deref().borrow_mut().deref_mut().with_uniform_location(
+    self.hud_texture_shader.deref().borrow_mut().deref_mut().with_uniform_location(
       &mut self.gl,
       "texture_in",
       |loc| {
