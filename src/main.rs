@@ -21,11 +21,12 @@ use loader::{Loader, Load, Unload};
 use mob;
 use ncollide3df32::bounding_volume::LooseBoundingVolume;
 use ncollide3df32::bounding_volume::aabb::AABB;
-use nalgebra::na::{Vec2, Vec3, RMul, Norm};
+use nalgebra::na::{Vec2, Vec3, Norm};
 use ncollide3df32::ray::{Ray, RayCast};
 use octree;
 use physics::Physics;
 use piston::{WindowSettings, RenderArgs, Event, EventIterator, EventSettings, Update, Input, Render};
+use player::Player;
 use png;
 use sdl2_game_window::{WindowSDL2};
 use sdl2::mouse;
@@ -41,8 +42,6 @@ use std::mem;
 use std::raw;
 use std::rc::Rc;
 use libc::types::common::c95::c_void;
-
-static MAX_JUMP_FUEL: uint = 4;
 
 // how many blocks to load during every update step
 static BLOCK_LOAD_SPEED:uint = 1 << 9;
@@ -114,21 +113,6 @@ fn center(bounds: &AABB) -> Vec3<GLfloat> {
   (bounds.mins() + *bounds.maxs()) / (2.0 as GLfloat)
 }
 
-pub struct Player {
-  camera: Camera,
-  // speed; units are world coordinates
-  speed: Vec3<GLfloat>,
-  // acceleration; units are world coordinates
-  accel: Vec3<GLfloat>,
-  // acceleration; x/z units are relative to player facing
-  walk_accel: Vec3<GLfloat>,
-  // this is depleted as we jump and replenished as we stand.
-  jump_fuel: uint,
-  // are we currently trying to jump? (e.g. holding the key).
-  is_jumping: bool,
-  id: Id,
-}
-
 #[inline]
 pub fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
   match v.iter().position(|x| *x == t) {
@@ -174,8 +158,6 @@ pub struct App<'a> {
   texture_triangles: GLSliceBuffer<TextureVertex>,
 
   textures: Vec<Texture>,
-  lateral_rotation: f32, // in radians
-  vertical_rotation: f32, // in radians
 
   // OpenGL shader "program" ids
   color_shader: Rc<RefCell<Shader>>,
@@ -198,10 +180,10 @@ impl<'a> App<'a> {
     time!(&self.timers, "event.key_press", || {
       match key {
         input::keyboard::A => {
-          self.walk(Vec3::new(-1.0, 0.0, 0.0));
+          self.player.walk(Vec3::new(-1.0, 0.0, 0.0));
         },
         input::keyboard::D => {
-          self.walk(Vec3::new(1.0, 0.0, 0.0));
+          self.player.walk(Vec3::new(1.0, 0.0, 0.0));
         },
         input::keyboard::Space => {
           if !self.player.is_jumping {
@@ -211,19 +193,19 @@ impl<'a> App<'a> {
           }
         },
         input::keyboard::W => {
-          self.walk(Vec3::new(0.0, 0.0, -1.0));
+          self.player.walk(Vec3::new(0.0, 0.0, -1.0));
         },
         input::keyboard::S => {
-          self.walk(Vec3::new(0.0, 0.0, 1.0));
+          self.player.walk(Vec3::new(0.0, 0.0, 1.0));
         },
         input::keyboard::Left =>
-          self.rotate_lateral(PI / 12.0),
+          self.player.rotate_lateral(PI / 12.0),
         input::keyboard::Right =>
-          self.rotate_lateral(-PI / 12.0),
+          self.player.rotate_lateral(-PI / 12.0),
         input::keyboard::Up =>
-          self.rotate_vertical(PI / 12.0),
+          self.player.rotate_vertical(PI / 12.0),
         input::keyboard::Down =>
-          self.rotate_vertical(-PI / 12.0),
+          self.player.rotate_vertical(-PI / 12.0),
         input::keyboard::M => {
           let updates = [
             ColoredVertex {
@@ -231,7 +213,7 @@ impl<'a> App<'a> {
               color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
             },
             ColoredVertex {
-              position: self.player.camera.position + self.forward() * (32.0 as f32),
+              position: self.player.camera.position + self.player.forward() * (32.0 as f32),
               color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
             },
           ];
@@ -253,10 +235,10 @@ impl<'a> App<'a> {
       match key {
         // accelerations are negated from those in key_press.
         input::keyboard::A => {
-          self.walk(Vec3::new(1.0, 0.0, 0.0));
+          self.player.walk(Vec3::new(1.0, 0.0, 0.0));
         },
         input::keyboard::D => {
-          self.walk(Vec3::new(-1.0, 0.0, 0.0));
+          self.player.walk(Vec3::new(-1.0, 0.0, 0.0));
         },
         input::keyboard::Space => {
           if self.player.is_jumping {
@@ -266,10 +248,10 @@ impl<'a> App<'a> {
           }
         },
         input::keyboard::W => {
-          self.walk(Vec3::new(0.0, 0.0, 1.0));
+          self.player.walk(Vec3::new(0.0, 0.0, 1.0));
         },
         input::keyboard::S => {
-          self.walk(Vec3::new(0.0, 0.0, -1.0));
+          self.player.walk(Vec3::new(0.0, 0.0, -1.0));
         },
         _ => { }
       }
@@ -284,8 +266,8 @@ impl<'a> App<'a> {
       //  => dy = cy - args.y;
       let (dx, dy) = (x as f32 - cx, cy - y as f32);
       let (rx, ry) = (dx * -3.14 / 2048.0, dy * 3.14 / 1600.0);
-      self.rotate_lateral(rx);
-      self.rotate_vertical(ry);
+      self.player.rotate_lateral(rx);
+      self.player.rotate_vertical(ry);
 
       mouse::warp_mouse_in_window(
         &w.window,
@@ -320,23 +302,13 @@ impl<'a> App<'a> {
       let max = Vec3::new(1.0, 2.0, 1.0);
       self.physics.insert(player_id, &AABB::new(min, max));
 
-      match gl::GetError() {
-        gl::NO_ERROR => {},
-        err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
-      }
-
       self.load_block_textures();
 
       // initialize the projection matrix
       self.player.camera.translate((min + max) / 2.0 as GLfloat);
       self.player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
 
-      match gl::GetError() {
-        gl::NO_ERROR => {},
-        err => fail!("OpenGL error 0x{:x} in OpenGL config", err),
-      }
-
-      self.translate_player(Vec3::new(0.0, 4.0, 10.0));
+      self.player.translate(&mut self.physics, Vec3::new(0.0, 4.0, 10.0));
 
       self.make_textures();
       self.make_hud();
@@ -463,34 +435,7 @@ impl<'a> App<'a> {
       });
 
       time!(&self.timers, "update.player", || {
-        if self.player.is_jumping {
-          if self.player.jump_fuel > 0 {
-            self.player.jump_fuel -= 1;
-          } else {
-            // this code is duplicated in a few places
-            self.player.is_jumping = false;
-            self.player.accel.y = self.player.accel.y - 0.3;
-          }
-        }
-
-        let delta_p = self.player.speed;
-        if delta_p.x != 0.0 {
-          self.translate_player(Vec3::new(delta_p.x, 0.0, 0.0));
-        }
-        if delta_p.y != 0.0 {
-          self.translate_player(Vec3::new(0.0, delta_p.y, 0.0));
-        }
-        if delta_p.z != 0.0 {
-          self.translate_player(Vec3::new(0.0, 0.0, delta_p.z));
-        }
-
-        let y_axis = Vec3::new(0.0, 1.0, 0.0);
-        let walk_v =
-            camera::from_axis_angle3(y_axis, self.lateral_rotation)
-            .rmul(&self.player.walk_accel);
-        self.player.speed = self.player.speed + walk_v + self.player.accel;
-        // friction
-        self.player.speed = self.player.speed * Vec3::new(0.7, 0.99, 0.7 as f32);
+        self.player.update(&mut self.physics);
       });
 
       time!(&self.timers, "update.mobs", || {
@@ -532,7 +477,7 @@ impl<'a> App<'a> {
             Some(block_id) => {
               let (mins, maxs) = {
                 let bounds = self.get_bounds(block_id);
-                let face = first_face(bounds, &self.forward_ray());
+                let face = first_face(bounds, &self.player.forward_ray());
                 let direction =
                       [ Vec3::new(0.0, 0.0, 1.0),
                         Vec3::new(-1.0, 0.0, 0.0),
@@ -759,6 +704,8 @@ impl<'a> App<'a> {
         jump_fuel: 0,
         is_jumping: false,
         id: Id::none(),
+        lateral_rotation: 0.0,
+        vertical_rotation: 0.0,
       },
       mobs: HashMap::new(),
       // Start assigning block_ids at 1.
@@ -767,8 +714,6 @@ impl<'a> App<'a> {
       hud_triangles: hud_triangles,
       texture_triangles: texture_triangles,
       textures: Vec::new(),
-      lateral_rotation: 0.0,
-      vertical_rotation: 0.0,
       color_shader: color_shader,
       texture_shader: texture_shader,
       hud_texture_shader: hud_texture_shader,
@@ -952,7 +897,7 @@ impl<'a> App<'a> {
 
   /// Returns id of the entity in front of the cursor.
   fn entity_in_front(&self) -> Option<Id> {
-    self.physics.octree.cast_ray(&self.forward_ray(), self.player.id)
+    self.physics.octree.cast_ray(&self.player.forward_ray(), self.player.id)
   }
 
   /// Find a collision with a world object
@@ -1007,30 +952,6 @@ impl<'a> App<'a> {
     self.block_loader.push(Unload(id));
   }
 
-  /// Changes the camera's acceleration by the given `da`.
-  fn walk(&mut self, da: Vec3<GLfloat>) {
-    self.player.walk_accel = self.player.walk_accel + da * 0.2 as GLfloat;
-  }
-
-  /// Translates the player/camera by a vector.
-  fn translate_player(&mut self, v: Vec3<GLfloat>) {
-    let id = self.player.id;
-    let collided = unwrap!(self.physics.translate(id, v));
-    if collided {
-      self.player.speed = self.player.speed - v;
-
-      if v.y < 0.0 {
-        self.player.jump_fuel = MAX_JUMP_FUEL;
-      }
-    } else {
-      self.player.camera.translate(v);
-
-      if v.y < 0.0 {
-        self.player.jump_fuel = 0;
-      }
-    }
-  }
-
   fn translate_mob(gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut mob::MobBuffers, mob: &mut mob::Mob, delta_p: Vec3<GLfloat>) {
     if unwrap!(physics.translate(mob.id, delta_p)) {
       mob.speed = mob.speed - delta_p;
@@ -1042,53 +963,6 @@ impl<'a> App<'a> {
         to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
       );
     }
-  }
-
-  #[inline]
-  /// Rotate the camera around the y axis, by `r` radians. Positive is
-  /// counterclockwise.
-  pub fn rotate_lateral(&mut self, r: GLfloat) {
-    self.lateral_rotation = self.lateral_rotation + r;
-    self.player.camera.rotate(Vec3::new(0.0, 1.0, 0.0), r);
-  }
-
-  /// Changes the camera pitch by `r` radians. Positive is up.
-  /// Angles that "flip around" (i.e. looking too far up or down)
-  /// are sliently rejected.
-  pub fn rotate_vertical(&mut self, r: GLfloat) {
-    let new_rotation = self.vertical_rotation + r;
-
-    if new_rotation < -PI / 2.0
-    || new_rotation >  PI / 2.0 {
-      return
-    }
-
-    self.vertical_rotation = new_rotation;
-    let axis = self.right();
-    self.player.camera.rotate(axis, r);
-  }
-
-  // axes
-
-  /// Return the "right" axis (i.e. the x-axis rotated to match you).
-  pub fn right(&self) -> Vec3<GLfloat> {
-    return
-      camera::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation)
-        .rmul(&Vec3::new(1.0, 0.0, 0.0))
-  }
-
-  /// Return the "Ray axis (i.e. the z-axis rotated to match you).
-  pub fn forward(&self) -> Vec3<GLfloat> {
-    let y_axis = Vec3::new(0.0, 1.0, 0.0);
-    let transform =
-      camera::from_axis_angle3(self.right(), self.vertical_rotation) *
-      camera::from_axis_angle3(y_axis, self.lateral_rotation);
-    let forward_orig = Vec3::new(0.0, 0.0, -1.0);
-    return transform.rmul(&forward_orig);
-  }
-
-  pub fn forward_ray(&self) -> Ray {
-    Ray { orig: self.player.camera.position, dir: self.forward() }
   }
 
   /// Handles a game event.

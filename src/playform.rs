@@ -23,6 +23,7 @@ mod common;
 mod block;
 mod fontloader;
 mod id_allocator;
+mod player;
 // so the time! macro is defined in main
 mod stopwatch;
 mod loader;
