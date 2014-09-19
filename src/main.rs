@@ -264,6 +264,35 @@ fn make_hud(
   hud_triangles
 }
 
+fn place_block(
+  physics: &mut Physics<Id>,
+  blocks: &mut HashMap<Id, block::Block>,
+  block_loader: &mut Loader<Id, Id>,
+  id_allocator: &mut IdAllocator,
+  min: Vec3<GLfloat>,
+  max: Vec3<GLfloat>,
+  block_type: block::BlockType,
+  check_collisions: bool,
+) {
+  let mut block = block::Block {
+    block_type: block_type,
+    id: Id::none(),
+  };
+
+  // hacky solution to make sure blocks have "breathing room" and don't
+  // collide with their neighbours.
+  let epsilon: GLfloat = 0.00001;
+  let bounds = AABB::new(min, max).loosened(-epsilon);
+  let collided = check_collisions && physics.octree.intersect(&bounds, Id::none());
+
+  if !collided {
+    block.id = id_allocator.allocate();
+    physics.insert(block.id, &bounds);
+    blocks.insert(block.id, block);
+    block_loader.push(Load(block.id));
+  }
+}
+
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App<'a> {
   physics: Physics<Id>,
@@ -915,13 +944,6 @@ impl<'a> App<'a> {
     self.physics.octree.cast_ray(&self.player.forward_ray(), self.player.id)
   }
 
-  /// Find a collision with a world object
-  fn collides_with(&self, self_id: Id, b: &AABB) -> bool {
-    time!(&self.timers, "world_collision", || {
-      self.physics.octree.intersect(b, self_id)
-    })
-  }
-
   fn add_mob(&mut self, low_corner: Vec3<GLfloat>, behavior: fn(&App, &mut mob::Mob)) {
     // TODO: mob loader instead of pushing directly to gl buffers
 
@@ -941,26 +963,23 @@ impl<'a> App<'a> {
     self.mobs.insert(id, mob);
   }
 
-  fn place_block(&mut self, min: Vec3<GLfloat>, max: Vec3<GLfloat>, block_type: block::BlockType, check_collisions: bool) {
-    time!(&self.timers, "place_block", || {
-      let mut block = block::Block {
-        block_type: block_type,
-        id: Id::none(),
-      };
-
-      // hacky solution to make sure blocks have "breathing room" and don't
-      // collide with their neighbours.
-      let epsilon: GLfloat = 0.00001;
-      let bounds = AABB::new(min, max).loosened(-epsilon);
-      let collided = check_collisions && self.collides_with(Id::none(), &bounds);
-
-      if !collided {
-        block.id = self.id_allocator.allocate();
-        self.blocks.insert(block.id, block);
-        self.physics.insert(block.id, &bounds);
-        self.block_loader.push(Load(block.id));
-      }
-    })
+  fn place_block(
+    &mut self,
+    min: Vec3<GLfloat>,
+    max: Vec3<GLfloat>,
+    block_type: block::BlockType,
+    check_collisions: bool
+  ) {
+    place_block(
+      &mut self.physics,
+      &mut self.blocks,
+      &mut self.block_loader,
+      &mut self.id_allocator,
+      min,
+      max,
+      block_type,
+      check_collisions,
+    )
   }
 
   fn remove_block(&mut self, id: Id) {
