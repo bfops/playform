@@ -191,6 +191,48 @@ fn load_block_textures(
   block_textures
 }
 
+fn make_text(
+  gl: &GLContext,
+  shader: Rc<RefCell<Shader>>,
+) -> (Vec<Texture>, GLSliceBuffer<TextureVertex>) {
+  let fontloader = fontloader::FontLoader::new();
+  let mut textures = Vec::new();
+  let mut triangles = {
+    GLSliceBuffer::new(
+        gl,
+        shader,
+        [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+          vertex::AttribData { name: "texture_position", size: 2, unit: vertex::Float },
+        ],
+        VERTICES_PER_TRIANGLE,
+        8,
+        Triangles,
+    )
+  };
+
+  let instructions = Vec::from_slice([
+          "Use WASD to move, and spacebar to jump.",
+          "Use the mouse to look around, and click to remove blocks."
+      ]);
+
+  let mut y = 0.99;
+
+  for line in instructions.iter() {
+    textures.push(fontloader.sans.red(*line));
+
+    triangles.push(
+      gl,
+      TextureVertex::square(
+        Vec2 { x: -0.97, y: y - 0.2 },
+        Vec2 { x: 0.0,   y: y       }
+      )
+    );
+    y -= 0.2;
+  }
+
+  (textures, triangles)
+}
+
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App<'a> {
   physics: Physics<Id>,
@@ -210,9 +252,9 @@ pub struct App<'a> {
   block_textures: HashMap<block::BlockType, Rc<Texture>>,
   line_of_sight: GLSliceBuffer<ColoredVertex>,
   hud_triangles: GLSliceBuffer<ColoredVertex>,
-  texture_triangles: GLSliceBuffer<TextureVertex>,
+  text_triangles: GLSliceBuffer<TextureVertex>,
 
-  textures: Vec<Texture>,
+  text_textures: Vec<Texture>,
 
   // OpenGL shader "program" ids
   color_shader: Rc<RefCell<Shader>>,
@@ -225,7 +267,6 @@ pub struct App<'a> {
   render_octree: bool,
   render_outlines: bool,
 
-  font: fontloader::FontLoader,
   timers: stopwatch::TimerSet,
   gl: GLContext,
 }
@@ -369,7 +410,15 @@ impl<'a> App<'a> {
 
       self.player.translate(&mut self.physics, Vec3::new(0.0, 4.0, 10.0));
 
-      self.make_textures();
+      let misc_texture_unit = self.block_textures.len() as GLint;
+      self.hud_texture_shader.deref().borrow_mut().deref_mut().with_uniform_location(
+        &mut self.gl,
+        "texture_in",
+        |loc| {
+          gl::Uniform1i(loc, misc_texture_unit);
+        }
+      );
+
       self.make_hud();
       self.make_world();
 
@@ -583,9 +632,9 @@ impl<'a> App<'a> {
       // draw hud textures
       self.gl.use_shader(self.hud_texture_shader.borrow().deref(), |gl| {
         gl::ActiveTexture(gl::TEXTURE0 + self.block_textures.len() as GLuint);
-        for (i, tex) in self.textures.iter().enumerate() {
+        for (i, tex) in self.text_textures.iter().enumerate() {
           tex.bind_2d(gl);
-          self.texture_triangles.draw_slice(gl, i * 2, 2);
+          self.text_triangles.draw_slice(gl, i * 2, 2);
         }
       });
 
@@ -715,19 +764,6 @@ impl<'a> App<'a> {
       )
     };
 
-    let texture_triangles = {
-      GLSliceBuffer::new(
-          &gl,
-          hud_texture_shader.clone(),
-          [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
-            vertex::AttribData { name: "texture_position", size: 2, unit: vertex::Float },
-          ],
-          VERTICES_PER_TRIANGLE,
-          8,
-          Triangles,
-      )
-    };
-
     let mob_buffers = mob::MobBuffers::new(&gl, color_shader.clone());
 
     let octree_loader = Rc::new(RefCell::new(Queue::new(1 << 20)));
@@ -735,6 +771,8 @@ impl<'a> App<'a> {
     let octree_buffers = unsafe {
       octree::OctreeBuffers::new(&gl, &color_shader)
     };
+
+    let (text_textures, text_triangles) = make_text(&gl, hud_texture_shader.clone());
 
     App {
       line_of_sight: line_of_sight,
@@ -771,49 +809,17 @@ impl<'a> App<'a> {
       // block_id 0 corresponds to no block.
       id_allocator: IdAllocator::new(),
       hud_triangles: hud_triangles,
-      texture_triangles: texture_triangles,
-      textures: Vec::new(),
+      text_textures: text_textures,
+      text_triangles: text_triangles,
       color_shader: color_shader,
       texture_shader: texture_shader,
       hud_texture_shader: hud_texture_shader,
       mouse_buttons_pressed: Vec::new(),
       render_octree: false,
       render_outlines: true,
-      font: fontloader::FontLoader::new(),
       timers: stopwatch::TimerSet::new(),
       gl: gl,
     }
-  }
-
-  fn make_textures(&mut self) {
-    let instructions = Vec::from_slice([
-            "Use WASD to move, and spacebar to jump.",
-            "Use the mouse to look around, and click to remove blocks."
-        ]);
-
-    let mut y = 0.99;
-
-    for line in instructions.iter() {
-      self.textures.push(self.font.sans.red(*line));
-
-      self.texture_triangles.push(
-        &self.gl,
-        TextureVertex::square(
-          Vec2 { x: -0.97, y: y - 0.2 },
-          Vec2 { x: 0.0,   y: y       }
-        )
-      );
-      y -= 0.2;
-    }
-
-    let hud_texture_unit = self.block_textures.len() as GLint;
-    self.hud_texture_shader.deref().borrow_mut().deref_mut().with_uniform_location(
-      &mut self.gl,
-      "texture_in",
-      |loc| {
-        gl::Uniform1i(loc, hud_texture_unit);
-      }
-    );
   }
 
   fn make_hud(&mut self) {
