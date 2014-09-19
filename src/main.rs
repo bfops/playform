@@ -450,7 +450,9 @@ impl<'a> App<'a> {
         }
       );
 
-      self.make_world();
+      time!(&self.timers, "make_world", || {
+        self.make_world();
+      });
 
       fn mob_behavior(world: &App, mob: &mut mob::Mob) {
         let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
@@ -842,71 +844,61 @@ impl<'a> App<'a> {
   }
 
   fn make_world(&mut self) {
-    time!(&self.timers, "make_world", || {
-      // low dirt block
-      for i in range_inclusive(-2i, 2) {
-        for j in range_inclusive(-2i, 2) {
-          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-          let (x1, y1, z1) = (6.0 + i, 6.0, 0.0 + j);
-          let (x2, y2, z2) = (6.5 + i, 6.5, 0.5 + j);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Dirt, false);
-        }
+    let place_block = |x, y, z, block_type| {
+      let d = 0.5;
+      let min = Vec3::new(x, y, z);
+      self.place_block(min, min + Vec3::new(d, d, d), block_type, false);
+    };
+
+    // low platform
+    for i in range_inclusive(-2i, 2) {
+      for j in range_inclusive(-2i, 2) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(6.0 + i, 6.0, 0.0 + j, block::Dirt);
       }
-      // high dirt block
-      for i in range_inclusive(-2i, 2) {
-        for j in range_inclusive(-2i, 2) {
-          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-          let (x1, y1, z1) = (0.0 + i, 12.0, 5.0 + j);
-          let (x2, y2, z2) = (0.5 + i, 12.5, 5.5 + j);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Dirt, false);
-        }
+    }
+    // high platform
+    for i in range_inclusive(-2i, 2) {
+      for j in range_inclusive(-2i, 2) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(0.0 + i, 12.0, 5.0 + j, block::Dirt);
       }
-      // ground
-      for i in range_inclusive(-64i, 64) {
-        for j in range_inclusive(-64i, 64) {
-          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-          let (x1, y1, z1) = (i, 0.0, j);
-          let (x2, y2, z2) = (i + 0.5, 0.5, j + 0.5);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Grass, false);
-        }
+    }
+    // ground
+    for i in range_inclusive(-64i, 64) {
+      for j in range_inclusive(-64i, 64) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(i, 0.0, j, block::Grass);
       }
-      // front wall
-      for i in range_inclusive(-64i, 64) {
-        for j in range_inclusive(0i, 64) {
-          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-          let (x1, y1, z1) = (i, 0.5 + j, -32.0);
-          let (x2, y2, z2) = (i + 0.5, 1.0 + j, -32.0 + 0.5);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Stone, false);
-        }
+    }
+    // front wall
+    for i in range_inclusive(-64i, 64) {
+      for j in range_inclusive(0i, 64) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(i, 0.5 + j, -32.0, block::Stone);
       }
-      // back wall
-      for i in range_inclusive(-64i, 64) {
-        for j in range_inclusive(0i, 64) {
-          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-          let (x1, y1, z1) = (i, 0.5 + j, 32.0);
-          let (x2, y2, z2) = (i + 0.5, 1.0 + j, 32.0 + 0.5);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Stone, false);
-        }
+    }
+    // back wall
+    for i in range_inclusive(-64i, 64) {
+      for j in range_inclusive(0i, 64) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(i, 0.5 + j, 32.0, block::Stone);
       }
-      // left wall
-      for i in range_inclusive(-64i, 64) {
-        for j in range_inclusive(0i, 64) {
-          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-          let (x1, y1, z1) = (-32.0, 0.5 + j, i);
-          let (x2, y2, z2) = (-32.0 + 0.5, 1.0 + j, i + 0.5);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Stone, false);
-        }
+    }
+    // left wall
+    for i in range_inclusive(-64i, 64) {
+      for j in range_inclusive(0i, 64) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(-32.0, 0.5 + j, i, block::Stone);
       }
-      // right wall
-      for i in range_inclusive(-64i, 64) {
-        for j in range_inclusive(0i, 64) {
-          let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-          let (x1, y1, z1) = (32.0, 0.5 + j, i);
-          let (x2, y2, z2) = (32.0 + 0.5, 1.0 + j, i + 0.5);
-          self.place_block(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z2), block::Stone, false);
-        }
+    }
+    // right wall
+    for i in range_inclusive(-64i, 64) {
+      for j in range_inclusive(0i, 64) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(32.0, 0.5 + j, i, block::Stone);
       }
-    });
+    }
   }
 
   #[inline]
