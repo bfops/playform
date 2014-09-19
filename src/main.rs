@@ -233,6 +233,37 @@ fn make_text(
   (textures, triangles)
 }
 
+fn make_hud(
+  gl: &GLContext,
+  shader: Rc<RefCell<Shader>>,
+) -> GLSliceBuffer<ColoredVertex> {
+  let mut hud_triangles = {
+    GLSliceBuffer::new(
+        gl,
+        shader,
+        [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+          vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
+        ],
+        VERTICES_PER_TRIANGLE,
+        16,
+        Triangles
+    )
+  };
+
+  let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
+
+  hud_triangles.push(
+    gl,
+    ColoredVertex::square(
+      Vec2 { x: -0.02, y: -0.02 },
+      Vec2 { x:  0.02, y:  0.02 },
+      cursor_color
+    )
+  );
+
+  hud_triangles
+}
+
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App<'a> {
   physics: Physics<Id>,
@@ -419,7 +450,6 @@ impl<'a> App<'a> {
         }
       );
 
-      self.make_hud();
       self.make_world();
 
       fn mob_behavior(world: &App, mob: &mut mob::Mob) {
@@ -751,18 +781,7 @@ impl<'a> App<'a> {
       )
     };
 
-    let hud_triangles = {
-      GLSliceBuffer::new(
-          &gl,
-          hud_color_shader.clone(),
-          [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
-            vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
-          ],
-          VERTICES_PER_TRIANGLE,
-          16,
-          Triangles
-      )
-    };
+    let hud_triangles = make_hud(&gl, hud_color_shader.clone());
 
     let mob_buffers = mob::MobBuffers::new(&gl, color_shader.clone());
 
@@ -820,19 +839,6 @@ impl<'a> App<'a> {
       timers: stopwatch::TimerSet::new(),
       gl: gl,
     }
-  }
-
-  fn make_hud(&mut self) {
-    let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
-
-    self.hud_triangles.push(
-      &self.gl,
-      ColoredVertex::square(
-        Vec2 { x: -0.02, y: -0.02 },
-        Vec2 { x:  0.02, y:  0.02 },
-        cursor_color
-      )
-    );
   }
 
   fn make_world(&mut self) {
