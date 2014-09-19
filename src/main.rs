@@ -555,7 +555,7 @@ impl<'a> App<'a> {
         Rc::new(RefCell::new(Shader::from_file_prefix(
           &mut gl,
           String::from_str("shaders/world_texture"),
-          Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).move_iter(),
+          Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
         )));
       texture_shader.borrow_mut().deref_mut().set_point_light(
         &mut gl,
@@ -598,19 +598,19 @@ impl<'a> App<'a> {
       Rc::new(RefCell::new(Shader::from_file_prefix(
         &mut gl,
         String::from_str("shaders/world_color"),
-        Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).move_iter(),
+        Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
       )));
     let hud_color_shader =
       Rc::new(RefCell::new(Shader::from_file_prefix(
         &mut gl,
         String::from_str("shaders/hud_color"),
-        Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).move_iter(),
+        Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
       )));
     let hud_texture_shader =
       Rc::new(RefCell::new(Shader::from_file_prefix(
         &mut gl,
         String::from_str("shaders/hud_texture"),
-        Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).move_iter(),
+        Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
       )));
 
     {
