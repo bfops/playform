@@ -136,6 +136,61 @@ fn first_face(bounds: &AABB, ray: &Ray) -> uint {
   f
 }
 
+fn load_block_textures(
+  gl: &mut GLContext,
+  shader: &mut Shader,
+) -> HashMap<block::BlockType, Rc<Texture>> {
+  let mut block_textures = HashMap::new();
+
+  for &(block_type, path) in [
+        (block::Grass, "textures/grass.png"),
+        (block::Stone, "textures/stone.png"),
+        (block::Dirt, "textures/dirt.png")
+      ].iter() {
+    let img = match png::load_png(&Path::new(path)) {
+      Ok(i) => i,
+      Err(s) => fail!("Could not load png {}: {}", path, s)
+    };
+    if img.color_type != png::RGBA8 {
+      fail!("unsupported color type {:} in png", img.color_type);
+    }
+    println!("loaded rgba8 png file {}", path);
+
+    gl::ActiveTexture(gl::TEXTURE0 + block_type as GLuint);
+    let texture = unsafe {
+      let mut texture = 0;
+      gl::GenTextures(1, &mut texture);
+      gl::BindTexture(gl::TEXTURE_2D, texture);
+      let pixels: raw::Slice<c_void> = mem::transmute(img.pixels.as_slice());
+      gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, img.width as i32, img.height as i32,
+                    0, gl::RGBA, gl::UNSIGNED_INT_8_8_8_8_REV, pixels.data);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+      texture
+    };
+
+    let texture = Texture { id: texture };
+    block_textures.insert(block_type, Rc::new(texture));
+  }
+
+  let uniforms: Vec<GLint> = range(0, block_textures.len() as GLint).collect();
+  shader.with_uniform_location(
+    gl,
+    "textures",
+    |loc| unsafe {
+      gl::Uniform1iv(
+        loc,
+        uniforms.len() as GLsizei,
+        uniforms.as_ptr(),
+      );
+    },
+  );
+
+  gl::ActiveTexture(gl::TEXTURE0 + block_textures.len() as GLuint);
+
+  block_textures
+}
+
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App<'a> {
   physics: Physics<Id>,
@@ -302,7 +357,11 @@ impl<'a> App<'a> {
       let max = Vec3::new(1.0, 2.0, 1.0);
       self.physics.insert(player_id, &AABB::new(min, max));
 
-      self.load_block_textures();
+      self.block_textures =
+        load_block_textures(
+          &mut self.gl,
+          self.texture_shader.deref().borrow_mut().deref_mut()
+        );
 
       // initialize the projection matrix
       self.player.camera.translate((min + max) / 2.0 as GLfloat);
@@ -724,54 +783,6 @@ impl<'a> App<'a> {
       timers: stopwatch::TimerSet::new(),
       gl: gl,
     }
-  }
-
-  fn load_block_textures(&mut self) {
-    for &(block_type, path) in [
-          (block::Grass, "textures/grass.png"),
-          (block::Stone, "textures/stone.png"),
-          (block::Dirt, "textures/dirt.png")
-        ].iter() {
-      let img = match png::load_png(&Path::new(path)) {
-        Ok(i) => i,
-        Err(s) => fail!("Could not load png {}: {}", path, s)
-      };
-      if img.color_type != png::RGBA8 {
-        fail!("unsupported color type {:} in png", img.color_type);
-      }
-      println!("loaded rgba8 png file {}", path);
-
-      gl::ActiveTexture(gl::TEXTURE0 + block_type as GLuint);
-      let texture = unsafe {
-        let mut texture = 0;
-        gl::GenTextures(1, &mut texture);
-        gl::BindTexture(gl::TEXTURE_2D, texture);
-        let pixels: raw::Slice<c_void> = mem::transmute(img.pixels.as_slice());
-        gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, img.width as i32, img.height as i32,
-                      0, gl::RGBA, gl::UNSIGNED_INT_8_8_8_8_REV, pixels.data);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-        texture
-      };
-
-      let texture = Texture { id: texture };
-      self.block_textures.insert(block_type, Rc::new(texture));
-    }
-
-    let uniforms: Vec<GLint> = range(0, self.block_textures.len() as GLint).collect();
-    self.texture_shader.deref().borrow_mut().deref_mut().with_uniform_location(
-      &mut self.gl,
-      "textures",
-      |loc| unsafe {
-        gl::Uniform1iv(
-          loc,
-          uniforms.len() as GLsizei,
-          uniforms.as_ptr(),
-        );
-      },
-    );
-
-    gl::ActiveTexture(gl::TEXTURE0 + self.block_textures.len() as GLuint);
   }
 
   fn make_textures(&mut self) {
