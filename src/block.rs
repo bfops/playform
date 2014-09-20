@@ -192,6 +192,7 @@ impl BlockBuffers {
     self.outlines.push(gl, outlines);
   }
 
+  // Note: `id` must be present in the buffers.
   pub fn swap_remove(&mut self, gl: &GLContext, id: Id) {
     let idx = *unwrap!(self.id_to_index.find(&id));
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];

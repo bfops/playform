@@ -561,9 +561,10 @@ impl<'a> App<'a> {
               );
             },
             Unload(id) => {
-              block_buffers.swap_remove(gl, id);
-              physics.remove(id);
-              blocks.remove(&id);
+              if blocks.remove(&id) {
+                block_buffers.swap_remove(gl, id);
+                physics.remove(id);
+              }
             },
           }
         }
