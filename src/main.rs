@@ -264,6 +264,136 @@ fn make_hud(
   hud_triangles
 }
 
+fn make_blocks(
+  physics: &mut Physics<Id>,
+  id_allocator: &mut IdAllocator,
+) -> (HashMap<Id, block::Block>, Loader<Id, Id>) {
+  let mut blocks = HashMap::new();
+  let mut block_loader = Queue::new(1 << 20);
+
+  {
+    let place_block = |x, y, z, block_type| {
+      let d = 0.5;
+      let min = Vec3::new(x, y, z);
+      place_block(
+        physics,
+        &mut blocks,
+        &mut block_loader,
+        id_allocator,
+        min,
+        min + Vec3::new(d, d, d),
+        block_type,
+        false
+      );
+    };
+
+    // low platform
+    for i in range_inclusive(-2i, 2) {
+      for j in range_inclusive(-2i, 2) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(6.0 + i, 6.0, 0.0 + j, block::Dirt);
+      }
+    }
+    // high platform
+    for i in range_inclusive(-2i, 2) {
+      for j in range_inclusive(-2i, 2) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(0.0 + i, 12.0, 5.0 + j, block::Dirt);
+      }
+    }
+    // ground
+    for i in range_inclusive(-64i, 64) {
+      for j in range_inclusive(-64i, 64) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(i, 0.0, j, block::Grass);
+      }
+    }
+    // front wall
+    for i in range_inclusive(-64i, 64) {
+      for j in range_inclusive(0i, 64) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(i, 0.5 + j, -32.0, block::Stone);
+      }
+    }
+    // back wall
+    for i in range_inclusive(-64i, 64) {
+      for j in range_inclusive(0i, 64) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(i, 0.5 + j, 32.0, block::Stone);
+      }
+    }
+    // left wall
+    for i in range_inclusive(-64i, 64) {
+      for j in range_inclusive(0i, 64) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(-32.0, 0.5 + j, i, block::Stone);
+      }
+    }
+    // right wall
+    for i in range_inclusive(-64i, 64) {
+      for j in range_inclusive(0i, 64) {
+        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+        place_block(32.0, 0.5 + j, i, block::Stone);
+      }
+    }
+  }
+
+  (blocks, block_loader)
+}
+
+fn make_mobs(
+  gl: &GLContext,
+  physics: &mut Physics<Id>,
+  id_allocator: &mut IdAllocator,
+  shader: Rc<RefCell<Shader>>,
+) -> (HashMap<Id, mob::Mob>, mob::MobBuffers) {
+  let mut mobs = HashMap::new();
+  let mut mob_buffers = mob::MobBuffers::new(gl, shader);
+
+  fn mob_behavior(world: &App, mob: &mut mob::Mob) {
+    let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
+    if Norm::norm(&to_player) < 2.0 {
+      mob.behavior = wait_for_distance;
+    }
+
+    fn wait_for_distance(world: &App, mob: &mut mob::Mob) {
+      let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
+      if Norm::norm(&to_player) > 8.0 {
+        mob.behavior = follow_player;
+      }
+    }
+
+    fn follow_player(world: &App, mob: &mut mob::Mob) {
+      let mut to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
+      if to_player.normalize() < 2.0 {
+        mob.behavior = wait_to_reset;
+        mob.speed = Vec3::new(0.0, 0.0, 0.0);
+      } else {
+        mob.speed = to_player / 2.0 as GLfloat;
+      }
+    }
+
+    fn wait_to_reset(world: &App, mob: &mut mob::Mob) {
+      let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
+      if Norm::norm(&to_player) >= 2.0 {
+        mob.behavior = mob_behavior;
+      }
+    }
+  }
+
+  add_mob(
+    gl,
+    physics,
+    &mut mobs,
+    &mut mob_buffers,
+    id_allocator,
+    Vec3::new(0.0, 8.0, -1.0),
+    mob_behavior
+  );
+
+  (mobs, mob_buffers)
+}
+
 fn place_block(
   physics: &mut Physics<Id>,
   blocks: &mut HashMap<Id, block::Block>,
@@ -291,6 +421,33 @@ fn place_block(
     blocks.insert(block.id, block);
     block_loader.push(Load(block.id));
   }
+}
+
+fn add_mob(
+  gl: &GLContext,
+  physics: &mut Physics<Id>,
+  mobs: &mut HashMap<Id, mob::Mob>,
+  mob_buffers: &mut mob::MobBuffers,
+  id_allocator: &mut IdAllocator,
+  low_corner: Vec3<GLfloat>,
+  behavior: fn(&App, &mut mob::Mob)
+) {
+  // TODO: mob loader instead of pushing directly to gl buffers
+
+  let id = id_allocator.allocate();
+
+  let mob =
+    mob::Mob {
+      speed: Vec3::new(0.0, 0.0, 0.0),
+      behavior: behavior,
+      id: id,
+    };
+
+  let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
+  mob_buffers.push(gl, id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
+
+  physics.insert(id, &bounds);
+  mobs.insert(id, mob);
 }
 
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
@@ -452,11 +609,10 @@ impl<'a> App<'a> {
     time!(&self.timers, "load", || {
       mouse::show_cursor(false);
 
-      let player_id = self.id_allocator.allocate();
-      self.player.id = player_id;
+      self.player.id = self.id_allocator.allocate();
       let min = Vec3::new(0.0, 0.0, 0.0);
       let max = Vec3::new(1.0, 2.0, 1.0);
-      self.physics.insert(player_id, &AABB::new(min, max));
+      self.physics.insert(self.player.id, &AABB::new(min, max));
 
       self.block_textures =
         load_block_textures(
@@ -478,43 +634,6 @@ impl<'a> App<'a> {
           gl::Uniform1i(loc, misc_texture_unit);
         }
       );
-
-      time!(&self.timers, "make_world", || {
-        self.make_world();
-      });
-
-      fn mob_behavior(world: &App, mob: &mut mob::Mob) {
-        let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
-        if Norm::norm(&to_player) < 2.0 {
-          mob.behavior = wait_for_distance;
-        }
-
-        fn wait_for_distance(world: &App, mob: &mut mob::Mob) {
-          let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
-          if Norm::norm(&to_player) > 8.0 {
-            mob.behavior = follow_player;
-          }
-        }
-
-        fn follow_player(world: &App, mob: &mut mob::Mob) {
-          let mut to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
-          if to_player.normalize() < 2.0 {
-            mob.behavior = wait_to_reset;
-            mob.speed = Vec3::new(0.0, 0.0, 0.0);
-          } else {
-            mob.speed = to_player / 2.0 as GLfloat;
-          }
-        }
-
-        fn wait_to_reset(world: &App, mob: &mut mob::Mob) {
-          let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
-          if Norm::norm(&to_player) >= 2.0 {
-            mob.behavior = mob_behavior;
-          }
-        }
-      }
-
-      self.add_mob(Vec3::new(0.0, 8.0, -1.0), mob_behavior);
 
       self.line_of_sight.push(
         &self.gl,
@@ -815,8 +934,6 @@ impl<'a> App<'a> {
 
     let hud_triangles = make_hud(&gl, hud_color_shader.clone());
 
-    let mob_buffers = mob::MobBuffers::new(&gl, color_shader.clone());
-
     let octree_loader = Rc::new(RefCell::new(Queue::new(1 << 20)));
 
     let octree_buffers = unsafe {
@@ -825,13 +942,38 @@ impl<'a> App<'a> {
 
     let (text_textures, text_triangles) = make_text(&gl, hud_texture_shader.clone());
 
-    App {
-      line_of_sight: line_of_sight,
-      physics: Physics {
+    let timers = stopwatch::TimerSet::new();
+
+    let mut physics =
+      Physics {
         octree: octree::Octree::new(octree_loader.clone(), &world_bounds),
         bounds: HashMap::new(),
-      },
-      block_loader: Queue::new(1 << 20),
+      };
+
+    let mut id_allocator = IdAllocator::new();
+
+    let (blocks, block_loader) =
+      time!(&timers, "make_blocks", || {
+        make_blocks(
+          &mut physics,
+          &mut id_allocator,
+        )
+      });
+
+    let (mobs, mob_buffers) =
+      time!(&timers, "make_mobs", || {
+        make_mobs(
+          &gl,
+          &mut physics,
+          &mut id_allocator,
+          color_shader.clone(),
+        )
+      });
+
+    App {
+      line_of_sight: line_of_sight,
+      physics: physics,
+      block_loader: block_loader,
       octree_loader: octree_loader,
       mob_buffers: mob_buffers,
       octree_buffers: octree_buffers,
@@ -842,7 +984,7 @@ impl<'a> App<'a> {
           texture_shader.clone(),
         ),
       block_textures: HashMap::new(),
-      blocks: HashMap::new(),
+      blocks: blocks,
       player: Player {
         camera: Camera::unit(),
         speed: Vec3::new(0.0, 0.0, 0.0),
@@ -854,10 +996,8 @@ impl<'a> App<'a> {
         lateral_rotation: 0.0,
         vertical_rotation: 0.0,
       },
-      mobs: HashMap::new(),
-      // Start assigning block_ids at 1.
-      // block_id 0 corresponds to no block.
-      id_allocator: IdAllocator::new(),
+      mobs: mobs,
+      id_allocator: id_allocator,
       hud_triangles: hud_triangles,
       text_textures: text_textures,
       text_triangles: text_triangles,
@@ -867,66 +1007,8 @@ impl<'a> App<'a> {
       mouse_buttons_pressed: Vec::new(),
       render_octree: false,
       render_outlines: true,
-      timers: stopwatch::TimerSet::new(),
+      timers: timers,
       gl: gl,
-    }
-  }
-
-  fn make_world(&mut self) {
-    let place_block = |x, y, z, block_type| {
-      let d = 0.5;
-      let min = Vec3::new(x, y, z);
-      self.place_block(min, min + Vec3::new(d, d, d), block_type, false);
-    };
-
-    // low platform
-    for i in range_inclusive(-2i, 2) {
-      for j in range_inclusive(-2i, 2) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-        place_block(6.0 + i, 6.0, 0.0 + j, block::Dirt);
-      }
-    }
-    // high platform
-    for i in range_inclusive(-2i, 2) {
-      for j in range_inclusive(-2i, 2) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-        place_block(0.0 + i, 12.0, 5.0 + j, block::Dirt);
-      }
-    }
-    // ground
-    for i in range_inclusive(-64i, 64) {
-      for j in range_inclusive(-64i, 64) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-        place_block(i, 0.0, j, block::Grass);
-      }
-    }
-    // front wall
-    for i in range_inclusive(-64i, 64) {
-      for j in range_inclusive(0i, 64) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-        place_block(i, 0.5 + j, -32.0, block::Stone);
-      }
-    }
-    // back wall
-    for i in range_inclusive(-64i, 64) {
-      for j in range_inclusive(0i, 64) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-        place_block(i, 0.5 + j, 32.0, block::Stone);
-      }
-    }
-    // left wall
-    for i in range_inclusive(-64i, 64) {
-      for j in range_inclusive(0i, 64) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-        place_block(-32.0, 0.5 + j, i, block::Stone);
-      }
-    }
-    // right wall
-    for i in range_inclusive(-64i, 64) {
-      for j in range_inclusive(0i, 64) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
-        place_block(32.0, 0.5 + j, i, block::Stone);
-      }
     }
   }
 
@@ -942,25 +1024,6 @@ impl<'a> App<'a> {
   /// Returns id of the entity in front of the cursor.
   fn entity_in_front(&self) -> Option<Id> {
     self.physics.octree.cast_ray(&self.player.forward_ray(), self.player.id)
-  }
-
-  fn add_mob(&mut self, low_corner: Vec3<GLfloat>, behavior: fn(&App, &mut mob::Mob)) {
-    // TODO: mob loader instead of pushing directly to gl buffers
-
-    let id = self.id_allocator.allocate();
-
-    let mob =
-      mob::Mob {
-        speed: Vec3::new(0.0, 0.0, 0.0),
-        behavior: behavior,
-        id: id,
-      };
-
-    let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
-    self.mob_buffers.push(&self.gl, id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
-
-    self.physics.insert(id, &bounds);
-    self.mobs.insert(id, mob);
   }
 
   fn place_block(
