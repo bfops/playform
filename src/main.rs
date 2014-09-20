@@ -154,7 +154,7 @@ fn load_block_textures(
     if img.color_type != png::RGBA8 {
       fail!("unsupported color type {:} in png", img.color_type);
     }
-    println!("loaded rgba8 png file {}", path);
+    debug!("loaded rgba8 png file {}", path);
 
     gl::ActiveTexture(gl::TEXTURE0 + block_type as GLuint);
     let texture = unsafe {
@@ -980,7 +980,7 @@ impl<'a> App<'a> {
         err => fail!("OpenGL error 0x{:x} in load()", err),
       }
 
-      println!("load() finished with {} blocks", blocks.len());
+      debug!("load() finished with {} blocks", blocks.len());
 
       App {
         line_of_sight: line_of_sight,
@@ -1104,15 +1104,14 @@ impl<'a> App<'a> {
 #[unsafe_destructor]
 impl<'a> Drop for App<'a> {
   fn drop(&mut self) {
-    println!("Update Stats");
-    println!("====================");
+    info!("Update Stats");
+    info!("====================");
     self.timers.print();
-    println!("");
   }
 }
 
 pub fn main() {
-  println!("starting");
+  debug!("starting");
 
   let mut window = WindowSDL2::new(
     OpenGL_3_3,
@@ -1127,6 +1126,5 @@ pub fn main() {
 
   App::new().run(&mut window);
 
-  println!("finished!");
-  println!("");
+  debug!("finished!");
 }

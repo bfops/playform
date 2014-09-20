@@ -11,6 +11,8 @@ extern crate gl;
 extern crate glw;
 extern crate input;
 extern crate libc;
+#[phase(plugin, link)]
+extern crate log;
 extern crate nalgebra;
 extern crate ncollide3df32;
 extern crate piston;

@@ -37,9 +37,9 @@ impl Stopwatch {
   /// Prints out timing statistics of this stopwatch.
   fn print(&self, name: &str) {
     if self.number_of_windows == 0 {
-      println!("{} never ran", name);
+      info!("{} never ran", name);
     } else {
-      println!(
+      info!(
         "{}: {}ms over {} samples (avg {}us)",
         name,
         self.total_time / 1000000,

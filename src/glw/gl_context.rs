@@ -2,23 +2,30 @@ use color::Color4;
 use cstr_cache;
 use gl;
 use gl::types::*;
+use log::macros;
 use shader::Shader;
+use std::raw;
 use std::mem;
 use std::ptr;
 use std::str;
 
-#[allow(dead_code)]
-unsafe fn println_c_str(str: *const u8) {
-  let mut str = str;
-  loop {
-    let c = *str as char;
-    if c == '\0' {
-      println!("");
-      return;
+unsafe fn from_c_str<'a>(s: *const u8) -> &'a str {
+  let mut len = 0;
+  {
+    let mut s_shift = s;
+    while *s_shift as char != '\0' {
+      s_shift = s_shift.offset(1);
+      len += 1;
     }
-    print!("{:c}", c);
-    str = str.offset(1);
   }
+
+  let as_slice: raw::Slice<u8> =
+    raw::Slice {
+      data: s,
+      len: len,
+    };
+
+  str::raw::from_utf8(mem::transmute(as_slice))
 }
 
 /// A handle to an OpenGL context. Only create one of these per thread.
@@ -145,10 +152,13 @@ impl GLContext {
   pub fn print_stats(&self) {
     let opengl_version = gl::GetString(gl::VERSION);
     let glsl_version = gl::GetString(gl::SHADING_LANGUAGE_VERSION);
-    print!("OpenGL version: ");
-    unsafe { println_c_str(opengl_version); }
-    print!("GLSL version: ");
-    unsafe { println_c_str(glsl_version); }
-    println!("");
+    info!(
+      "OpenGL version: {}", 
+      unsafe { from_c_str(opengl_version) },
+    );
+    info!(
+      "GLSL version: {}",
+      unsafe { from_c_str(glsl_version) },
+    );
   }
 }

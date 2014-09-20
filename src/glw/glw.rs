@@ -3,10 +3,13 @@
 //!
 //! GLW stands for "OpenGL wrapper".
 #![feature(globs)]
+#![feature(phase)]
 #![feature(unsafe_destructor)]
 
 extern crate gl;
 extern crate libc;
+#[phase(plugin, link)]
+extern crate log;
 extern crate nalgebra;
 
 pub mod camera;
