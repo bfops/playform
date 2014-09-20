@@ -272,8 +272,8 @@ fn make_blocks(
   let mut block_loader = Queue::new(1 << 20);
 
   {
+    let w = 1.0 / 2.0;
     let place_block = |x, y, z, block_type| {
-      let d = 0.5;
       let min = Vec3::new(x, y, z);
       place_block(
         physics,
@@ -281,58 +281,61 @@ fn make_blocks(
         &mut block_loader,
         id_allocator,
         min,
-        min + Vec3::new(d, d, d),
+        min + Vec3::new(w, w, w),
         block_type,
         false
       );
     };
 
+    let platform_range = (1.0 / w) as int;
     // low platform
-    for i in range_inclusive(-2i, 2) {
-      for j in range_inclusive(-2i, 2) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+    for i in range_inclusive(-platform_range, platform_range) {
+      for j in range_inclusive(-platform_range, platform_range) {
+        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
         place_block(6.0 + i, 6.0, 0.0 + j, block::Dirt);
       }
     }
     // high platform
-    for i in range_inclusive(-2i, 2) {
-      for j in range_inclusive(-2i, 2) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+    for i in range_inclusive(-platform_range, platform_range) {
+      for j in range_inclusive(-platform_range, platform_range) {
+        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
         place_block(0.0 + i, 12.0, 5.0 + j, block::Dirt);
       }
     }
+    let ground_range = (32.0 / w) as int;
     // ground
-    for i in range_inclusive(-64i, 64) {
-      for j in range_inclusive(-64i, 64) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+    for i in range_inclusive(-ground_range, ground_range) {
+      for j in range_inclusive(-ground_range, ground_range) {
+        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
         place_block(i, 0.0, j, block::Grass);
       }
     }
+    let wall_range = (32.0 / w) as int;
     // front wall
-    for i in range_inclusive(-64i, 64) {
-      for j in range_inclusive(0i, 64) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+    for i in range_inclusive(-wall_range, wall_range) {
+      for j in range_inclusive(0i, wall_range) {
+        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
         place_block(i, 0.5 + j, -32.0, block::Stone);
       }
     }
     // back wall
-    for i in range_inclusive(-64i, 64) {
-      for j in range_inclusive(0i, 64) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+    for i in range_inclusive(-wall_range, wall_range) {
+      for j in range_inclusive(0i, wall_range) {
+        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
         place_block(i, 0.5 + j, 32.0, block::Stone);
       }
     }
     // left wall
-    for i in range_inclusive(-64i, 64) {
-      for j in range_inclusive(0i, 64) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+    for i in range_inclusive(-wall_range, wall_range) {
+      for j in range_inclusive(0i, wall_range) {
+        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
         place_block(-32.0, 0.5 + j, i, block::Stone);
       }
     }
     // right wall
-    for i in range_inclusive(-64i, 64) {
-      for j in range_inclusive(0i, 64) {
-        let (i, j) = (i as GLfloat / 2.0, j as GLfloat / 2.0);
+    for i in range_inclusive(-wall_range, wall_range) {
+      for j in range_inclusive(0i, wall_range) {
+        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
         place_block(32.0, 0.5 + j, i, block::Stone);
       }
     }
