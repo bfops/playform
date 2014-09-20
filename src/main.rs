@@ -608,7 +608,7 @@ impl<'a> App<'a> {
       });
 
       time!(&self.timers, "update.mobs", || {
-        for (&id, mob) in self.mobs.mut_iter() {
+        for (_, mob) in self.mobs.mut_iter() {
           {
             let behavior = mob.behavior.clone();
             (behavior)(self, mob);
