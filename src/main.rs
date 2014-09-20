@@ -836,13 +836,13 @@ impl<'a> App<'a> {
       let color_shader =
         Rc::new(RefCell::new(Shader::from_file_prefix(
           &mut gl,
-          String::from_str("shaders/world_color"),
+          String::from_str("shaders/color"),
           Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
         )));
       let hud_color_shader =
         Rc::new(RefCell::new(Shader::from_file_prefix(
           &mut gl,
-          String::from_str("shaders/hud_color"),
+          String::from_str("shaders/color"),
           Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
         )));
       let hud_texture_shader =
