@@ -484,13 +484,13 @@ pub struct App<'a> {
   render_octree: bool,
   render_outlines: bool,
 
-  timers: stopwatch::TimerSet,
+  timers: Rc<stopwatch::TimerSet>,
   gl: GLContext,
 }
 
 impl<'a> App<'a> {
   fn key_press(&mut self, key: input::keyboard::Key) {
-    time!(&self.timers, "event.key_press", || {
+    time!(self.timers.deref(), "event.key_press", || {
       match key {
         input::keyboard::A => {
           self.player.walk(Vec3::new(-1.0, 0.0, 0.0));
@@ -544,7 +544,7 @@ impl<'a> App<'a> {
   }
 
   fn key_release(&mut self, key: input::keyboard::Key) {
-    time!(&self.timers, "event.key_release", || {
+    time!(self.timers.deref(), "event.key_release", || {
       match key {
         // accelerations are negated from those in key_press.
         input::keyboard::A => {
@@ -572,7 +572,7 @@ impl<'a> App<'a> {
   }
 
   fn mouse_move(&mut self, w: &mut WindowSDL2, x: f64, y: f64) {
-    time!(&self.timers, "event.mouse_move", || {
+    time!(self.timers.deref(), "event.mouse_move", || {
       let (cx, cy) = (WINDOW_WIDTH as f32 / 2.0, WINDOW_HEIGHT as f32 / 2.0);
       // args.y = h - args.y;
       // dy = args.y - cy;
@@ -591,7 +591,7 @@ impl<'a> App<'a> {
   }
 
   fn mouse_press(&mut self, button: input::mouse::Button) {
-    time!(&self.timers, "event.mouse_press", || {
+    time!(self.timers.deref(), "event.mouse_press", || {
       self.mouse_buttons_pressed.push(button);
     })
   }
@@ -600,66 +600,8 @@ impl<'a> App<'a> {
     swap_remove_first(&mut self.mouse_buttons_pressed, button)
   }
 
-  fn load(&mut self) {
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x} in initialization", err),
-    }
-
-    time!(&self.timers, "load", || {
-      mouse::show_cursor(false);
-
-      self.player.id = self.id_allocator.allocate();
-      let min = Vec3::new(0.0, 0.0, 0.0);
-      let max = Vec3::new(1.0, 2.0, 1.0);
-      self.physics.insert(self.player.id, &AABB::new(min, max));
-
-      self.block_textures =
-        load_block_textures(
-          &mut self.gl,
-          self.texture_shader.deref().borrow_mut().deref_mut()
-        );
-
-      // initialize the projection matrix
-      self.player.camera.translate((min + max) / 2.0 as GLfloat);
-      self.player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
-
-      self.player.translate(&mut self.physics, Vec3::new(0.0, 4.0, 10.0));
-
-      let misc_texture_unit = self.block_textures.len() as GLint;
-      self.hud_texture_shader.deref().borrow_mut().deref_mut().with_uniform_location(
-        &mut self.gl,
-        "texture_in",
-        |loc| {
-          gl::Uniform1i(loc, misc_texture_unit);
-        }
-      );
-
-      self.line_of_sight.push(
-        &self.gl,
-        [
-          ColoredVertex {
-            position: Vec3::new(0.0, 0.0, 0.0),
-            color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
-          },
-          ColoredVertex {
-            position: Vec3::new(0.0, 0.0, 0.0),
-            color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
-          },
-        ]
-      );
-    })
-
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x} in load()", err),
-    }
-
-    println!("load() finished with {} blocks", self.blocks.len());
-  }
-
   fn load_blocks(&mut self, max: Option<uint>) {
-    time!(&self.timers, "load.blocks", || {
+    time!(self.timers.deref(), "load.blocks", || {
       // block loading
       let count = max.map_or(self.block_loader.len(), |x| cmp::min(x, self.block_loader.len()));
       if count > 0 {
@@ -694,7 +636,7 @@ impl<'a> App<'a> {
   }
 
   fn load_octree(&mut self) {
-    time!(&self.timers, "load.octree", || {
+    time!(self.timers.deref(), "load.octree", || {
       // octree loading
       let count = cmp::min(OCTREE_LOAD_SPEED, self.octree_loader.deref().borrow().deref().len());
       if count > 0 {
@@ -715,19 +657,19 @@ impl<'a> App<'a> {
   }
 
   fn update(&mut self) {
-    time!(&self.timers, "update", || {
+    time!(self.timers.deref(), "update", || {
       // TODO(cgaebel): Ideally, the update thread should not be touching OpenGL.
 
-      time!(&self.timers, "update.load", || {
+      time!(self.timers.deref(), "update.load", || {
         self.load_blocks(Some(BLOCK_LOAD_SPEED));
         self.load_octree();
       });
 
-      time!(&self.timers, "update.player", || {
+      time!(self.timers.deref(), "update.player", || {
         self.player.update(&mut self.physics);
       });
 
-      time!(&self.timers, "update.mobs", || {
+      time!(self.timers.deref(), "update.mobs", || {
         for (_, mob) in self.mobs.mut_iter() {
           {
             let behavior = mob.behavior.clone();
@@ -751,7 +693,7 @@ impl<'a> App<'a> {
 
       // block::Block deletion
       if self.is_mouse_pressed(input::mouse::Left) {
-        time!(&self.timers, "update.delete_block", || {
+        time!(self.timers.deref(), "update.delete_block", || {
           self.entity_in_front().map(|id| {
             if self.blocks.contains_key(&id) {
               self.remove_block(id);
@@ -760,7 +702,7 @@ impl<'a> App<'a> {
         })
       }
       if self.is_mouse_pressed(input::mouse::Right) {
-        time!(&self.timers, "update.place_block", || {
+        time!(self.timers.deref(), "update.place_block", || {
           match self.entity_in_front() {
             None => {},
             Some(block_id) => {
@@ -788,7 +730,7 @@ impl<'a> App<'a> {
   }
 
   fn render(&mut self, _: &mut WindowSDL2, _: &RenderArgs) {
-    time!(&self.timers, "render", || {
+    time!(self.timers.deref(), "render", || {
       self.gl.clear_buffer();
 
       self.color_shader.borrow_mut().set_camera(&mut self.gl, &self.player.camera);
@@ -825,191 +767,252 @@ impl<'a> App<'a> {
   }
 
   /// Initializes an empty app.
-  pub fn new(gl: GLContext) -> App<'a> {
-    let mut gl = gl;
+  pub fn new() -> App<'a> {
+    let timers = Rc::new(stopwatch::TimerSet::new());
+    time!(timers.deref(), "load", || {
+      let mut gl = GLContext::new();
 
-    gl.enable_culling();
-    gl.enable_alpha_blending();
-    gl.enable_smooth_lines();
-    gl.enable_depth_buffer(100.0);
-    gl.set_background_color(SKY_COLOR);
+      gl.print_stats();
 
-    let world_bounds = AABB::new(
-      Vec3 { x: -512.0, y: -32.0, z: -512.0 },
-      Vec3 { x: 512.0, y: 512.0, z: 512.0 },
-    );
+      gl.enable_culling();
+      gl.enable_alpha_blending();
+      gl.enable_smooth_lines();
+      gl.enable_depth_buffer(100.0);
+      gl.set_background_color(SKY_COLOR);
+      mouse::show_cursor(false);
 
-    let texture_shader = {
-      let texture_shader =
+      let world_bounds = AABB::new(
+        Vec3 { x: -512.0, y: -32.0, z: -512.0 },
+        Vec3 { x: 512.0, y: 512.0, z: 512.0 },
+      );
+
+      let texture_shader = {
+        let texture_shader =
+          Rc::new(RefCell::new(Shader::from_file_prefix(
+            &mut gl,
+            String::from_str("shaders/world_texture"),
+            Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
+          )));
+        texture_shader.borrow_mut().deref_mut().set_point_light(
+          &mut gl,
+          &Light {
+            position: Vec3::new(0.0, 16.0, 0.0),
+            intensity: Vec3::new(0.6, 0.6, 0.6),
+          }
+        );
+        texture_shader.borrow_mut().deref_mut().set_ambient_light(
+          &mut gl,
+          Vec3::new(0.4, 0.4, 0.4),
+        );
+        texture_shader.borrow_mut().deref_mut().set_ambient_light(
+          &mut gl,
+          Vec3::new(0.4, 0.4, 0.4),
+        );
+        texture_shader.borrow_mut().deref_mut().with_uniform_location(
+          &mut gl,
+          "texture_positions",
+          |loc| {
+            let v = block::Block::texture_positions();
+            unsafe {
+              gl::Uniform2fv(loc, v.len() as GLint, mem::transmute(v.as_ptr()));
+            }
+          }
+        );
+        texture_shader.borrow_mut().deref_mut().with_uniform_location(
+          &mut gl,
+          "normals",
+          |loc| {
+            let v = block::Block::vertex_normals();
+            unsafe {
+              gl::Uniform3fv(loc, v.len() as GLint, mem::transmute(v.as_ptr()));
+            }
+          }
+        );
+        texture_shader
+      };
+      let color_shader =
         Rc::new(RefCell::new(Shader::from_file_prefix(
           &mut gl,
-          String::from_str("shaders/world_texture"),
+          String::from_str("shaders/world_color"),
           Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
         )));
-      texture_shader.borrow_mut().deref_mut().set_point_light(
-        &mut gl,
-        &Light {
-          position: Vec3::new(0.0, 16.0, 0.0),
-          intensity: Vec3::new(0.6, 0.6, 0.6),
-        }
-      );
-      texture_shader.borrow_mut().deref_mut().set_ambient_light(
-        &mut gl,
-        Vec3::new(0.4, 0.4, 0.4),
-      );
-      texture_shader.borrow_mut().deref_mut().set_ambient_light(
-        &mut gl,
-        Vec3::new(0.4, 0.4, 0.4),
-      );
-      texture_shader.borrow_mut().deref_mut().with_uniform_location(
-        &mut gl,
-        "texture_positions",
-        |loc| {
-          let v = block::Block::texture_positions();
-          unsafe {
-            gl::Uniform2fv(loc, v.len() as GLint, mem::transmute(v.as_ptr()));
-          }
-        }
-      );
-      texture_shader.borrow_mut().deref_mut().with_uniform_location(
-        &mut gl,
-        "normals",
-        |loc| {
-          let v = block::Block::vertex_normals();
-          unsafe {
-            gl::Uniform3fv(loc, v.len() as GLint, mem::transmute(v.as_ptr()));
-          }
-        }
-      );
-      texture_shader
-    };
-    let color_shader =
-      Rc::new(RefCell::new(Shader::from_file_prefix(
-        &mut gl,
-        String::from_str("shaders/world_color"),
-        Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
-      )));
-    let hud_color_shader =
-      Rc::new(RefCell::new(Shader::from_file_prefix(
-        &mut gl,
-        String::from_str("shaders/hud_color"),
-        Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
-      )));
-    let hud_texture_shader =
-      Rc::new(RefCell::new(Shader::from_file_prefix(
-        &mut gl,
-        String::from_str("shaders/hud_texture"),
-        Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
-      )));
+      let hud_color_shader =
+        Rc::new(RefCell::new(Shader::from_file_prefix(
+          &mut gl,
+          String::from_str("shaders/hud_color"),
+          Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
+        )));
+      let hud_texture_shader =
+        Rc::new(RefCell::new(Shader::from_file_prefix(
+          &mut gl,
+          String::from_str("shaders/hud_texture"),
+          Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
+        )));
 
-    {
-      let hud_camera = {
-        let mut c = Camera::unit();
-        c.fov = camera::sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
-        c.fov = camera::translation(Vec3::new(0.0, 0.0, -1.0)) * c.fov;
-        c
+      {
+        let hud_camera = {
+          let mut c = Camera::unit();
+          c.fov = camera::sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
+          c.fov = camera::translation(Vec3::new(0.0, 0.0, -1.0)) * c.fov;
+          c
+        };
+
+        hud_color_shader.borrow_mut().deref_mut().set_camera(&mut gl, &hud_camera);
+        hud_texture_shader.borrow_mut().deref_mut().set_camera(&mut gl, &hud_camera);
+      }
+
+      match gl::GetError() {
+        gl::NO_ERROR => {},
+        err => fail!("OpenGL error 0x{:x} setting up shaders", err),
+      }
+
+      let line_of_sight = {
+        let mut line_of_sight = {
+          GLSliceBuffer::new(
+              &gl,
+              color_shader.clone(),
+              [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+                vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
+              ],
+              2,
+              2,
+              Lines
+          )
+        };
+
+        line_of_sight.push(
+          &gl,
+          [
+            ColoredVertex {
+              position: Vec3::new(0.0, 0.0, 0.0),
+              color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
+            },
+            ColoredVertex {
+              position: Vec3::new(0.0, 0.0, 0.0),
+              color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
+            },
+          ]
+        );
+
+        line_of_sight
       };
 
-      hud_color_shader.borrow_mut().deref_mut().set_camera(&mut gl, &hud_camera);
-      hud_texture_shader.borrow_mut().deref_mut().set_camera(&mut gl, &hud_camera);
-    }
+      let hud_triangles = make_hud(&gl, hud_color_shader.clone());
 
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x} setting up shaders", err),
-    }
+      let octree_loader = Rc::new(RefCell::new(Queue::new(1 << 20)));
 
-    let line_of_sight = {
-      GLSliceBuffer::new(
-          &gl,
-          color_shader.clone(),
-          [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
-            vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
-          ],
-          2,
-          2,
-          Lines
-      )
-    };
-
-    let hud_triangles = make_hud(&gl, hud_color_shader.clone());
-
-    let octree_loader = Rc::new(RefCell::new(Queue::new(1 << 20)));
-
-    let octree_buffers = unsafe {
-      octree::OctreeBuffers::new(&gl, &color_shader)
-    };
-
-    let (text_textures, text_triangles) = make_text(&gl, hud_texture_shader.clone());
-
-    let timers = stopwatch::TimerSet::new();
-
-    let mut physics =
-      Physics {
-        octree: octree::Octree::new(octree_loader.clone(), &world_bounds),
-        bounds: HashMap::new(),
+      let octree_buffers = unsafe {
+        octree::OctreeBuffers::new(&gl, &color_shader)
       };
 
-    let mut id_allocator = IdAllocator::new();
+      let (text_textures, text_triangles) = make_text(&gl, hud_texture_shader.clone());
 
-    let (blocks, block_loader) =
-      time!(&timers, "make_blocks", || {
-        make_blocks(
-          &mut physics,
-          &mut id_allocator,
-        )
-      });
+      let mut physics =
+        Physics {
+          octree: octree::Octree::new(octree_loader.clone(), &world_bounds),
+          bounds: HashMap::new(),
+        };
 
-    let (mobs, mob_buffers) =
-      time!(&timers, "make_mobs", || {
-        make_mobs(
-          &gl,
-          &mut physics,
-          &mut id_allocator,
-          color_shader.clone(),
-        )
-      });
+      let mut id_allocator = IdAllocator::new();
 
-    App {
-      line_of_sight: line_of_sight,
-      physics: physics,
-      block_loader: block_loader,
-      octree_loader: octree_loader,
-      mob_buffers: mob_buffers,
-      octree_buffers: octree_buffers,
-      block_buffers:
-        block::BlockBuffers::new(
-          &gl,
-          color_shader.clone(),
-          texture_shader.clone(),
-        ),
-      block_textures: HashMap::new(),
-      blocks: blocks,
-      player: Player {
-        camera: Camera::unit(),
-        speed: Vec3::new(0.0, 0.0, 0.0),
-        accel: Vec3::new(0.0, -0.1, 0.0),
-        walk_accel: Vec3::new(0.0, 0.0, 0.0),
-        jump_fuel: 0,
-        is_jumping: false,
-        id: Id::none(),
-        lateral_rotation: 0.0,
-        vertical_rotation: 0.0,
-      },
-      mobs: mobs,
-      id_allocator: id_allocator,
-      hud_triangles: hud_triangles,
-      text_textures: text_textures,
-      text_triangles: text_triangles,
-      color_shader: color_shader,
-      texture_shader: texture_shader,
-      hud_texture_shader: hud_texture_shader,
-      mouse_buttons_pressed: Vec::new(),
-      render_octree: false,
-      render_outlines: true,
-      timers: timers,
-      gl: gl,
-    }
+      let (blocks, block_loader) =
+        time!(timers.deref(), "make_blocks", || {
+          make_blocks(
+            &mut physics,
+            &mut id_allocator,
+          )
+        });
+
+      let (mobs, mob_buffers) =
+        time!(timers.deref(), "make_mobs", || {
+          make_mobs(
+            &gl,
+            &mut physics,
+            &mut id_allocator,
+            color_shader.clone(),
+          )
+        });
+
+      let player = {
+        let mut player = Player {
+          camera: Camera::unit(),
+          speed: Vec3::new(0.0, 0.0, 0.0),
+          accel: Vec3::new(0.0, -0.1, 0.0),
+          walk_accel: Vec3::new(0.0, 0.0, 0.0),
+          jump_fuel: 0,
+          is_jumping: false,
+          id: Id::none(),
+          lateral_rotation: 0.0,
+          vertical_rotation: 0.0,
+        };
+
+        player.id = id_allocator.allocate();
+        let min = Vec3::new(0.0, 0.0, 0.0);
+        let max = Vec3::new(1.0, 2.0, 1.0);
+        physics.insert(player.id, &AABB::new(min, max));
+
+        // initialize the projection matrix
+        player.camera.translate((min + max) / 2.0 as GLfloat);
+        player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
+
+        player.translate(&mut physics, Vec3::new(0.0, 4.0, 10.0));
+
+        player
+      };
+
+      let block_textures =
+        load_block_textures(
+          &mut gl,
+          texture_shader.deref().borrow_mut().deref_mut()
+        );
+
+      let misc_texture_unit = block_textures.len() as GLint;
+      hud_texture_shader.deref().borrow_mut().deref_mut().with_uniform_location(
+        &mut gl,
+        "texture_in",
+        |loc| {
+          gl::Uniform1i(loc, misc_texture_unit);
+        }
+      );
+
+      match gl::GetError() {
+        gl::NO_ERROR => {},
+        err => fail!("OpenGL error 0x{:x} in load()", err),
+      }
+
+      println!("load() finished with {} blocks", blocks.len());
+
+      App {
+        line_of_sight: line_of_sight,
+        physics: physics,
+        block_loader: block_loader,
+        octree_loader: octree_loader,
+        mob_buffers: mob_buffers,
+        octree_buffers: octree_buffers,
+        block_buffers:
+          block::BlockBuffers::new(
+            &gl,
+            color_shader.clone(),
+            texture_shader.clone(),
+          ),
+        block_textures: block_textures,
+        blocks: blocks,
+        player: player,
+        mobs: mobs,
+        id_allocator: id_allocator,
+        hud_triangles: hud_triangles,
+        text_textures: text_textures,
+        text_triangles: text_triangles,
+        color_shader: color_shader,
+        texture_shader: texture_shader,
+        hud_texture_shader: hud_texture_shader,
+        mouse_buttons_pressed: Vec::new(),
+        render_octree: false,
+        render_outlines: true,
+        timers: timers.clone(),
+        gl: gl,
+      }
+    })
   }
 
   #[inline]
@@ -1080,8 +1083,6 @@ impl<'a> App<'a> {
 
   /// Executes a game loop.
   fn run(&mut self, w: &mut WindowSDL2) {
-    self.load();
-
     let mut game_iter =
       EventIterator::new(
         w,
@@ -1124,11 +1125,7 @@ pub fn main() {
     }
   );
 
-  let gl = GLContext::new();
-
-  gl.print_stats();
-
-  App::new(gl).run(&mut window);
+  App::new().run(&mut window);
 
   println!("finished!");
   println!("");
