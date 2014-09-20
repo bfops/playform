@@ -830,7 +830,6 @@ impl<'a> App<'a> {
       physics: Physics {
         octree: octree::Octree::new(octree_loader.clone(), &world_bounds),
         bounds: HashMap::new(),
-        locations: HashMap::new(),
       },
       block_loader: Queue::new(1 << 20),
       octree_loader: octree_loader,

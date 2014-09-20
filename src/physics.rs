@@ -7,16 +7,12 @@ use std::hash::Hash;
 
 pub struct Physics<T> {
   pub octree: octree::Octree<T>,
-  // TODO: couple this more tightly into the octree,
-  // so it's easier to maintain.
-  pub locations: HashMap<T, *mut octree::Octree<T>>,
   pub bounds: HashMap<T, AABB>,
 }
 
 impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
   pub fn insert(&mut self, t: T, bounds: &AABB) {
-    let loc = self.octree.insert(bounds.clone(), t);
-    self.locations.insert(t, loc);
+    self.octree.insert(bounds.clone(), t);
     self.bounds.insert(t, bounds.clone());
   }
 
@@ -24,11 +20,7 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
     match self.bounds.find(&t) {
       None => {},
       Some(bounds) => {
-        let &octree_location = self.locations.find(&t).expect("no octree_location to remove");
-        self.locations.remove(&t);
-        unsafe {
-          (*octree_location).remove(t, bounds);
-        }
+        self.octree.remove(t, bounds);
       },
     }
   }
@@ -47,18 +39,11 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
             bounds.maxs() + amount
           );
 
-        let octree_location = *(self.locations.find(&t).expect("location prematurely deleted"));
-        assert!(octree_location.is_not_null());
-        let collision = unsafe {
-          (*octree_location).intersect(&new_bounds, t)
-        };
+        let collision = self.octree.intersect(&new_bounds, t);
 
         if !collision {
-          unsafe {
-            let octree_location = (*octree_location).move(t, bounds, new_bounds);
-            self.locations.insert(t, octree_location);
-            *bounds = new_bounds;
-          }
+          self.octree.move(t, bounds, new_bounds);
+          *bounds = new_bounds;
         }
 
         Some(collision)

@@ -181,7 +181,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     }
   }
 
-  pub fn insert(&mut self, bounds: AABB, v: V) -> *mut Octree<V> {
+  pub fn insert(&mut self, bounds: AABB, v: V) {
     assert!(self.bounds.contains(&bounds));
     let contents = match self.contents {
       Leaf(ref mut vs) => {
@@ -223,7 +223,6 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       },
     };
     contents.map(|c| self.contents = c);
-    self as *mut Octree<V>
   }
 
   // Split a leaf into two subtrees.
@@ -351,7 +350,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
 
   // like insert, but before recursing downward, we recurse up the parents
   // until the bounds provided are inside the tree.
-  fn insert_from(&mut self, bounds: AABB, v: V) -> *mut Octree<V> {
+  fn insert_from(&mut self, bounds: AABB, v: V) {
     self.on_mut_ancestor(&bounds, |t| t.insert(bounds.clone(), v))
   }
 
@@ -388,7 +387,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     }
   }
 
-  pub fn move(&mut self, v: V, bounds: &AABB, new_bounds: AABB) -> *mut Octree<V> {
+  pub fn move(&mut self, v: V, bounds: &AABB, new_bounds: AABB) {
     self.remove(v, bounds);
     self.insert_from(new_bounds, v)
   }
