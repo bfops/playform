@@ -14,11 +14,14 @@ out vec3 normal;
 flat out uint type;
 
 void main() {
-  world_position = position;
   int id = gl_VertexID % 36;
   texture_position = texture_positions[id];
-  normal = normals[id / 6];
   type = block_type;
+
+  $if lighting
+    world_position = position;
+    normal = normals[id / 6];
+  $end
 
   gl_Position = projection_matrix * vec4(position, 1.0);
 }

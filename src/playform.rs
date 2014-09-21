@@ -33,6 +33,7 @@ mod main;
 mod mob;
 mod octree;
 mod physics;
+mod shader;
 mod ttf;
 
 #[allow(dead_code)]

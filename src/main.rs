@@ -30,6 +30,7 @@ use player::Player;
 use png;
 use sdl2_game_window::{WindowSDL2};
 use sdl2::mouse;
+use shader;
 use shader_version::opengl::*;
 use stopwatch;
 use stopwatch::*;
@@ -44,9 +45,11 @@ use std::rc::Rc;
 use libc::types::common::c95::c_void;
 
 // how many blocks to load during every update step
-static BLOCK_LOAD_SPEED:uint = 1 << 9;
-static OCTREE_LOAD_SPEED:uint = 1 << 11;
+static BLOCK_LOAD_SPEED: uint = 1 << 9;
+static OCTREE_LOAD_SPEED: uint = 1 << 11;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
+
+static USE_LIGHTING: bool = true;
 
 fn to_faces(bounds: &AABB) -> [AABB, ..6] {
   let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
@@ -791,26 +794,16 @@ impl<'a> App<'a> {
 
       let texture_shader = {
         let texture_shader =
-          Rc::new(RefCell::new(Shader::from_file_prefix(
+          Rc::new(RefCell::new(shader::from_file_prefix(
             &mut gl,
             String::from_str("shaders/world_texture"),
             Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
+            &FromIterator::from_iter(
+              Vec::from_slice(
+                [(String::from_str("lighting"), USE_LIGHTING)],
+              ).into_iter(),
+            ),
           )));
-        texture_shader.borrow_mut().deref_mut().set_point_light(
-          &mut gl,
-          &Light {
-            position: Vec3::new(0.0, 16.0, 0.0),
-            intensity: Vec3::new(0.6, 0.6, 0.6),
-          }
-        );
-        texture_shader.borrow_mut().deref_mut().set_ambient_light(
-          &mut gl,
-          Vec3::new(0.4, 0.4, 0.4),
-        );
-        texture_shader.borrow_mut().deref_mut().set_ambient_light(
-          &mut gl,
-          Vec3::new(0.4, 0.4, 0.4),
-        );
         texture_shader.borrow_mut().deref_mut().with_uniform_location(
           &mut gl,
           "texture_positions",
@@ -821,35 +814,55 @@ impl<'a> App<'a> {
             }
           }
         );
-        texture_shader.borrow_mut().deref_mut().with_uniform_location(
-          &mut gl,
-          "normals",
-          |loc| {
-            let v = block::Block::vertex_normals();
-            unsafe {
-              gl::Uniform3fv(loc, v.len() as GLint, mem::transmute(v.as_ptr()));
+        if USE_LIGHTING {
+          texture_shader.borrow_mut().deref_mut().set_point_light(
+            &mut gl,
+            &Light {
+              position: Vec3::new(0.0, 16.0, 0.0),
+              intensity: Vec3::new(0.6, 0.6, 0.6),
             }
-          }
-        );
+          );
+          texture_shader.borrow_mut().deref_mut().set_ambient_light(
+            &mut gl,
+            Vec3::new(0.4, 0.4, 0.4),
+          );
+          texture_shader.borrow_mut().deref_mut().set_ambient_light(
+            &mut gl,
+            Vec3::new(0.4, 0.4, 0.4),
+          );
+          texture_shader.borrow_mut().deref_mut().with_uniform_location(
+            &mut gl,
+            "normals",
+            |loc| {
+              let v = block::Block::vertex_normals();
+              unsafe {
+                gl::Uniform3fv(loc, v.len() as GLint, mem::transmute(v.as_ptr()));
+              }
+            }
+          );
+        }
         texture_shader
       };
       let color_shader =
-        Rc::new(RefCell::new(Shader::from_file_prefix(
+        Rc::new(RefCell::new(shader::from_file_prefix(
           &mut gl,
           String::from_str("shaders/color"),
           Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
+          &HashMap::new(),
         )));
       let hud_color_shader =
-        Rc::new(RefCell::new(Shader::from_file_prefix(
+        Rc::new(RefCell::new(shader::from_file_prefix(
           &mut gl,
           String::from_str("shaders/color"),
           Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
+          &HashMap::new(),
         )));
       let hud_texture_shader =
-        Rc::new(RefCell::new(Shader::from_file_prefix(
+        Rc::new(RefCell::new(shader::from_file_prefix(
           &mut gl,
           String::from_str("shaders/hud_texture"),
           Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
+          &HashMap::new(),
         )));
 
       {

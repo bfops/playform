@@ -5,7 +5,6 @@ use gl_context::GLContext;
 use light::Light;
 use nalgebra::na::{Vec3, Mat4};
 use std::collections::HashMap;
-use std::io::fs::File;
 use std::mem;
 use std::ptr;
 use std::str;
@@ -57,44 +56,6 @@ impl Shader {
       components: components,
       uniforms: HashMap::new(),
     }
-  }
-
-  pub fn from_files<T: Iterator<(String, GLenum)>>(
-    gl: &mut GLContext,
-    component_paths: T,
-  ) -> Shader {
-    Shader::new(gl, component_paths.map(|(path, component_type)| {
-      match File::open(&Path::new(path.as_slice())) {
-        Ok(mut f) =>
-          match f.read_to_string() {
-            Ok(s) => {
-              (s, component_type)
-            },
-            Err(e) => {
-              fail!("Couldn't read shader file \"{}\": {}", path, e);
-            }
-          },
-        Err(e) => {
-          fail!("Couldn't open shader file \"{}\" for reading: {}", path, e);
-        }
-      }
-    }))
-  }
-
-  pub fn from_file_prefix<T: Iterator<GLenum>>(
-    gl: &mut GLContext,
-    prefix: String,
-    components: T
-  ) -> Shader {
-    Shader::from_files(gl, components.map(|component| {
-      let suffix = match component {
-        gl::VERTEX_SHADER => "vert",
-        gl::FRAGMENT_SHADER => "frag",
-        gl::GEOMETRY_SHADER => "geom",
-        _ => fail!("Unknown shader component type: {}", component),
-      };
-      ((prefix + "." + suffix), component)
-    }))
   }
 
   pub fn with_uniform_location<T>(
