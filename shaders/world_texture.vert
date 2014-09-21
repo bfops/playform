@@ -18,10 +18,10 @@ void main() {
   texture_position = texture_positions[id];
   type = block_type;
 
-  $if lighting
+  #if $lighting$
     world_position = position;
     normal = normals[id / 6];
-  $end
+  #endif
 
   gl_Position = projection_matrix * vec4(position, 1.0);
 }

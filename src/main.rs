@@ -800,7 +800,7 @@ impl<'a> App<'a> {
             Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
             &FromIterator::from_iter(
               Vec::from_slice(
-                [(String::from_str("lighting"), USE_LIGHTING)],
+                [(String::from_str("lighting"), (USE_LIGHTING as uint).to_string())],
               ).into_iter(),
             ),
           )));

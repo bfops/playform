@@ -17,13 +17,13 @@ flat in uint type;
 out vec4 frag_color;
 
 void main() {
-  $if lighting
+  #if $lighting$
     // vector from this position to the light
     vec3 light_path = light.position - world_position;
     // length(normal) = 1, so don't bother dividing.
     float brightness = dot(normal, light_path) / length(light_path);
     brightness = clamp(brightness, 0, 1);
-  $end
+  #endif
 
   vec4 base_color = vec4(0);
   if(type == uint(0)) {
@@ -34,10 +34,10 @@ void main() {
     base_color = texture(textures[2], texture_position);
   }
 
-  $if lighting
+  #if $lighting$
     vec3 lighting = brightness * light.intensity + ambient_light;
     frag_color = vec4(clamp(lighting, 0, 1), 1) * base_color;
-  $else
+  #else
     frag_color = base_color;
-  $end
+  #endif
 }
