@@ -49,7 +49,10 @@ static BLOCK_LOAD_SPEED: uint = 1 << 9;
 static OCTREE_LOAD_SPEED: uint = 1 << 11;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
-static USE_LIGHTING: bool = true;
+// shader settings
+  static USE_LIGHTING: bool = false;
+  // note: not all polygons will be displayed, due to depth occlusion.
+  static RENDER_WIREFRAME: bool = true;
 
 fn to_faces(bounds: &AABB) -> [AABB, ..6] {
   let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
@@ -780,7 +783,9 @@ impl<'a> App<'a> {
 
       gl.print_stats();
 
-      gl.enable_culling();
+      if !RENDER_WIREFRAME {
+        gl.enable_culling();
+      }
       gl.enable_alpha_blending();
       gl.enable_smooth_lines();
       gl.enable_depth_buffer(100.0);
@@ -793,16 +798,22 @@ impl<'a> App<'a> {
       );
 
       let texture_shader = {
+        let components =
+          if RENDER_WIREFRAME {
+            Vec::from_slice([ gl::VERTEX_SHADER, gl::GEOMETRY_SHADER, gl::FRAGMENT_SHADER ])
+          } else {
+
+            Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER ])
+          };
         let texture_shader =
           Rc::new(RefCell::new(shader::from_file_prefix(
             &mut gl,
             String::from_str("shaders/world_texture"),
-            Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
-            &FromIterator::from_iter(
-              Vec::from_slice(
-                [(String::from_str("lighting"), (USE_LIGHTING as uint).to_string())],
-              ).into_iter(),
-            ),
+            components.into_iter(),
+            &FromIterator::from_iter(Vec::from_slice([
+              (String::from_str("lighting"), (USE_LIGHTING as uint).to_string()),
+              (String::from_str("wireframe"), (RENDER_WIREFRAME as uint).to_string()),
+            ]).into_iter()),
           )));
         texture_shader.borrow_mut().deref_mut().with_uniform_location(
           &mut gl,
@@ -1024,7 +1035,7 @@ impl<'a> App<'a> {
         hud_texture_shader: hud_texture_shader,
         mouse_buttons_pressed: Vec::new(),
         render_octree: false,
-        render_outlines: true,
+        render_outlines: !RENDER_WIREFRAME,
         timers: timers.clone(),
         gl: gl,
       }
