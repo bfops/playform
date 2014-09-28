@@ -9,13 +9,13 @@
 
 extern crate gl;
 extern crate glw;
+extern crate event;
 extern crate input;
 extern crate libc;
 #[phase(plugin, link)]
 extern crate log;
 extern crate nalgebra;
 extern crate ncollide3df32;
-extern crate piston;
 extern crate png;
 extern crate sdl2;
 extern crate sdl2_game_window;

@@ -1,5 +1,6 @@
 use block;
 use common::*;
+use event::{WindowSettings, Event, EventIterator, EventSettings, Update, Input, Render};
 use fontloader;
 use gl;
 use gl::types::*;
@@ -25,7 +26,6 @@ use nalgebra::na::{Vec2, Vec3, Norm};
 use ncollide3df32::ray::{Ray, RayCast};
 use octree;
 use physics::Physics;
-use piston::{WindowSettings, RenderArgs, Event, EventIterator, EventSettings, Update, Input, Render};
 use player::Player;
 use png;
 use sdl2_game_window::{WindowSDL2};
@@ -735,7 +735,7 @@ impl<'a> App<'a> {
     })
   }
 
-  fn render(&mut self, _: &mut WindowSDL2, _: &RenderArgs) {
+  fn render(&mut self) {
     time!(self.timers.deref(), "render", || {
       self.gl.clear_buffer();
 
@@ -1082,7 +1082,7 @@ impl<'a> App<'a> {
   /// Handles a game event.
   fn event(&mut self, game_window: &mut WindowSDL2, event: &mut Event) {
     match *event {
-      Render(ref mut args) => self.render(game_window, args),
+      Render(_) => self.render(),
       Update(_) => self.update(),
       Input(ref i) => match *i {
         Press(Keyboard(key)) => self.key_press(key),

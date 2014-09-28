@@ -2,24 +2,15 @@
 name = "playform"
 version = "0.0.0"
 dependencies = [
+ "event 0.0.0 (git+https://github.com/PistonDevelopers/event#bd6100151f83f1703b119f9465f7f8521b62f55b)",
  "gl 0.0.1 (git+https://github.com/bjz/gl-rs#7d546615fcbe26849ebcd5405e784a81b1e5eb6f)",
  "glw 0.0.0",
  "input 0.0.0 (git+https://github.com/PistonDevelopers/input#6453898bb0f56535b7773642674380e62bc87be1)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra#ba18f5aa702846c7fd79d80b9eefc0372d7a00dc)",
  "ncollide3df32 0.1.0 (git+https://github.com/sebcrozet/ncollide#7cbecb29b6e5dbcd7684b29f8bf89dbde1e270d5)",
- "piston 0.0.0 (git+https://github.com/PistonDevelopers/piston#61cb0ac5c08d66e7b5bec9abd083e1da9fd851dc)",
  "png 0.0.1 (git+https://github.com/sebcrozet/rust-png#1ebc50f3e2fea9c27f2741b1e1eb60f7919cd969)",
  "sdl2_game_window 0.0.0 (git+https://github.com/PistonDevelopers/sdl2_game_window#2a260043ffbd837905b612276c37a34d5cf54125)",
  "shader_version 0.0.0 (git+https://github.com/PistonDevelopers/shader_version#c561d15e7d3a561271222daefe073054f5d62b8c)",
-]
-
-[[package]]
-name = "cam"
-version = "0.0.0"
-source = "git+https://github.com/pistondevelopers/cam#049631d04570f61deef9f03242489e15cd9060f2"
-dependencies = [
- "input 0.0.0 (git+https://github.com/PistonDevelopers/input#6453898bb0f56535b7773642674380e62bc87be1)",
- "vecmath 0.0.0 (git+https://github.com/pistondevelopers/vecmath#fb14c586842e7e6e93cd02bb23e3dd4bf958e594)",
 ]
 
 [[package]]
@@ -34,11 +25,6 @@ source = "git+https://github.com/PistonDevelopers/event#bd6100151f83f1703b119f94
 dependencies = [
  "input 0.0.0 (git+https://github.com/PistonDevelopers/input#6453898bb0f56535b7773642674380e62bc87be1)",
 ]
-
-[[package]]
-name = "genmesh"
-version = "0.1.0"
-source = "git+https://github.com/csherratt/genmesh.git#8fc064208cfed8ee0f6539862a8065bab7319303"
 
 [[package]]
 name = "gl"
@@ -66,19 +52,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "graphics"
-version = "0.0.0"
-source = "git+https://github.com/pistondevelopers/graphics#ec590d89ac3068e24c5c377f7237b424f61321e2"
-dependencies = [
- "vecmath 0.0.0 (git+https://github.com/pistondevelopers/vecmath#fb14c586842e7e6e93cd02bb23e3dd4bf958e594)",
-]
-
-[[package]]
-name = "image"
-version = "0.0.0"
-source = "git+https://github.com/pistondevelopers/image#334376ee8147373e61b05a552978508ab438fb10"
-
-[[package]]
 name = "input"
 version = "0.0.0"
 source = "git+https://github.com/PistonDevelopers/input#6453898bb0f56535b7773642674380e62bc87be1"
@@ -100,28 +73,6 @@ source = "git+https://github.com/sebcrozet/ncollide#7cbecb29b6e5dbcd7684b29f8bf8
 dependencies = [
  "dim3 1.0.0 (git+https://github.com/sebcrozet/ncollide#7cbecb29b6e5dbcd7684b29f8bf89dbde1e270d5)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra#ba18f5aa702846c7fd79d80b9eefc0372d7a00dc)",
-]
-
-[[package]]
-name = "noise-rs"
-version = "0.0.1"
-source = "git+https://github.com/bjz/noise-rs#efd7125385cacae0f911032345729c8cfd98f72c"
-
-[[package]]
-name = "piston"
-version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/piston#61cb0ac5c08d66e7b5bec9abd083e1da9fd851dc"
-dependencies = [
- "cam 0.0.0 (git+https://github.com/pistondevelopers/cam#049631d04570f61deef9f03242489e15cd9060f2)",
- "event 0.0.0 (git+https://github.com/PistonDevelopers/event#bd6100151f83f1703b119f9465f7f8521b62f55b)",
- "genmesh 0.1.0 (git+https://github.com/csherratt/genmesh.git#8fc064208cfed8ee0f6539862a8065bab7319303)",
- "graphics 0.0.0 (git+https://github.com/pistondevelopers/graphics#ec590d89ac3068e24c5c377f7237b424f61321e2)",
- "image 0.0.0 (git+https://github.com/pistondevelopers/image#334376ee8147373e61b05a552978508ab438fb10)",
- "input 0.0.0 (git+https://github.com/PistonDevelopers/input#6453898bb0f56535b7773642674380e62bc87be1)",
- "noise-rs 0.0.1 (git+https://github.com/bjz/noise-rs#efd7125385cacae0f911032345729c8cfd98f72c)",
- "shader_version 0.0.0 (git+https://github.com/PistonDevelopers/shader_version#c561d15e7d3a561271222daefe073054f5d62b8c)",
- "sprite 0.0.0 (git+https://github.com/pistondevelopers/sprite#79364441fd9fea6b03743f43396a69dc1bd5c51b)",
- "vecmath 0.0.0 (git+https://github.com/pistondevelopers/vecmath#fb14c586842e7e6e93cd02bb23e3dd4bf958e594)",
 ]
 
 [[package]]
@@ -155,24 +106,4 @@ dependencies = [
 name = "shader_version"
 version = "0.0.0"
 source = "git+https://github.com/PistonDevelopers/shader_version#c561d15e7d3a561271222daefe073054f5d62b8c"
-
-[[package]]
-name = "sprite"
-version = "0.0.0"
-source = "git+https://github.com/pistondevelopers/sprite#79364441fd9fea6b03743f43396a69dc1bd5c51b"
-dependencies = [
- "event 0.0.0 (git+https://github.com/PistonDevelopers/event#bd6100151f83f1703b119f9465f7f8521b62f55b)",
- "graphics 0.0.0 (git+https://github.com/pistondevelopers/graphics#ec590d89ac3068e24c5c377f7237b424f61321e2)",
- "uuid 0.0.1 (git+https://github.com/rust-lang/uuid#c3041068f413a5e46d795d21a346072794593839)",
-]
-
-[[package]]
-name = "uuid"
-version = "0.0.1"
-source = "git+https://github.com/rust-lang/uuid#c3041068f413a5e46d795d21a346072794593839"
-
-[[package]]
-name = "vecmath"
-version = "0.0.0"
-source = "git+https://github.com/pistondevelopers/vecmath#fb14c586842e7e6e93cd02bb23e3dd4bf958e594"
 

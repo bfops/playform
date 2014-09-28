@@ -19,8 +19,8 @@ git = "https://github.com/bjz/gl-rs"
 [dependencies.sdl2_game_window]
 git = "https://github.com/PistonDevelopers/sdl2_game_window"
 
-[dependencies.piston]
-git = "https://github.com/PistonDevelopers/piston"
+[dependencies.event]
+git = "https://github.com/PistonDevelopers/event"
 
 [dependencies.input]
 git = "https://github.com/PistonDevelopers/input"
