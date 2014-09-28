@@ -34,7 +34,7 @@ impl Block {
     // texture; if we do, we get edges showing up in rendering.
     let d = 0.01;
 
-    Vec::from_slice([
+    [
       // front
       Vec2::new(0.00 + d, 0.50 + d),
       Vec2::new(0.25 - d, 0.75 - d),
@@ -77,18 +77,18 @@ impl Block {
       Vec2::new(0.75 + d, 0.50 + d),
       Vec2::new(0.75 + d, 0.75 - d),
       Vec2::new(1.00 - d, 0.75 - d),
-    ])
+    ].to_vec()
   }
 
   pub fn vertex_normals() -> Vec<Vec3<GLfloat>> {
-    Vec::from_slice([
+    [
       Vec3::new( 0.0,  0.0,  1.0),
       Vec3::new(-1.0,  0.0,  0.0),
       Vec3::new( 0.0,  1.0,  0.0),
       Vec3::new( 0.0,  0.0, -1.0),
       Vec3::new( 1.0,  0.0,  0.0),
       Vec3::new( 0.0, -1.0,  0.0),
-    ])
+    ].to_vec()
   }
 
   // Construct outlines for this Block, to sharpen the edges.

@@ -213,10 +213,10 @@ fn make_text(
     )
   };
 
-  let instructions = Vec::from_slice([
+  let instructions = [
           "Use WASD to move, and spacebar to jump.",
           "Use the mouse to look around, and click to remove blocks."
-      ]);
+      ].to_vec();
 
   let mut y = 0.99;
 
@@ -797,11 +797,9 @@ impl<'a> App<'a> {
           Rc::new(RefCell::new(shader::from_file_prefix(
             &mut gl,
             String::from_str("shaders/world_texture"),
-            Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
+            [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
             &FromIterator::from_iter(
-              Vec::from_slice(
-                [(String::from_str("lighting"), (USE_LIGHTING as uint).to_string())],
-              ).into_iter(),
+              [(String::from_str("lighting"), (USE_LIGHTING as uint).to_string())].to_vec().into_iter(),
             ),
           )));
         texture_shader.borrow_mut().deref_mut().with_uniform_location(
@@ -847,21 +845,21 @@ impl<'a> App<'a> {
         Rc::new(RefCell::new(shader::from_file_prefix(
           &mut gl,
           String::from_str("shaders/color"),
-          Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
+          [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
           &HashMap::new(),
         )));
       let hud_color_shader =
         Rc::new(RefCell::new(shader::from_file_prefix(
           &mut gl,
           String::from_str("shaders/color"),
-          Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
+          [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
           &HashMap::new(),
         )));
       let hud_texture_shader =
         Rc::new(RefCell::new(shader::from_file_prefix(
           &mut gl,
           String::from_str("shaders/hud_texture"),
-          Vec::from_slice([ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ]).into_iter(),
+          [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
           &HashMap::new(),
         )));
 

@@ -8,48 +8,50 @@ use std::io::fs::File;
 // Turn a shader definition into a vanilla GLSL shader definition.
 // See the README in the shaders folder for details.
 fn preprocess(shader: String, vars: &HashMap<String, String>) -> Option<String> {
-  let mut shader = shader;
+  let shader = shader.into_bytes();
   let mut processed = String::new();
-  loop {
-    match shader.shift_char() {
-      None => {
-        return Some(processed);
-      },
-      Some(c) => {
-        match c {
-          '$' => {
-            let mut var_name = String::new();
-            loop {
-              match shader.shift_char() {
-                None => {
-                  error!("$ without matching $");
-                  return None;
-                },
-                Some('$') => {
-                  break;
-                },
-                Some(c) => {
-                  var_name.push_char(c);
-                },
-              }
-            }
+  let mut i = 0;
 
-            match vars.find(&var_name) {
-              None => {
-                error!("Reference to undefined variable: {}", var_name);
-                return None;
-              },
-              Some(val) => {
-                processed.push_str(val.as_slice());
-              },
-            }
+  // For termination conditions, look for explicit returns.
+  loop {
+    if i >= shader.len() {
+      return Some(processed);
+    }
+    match shader[i] as char {
+      '$' => {
+        let mut var_name = String::new();
+        loop {
+          i += 1;
+          if i >= shader.len() {
+            error!("$ without matching $");
+            return None;
+          }
+          match shader[i] as char {
+            '$' => {
+              break;
+            },
+            c => {
+              var_name.push(c);
+            },
+          }
+        }
+
+        match vars.find(&var_name) {
+          None => {
+            error!("Reference to undefined variable: {}", var_name);
+            return None;
           },
-          _ => {
-            processed.push_char(c);
+          Some(val) => {
+            processed.push_str(val.as_slice());
           },
         }
       },
+      c => {
+        processed.push(c);
+      },
     }
+
+    i += 1;
   }
 }
 
@@ -92,12 +94,10 @@ baz
     preprocess(
       input,
       &FromIterator::from_iter(
-        Vec::from_slice(
-          [
-            (String::from_str("foo"), String::from_str("foo")),
-            (String::from_str("bar"), String::from_str("bar")),
-          ],
-        ).into_iter(),
+        [
+          (String::from_str("foo"), String::from_str("foo")),
+          (String::from_str("bar"), String::from_str("bar")),
+        ].to_vec().into_iter(),
       ),
     );
   assert!(
