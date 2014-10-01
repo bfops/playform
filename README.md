@@ -1,8 +1,10 @@
 ## Introduction
 
 playform aspires to be an open-world sandbox game written in Rust.
-Right now, it renders a basic world and stops the player from colliding
-with it, as well as allowing the player to place and destroy blocks.
+It's loosely "voxel" based, taking inspiration from [Voxel Farm](http://procworld.blogspot.com/) and Minecraft.
+
+Right now, it renders a basic world and stops the player from colliding with it, as well as allowing the player to place and destroy blocks.
+A lot of work is currently going into making it robust and performant, rather than adding features.
 
 Help is appreciated! You can hop over to the [issues page](https://github.com/bfops/playform/issues) to see what needs doing.
 
