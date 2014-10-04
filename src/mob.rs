@@ -10,7 +10,9 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-type Behavior = fn(&main::App, &mut Mob);
+// N.B.: Behaviors are unsafe because they take both a mutable and immutable
+// reference to a mob (the mob is also inside the main::App).
+pub type Behavior = unsafe fn(&main::App, &mut Mob);
 
 pub struct Mob {
   pub speed: Vec3<f32>,

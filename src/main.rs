@@ -1,4 +1,5 @@
 use block;
+use borrow::*;
 use common::*;
 use event::{WindowSettings, Event, EventIterator, EventSettings, Update, Input, Render};
 use fontloader;
@@ -20,10 +21,10 @@ use input;
 use input::{Press,Release,Move,Keyboard,Mouse,MouseCursor};
 use loader::{Loader, Load, Unload};
 use mob;
-use ncollide3df32::bounding_volume::LooseBoundingVolume;
-use ncollide3df32::bounding_volume::aabb::AABB;
 use nalgebra::na::{Vec2, Vec3, Norm};
-use ncollide3df32::ray::{Ray, RayCast};
+use ncollide::bounding_volume::LooseBoundingVolume;
+use ncollide::bounding_volume::aabb::AABB;
+use ncollide::ray::{Ray, RayCast};
 use octree;
 use physics::Physics;
 use player::Player;
@@ -436,7 +437,7 @@ fn add_mob(
   mob_buffers: &mut mob::MobBuffers,
   id_allocator: &mut IdAllocator,
   low_corner: Vec3<GLfloat>,
-  behavior: fn(&App, &mut mob::Mob)
+  behavior: mob::Behavior,
 ) {
   // TODO: mob loader instead of pushing directly to gl buffers
 
@@ -676,11 +677,17 @@ impl<'a> App<'a> {
       });
 
       time!(self.timers.deref(), "update.mobs", || {
-        for (_, mob) in self.mobs.mut_iter() {
+        // Unsafely mutably borrow the mobs.
+        let mobs: *mut HashMap<Id, mob:: Mob> = &mut self.mobs;
+        for (_, mob) in unsafe { (*mobs).mut_iter() } {
           {
-            let behavior = mob.behavior.clone();
-            (behavior)(self, mob);
+            // This code can do unsafe things with the mob vector.
+            let behavior = mob.behavior;
+            unsafe { (behavior)(self, mob); }
           }
+          // *Safely* mutably borrow the mobs.
+          // Code below here "can't" do unsafe things with the mob vector.
+          let mobs = Borrow::borrow(&mut self.mobs);
 
           mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
 

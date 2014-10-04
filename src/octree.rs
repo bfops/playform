@@ -1,9 +1,9 @@
 use common::*;
 use loader::{Loader,Load,Unload};
 use nalgebra::na::{Vec3};
-use ncollide3df32::bounding_volume::aabb::AABB;
-use ncollide3df32::bounding_volume::BoundingVolume;
-use ncollide3df32::ray::{Ray, RayCast};
+use ncollide::bounding_volume::aabb::AABB;
+use ncollide::bounding_volume::BoundingVolume;
+use ncollide::ray::{Ray, RayCast};
 use std::cell::RefCell;
 use std::collections::{HashMap,HashSet};
 use std::hash::Hash;
@@ -387,7 +387,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     }
   }
 
-  pub fn move(&mut self, v: V, bounds: &AABB, new_bounds: AABB) {
+  pub fn reinsert(&mut self, v: V, bounds: &AABB, new_bounds: AABB) {
     self.remove(v, bounds);
     self.insert_from(new_bounds, v)
   }

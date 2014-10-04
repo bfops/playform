@@ -15,18 +15,20 @@ extern crate libc;
 #[phase(plugin, link)]
 extern crate log;
 extern crate nalgebra;
-extern crate ncollide3df32;
+extern crate ncollide;
 extern crate png;
 extern crate sdl2;
 extern crate sdl2_game_window;
 extern crate shader_version;
 
+// so unwrap! is defined for mods below
 mod common;
 mod block;
+mod borrow;
 mod fontloader;
 mod id_allocator;
 mod player;
-// so the time! macro is defined in main
+// so time! macro is defined in main
 mod stopwatch;
 mod loader;
 mod main;

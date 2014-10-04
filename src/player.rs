@@ -4,7 +4,7 @@ use id_allocator::Id;
 use physics::Physics;
 use nalgebra::na::Vec3;
 use nalgebra::na::RMul;
-use ncollide3df32::ray::Ray;
+use ncollide::ray::Ray;
 use std::f32::consts::PI;
 
 static MAX_JUMP_FUEL: uint = 4;

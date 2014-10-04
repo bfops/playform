@@ -34,7 +34,8 @@ git = "https://github.com/sebcrozet/rust-png"
 [dependencies.shader_version]
 git = "https://github.com/PistonDevelopers/shader_version"
 
-[dependencies.ncollide3df32]
+[dependencies.ncollide]
+features = ["3df32"]
 git = "https://github.com/sebcrozet/ncollide"
 
 [dependencies.glw]

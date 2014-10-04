@@ -1,6 +1,6 @@
 use nalgebra::na::Vec3;
-use ncollide3df32::bounding_volume::aabb::AABB;
-use ncollide3df32::math::Scalar;
+use ncollide::bounding_volume::aabb::AABB;
+use ncollide::math::Scalar;
 use octree;
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -42,7 +42,7 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
         let collision = self.octree.intersect(&new_bounds, t);
 
         if !collision {
-          self.octree.move(t, bounds, new_bounds);
+          self.octree.reinsert(t, bounds, new_bounds);
           *bounds = new_bounds;
         }
 
