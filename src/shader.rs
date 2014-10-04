@@ -109,10 +109,28 @@ baz
 }
 
 #[test]
-fn preprocess_undefined_var() {
+fn preprocess_no_matching_token() {
   let input = String::from_str(
 r"
 $foo
+bar
+baz
+");
+  let expected = None;
+  let actual = preprocess(input, &HashMap::new());
+  assert!(
+    actual == expected,
+    "{} != {}",
+    actual,
+    expected
+  );
+}
+
+#[test]
+fn preprocess_undefined_var() {
+  let input = String::from_str(
+r"
+$foo$
 bar
 baz
 ");
