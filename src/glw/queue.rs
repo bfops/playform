@@ -314,7 +314,7 @@ fn vec_copy_test() {
   assert_eq!(v, Vec::from_slice([1, 4, 5, 4, 5i]));
 }
 
-pub struct QueueItems<'a, T> { inner: Chain<slice::Items<'a, T>, slice::Items<'a, T>> }
+pub struct QueueItems<'a, T:'a> { inner: Chain<slice::Items<'a, T>, slice::Items<'a, T>> }
 
 impl<'a, T> Iterator<&'a T> for QueueItems<'a, T> {
   fn next(&mut self) -> Option<&'a T> { self.inner.next() }

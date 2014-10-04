@@ -7,7 +7,7 @@ dependencies = [
  "glw 0.0.0",
  "input 0.0.0 (git+https://github.com/PistonDevelopers/input#6453898bb0f56535b7773642674380e62bc87be1)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra#ba18f5aa702846c7fd79d80b9eefc0372d7a00dc)",
- "ncollide 0.1.0 (git+https://github.com/sebcrozet/ncollide#ba083c060cf539651af88110555b32adaf0cdcc7)",
+ "ncollide 0.1.0 (git+https://github.com/bfops/ncollide#ed1741f02df4bd9df2fa2f82c21834f3eae55055)",
  "png 0.0.1 (git+https://github.com/sebcrozet/rust-png#1ebc50f3e2fea9c27f2741b1e1eb60f7919cd969)",
  "sdl2_game_window 0.0.0 (git+https://github.com/PistonDevelopers/sdl2_game_window#ab64625e69c49cbabe66177876a4a574baef286e)",
  "shader_version 0.0.0 (git+https://github.com/PistonDevelopers/shader_version#c561d15e7d3a561271222daefe073054f5d62b8c)",
@@ -64,7 +64,7 @@ source = "git+https://github.com/sebcrozet/nalgebra#ba18f5aa702846c7fd79d80b9eef
 [[package]]
 name = "ncollide"
 version = "0.1.0"
-source = "git+https://github.com/sebcrozet/ncollide#ba083c060cf539651af88110555b32adaf0cdcc7"
+source = "git+https://github.com/bfops/ncollide#ed1741f02df4bd9df2fa2f82c21834f3eae55055"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra#ba18f5aa702846c7fd79d80b9eefc0372d7a00dc)",
 ]
