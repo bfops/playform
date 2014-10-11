@@ -1,5 +1,5 @@
 use gl::types::GLfloat;
-use nalgebra::na::Vec3;
+use nalgebra::Vec3;
 
 pub struct Light {
   pub position: Vec3<GLfloat>,

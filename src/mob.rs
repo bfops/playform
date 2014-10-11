@@ -5,7 +5,7 @@ use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
 use id_allocator::Id;
-use nalgebra::na::Vec3;
+use nalgebra::Vec3;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;

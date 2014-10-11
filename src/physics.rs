@@ -1,4 +1,4 @@
-use nalgebra::na::Vec3;
+use nalgebra::Vec3;
 use ncollide::bounding_volume::aabb::AABB;
 use ncollide::math::Scalar;
 use octree;

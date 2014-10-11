@@ -1,6 +1,6 @@
 use common::*;
 use loader::{Loader,Load,Unload};
-use nalgebra::na::{Vec3};
+use nalgebra::Pnt3;
 use ncollide::bounding_volume::aabb::AABB;
 use ncollide::bounding_volume::BoundingVolume;
 use ncollide::ray::{Ray, RayCast};
@@ -26,7 +26,7 @@ fn middle(bounds: &AABB, d: Dimension) -> F {
   (get(d, bounds.maxs()) + get(d, bounds.mins())) / 2.0
 }
 
-fn get(d: Dimension, p: &Vec3<F>) -> F {
+fn get(d: Dimension, p: &Pnt3<F>) -> F {
   match d {
     X => p.x,
     Y => p.y,
@@ -34,7 +34,7 @@ fn get(d: Dimension, p: &Vec3<F>) -> F {
   }
 }
 
-fn set<F>(d: Dimension, p: &mut Vec3<F>, v: F) {
+fn set<F>(d: Dimension, p: &mut Pnt3<F>, v: F) {
   match d {
     X => p.x = v,
     Y => p.y = v,

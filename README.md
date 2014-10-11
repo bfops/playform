@@ -16,7 +16,7 @@ That said, these projects should probably keep a closer eye on each other than t
 
 ## Making it work
 
-Have a `rustc` and `cargo` built no earlier than October 9th, 2014.
+Have a `rustc` and `cargo` built no earlier than October 10th, 2014.
 Install `libpng`, `SDL2` and `SDL2_ttf`.
 Build with `cargo build`, which will grab all the Rust dependencies.
 Run with `cargo run` and playform will start!

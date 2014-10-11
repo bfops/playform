@@ -1,12 +1,12 @@
 use gl::types::*;
-use nalgebra::na::{Mat3, Mat4, Vec3, Eye, Outer};
+use nalgebra::{Mat3, Mat4, Vec3, Pnt3, Eye, Outer};
 
 pub struct Camera {
   // projection matrix components
   pub translation: Mat4<GLfloat>,
   pub rotation: Mat4<GLfloat>,
   pub fov: Mat4<GLfloat>,
-  pub position: Vec3<GLfloat>,
+  pub position: Pnt3<GLfloat>,
 }
 
 /// Create a 3D translation matrix.
@@ -85,7 +85,7 @@ impl Camera {
       translation: Eye::new_identity(4),
       rotation: Eye::new_identity(4),
       fov: Eye::new_identity(4),
-      position: Vec3::new(0.0, 0.0, 0.0),
+      position: Pnt3::new(0.0, 0.0, 0.0),
     }
   }
 

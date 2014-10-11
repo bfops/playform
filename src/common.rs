@@ -2,19 +2,19 @@
 
 use glw::color::Color4;
 use glw::vertex::{ColoredVertex};
-use nalgebra::na::Vec3;
+use nalgebra::Pnt3;
 use ncollide::bounding_volume::aabb::AABB;
 
-pub static WINDOW_WIDTH:  uint = 800;
-pub static WINDOW_HEIGHT: uint = 600;
+pub const WINDOW_WIDTH:  uint = 800;
+pub const WINDOW_HEIGHT: uint = 600;
 
-pub static TRIANGLES_PER_BOX: uint = 12;
-pub static VERTICES_PER_TRIANGLE: uint = 3;
-pub static TRIANGLE_VERTICES_PER_BOX: uint = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
+pub const TRIANGLES_PER_BOX: uint = 12;
+pub const VERTICES_PER_TRIANGLE: uint = 3;
+pub const TRIANGLE_VERTICES_PER_BOX: uint = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
 
-pub static VERTICES_PER_LINE: uint = 2;
-pub static LINES_PER_BOX: uint = 12;
-pub static LINE_VERTICES_PER_BOX: uint = LINES_PER_BOX * VERTICES_PER_LINE;
+pub const VERTICES_PER_LINE: uint = 2;
+pub const LINES_PER_BOX: uint = 12;
+pub const LINE_VERTICES_PER_BOX: uint = LINES_PER_BOX * VERTICES_PER_LINE;
 
 pub fn partial_min_by<A: Copy, T: Iterator<A>, B: PartialOrd>(t: T, f: |A| -> B) -> Option<A> {
   let mut t = t;
@@ -43,7 +43,7 @@ pub fn to_outlines<'a>(bounds: &AABB) -> [ColoredVertex, ..LINE_VERTICES_PER_BOX
 
   let vtx = |x: f32, y: f32, z: f32| -> ColoredVertex {
     ColoredVertex {
-      position: Vec3::new(x, y, z),
+      position: Pnt3::new(x, y, z),
       color: c
     }
   };

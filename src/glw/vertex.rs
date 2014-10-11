@@ -2,14 +2,14 @@
 use gl;
 use gl::types::*;
 use color::Color4;
-use nalgebra::na::{Vec2,Vec3};
+use nalgebra::{Pnt2,Pnt3,Vec2,Vec3};
 use std::mem;
 
 #[deriving(Show, Clone, Copy, PartialEq)]
 /// An untextured rendering vertex, with position and color.
 pub struct ColoredVertex {
   /// The 3-d position of this vertex in world space.
-  pub position: Vec3<GLfloat>,
+  pub position: Pnt3<GLfloat>,
   /// The color to apply to this vertex, in lieu of a texture.
   pub color:    Color4<GLfloat>,
 }
@@ -23,9 +23,9 @@ fn check_vertex_size() {
 impl ColoredVertex {
   /// Generates two colored triangles, representing a square, at z=0.
   /// The bounds of the square is represented by `b`.
-  pub fn square(min: Vec2<GLfloat>, max: Vec2<GLfloat>, color: Color4<GLfloat>) -> [ColoredVertex, ..6] {
+  pub fn square(min: Pnt2<GLfloat>, max: Pnt2<GLfloat>, color: Color4<GLfloat>) -> [ColoredVertex, ..6] {
     let vtx = |x, y| {
-        ColoredVertex { position: Vec3::new(x, y, 0.0), color: color }
+        ColoredVertex { position: Pnt3::new(x, y, 0.0), color: color }
       };
 
     [

@@ -1,7 +1,7 @@
 extern crate rlibc;
 
 use std::default::Default;
-use std::iter::{Chain, range_inclusive};
+use std::iter::Chain;
 use std::mem;
 use std::slice;
 

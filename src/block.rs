@@ -5,7 +5,7 @@ use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
 use id_allocator::Id;
-use nalgebra::na::{Vec2, Vec3};
+use nalgebra::{Vec2, Vec3};
 use ncollide::bounding_volume::LooseBoundingVolume;
 use ncollide::bounding_volume::aabb::AABB;
 use std::cell::RefCell;

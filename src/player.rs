@@ -2,8 +2,8 @@ use gl::types::*;
 use glw::camera;
 use id_allocator::Id;
 use physics::Physics;
-use nalgebra::na::Vec3;
-use nalgebra::na::RMul;
+use nalgebra::Vec3;
+use nalgebra::RMul;
 use ncollide::ray::Ray;
 use std::f32::consts::PI;
 

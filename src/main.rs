@@ -21,7 +21,7 @@ use input;
 use input::{Press,Release,Move,Keyboard,Mouse,MouseCursor};
 use loader::{Loader, Load, Unload};
 use mob;
-use nalgebra::na::{Vec2, Vec3, Norm};
+use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
 use ncollide::bounding_volume::LooseBoundingVolume;
 use ncollide::bounding_volume::aabb::AABB;
 use ncollide::ray::{Ray, RayCast};
@@ -57,12 +57,12 @@ fn to_faces(bounds: &AABB) -> [AABB, ..6] {
   let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
 
   [
-    AABB::new(Vec3::new(x1, y1, z2), Vec3::new(x2, y2, z2)),
-    AABB::new(Vec3::new(x1, y1, z1), Vec3::new(x1, y2, z2)),
-    AABB::new(Vec3::new(x1, y2, z1), Vec3::new(x2, y2, z2)),
-    AABB::new(Vec3::new(x1, y1, z1), Vec3::new(x2, y2, z1)),
-    AABB::new(Vec3::new(x2, y1, z1), Vec3::new(x2, y2, z2)),
-    AABB::new(Vec3::new(x1, y1, z1), Vec3::new(x2, y1, z2)),
+    AABB::new(Pnt3::new(x1, y1, z2), Pnt3::new(x2, y2, z2)),
+    AABB::new(Pnt3::new(x1, y1, z1), Pnt3::new(x1, y2, z2)),
+    AABB::new(Pnt3::new(x1, y2, z1), Pnt3::new(x2, y2, z2)),
+    AABB::new(Pnt3::new(x1, y1, z1), Pnt3::new(x2, y2, z1)),
+    AABB::new(Pnt3::new(x2, y1, z1), Pnt3::new(x2, y2, z2)),
+    AABB::new(Pnt3::new(x1, y1, z1), Pnt3::new(x2, y1, z2)),
   ]
 }
 
@@ -72,7 +72,7 @@ fn to_triangles(bounds: &AABB, c: &Color4<GLfloat>) -> [ColoredVertex, ..VERTICE
 
   let vtx = |x, y, z| {
     ColoredVertex {
-      position: Vec3::new(x, y, z),
+      position: Pnt3::new(x, y, z),
       color: c.clone(),
     }
   };
@@ -113,8 +113,8 @@ macro_rules! translate_mob(
   );
 )
 
-fn center(bounds: &AABB) -> Vec3<GLfloat> {
-  (bounds.mins() + *bounds.maxs()) / (2.0 as GLfloat)
+fn center(bounds: &AABB) -> Pnt3<GLfloat> {
+  (bounds.mins() + bounds.maxs().to_vec()) / (2.0 as GLfloat)
 }
 
 #[inline]
@@ -259,8 +259,8 @@ fn make_hud(
   hud_triangles.push(
     gl,
     ColoredVertex::square(
-      Vec2 { x: -0.02, y: -0.02 },
-      Vec2 { x:  0.02, y:  0.02 },
+      Pnt2 { x: -0.02, y: -0.02 },
+      Pnt2 { x:  0.02, y:  0.02 },
       cursor_color
     )
   );
@@ -278,7 +278,7 @@ fn make_blocks(
   {
     let w = 1.0 / 2.0;
     let place_block = |x, y, z, block_type| {
-      let min = Vec3::new(x, y, z);
+      let min = Pnt3::new(x, y, z);
       place_block(
         physics,
         &mut blocks,
@@ -394,7 +394,7 @@ fn make_mobs(
     &mut mobs,
     &mut mob_buffers,
     id_allocator,
-    Vec3::new(0.0, 8.0, -1.0),
+    Pnt3::new(0.0, 8.0, -1.0),
     mob_behavior
   );
 
@@ -406,8 +406,8 @@ fn place_block(
   blocks: &mut HashMap<Id, block::Block>,
   block_loader: &mut Loader<Id, Id>,
   id_allocator: &mut IdAllocator,
-  min: Vec3<GLfloat>,
-  max: Vec3<GLfloat>,
+  min: Pnt3<GLfloat>,
+  max: Pnt3<GLfloat>,
   block_type: block::BlockType,
   check_collisions: bool,
 ) {
@@ -436,7 +436,7 @@ fn add_mob(
   mobs: &mut HashMap<Id, mob::Mob>,
   mob_buffers: &mut mob::MobBuffers,
   id_allocator: &mut IdAllocator,
-  low_corner: Vec3<GLfloat>,
+  low_corner: Pnt3<GLfloat>,
   behavior: mob::Behavior,
 ) {
   // TODO: mob loader instead of pushing directly to gl buffers
@@ -795,8 +795,8 @@ impl<'a> App<'a> {
       mouse::show_cursor(false);
 
       let world_bounds = AABB::new(
-        Vec3 { x: -512.0, y: -32.0, z: -512.0 },
-        Vec3 { x: 512.0, y: 512.0, z: 512.0 },
+        Pnt3 { x: -512.0, y: -32.0, z: -512.0 },
+        Pnt3 { x: 512.0, y: 512.0, z: 512.0 },
       );
 
       let texture_shader = {
@@ -905,11 +905,11 @@ impl<'a> App<'a> {
           &gl,
           [
             ColoredVertex {
-              position: Vec3::new(0.0, 0.0, 0.0),
+              position: Pnt3::new(0.0, 0.0, 0.0),
               color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
             },
             ColoredVertex {
-              position: Vec3::new(0.0, 0.0, 0.0),
+              position: Pnt3::new(0.0, 0.0, 0.0),
               color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
             },
           ]
@@ -968,12 +968,13 @@ impl<'a> App<'a> {
         };
 
         player.id = id_allocator.allocate();
-        let min = Vec3::new(0.0, 0.0, 0.0);
-        let max = Vec3::new(1.0, 2.0, 1.0);
-        physics.insert(player.id, &AABB::new(min, max));
+        let min = Pnt3::new(0.0, 0.0, 0.0);
+        let max = Pnt3::new(1.0, 2.0, 1.0);
+        let bounds = AABB::new(min, max);
+        physics.insert(player.id, &bounds);
 
         // initialize the projection matrix
-        player.camera.translate((min + max) / 2.0 as GLfloat);
+        player.camera.translate(center(&bounds).to_vec());
         player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
 
         player.translate(&mut physics, Vec3::new(0.0, 4.0, 10.0));
@@ -1052,8 +1053,8 @@ impl<'a> App<'a> {
 
   fn place_block(
     &mut self,
-    min: Vec3<GLfloat>,
-    max: Vec3<GLfloat>,
+    min: Pnt3<GLfloat>,
+    max: Pnt3<GLfloat>,
     block_type: block::BlockType,
     check_collisions: bool
   ) {

@@ -3,7 +3,7 @@ use gl;
 use gl::types::*;
 use gl_context::GLContext;
 use light::Light;
-use nalgebra::na::{Vec3, Mat4};
+use nalgebra::{Vec3, Mat4};
 use std::collections::HashMap;
 use std::mem;
 use std::ptr;
