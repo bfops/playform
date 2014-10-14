@@ -16,24 +16,30 @@ pub const VERTICES_PER_LINE: uint = 2;
 pub const LINES_PER_BOX: uint = 12;
 pub const LINE_VERTICES_PER_BOX: uint = LINES_PER_BOX * VERTICES_PER_LINE;
 
-pub fn partial_min_by<A: Copy, T: Iterator<A>, B: PartialOrd>(t: T, f: |A| -> B) -> Option<A> {
+pub fn partial_min_by<A: Copy, T: Iterator<A>, B: PartialOrd>(t: T, f: |A| -> B) -> Vec<A> {
   let mut t = t;
-  let (mut min_a, mut min_b) = {
+  let mut min_a = Vec::new();
+  let mut min_b = {
     match t.next() {
-      None => return None,
-      Some(a) => (a, f(a)),
+      None => return min_a,
+      Some(a) => {
+        min_a.push(a);
+        f(a)
+      }
     }
   };
   for a in t {
     let b = f(a);
-    assert!(b != min_b);
     if b < min_b {
-      min_a = a;
+      min_a = Vec::new();
+      min_a.push(a);
       min_b = b;
+    } else if b == min_b {
+      min_a.push(a);
     }
   }
 
-  Some(min_a)
+  min_a
 }
 
 pub fn to_outlines<'a>(bounds: &AABB) -> [ColoredVertex, ..LINE_VERTICES_PER_BOX] {

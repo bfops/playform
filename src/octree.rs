@@ -54,8 +54,10 @@ fn split(mid: F, d: Dimension, bounds: AABB) -> (Option<AABB>, Option<AABB>) {
       set(d, &mut new_max, mid);
       (new_min, new_max)
     };
-    (Some(AABB::new(*bounds.mins(), new_max)),
-      Some(AABB::new(new_min, *bounds.maxs())))
+    (
+      Some(AABB::new(*bounds.mins(), new_max)),
+      Some(AABB::new(new_min, *bounds.maxs()))
+    )
   }
 }
 
@@ -392,7 +394,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     self.insert_from(new_bounds, v)
   }
 
-  pub fn cast_ray(&self, ray: &Ray, self_v: V) -> Option<V> {
+  pub fn cast_ray(&self, ray: &Ray, self_v: V) -> Vec<V> {
     match self.contents {
       Leaf(ref vs) => {
         // find the time of intersection (TOI) of the ray with each object in
@@ -409,7 +411,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
           ),
           |(toi, _)| toi
         )
-        .map(|(_, v)| v)
+        .into_iter().map(|(_, v)| v).collect()
       },
       Branch(ref bs) => {
         let mut trees: Vec<(f32, &Box<Octree<V>>)> = Vec::new();
@@ -429,11 +431,11 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
         });
         for &(_, t) in trees.iter() {
           let r = t.cast_ray(ray, self_v);
-          if r.is_some() {
+          if !r.is_empty() {
             return r;
           }
         }
-        None
+        Vec::new()
       }
     }
   }

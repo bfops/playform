@@ -125,8 +125,8 @@ pub fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
   }
 }
 
-fn first_face(bounds: &AABB, ray: &Ray) -> uint {
-  let f = partial_min_by(
+fn first_face(bounds: &AABB, ray: &Ray) -> Option<uint> {
+  let faces = partial_min_by(
       to_faces(bounds)
         .iter()
         .zip(range(0 as uint, 6))
@@ -134,10 +134,14 @@ fn first_face(bounds: &AABB, ray: &Ray) -> uint {
             bounds.toi_with_ray(ray, true).map(|x| (x, i))
           }),
       |(toi, _)| toi
-    )
-    .map(|(_, i)| i)
-    .expect("ray does not intersect any faces");
-  f
+    );
+  assert!(faces.len() > 0, "ray does not intersect any faces");
+  if faces.len() > 1 {
+    None
+  } else {
+    let (_, f) = faces[0];
+    Some(f)
+  }
 }
 
 fn load_block_textures(
@@ -707,21 +711,21 @@ impl<'a> App<'a> {
       // block::Block deletion
       if self.is_mouse_pressed(input::mouse::Left) {
         time!(self.timers.deref(), "update.delete_block", || {
-          self.entity_in_front().map(|id| {
+          for id in self.entities_in_front().into_iter() {
             if self.blocks.contains_key(&id) {
               self.remove_block(id);
             }
-          });
+          }
         })
       }
       if self.is_mouse_pressed(input::mouse::Right) {
         time!(self.timers.deref(), "update.place_block", || {
-          match self.entity_in_front() {
-            None => {},
-            Some(block_id) => {
-              let (mins, maxs) = {
-                let bounds = self.get_bounds(block_id);
-                let face = first_face(bounds, &self.player.forward_ray());
+          let entities = self.entities_in_front();
+          if !entities.is_empty() {
+            let block_id = entities[0];
+            {
+              let bounds = self.get_bounds(block_id);
+              first_face(bounds, &self.player.forward_ray()).map(|face| {
                 let direction =
                       [ Vec3::new(0.0, 0.0, 1.0),
                         Vec3::new(-1.0, 0.0, 0.0),
@@ -733,9 +737,10 @@ impl<'a> App<'a> {
                 // TODO: think about how this should work when placing size A blocks
                 // against size B blocks.
                 (bounds.mins() + direction, bounds.maxs() + direction)
-              };
+              })
+            }.map(|(mins, maxs)| {
               self.place_block(mins, maxs, block::Dirt, true);
-            },
+            });
           }
         })
       }
@@ -1046,8 +1051,8 @@ impl<'a> App<'a> {
     unwrap!(self.physics.get_bounds(id))
   }
 
-  /// Returns id of the entity in front of the cursor.
-  fn entity_in_front(&self) -> Option<Id> {
+  /// Returns ids of the closest entities in front of the cursor.
+  fn entities_in_front(&self) -> Vec<Id> {
     self.physics.octree.cast_ray(&self.player.forward_ray(), self.player.id)
   }
 
