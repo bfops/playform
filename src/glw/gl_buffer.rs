@@ -3,7 +3,6 @@ use gl::types::*;
 use gl_context::*;
 use shader::*;
 use std::cell::RefCell;
-use std::cmp;
 use std::mem;
 use std::ptr;
 use std::raw;
@@ -13,7 +12,7 @@ use vertex;
 // TODO: Don't 1-1 vertex array objects with vertex buffers
 
 /// Gets the id number for a given input of the shader program.
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 pub fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
   name.with_c_str(|ptr| unsafe { gl::GetAttribLocation(shader_program, ptr) })
 }
@@ -39,7 +38,6 @@ pub struct GLBuffer {
   pub length: uint,
   /// maximum number of bytes in the buffer.
   pub capacity: uint,
-  pub shader: Rc<RefCell<Shader>>,
   /// How to draw this buffer. Ex: gl::LINES, gl::TRIANGLES, etc.
   pub mode: GLenum,
   /// size of vertex attribs, in bytes.
@@ -156,7 +154,6 @@ impl GLBuffer {
       vertex_buffer: vertex_buffer,
       length: 0,
       capacity: capacity,
-      shader: shader_program,
       mode: mode.to_enum(),
       attrib_span: attrib_span,
     }

@@ -2,7 +2,6 @@ use color::Color4;
 use cstr_cache;
 use gl;
 use gl::types::*;
-use log::macros;
 use shader::Shader;
 use std::raw;
 use std::mem;
@@ -106,7 +105,7 @@ impl GLContext {
         let mut len = 0;
         gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
         let mut buf = Vec::from_elem(len as uint - 1, 0u8); // subtract 1 to skip the trailing null character
-        gl::GetShaderInfoLog(shader, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
+        gl::GetShaderInfoLog(shader, len, ptr::null_mut(), buf.as_mut_ptr() as *mut GLchar);
         fail!("error compiling 0x{:x} shader: {}", ty, str::from_utf8(buf.as_slice()).expect("ShaderInfoLog not valid utf8"));
       }
     }

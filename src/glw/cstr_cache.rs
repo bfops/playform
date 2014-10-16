@@ -2,7 +2,7 @@
 //! allocation.
 //!
 //! Note that strings are never deallocated, and are per-thread.
-use std::collections::hashmap::HashMap;
+use std::collections::hashmap::{ HashMap, Occupied, Vacant };
 use std::c_str::CString;
 use std::mem;
 
@@ -24,7 +24,12 @@ impl CStringCache {
   ///
   /// Nothing is ever expired from the cache.
   pub fn convert<'a>(&'a mut self, s: &'static str) -> &'a CString {
-    let ret : &'a mut CString = self.cache.find_or_insert_with(s, |&s| s.to_c_str());
+    let ret: &'a mut CString =
+      match self.cache.entry(s) {
+        Vacant(entry) => entry.set(s.to_c_str()),
+        Occupied(entry) => entry.into_mut(),
+      };
+
     // TODO(cgaebel): Needed because values differ in mutability. There's
     // gotta be a safer way of expressing this.
     unsafe { mem::transmute(ret) }
