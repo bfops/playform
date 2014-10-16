@@ -116,9 +116,9 @@ impl<V> OctreeBuffers<V> {
   }
 
   pub fn swap_remove(&mut self, gl: &GLContext, entry: OctreeId) {
-    let &idx = unwrap!(self.entry_to_index.find(&entry));
+    let &idx = self.entry_to_index.find(&entry).unwrap();
     let swapped_id = self.index_to_entry[self.index_to_entry.len() - 1];
-    unwrap!(self.index_to_entry.swap_remove(idx));
+    self.index_to_entry.swap_remove(idx).unwrap();
     self.entry_to_index.remove(&entry);
     self.outlines.swap_remove(gl, idx);
     if entry != swapped_id {
@@ -198,7 +198,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
           vs.iter().fold(
             0.0,
             |x, &(bounds, _)| x + length(&bounds, d)
-          ) / unwrap!(NumCast::from(vs.len()));
+          ) / NumCast::from(vs.len()).unwrap();
 
         if avg_length < length(&self.bounds, self.dimension) / 2.0 {
           self.loader.deref().borrow_mut().deref_mut().push(Unload(self.id));
@@ -237,8 +237,8 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   ) -> (Octree<V>, Octree<V>) {
     let mid = middle(bounds, dimension);
     let (low_bounds, high_bounds) = split(mid, dimension, bounds.clone());
-    let low_bounds = unwrap!(low_bounds);
-    let high_bounds = unwrap!(high_bounds);
+    let low_bounds = low_bounds.unwrap();
+    let high_bounds = high_bounds.unwrap();
     let new_d = match dimension {
         X => Y,
         Y => Z,
@@ -360,7 +360,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     assert!(self.bounds.contains(bounds));
     let collapse_contents = match self.contents {
       Leaf(ref mut vs) => {
-        let i = unwrap!(vs.iter().position(|&(_, ref x)| *x == v));
+        let i = vs.iter().position(|&(_, ref x)| *x == v).unwrap();
         vs.swap_remove(i);
         if vs.is_empty() {
           self.loader.deref().borrow_mut().deref_mut().push(Unload(self.id));

@@ -121,6 +121,6 @@ fn test_nested() {
 #[macro_export]
 macro_rules! time(
   ($timers:expr, $name:expr, $f:expr) => (
-    unsafe { unwrap!(($timers as *const stopwatch::TimerSet).to_option()) }.time($name, $f)
+    unsafe { ($timers as *const stopwatch::TimerSet).to_option().unwrap() }.time($name, $f)
   );
 )

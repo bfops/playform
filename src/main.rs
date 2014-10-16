@@ -623,8 +623,8 @@ impl<'a> App<'a> {
           let gl = &self.gl;
           match *op {
             Load(id) => {
-              let bounds = unwrap!(physics.get_bounds(id));
-              let block = unwrap!(blocks.find(&id));
+              let bounds = physics.get_bounds(id).unwrap();
+              let block = blocks.find(&id).unwrap();
               block_buffers.push(
                 gl,
                 id,
@@ -1048,7 +1048,7 @@ impl<'a> App<'a> {
   }
 
   fn get_bounds(&self, id: Id) -> &AABB {
-    unwrap!(self.physics.get_bounds(id))
+    self.physics.get_bounds(id).unwrap()
   }
 
   /// Returns ids of the closest entities in front of the cursor.
@@ -1080,10 +1080,10 @@ impl<'a> App<'a> {
   }
 
   fn translate_mob(gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut mob::MobBuffers, mob: &mut mob::Mob, delta_p: Vec3<GLfloat>) {
-    if unwrap!(physics.translate(mob.id, delta_p)) {
+    if physics.translate(mob.id, delta_p).unwrap() {
       mob.speed = mob.speed - delta_p;
     } else {
-      let bounds = unwrap!(physics.get_bounds(mob.id));
+      let bounds = physics.get_bounds(mob.id).unwrap();
       mob_buffers.update(
         gl,
         mob.id,

@@ -71,13 +71,3 @@ pub fn to_outlines<'a>(bounds: &AABB) -> [ColoredVertex, ..LINE_VERTICES_PER_BOX
     vtx(x2, y2, z1), vtx(x2, y2, z2),
   ]
 }
-
-#[macro_export]
-macro_rules! unwrap(
-  ($option:expr) => (
-    match $option {
-      None => fail!("unwrap() on None"),
-      Some(x) => x,
-    }
-  )
-)
