@@ -253,12 +253,10 @@ impl GLBuffer {
   pub fn draw_slice(&self, gl: &GLContext, start: uint, len: uint) {
     assert!(start + len <= self.len());
 
-    gl.use_shader(self.shader.deref().borrow().deref(), |_gl| {
-      gl::BindVertexArray(self.vertex_array);
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
+    gl::BindVertexArray(self.vertex_array);
+    gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
 
-      gl::DrawArrays(self.mode, (start / self.attrib_span) as i32, (len / self.attrib_span) as i32);
-    });
+    gl::DrawArrays(self.mode, (start / self.attrib_span) as i32, (len / self.attrib_span) as i32);
   }
 }
 

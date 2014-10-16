@@ -528,6 +528,7 @@ pub struct App<'a> {
   color_shader: Rc<RefCell<Shader>>,
   texture_shader: Rc<RefCell<Shader>>,
   hud_texture_shader: Rc<RefCell<Shader>>,
+  hud_color_shader: Rc<RefCell<Shader>>,
 
   // which mouse buttons are currently pressed
   mouse_buttons_pressed: Vec<input::mouse::Button>,
@@ -765,31 +766,43 @@ impl<'a> App<'a> {
       self.gl.clear_buffer();
 
       self.color_shader.borrow_mut().set_camera(&mut self.gl, &self.player.camera);
+
+      self.gl.use_shader(self.color_shader.borrow().deref(), |_| {
+        // debug stuff
+        self.line_of_sight.draw(&self.gl);
+
+        if self.render_octree {
+          self.octree_buffers.draw(&self.gl);
+        }
+      });
+
       self.texture_shader.borrow_mut().set_camera(&mut self.gl, &self.player.camera);
-
-      // debug stuff
-      self.line_of_sight.draw(&self.gl);
-
-      if self.render_octree {
-        self.octree_buffers.draw(&self.gl);
-      }
 
       // draw the world
       if self.render_outlines {
         gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
         gl::Disable(gl::CULL_FACE);
-        self.terrain_buffers.draw(&self.gl);
-        self.mob_buffers.draw(&self.gl);
+        self.gl.use_shader(self.texture_shader.borrow().deref(), |gl| {
+          self.terrain_buffers.draw(gl);
+        });
+        self.gl.use_shader(self.color_shader.borrow().deref(), |gl| {
+          self.mob_buffers.draw(gl);
+        });
         gl::PolygonMode(gl::FRONT_AND_BACK, gl::FILL);
         gl::Enable(gl::CULL_FACE);
       } else {
-        self.terrain_buffers.draw(&self.gl);
-        self.mob_buffers.draw(&self.gl);
+        self.gl.use_shader(self.texture_shader.borrow().deref(), |gl| {
+          self.terrain_buffers.draw(gl);
+        });
+        self.gl.use_shader(self.color_shader.borrow().deref(), |gl| {
+          self.mob_buffers.draw(gl);
+        });
       }
 
       // draw the hud
-
-      self.hud_triangles.draw(&self.gl);
+      self.gl.use_shader(self.hud_color_shader.borrow().deref(), |gl| {
+        self.hud_triangles.draw(gl);
+      });
 
       // draw hud textures
       self.gl.use_shader(self.hud_texture_shader.borrow().deref(), |gl| {
@@ -1030,6 +1043,7 @@ impl<'a> App<'a> {
         text_triangles: text_triangles,
         color_shader: color_shader,
         texture_shader: texture_shader,
+        hud_color_shader: hud_color_shader,
         hud_texture_shader: hud_texture_shader,
         mouse_buttons_pressed: Vec::new(),
         render_octree: false,
