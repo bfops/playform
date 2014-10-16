@@ -118,7 +118,6 @@ fn to_triangles(bounds: &AABB, c: &Color4<GLfloat>) -> [ColoredVertex, ..VERTICE
 macro_rules! translate_mob(
   ($world:expr, $mob:expr, $v:expr) => (
     App::translate_mob(
-      &$world.gl,
       &mut $world.physics,
       &mut $world.mob_buffers,
       $mob,
@@ -186,14 +185,13 @@ fn make_text(
   let mut textures = Vec::new();
   let mut triangles = {
     GLArray::new(
-        gl,
-        shader,
-        [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
-          vertex::AttribData { name: "texture_position", size: 2, unit: vertex::Float },
-        ],
-        VERTICES_PER_TRIANGLE,
-        8,
-        Triangles,
+      gl,
+      shader,
+      [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+        vertex::AttribData { name: "texture_position", size: 2, unit: vertex::Float },
+      ],
+      Triangles,
+      GLBuffer::new(8 * VERTICES_PER_TRIANGLE),
     )
   };
 
@@ -208,7 +206,6 @@ fn make_text(
     textures.push(fontloader.sans.red(*line));
 
     triangles.push(
-      gl,
       TextureVertex::square(
         Vec2 { x: -0.97, y: y - 0.2 },
         Vec2 { x: 0.0,   y: y       }
@@ -226,21 +223,19 @@ fn make_hud(
 ) -> GLArray<ColoredVertex> {
   let mut hud_triangles = {
     GLArray::new(
-        gl,
-        shader,
-        [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
-          vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
-        ],
-        VERTICES_PER_TRIANGLE,
-        16,
-        Triangles
+      gl,
+      shader,
+      [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+        vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
+      ],
+      Triangles,
+      GLBuffer::new(16 * VERTICES_PER_TRIANGLE),
     )
   };
 
   let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
 
   hud_triangles.push(
-    gl,
     ColoredVertex::square(
       Pnt2 { x: -0.02, y: -0.02 },
       Pnt2 { x:  0.02, y:  0.02 },
@@ -439,7 +434,6 @@ fn make_mobs(
   }
 
   add_mob(
-    gl,
     physics,
     &mut mobs,
     &mut mob_buffers,
@@ -477,7 +471,6 @@ fn place_terrain(
 }
 
 fn add_mob(
-  gl: &GLContext,
   physics: &mut Physics<Id>,
   mobs: &mut HashMap<Id, mob::Mob>,
   mob_buffers: &mut mob::MobBuffers,
@@ -497,7 +490,7 @@ fn add_mob(
     };
 
   let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
-  mob_buffers.push(gl, id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
+  mob_buffers.push(id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
 
   physics.insert(id, &bounds);
   mobs.insert(id, mob);
@@ -582,7 +575,7 @@ impl<'a> App<'a> {
               color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
             },
           ];
-          self.line_of_sight.update(&self.gl, 0, updates);
+          self.line_of_sight.buffer.update(0, updates);
         },
         input::keyboard::O => {
           self.render_octree = !self.render_octree;
@@ -667,14 +660,13 @@ impl<'a> App<'a> {
               let bounds = physics.get_bounds(id).unwrap();
               let terrain = terrains.find(&id).unwrap();
               terrain_buffers.push(
-                gl,
                 id,
                 terrain.vertices,
               );
             },
             Unload(id) => {
               if terrains.remove(&id) {
-                terrain_buffers.swap_remove(gl, id);
+                terrain_buffers.swap_remove(id);
                 physics.remove(id);
               }
             },
@@ -694,10 +686,10 @@ impl<'a> App<'a> {
         for op in self.octree_loader.borrow().iter(0, count) {
           match *op {
             Load((id, bounds)) => {
-              self.octree_buffers.push(&self.gl, id, to_outlines(&bounds));
+              self.octree_buffers.push(id, to_outlines(&bounds));
             },
             Unload(id) => {
-              self.octree_buffers.swap_remove(&self.gl, id);
+              self.octree_buffers.swap_remove(id);
             }
           }
         }
@@ -711,8 +703,18 @@ impl<'a> App<'a> {
     time!(self.timers.deref(), "update", || {
       // TODO(cgaebel): Ideally, the update thread should not be touching OpenGL.
 
+        match gl::GetError() {
+          gl::NO_ERROR => {},
+          err => fail!("OpenGL error 0x{:x} in update", err),
+        }
+
       time!(self.timers.deref(), "update.load", || {
         self.load_terrain(Some(TERRAIN_LOAD_SPEED));
+
+        match gl::GetError() {
+          gl::NO_ERROR => {},
+          err => fail!("OpenGL error 0x{:x} in update", err),
+        }
         self.load_octree();
       });
 
@@ -911,19 +913,17 @@ impl<'a> App<'a> {
       let line_of_sight = {
         let mut line_of_sight = {
           GLArray::new(
-              &gl,
-              color_shader.clone(),
-              [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
-                vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
-              ],
-              2,
-              2,
-              Lines
+            &gl,
+            color_shader.clone(),
+            [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
+              vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
+            ],
+            Lines,
+            GLBuffer::new(2 * 2),
           )
         };
 
         line_of_sight.push(
-          &gl,
           [
             ColoredVertex {
               position: Pnt3::new(0.0, 0.0, 0.0),
@@ -1072,13 +1072,12 @@ impl<'a> App<'a> {
     self.terrain_loader.push(Unload(id));
   }
 
-  fn translate_mob(gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut mob::MobBuffers, mob: &mut mob::Mob, delta_p: Vec3<GLfloat>) {
+  fn translate_mob(physics: &mut Physics<Id>, mob_buffers: &mut mob::MobBuffers, mob: &mut mob::Mob, delta_p: Vec3<GLfloat>) {
     if physics.translate(mob.id, delta_p).unwrap() {
       mob.speed = mob.speed - delta_p;
     } else {
       let bounds = physics.get_bounds(mob.id).unwrap();
       mob_buffers.update(
-        gl,
         mob.id,
         to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
       );

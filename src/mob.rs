@@ -1,6 +1,6 @@
 use common::*;
 use main;
-use glw::gl_buffer::{GLArray, Triangles};
+use glw::gl_buffer::{GLArray, GLBuffer, Triangles};
 use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
@@ -39,37 +39,33 @@ impl MobBuffers {
         [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
           vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
         ],
-        TRIANGLE_VERTICES_PER_BOX,
-        32,
-        Triangles
+        Triangles,
+        GLBuffer::new(32 * TRIANGLE_VERTICES_PER_BOX),
       ),
     }
   }
 
   pub fn push(
     &mut self,
-    gl: &GLContext,
     id: Id,
     triangles: &[vertex::ColoredVertex]
   ) {
     self.id_to_index.insert(id, self.index_to_id.len());
     self.index_to_id.push(id);
 
-    self.triangles.push(gl, triangles);
+    self.triangles.push(triangles);
   }
 
   pub fn update(
     &mut self,
-    gl: &GLContext,
     id: Id,
     triangles: &[vertex::ColoredVertex]
   ) {
     let idx = *self.id_to_index.find(&id).unwrap();
-    self.triangles.update(gl, idx, triangles);
+    self.triangles.buffer.update(idx, triangles);
   }
 
   pub fn draw(&self, gl: &GLContext) {
     self.triangles.draw(gl);
   }
 }
-

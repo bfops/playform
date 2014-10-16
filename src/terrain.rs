@@ -1,6 +1,6 @@
 use common::*;
 use gl::types::*;
-use glw::gl_buffer::{GLArray, Triangles};
+use glw::gl_buffer::{GLArray, GLBuffer, Triangles};
 use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
@@ -39,8 +39,8 @@ pub struct TerrainBuffers {
 
 impl TerrainBuffers {
   pub fn new(
-      gl: &GLContext,
-      texture_shader: Rc<RefCell<Shader>>
+    gl: &GLContext,
+    texture_shader: Rc<RefCell<Shader>>
   ) -> TerrainBuffers {
     TerrainBuffers {
       id_to_index: HashMap::new(),
@@ -52,31 +52,29 @@ impl TerrainBuffers {
           vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
           vertex::AttribData { name: "terrain_type", size: 1, unit: vertex::UInt },
         ],
-        VERTICES_PER_TRIANGLE,
-        MAX_WORLD_SIZE,
-        Triangles
+        Triangles,
+        GLBuffer::new(MAX_WORLD_SIZE * VERTICES_PER_TRIANGLE),
       ),
     }
   }
 
   pub fn push(
     &mut self,
-    gl: &GLContext,
     id: Id,
     triangles: &[TerrainVertex],
   ) {
     self.id_to_index.insert(id, self.index_to_id.len());
     self.index_to_id.push(id);
-    self.triangles.push(gl, triangles);
+    self.triangles.push(triangles);
   }
 
   // Note: `id` must be present in the buffers.
-  pub fn swap_remove(&mut self, gl: &GLContext, id: Id) {
+  pub fn swap_remove(&mut self, id: Id) {
     let idx = *self.id_to_index.find(&id).unwrap();
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     self.index_to_id.swap_remove(idx).unwrap();
     self.id_to_index.remove(&id);
-    self.triangles.swap_remove(gl, idx);
+    self.triangles.buffer.swap_remove(idx * VERTICES_PER_TRIANGLE, VERTICES_PER_TRIANGLE);
     if id != swapped_id {
       self.id_to_index.insert(swapped_id, idx);
     }

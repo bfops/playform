@@ -95,16 +95,14 @@ impl<V> OctreeBuffers<V> {
         [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
           vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
         ],
-        LINE_VERTICES_PER_BOX,
-        1 << 18,
-        Lines
+        Lines,
+        GLBuffer::new((1 << 18) * LINE_VERTICES_PER_BOX),
       ),
     }
   }
 
   pub fn push(
     &mut self,
-    gl: &GLContext,
     entry: OctreeId,
     outlines: &[ColoredVertex]
   ) {
@@ -112,15 +110,15 @@ impl<V> OctreeBuffers<V> {
     self.entry_to_index.insert(entry, self.index_to_entry.len());
     self.index_to_entry.push(entry);
 
-    self.outlines.push(gl, outlines);
+    self.outlines.push(outlines);
   }
 
-  pub fn swap_remove(&mut self, gl: &GLContext, entry: OctreeId) {
+  pub fn swap_remove(&mut self, entry: OctreeId) {
     let &idx = self.entry_to_index.find(&entry).unwrap();
     let swapped_id = self.index_to_entry[self.index_to_entry.len() - 1];
     self.index_to_entry.swap_remove(idx).unwrap();
     self.entry_to_index.remove(&entry);
-    self.outlines.swap_remove(gl, idx);
+    self.outlines.swap_remove(idx * LINE_VERTICES_PER_BOX, LINE_VERTICES_PER_BOX);
     if entry != swapped_id {
       self.entry_to_index.insert(swapped_id, idx);
       assert!(self.index_to_entry[idx] == swapped_id);

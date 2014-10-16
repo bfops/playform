@@ -5,7 +5,6 @@ use shader::*;
 use std::cell::RefCell;
 use std::mem;
 use std::ptr;
-use std::raw;
 use std::rc::Rc;
 use vertex;
 
@@ -17,31 +16,200 @@ pub fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
   name.with_c_str(|ptr| unsafe { gl::GetAttribLocation(shader_program, ptr) })
 }
 
-/// Ensures a slice has a given alignment, and converts it to a raw pointer.
+/// Ensures a slice has a given power-of-two alignment, and converts it to a raw pointer.
 unsafe fn aligned_slice_to_ptr<T, U>(vs: &[T], alignment: uint) -> *const U {
-  let vs_as_slice : raw::Slice<T> = mem::transmute(vs);
+  let ptr: *const U = mem::transmute(vs.as_ptr());
   assert!(
-    (vs_as_slice.data as uint & (alignment - 1) == 0),
+    (ptr as uint & (alignment - 1) == 0),
     "0x{:x} not {}-aligned",
-    vs_as_slice.data as uint,
+    ptr as uint,
     alignment
   );
-  assert!(vs_as_slice.data != ptr::null());
-  vs_as_slice.data as *const U
+  ptr
 }
 
-/// A fixed-capacity array of bytes passed to OpenGL.
-pub struct GLByteArray {
-  pub vertex_array: u32,
-  pub vertex_buffer: u32,
+/// Fixed-size VRAM buffer for individual bytes.
+pub struct GLByteBuffer {
+  pub gl_id: u32,
   /// number of bytes in the buffer.
   pub length: uint,
   /// maximum number of bytes in the buffer.
   pub capacity: uint,
-  /// How to draw this buffer. Ex: gl::LINES, gl::TRIANGLES, etc.
-  pub mode: GLenum,
-  /// size of vertex attribs, in bytes.
-  pub attrib_span: uint,
+}
+
+impl GLByteBuffer {
+  /// Creates a new array of objects on the GPU.
+  /// capacity is provided in units of size slice_span.
+  pub fn new(capacity: uint) -> GLByteBuffer {
+    let mut gl_id = 0;
+
+    unsafe {
+      gl::GenBuffers(1, &mut gl_id);
+    }
+
+    assert!(gl_id != 0);
+
+    gl::BindBuffer(gl::ARRAY_BUFFER, gl_id);
+
+    unsafe {
+      gl::BufferData(
+        gl::ARRAY_BUFFER,
+        capacity as GLsizeiptr,
+        ptr::null(),
+        gl::DYNAMIC_DRAW,
+      );
+    }
+
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      gl::OUT_OF_MEMORY => fail!("Out of VRAM"),
+      err => fail!("OpenGL error 0x{:x}", err),
+    }
+
+    GLByteBuffer {
+      gl_id: gl_id,
+      length: 0,
+      capacity: capacity,
+    }
+  }
+
+  /// Add more data into this buffer.
+  pub unsafe fn push(&mut self, vs: *const u8, count: uint) {
+    assert!(
+      self.length + count <= self.capacity,
+      "GLByteBuffer::push {} into a {}/{} full GLByteBuffer",
+      count,
+      self.length,
+      self.capacity
+    );
+
+    self.update_inner(self.length, vs, count);
+    self.length += count;
+  }
+
+  pub fn swap_remove(&mut self, i: uint, count: uint) {
+    assert!(count <= self.length);
+    self.length -= count;
+    assert!(i <= self.length);
+
+      match gl::GetError() {
+        gl::NO_ERROR => {},
+        err => fail!("OpenGL error 0x{:x} in update", err),
+      }
+
+    // In the `i == self.length` case, we don't bother with the swap;
+    // decreasing `self.length` is enough.
+
+    if i < self.length {
+      assert!(
+        i <= self.length - count,
+        "GLByteBuffer::swap_remove would cause copy in overlapping regions"
+      );
+
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.gl_id);
+
+      match gl::GetError() {
+        gl::NO_ERROR => {},
+        err => fail!("OpenGL error 0x{:x} in update", err),
+      }
+
+      gl::CopyBufferSubData(
+        gl::ARRAY_BUFFER,
+        gl::ARRAY_BUFFER,
+        self.length as i64,
+        i as i64,
+        count as i64,
+      );
+
+      match gl::GetError() {
+        gl::NO_ERROR => {},
+        err => fail!("OpenGL error 0x{:x} in update", err),
+      }
+    }
+  }
+
+  pub unsafe fn update(&self, idx: uint, vs: *const u8, count: uint) {
+    assert!(idx + count <= self.length);
+    self.update_inner(idx, vs, count);
+  }
+
+  unsafe fn update_inner(&self, idx: uint, vs: *const u8, count: uint) {
+    assert!(idx + count <= self.capacity);
+
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      err => fail!("OpenGL error 0x{:x} in GLByteBuffer::update", err),
+    }
+
+    gl::BindBuffer(gl::ARRAY_BUFFER, self.gl_id);
+
+    gl::BufferSubData(
+      gl::ARRAY_BUFFER,
+      idx as i64,
+      count as i64,
+      mem::transmute(vs)
+    );
+
+    gl::Finish();
+
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      err => fail!("OpenGL error 0x{:x} in GLByteBuffer::update_inner", err),
+    }
+  }
+}
+
+#[unsafe_destructor]
+impl Drop for GLByteBuffer {
+  #[inline]
+  fn drop(&mut self) {
+    unsafe {
+      gl::DeleteBuffers(1, &self.gl_id);
+    }
+  }
+}
+
+/// Fixed-size typed VRAM buffer, optimized for bulk inserts.
+pub struct GLBuffer<T> {
+  byte_buffer: GLByteBuffer,
+  length: uint,
+}
+
+impl<T> GLBuffer<T> {
+  pub fn new(capacity: uint) -> GLBuffer<T> {
+    GLBuffer {
+      byte_buffer: GLByteBuffer::new(capacity * mem::size_of::<T>()),
+      length: 0,
+    }
+  }
+
+  pub fn push(&mut self, vs: &[T]) {
+    unsafe {
+      self.byte_buffer.push(
+        aligned_slice_to_ptr(vs, 4),
+        mem::size_of::<T>() * vs.len()
+      );
+    }
+    self.length += vs.len();
+  }
+
+  pub fn update(&mut self, idx: uint, vs: &[T]) {
+    unsafe {
+      self.byte_buffer.update(
+        mem::size_of::<T>() * idx,
+        aligned_slice_to_ptr(vs, 4),
+        mem::size_of::<T>() * vs.len(),
+      );
+    }
+  }
+
+  pub fn swap_remove(&mut self, idx: uint, count: uint) {
+    self.byte_buffer.swap_remove(
+      mem::size_of::<T>() * idx,
+      mem::size_of::<T>() * count,
+    );
+    self.length -= count;
+  }
 }
 
 pub enum DrawMode {
@@ -60,38 +228,38 @@ impl DrawMode {
   }
 }
 
-impl GLByteArray {
+/// A fixed-capacity array of bytes passed to OpenGL.
+pub struct GLArray<T> {
+  pub buffer: GLBuffer<T>,
+  pub gl_id: u32,
+  /// How to draw this buffer. Ex: gl::LINES, gl::TRIANGLES, etc.
+  pub mode: GLenum,
+  /// size of T in vertices
+  pub attrib_span: uint,
+  /// length in vertices
+  pub length: uint,
+}
+
+impl<T> GLArray<T> {
   #[inline]
   /// Creates a new array of objects on the GPU.
   /// capacity is provided in units of size slice_span.
   pub fn new(
-      _gl: &GLContext,
-      shader_program: Rc<RefCell<Shader>>,
-      attribs: &[vertex::AttribData],
-      capacity: uint,
-      mode: DrawMode) -> GLByteArray {
-    let mut vertex_array = 0;
-    let mut vertex_buffer = 0;
+    _gl: &GLContext,
+    shader_program: Rc<RefCell<Shader>>,
+    attribs: &[vertex::AttribData],
+    mode: DrawMode,
+    buffer: GLBuffer<T>,
+  ) -> GLArray<T> {
+    let mut gl_id = 0;
 
     // TODO(cgaebel): Error checking?
 
     unsafe {
-      gl::GenVertexArrays(1, &mut vertex_array);
-      gl::GenBuffers(1, &mut vertex_buffer);
+      gl::GenVertexArrays(1, &mut gl_id);
     }
 
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x}", err),
-    }
-
-    gl::BindVertexArray(vertex_array);
-    gl::BindBuffer(gl::ARRAY_BUFFER, vertex_buffer);
-
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x}", err),
-    }
+    gl::BindVertexArray(gl_id);
 
     let mut offset = 0;
     let attrib_span = {
@@ -102,7 +270,7 @@ impl GLByteArray {
       attrib_span
     };
     for attrib in attribs.iter() {
-      let shader_attrib = glGetAttribLocation(shader_program.deref().borrow().deref().id, attrib.name) as GLuint;
+      let shader_attrib = glGetAttribLocation(shader_program.deref().borrow().id, attrib.name) as GLuint;
       assert!(shader_attrib != -1, "shader attribute \"{}\" not found", attrib.name);
 
       gl::EnableVertexAttribArray(shader_attrib);
@@ -134,226 +302,55 @@ impl GLByteArray {
       err => fail!("OpenGL error 0x{:x}", err),
     }
 
-    unsafe {
-      gl::BufferData(
-        gl::ARRAY_BUFFER,
-        capacity as GLsizeiptr,
-        ptr::null(),
-        gl::DYNAMIC_DRAW,
-      );
-    }
+    assert!(mem::size_of::<T>() % attrib_span == 0);
 
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      gl::OUT_OF_MEMORY => fail!("Out of VRAM"),
-      err => fail!("OpenGL error 0x{:x}", err),
-    }
-
-    GLByteArray {
-      vertex_array:  vertex_array,
-      vertex_buffer: vertex_buffer,
-      length: 0,
-      capacity: capacity,
+    GLArray {
+      buffer: buffer,
+      gl_id: gl_id,
       mode: mode.to_enum(),
-      attrib_span: attrib_span,
+      attrib_span: mem::size_of::<T>() / attrib_span,
+      length: 0,
     }
   }
 
-  pub fn len(&self) -> uint {
-    self.length
+  pub fn push(&mut self, vs: &[T]) {
+    self.buffer.push(vs);
+    self.length += vs.len() * self.attrib_span;
   }
 
-  pub fn capacity(&self) -> uint {
-    self.capacity
-  }
-
-  /// Analog of `std::vec::Vec::swap_remove`, but for GLByteArray data.
-  pub fn swap_remove(&mut self, _gl: &GLContext, i: uint, count: uint) {
-    self.length -= count;
-    assert!(i <= self.length);
-
-    // In the `i == self.length` case, we don't bother with the swap;
-    // decreasing `self.length` is enough.
-
-    if i < self.length {
-      assert!(
-        i <= self.length - count,
-        "GLByteArray::swap_remove would cause copy in overlapping regions"
-      );
-
-      let va = self.vertex_array;
-      let vb = self.vertex_buffer;
-
-      gl::BindVertexArray(va);
-      gl::BindBuffer(gl::ARRAY_BUFFER, vb);
-
-      gl::CopyBufferSubData(
-        gl::ARRAY_BUFFER,
-        gl::ARRAY_BUFFER,
-        self.length as i64,
-        i as i64,
-        count as i64,
-      );
-    }
-  }
-
-  /// Add more data into this buffer.
-  pub unsafe fn push(&mut self, gl: &GLContext, vs: *const u8, count: uint) {
-    assert!(
-      self.length + count <= self.capacity,
-      "GLByteArray::push {} into a {}/{} full GLBuffer",
-      count,
-      self.length,
-      self.capacity
-    );
-
-    self.update_inner(gl, self.length, vs, count);
-    self.length += count;
-  }
-
-  pub unsafe fn update(&self, gl: &GLContext, idx: uint, vs: *const u8, count: uint) {
-    assert!(idx + count <= self.length);
-    self.update_inner(gl, idx, vs, count);
-  }
-
-  fn update_inner(&self, _gl: &GLContext, idx: uint, vs: *const u8, count: uint) {
-    assert!(idx + count <= self.capacity);
-
-    gl::BindVertexArray(self.vertex_array);
-    gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
-
-    unsafe {
-      gl::BufferSubData(
-          gl::ARRAY_BUFFER,
-          idx as i64,
-          count as i64,
-          mem::transmute(vs)
-      );
-    }
-
-    gl::Flush();
-    gl::Finish();
-
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x} in GLByteArray::update", err),
-    }
+  pub fn swap_remove(&mut self, idx: uint, count: uint) {
+    self.buffer.swap_remove(idx, count);
+    self.length -= count * self.attrib_span;
   }
 
   #[inline]
   /// Draws all the queued triangles to the screen.
   pub fn draw(&self, gl: &GLContext) {
-    self.draw_slice(gl, 0, self.length);
+    self.draw_slice(gl, 0, self.buffer.length);
   }
 
   /// Draw some subset of the triangle array.
-  pub fn draw_slice(&self, gl: &GLContext, start: uint, len: uint) {
-    assert!(start + len <= self.len());
+  pub fn draw_slice(&self, _gl: &GLContext, start: uint, len: uint) {
+    assert!(start + len <= self.length);
 
-    gl::BindVertexArray(self.vertex_array);
-    gl::BindBuffer(gl::ARRAY_BUFFER, self.vertex_buffer);
+    gl::BindVertexArray(self.gl_id);
+    gl::BindBuffer(gl::ARRAY_BUFFER, self.buffer.byte_buffer.gl_id);
 
-    gl::DrawArrays(self.mode, (start / self.attrib_span) as i32, (len / self.attrib_span) as i32);
+    gl::DrawArrays(self.mode, (start * self.attrib_span) as i32, (len * self.attrib_span) as i32);
+
+    match gl::GetError() {
+      gl::NO_ERROR => {},
+      err => fail!("OpenGL error 0x{:x}", err),
+    }
   }
 }
 
 #[unsafe_destructor]
-impl Drop for GLByteArray {
+impl<T> Drop for GLArray<T> {
   #[inline]
   fn drop(&mut self) {
     unsafe {
-      gl::DeleteBuffers(1, &self.vertex_buffer);
-      gl::DeleteVertexArrays(1, &self.vertex_array);
+      gl::DeleteVertexArrays(1, &self.gl_id);
     }
-  }
-}
-
-/// A `GLByteArray` that pushes slices of data at a time.
-/// These slices are expected to be a fixed size (or multiples of that size).
-/// Indexing operations and lengths are in terms of contiguous blocks of that
-/// size (i.e. refering to index 2 when the slice span is 3 means referring to a
-/// contiguous block of size 3 starting at index 6 in the underlying GLByteArray.
-pub struct GLArray<T> {
-  pub gl_buffer: GLByteArray,
-  /// Each index in the GLByteArray is the index of a contiguous block of
-  /// `slice_span` bytes. Note this is NOT the same as the `slice_span`
-  /// param provided to the constructor.
-  pub slice_span: uint,
-}
-
-impl<T: Clone> GLArray<T> {
-  pub fn new(
-    gl: &GLContext,
-    shader_program: Rc<RefCell<Shader>>,
-    attribs: &[vertex::AttribData],
-    slice_span: uint,
-    capacity: uint,
-    mode: DrawMode
-  ) -> GLArray<T> {
-    let capacity = capacity * slice_span;
-    let gl_buffer =
-      GLByteArray::new(
-        gl,
-        shader_program,
-        attribs,
-        capacity * mem::size_of::<T>(),
-        mode
-      );
-    assert!(
-      gl_buffer.attrib_span == mem::size_of::<T>(),
-      "{}{}{}{}{}",
-      "OpenGL Buffer created with incorrectly sized attribs. ",
-      "Buffer type has ",
-      mem::size_of::<T>(),
-      " bytes, but attribs are: ",
-      attribs
-    );
-    GLArray {
-      gl_buffer: gl_buffer,
-      slice_span: slice_span * mem::size_of::<T>(),
-    }
-  }
-
-  pub fn len(&self) -> uint {
-    self.gl_buffer.len() / self.slice_span
-  }
-
-  pub fn capacity(&self) -> uint {
-    self.gl_buffer.capacity() / self.slice_span
-  }
-
-  pub fn swap_remove(&mut self, gl: &GLContext, i: uint) {
-    self.gl_buffer.swap_remove(gl, i * self.slice_span, self.slice_span);
-  }
-
-  pub fn push(&mut self, gl: &GLContext, vs: &[T]) {
-    assert!((vs.len() * mem::size_of::<T>()) % self.slice_span == 0);
-    unsafe {
-      self.gl_buffer.push(
-        gl,
-        aligned_slice_to_ptr(vs, mem::size_of::<u8>()),
-        vs.len() * mem::size_of::<T>(),
-      );
-    }
-  }
-
-  pub fn update(&self, gl: &GLContext, idx: uint, vs: &[T]) {
-    assert!((vs.len() * mem::size_of::<T>()) % self.slice_span == 0);
-    unsafe {
-      self.gl_buffer.update(
-        gl,
-        idx * self.slice_span,
-        aligned_slice_to_ptr(vs, mem::size_of::<u8>()),
-        vs.len() * mem::size_of::<T>(),
-      );
-    }
-  }
-
-  pub fn draw(&self, gl: &GLContext) {
-    self.gl_buffer.draw(gl);
-  }
-
-  pub fn draw_slice(&self, gl: &GLContext, start: uint, len: uint) {
-    self.gl_buffer.draw_slice(gl, start * self.slice_span, len * self.slice_span);
   }
 }
