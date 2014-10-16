@@ -188,7 +188,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     let contents = match self.contents {
       Leaf(ref mut vs) => {
         if vs.is_empty() {
-          self.loader.deref().borrow_mut().deref_mut().push(Load((self.id, self.bounds.clone())));
+          self.loader.borrow_mut().push(Load((self.id, self.bounds.clone())));
         }
 
         vs.push((bounds, v));
@@ -201,7 +201,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
           ) / NumCast::from(vs.len()).unwrap();
 
         if avg_length < length(&self.bounds, self.dimension) / 2.0 {
-          self.loader.deref().borrow_mut().deref_mut().push(Unload(self.id));
+          self.loader.borrow_mut().push(Unload(self.id));
 
           let (low, high) =
             Octree::bisect(
@@ -363,7 +363,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
         let i = vs.iter().position(|&(_, ref x)| *x == v).unwrap();
         vs.swap_remove(i);
         if vs.is_empty() {
-          self.loader.deref().borrow_mut().deref_mut().push(Unload(self.id));
+          self.loader.borrow_mut().push(Unload(self.id));
           false
         } else {
           false

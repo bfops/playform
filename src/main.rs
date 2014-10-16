@@ -690,7 +690,7 @@ impl<'a> App<'a> {
       // octree loading
       let count = cmp::min(OCTREE_LOAD_SPEED, self.octree_loader.deref().borrow().deref().len());
       if count > 0 {
-        for op in self.octree_loader.deref().borrow().deref().iter(0, count) {
+        for op in self.octree_loader.borrow().iter(0, count) {
           match *op {
             Load((id, bounds)) => {
               self.octree_buffers.push(&self.gl, id, to_outlines(&bounds));
@@ -701,7 +701,7 @@ impl<'a> App<'a> {
           }
         }
 
-        self.octree_loader.deref().borrow_mut().deref_mut().pop(count);
+        self.octree_loader.borrow_mut().pop(count);
       }
     });
   }
@@ -838,18 +838,18 @@ impl<'a> App<'a> {
             ),
           )));
         if USE_LIGHTING {
-          texture_shader.borrow_mut().deref_mut().set_point_light(
+          texture_shader.borrow_mut().set_point_light(
             &mut gl,
             &Light {
               position: Vec3::new(0.0, 16.0, 0.0),
               intensity: Vec3::new(0.6, 0.6, 0.6),
             }
           );
-          texture_shader.borrow_mut().deref_mut().set_ambient_light(
+          texture_shader.borrow_mut().set_ambient_light(
             &mut gl,
             Vec3::new(0.4, 0.4, 0.4),
           );
-          texture_shader.borrow_mut().deref_mut().set_ambient_light(
+          texture_shader.borrow_mut().set_ambient_light(
             &mut gl,
             Vec3::new(0.4, 0.4, 0.4),
           );
@@ -886,8 +886,8 @@ impl<'a> App<'a> {
           c
         };
 
-        hud_color_shader.borrow_mut().deref_mut().set_camera(&mut gl, &hud_camera);
-        hud_texture_shader.borrow_mut().deref_mut().set_camera(&mut gl, &hud_camera);
+        hud_color_shader.borrow_mut().set_camera(&mut gl, &hud_camera);
+        hud_texture_shader.borrow_mut().set_camera(&mut gl, &hud_camera);
       }
 
       match gl::GetError() {
@@ -994,7 +994,7 @@ impl<'a> App<'a> {
         load_terrain_textures();
 
       let misc_texture_unit = terrain_textures.len() as GLint;
-      hud_texture_shader.deref().borrow_mut().deref_mut().with_uniform_location(
+      hud_texture_shader.borrow_mut().with_uniform_location(
         &mut gl,
         "texture_in",
         |loc| {
