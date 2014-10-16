@@ -1,4 +1,3 @@
-use block;
 use borrow::*;
 use common::*;
 use event::{WindowSettings, Event, EventIterator, EventSettings, Update, Input, Render};
@@ -19,12 +18,12 @@ use glw::vertex::{ColoredVertex, TextureVertex};
 use id_allocator::{Id, IdAllocator};
 use input;
 use input::{Press,Release,Move,Keyboard,Mouse,MouseCursor};
+use libc::types::common::c95::c_void;
 use loader::{Loader, Load, Unload};
 use mob;
 use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
-use ncollide::bounding_volume::LooseBoundingVolume;
+use ncollide::math::Scalar;
 use ncollide::bounding_volume::aabb::AABB;
-use ncollide::ray::{Ray, RayCast};
 use octree;
 use physics::Physics;
 use player::Player;
@@ -39,31 +38,46 @@ use std::cell::RefCell;
 use std::cmp;
 use std::collections::HashMap;
 use std::f32::consts::PI;
-use std::iter::{range,range_inclusive};
+use std::iter::range_inclusive;
 use std::mem;
 use std::raw;
 use std::rc::Rc;
-use libc::types::common::c95::c_void;
+use terrain;
 
-// how many blocks to load during every update step
-static BLOCK_LOAD_SPEED: uint = 1 << 9;
+// how many terrain polys to load during every update step
+static TERRAIN_LOAD_SPEED: uint = 1 << 11;
 static OCTREE_LOAD_SPEED: uint = 1 << 11;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
-static USE_LIGHTING: bool = true;
+static USE_LIGHTING: bool = false;
 
-fn to_faces(bounds: &AABB) -> [AABB, ..6] {
-  let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
-  let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
+/// Defines volumes that can be tightened.
+trait TightBoundingVolume {
+  /// Reduce each of a volume's bounds by some amount.
+  fn tightened(&self, amount: Scalar) -> Self;
+}
 
-  [
-    AABB::new(Pnt3::new(x1, y1, z2), Pnt3::new(x2, y2, z2)),
-    AABB::new(Pnt3::new(x1, y1, z1), Pnt3::new(x1, y2, z2)),
-    AABB::new(Pnt3::new(x1, y2, z1), Pnt3::new(x2, y2, z2)),
-    AABB::new(Pnt3::new(x1, y1, z1), Pnt3::new(x2, y2, z1)),
-    AABB::new(Pnt3::new(x2, y1, z1), Pnt3::new(x2, y2, z2)),
-    AABB::new(Pnt3::new(x1, y1, z1), Pnt3::new(x2, y1, z2)),
-  ]
+impl TightBoundingVolume for AABB {
+  fn tightened(&self, amount: Scalar) -> AABB {
+    let mut new_min = self.mins() + Vec3::new(amount, amount, amount);
+    let mut new_max = self.maxs() - Vec3::new(amount, amount, amount);
+    if new_min.x > new_max.x {
+      let mid = (new_min.x + new_max.x) / 2.0;
+      new_min.x = mid;
+      new_max.x = mid;
+    }
+    if new_min.y > new_max.x {
+      let mid = (new_min.y + new_max.x) / 2.0;
+      new_min.y = mid;
+      new_max.y = mid;
+    }
+    if new_min.z > new_max.x {
+      let mid = (new_min.z + new_max.x) / 2.0;
+      new_min.z = mid;
+      new_max.z = mid;
+    }
+    AABB::new(new_min, new_max)
+  }
 }
 
 fn to_triangles(bounds: &AABB, c: &Color4<GLfloat>) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
@@ -125,35 +139,13 @@ pub fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
   }
 }
 
-fn first_face(bounds: &AABB, ray: &Ray) -> Option<uint> {
-  let faces = partial_min_by(
-      to_faces(bounds)
-        .iter()
-        .zip(range(0 as uint, 6))
-        .filter_map(|(bounds, i)| {
-            bounds.toi_with_ray(ray, true).map(|x| (x, i))
-          }),
-      |(toi, _)| toi
-    );
-  assert!(faces.len() > 0, "ray does not intersect any faces");
-  if faces.len() > 1 {
-    None
-  } else {
-    let (_, f) = faces[0];
-    Some(f)
-  }
-}
+fn load_terrain_textures() -> HashMap<terrain::TerrainType, Rc<Texture>> {
+  let mut terrain_textures = HashMap::new();
 
-fn load_block_textures(
-  gl: &mut GLContext,
-  shader: &mut Shader,
-) -> HashMap<block::BlockType, Rc<Texture>> {
-  let mut block_textures = HashMap::new();
-
-  for &(block_type, path) in [
-        (block::Grass, "textures/grass.png"),
-        (block::Stone, "textures/stone.png"),
-        (block::Dirt, "textures/dirt.png")
+  for &(terrain_type, path) in [
+        (terrain::Grass, "textures/grass.png"),
+        (terrain::Stone, "textures/stone.png"),
+        (terrain::Dirt, "textures/dirt.png")
       ].iter() {
     let img = match png::load_png(&Path::new(path)) {
       Ok(i) => i,
@@ -164,7 +156,7 @@ fn load_block_textures(
     }
     debug!("loaded rgba8 png file {}", path);
 
-    gl::ActiveTexture(gl::TEXTURE0 + block_type as GLuint);
+    gl::ActiveTexture(gl::TEXTURE0 + terrain_type as GLuint);
     let texture = unsafe {
       let mut texture = 0;
       gl::GenTextures(1, &mut texture);
@@ -178,25 +170,12 @@ fn load_block_textures(
     };
 
     let texture = Texture { id: texture };
-    block_textures.insert(block_type, Rc::new(texture));
+    terrain_textures.insert(terrain_type, Rc::new(texture));
   }
 
-  let uniforms: Vec<GLint> = range(0, block_textures.len() as GLint).collect();
-  shader.with_uniform_location(
-    gl,
-    "textures",
-    |loc| unsafe {
-      gl::Uniform1iv(
-        loc,
-        uniforms.len() as GLsizei,
-        uniforms.as_ptr(),
-      );
-    },
-  );
+  gl::ActiveTexture(gl::TEXTURE0 + terrain_textures.len() as GLuint);
 
-  gl::ActiveTexture(gl::TEXTURE0 + block_textures.len() as GLuint);
-
-  block_textures
+  terrain_textures
 }
 
 fn make_text(
@@ -220,7 +199,7 @@ fn make_text(
 
   let instructions = [
           "Use WASD to move, and spacebar to jump.",
-          "Use the mouse to look around, and click to remove blocks."
+          "Use the mouse to look around, and click to remove terrain."
       ].to_vec();
 
   let mut y = 0.99;
@@ -272,27 +251,90 @@ fn make_hud(
   hud_triangles
 }
 
-fn make_blocks(
+fn make_terrain(
   physics: &mut Physics<Id>,
   id_allocator: &mut IdAllocator,
-) -> (HashMap<Id, block::Block>, Loader<Id, Id>) {
-  let mut blocks = HashMap::new();
-  let mut block_loader = Queue::new(1 << 20);
+) -> (HashMap<Id, terrain::TerrainPiece>, Loader<Id, Id>) {
+  let mut terrains = HashMap::new();
+  let mut terrain_loader = Queue::new(1 << 20);
 
   {
     let w = 1.0 / 2.0;
-    let place_block = |x, y, z, block_type| {
-      let min = Pnt3::new(x, y, z);
-      place_block(
+    let place_terrain = |bounds, vertices| {
+      place_terrain(
         physics,
-        &mut blocks,
-        &mut block_loader,
+        &mut terrains,
+        &mut terrain_loader,
         id_allocator,
-        min,
-        min + Vec3::new(w, w, w),
-        block_type,
+        bounds,
+        vertices,
         false
       );
+    };
+
+    enum Facing {
+      Up,
+      Down,
+      Left,
+      Right,
+      Front,
+      Back,
+    }
+
+    let place_square = |x: GLfloat, y: GLfloat, z: GLfloat, terrain_type: terrain::TerrainType, facing: Facing| {
+      let vtx = |v| {
+        terrain::TerrainVertex {
+          position: v,
+          terrain_type: terrain_type as GLuint,
+        }
+      };
+      let (min, max, v1, v2, v3, v4) = match facing {
+        Up => {
+          let v1 = Pnt3::new(x, y, z);
+          let v2 = Pnt3::new(x + w, y, z);
+          let v3 = Pnt3::new(x + w, y, z + w);
+          let v4 = Pnt3::new(x, y, z + w);
+          (v1, v3, v2, v1, v4, v3)
+        },
+        Down => {
+          let v1 = Pnt3::new(x, y, z);
+          let v2 = Pnt3::new(x + w, y, z);
+          let v3 = Pnt3::new(x + w, y, z + w);
+          let v4 = Pnt3::new(x, y, z + w);
+          (v1, v3, v1, v2, v3, v4)
+        },
+        Left => {
+          let v1 = Pnt3::new(x, y, z);
+          let v2 = Pnt3::new(x, y + w, z);
+          let v3 = Pnt3::new(x, y + w, z + w);
+          let v4 = Pnt3::new(x, y, z + w);
+          (v1, v3, v1, v4, v3, v2)
+        },
+        Right => {
+          let v1 = Pnt3::new(x, y, z);
+          let v2 = Pnt3::new(x, y + w, z);
+          let v3 = Pnt3::new(x, y + w, z + w);
+          let v4 = Pnt3::new(x, y, z + w);
+          (v1, v3, v4, v1, v2, v3)
+        },
+        Front => {
+          let v1 = Pnt3::new(x, y, z);
+          let v2 = Pnt3::new(x + w, y, z);
+          let v3 = Pnt3::new(x + w, y + w, z);
+          let v4 = Pnt3::new(x, y + w, z);
+          (v1, v3, v2, v1, v4, v3)
+        },
+        Back => {
+          let v1 = Pnt3::new(x, y, z);
+          let v2 = Pnt3::new(x + w, y, z);
+          let v3 = Pnt3::new(x + w, y + w, z);
+          let v4 = Pnt3::new(x, y + w, z);
+          (v1, v3, v1, v2, v3, v4)
+        },
+      };
+      let bounds = AABB::new(min, max);
+      place_terrain(bounds, [vtx(v1), vtx(v2), vtx(v4)]);
+      place_terrain(bounds, [vtx(v2), vtx(v3), vtx(v4)]);
     };
 
     let platform_range = (1.0 / w) as int;
@@ -300,56 +342,60 @@ fn make_blocks(
     for i in range_inclusive(-platform_range, platform_range) {
       for j in range_inclusive(-platform_range, platform_range) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_block(6.0 + i, 6.0, 0.0 + j, block::Dirt);
+        place_square(6.0 + i, 5.0, 0.0 + j, terrain::Dirt, Down);
+        place_square(6.0 + i, 6.0, 0.0 + j, terrain::Dirt, Up);
       }
     }
     // high platform
     for i in range_inclusive(-platform_range, platform_range) {
       for j in range_inclusive(-platform_range, platform_range) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_block(0.0 + i, 12.0, 5.0 + j, block::Dirt);
+        place_square(0.0 + i, 11.0, 5.0 + j, terrain::Dirt, Down);
+        place_square(0.0 + i, 12.0, 5.0 + j, terrain::Dirt, Up);
       }
     }
+
     let ground_range = (32.0 / w) as int;
     // ground
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(-ground_range, ground_range) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_block(i, 0.0, j, block::Grass);
+        place_square(i, 0.0, j, terrain::Grass, Up);
       }
     }
-    let wall_range = (32.0 / w) as int;
+
+    let wall_height = (32.0 / w) as int;
     // front wall
-    for i in range_inclusive(-wall_range, wall_range) {
-      for j in range_inclusive(0i, wall_range) {
+    for i in range_inclusive(-ground_range, ground_range) {
+      for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_block(i, 0.5 + j, -32.0, block::Stone);
+        place_square(i, j, -32.0, terrain::Stone, Back);
       }
     }
     // back wall
-    for i in range_inclusive(-wall_range, wall_range) {
-      for j in range_inclusive(0i, wall_range) {
+    for i in range_inclusive(-ground_range, ground_range) {
+      for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_block(i, 0.5 + j, 32.0, block::Stone);
+        place_square(i, j, 32.0 - w, terrain::Stone, Front);
       }
     }
     // left wall
-    for i in range_inclusive(-wall_range, wall_range) {
-      for j in range_inclusive(0i, wall_range) {
+    for i in range_inclusive(-ground_range, ground_range) {
+      for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_block(-32.0, 0.5 + j, i, block::Stone);
+        place_square(-32.0, j, i, terrain::Stone, Right);
       }
     }
     // right wall
-    for i in range_inclusive(-wall_range, wall_range) {
-      for j in range_inclusive(0i, wall_range) {
+    for i in range_inclusive(-ground_range, ground_range) {
+      for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_block(32.0, 0.5 + j, i, block::Stone);
+        place_square(32.0 - w, j, i, terrain::Stone, Left);
       }
     }
   }
 
-  (blocks, block_loader)
+  (terrains, terrain_loader)
 }
 
 fn make_mobs(
@@ -405,32 +451,28 @@ fn make_mobs(
   (mobs, mob_buffers)
 }
 
-fn place_block(
+fn place_terrain(
   physics: &mut Physics<Id>,
-  blocks: &mut HashMap<Id, block::Block>,
-  block_loader: &mut Loader<Id, Id>,
+  terrains: &mut HashMap<Id, terrain::TerrainPiece>,
+  terrain_loader: &mut Loader<Id, Id>,
   id_allocator: &mut IdAllocator,
-  min: Pnt3<GLfloat>,
-  max: Pnt3<GLfloat>,
-  block_type: block::BlockType,
+  bounds: AABB,
+  vertices: [terrain::TerrainVertex, ..3],
   check_collisions: bool,
 ) {
-  let mut block = block::Block {
-    block_type: block_type,
+  let mut terrain = terrain::TerrainPiece {
+    vertices: vertices,
     id: Id::none(),
   };
 
-  // hacky solution to make sure blocks have "breathing room" and don't
+  // hacky solution to make sure terrain polys have "breathing room" and don't
   // collide with their neighbours.
   let epsilon: GLfloat = 0.00001;
-  let bounds = AABB::new(min, max).loosened(-epsilon);
-  let collided = check_collisions && physics.octree.intersect(&bounds, Id::none());
-
-  if !collided {
-    block.id = id_allocator.allocate();
-    physics.insert(block.id, &bounds);
-    blocks.insert(block.id, block);
-    block_loader.push(Load(block.id));
+  if !check_collisions || !physics.octree.intersect(&bounds.tightened(epsilon), Id::none()) {
+    terrain.id = id_allocator.allocate();
+    physics.insert(terrain.id, &bounds);
+    terrains.insert(terrain.id, terrain);
+    terrain_loader.push(Load(terrain.id));
   }
 }
 
@@ -464,20 +506,18 @@ fn add_mob(
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App<'a> {
   physics: Physics<Id>,
-  blocks: HashMap<Id, block::Block>,
+  terrains: HashMap<Id, terrain::TerrainPiece>,
   player: Player,
   mobs: HashMap<Id, mob::Mob>,
 
-  id_allocator: IdAllocator,
-
-  block_loader: Loader<Id, Id>,
+  terrain_loader: Loader<Id, Id>,
   octree_loader: Rc<RefCell<Loader<(octree::OctreeId, AABB), octree::OctreeId>>>,
 
   // OpenGL buffers
   mob_buffers: mob::MobBuffers,
-  block_buffers: block::BlockBuffers,
+  terrain_buffers: terrain::TerrainBuffers,
   octree_buffers: octree::OctreeBuffers<Id>,
-  block_textures: HashMap<block::BlockType, Rc<Texture>>,
+  terrain_textures: HashMap<terrain::TerrainType, Rc<Texture>>,
   line_of_sight: GLSliceBuffer<ColoredVertex>,
   hud_triangles: GLSliceBuffer<ColoredVertex>,
   text_triangles: GLSliceBuffer<TextureVertex>,
@@ -611,37 +651,36 @@ impl<'a> App<'a> {
     swap_remove_first(&mut self.mouse_buttons_pressed, button)
   }
 
-  fn load_blocks(&mut self, max: Option<uint>) {
-    time!(self.timers.deref(), "load.blocks", || {
-      // block loading
-      let count = max.map_or(self.block_loader.len(), |x| cmp::min(x, self.block_loader.len()));
+  fn load_terrain(&mut self, max: Option<uint>) {
+    time!(self.timers.deref(), "load.terrain", || {
+      // terrain loading
+      let count = max.map_or(self.terrain_loader.len(), |x| cmp::min(x, self.terrain_loader.len()));
       if count > 0 {
-        for op in self.block_loader.iter(0, count) {
-          let blocks = &mut self.blocks;
-          let block_buffers = &mut self.block_buffers;
+        for op in self.terrain_loader.iter(0, count) {
+          let terrains = &mut self.terrains;
+          let terrain_buffers = &mut self.terrain_buffers;
           let physics = &mut self.physics;
           let gl = &self.gl;
           match *op {
             Load(id) => {
               let bounds = physics.get_bounds(id).unwrap();
-              let block = blocks.find(&id).unwrap();
-              block_buffers.push(
+              let terrain = terrains.find(&id).unwrap();
+              terrain_buffers.push(
                 gl,
                 id,
-                block.to_texture_triangles(bounds),
-                block.to_outlines(bounds),
+                terrain.vertices,
               );
             },
             Unload(id) => {
-              if blocks.remove(&id) {
-                block_buffers.swap_remove(gl, id);
+              if terrains.remove(&id) {
+                terrain_buffers.swap_remove(gl, id);
                 physics.remove(id);
               }
             },
           }
         }
 
-        self.block_loader.pop(count);
+        self.terrain_loader.pop(count);
       }
     });
   }
@@ -672,7 +711,7 @@ impl<'a> App<'a> {
       // TODO(cgaebel): Ideally, the update thread should not be touching OpenGL.
 
       time!(self.timers.deref(), "update.load", || {
-        self.load_blocks(Some(BLOCK_LOAD_SPEED));
+        self.load_terrain(Some(TERRAIN_LOAD_SPEED));
         self.load_octree();
       });
 
@@ -708,39 +747,13 @@ impl<'a> App<'a> {
         }
       });
 
-      // block::Block deletion
+      // terrain deletion
       if self.is_mouse_pressed(input::mouse::Left) {
-        time!(self.timers.deref(), "update.delete_block", || {
+        time!(self.timers.deref(), "update.delete_terrain", || {
           for id in self.entities_in_front().into_iter() {
-            if self.blocks.contains_key(&id) {
-              self.remove_block(id);
+            if self.terrains.contains_key(&id) {
+              self.remove_terrain(id);
             }
-          }
-        })
-      }
-      if self.is_mouse_pressed(input::mouse::Right) {
-        time!(self.timers.deref(), "update.place_block", || {
-          let entities = self.entities_in_front();
-          if !entities.is_empty() {
-            let block_id = entities[0];
-            {
-              let bounds = self.get_bounds(block_id);
-              first_face(bounds, &self.player.forward_ray()).map(|face| {
-                let direction =
-                      [ Vec3::new(0.0, 0.0, 1.0),
-                        Vec3::new(-1.0, 0.0, 0.0),
-                        Vec3::new(0.0, 1.0, 0.0),
-                        Vec3::new(0.0, 0.0, -1.0),
-                        Vec3::new(1.0, 0.0, 0.0),
-                        Vec3::new(0.0, -1.0, 0.0),
-                      ][face] * 0.5 as GLfloat;
-                // TODO: think about how this should work when placing size A blocks
-                // against size B blocks.
-                (bounds.mins() + direction, bounds.maxs() + direction)
-              })
-            }.map(|(mins, maxs)| {
-              self.place_block(mins, maxs, block::Dirt, true);
-            });
           }
         })
       }
@@ -761,10 +774,18 @@ impl<'a> App<'a> {
         self.octree_buffers.draw(&self.gl);
       }
 
-      // draw the blocks
-      self.block_buffers.draw(&self.gl, self.render_outlines);
-
-      self.mob_buffers.draw(&self.gl);
+      // draw the world
+      if self.render_outlines {
+        gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
+        gl::Disable(gl::CULL_FACE);
+        self.terrain_buffers.draw(&self.gl);
+        self.mob_buffers.draw(&self.gl);
+        gl::PolygonMode(gl::FRONT_AND_BACK, gl::FILL);
+        gl::Enable(gl::CULL_FACE);
+      } else {
+        self.terrain_buffers.draw(&self.gl);
+        self.mob_buffers.draw(&self.gl);
+      }
 
       // draw the hud
 
@@ -772,7 +793,7 @@ impl<'a> App<'a> {
 
       // draw hud textures
       self.gl.use_shader(self.hud_texture_shader.borrow().deref(), |gl| {
-        gl::ActiveTexture(gl::TEXTURE0 + self.block_textures.len() as GLuint);
+        gl::ActiveTexture(gl::TEXTURE0 + self.terrain_textures.len() as GLuint);
         for (i, tex) in self.text_textures.iter().enumerate() {
           tex.bind_2d(gl);
           self.text_triangles.draw_slice(gl, i * 2, 2);
@@ -792,7 +813,9 @@ impl<'a> App<'a> {
 
       gl.print_stats();
 
-      gl.enable_culling();
+      gl::FrontFace(gl::CCW);
+      gl::CullFace(gl::BACK);
+      gl::Enable(gl::CULL_FACE);
       gl.enable_alpha_blending();
       gl.enable_smooth_lines();
       gl.enable_depth_buffer(100.0);
@@ -814,16 +837,6 @@ impl<'a> App<'a> {
               [(String::from_str("lighting"), (USE_LIGHTING as uint).to_string())].to_vec().into_iter(),
             ),
           )));
-        texture_shader.borrow_mut().deref_mut().with_uniform_location(
-          &mut gl,
-          "texture_positions",
-          |loc| {
-            let v = block::Block::texture_positions();
-            unsafe {
-              gl::Uniform2fv(loc, v.len() as GLint, mem::transmute(v.as_ptr()));
-            }
-          }
-        );
         if USE_LIGHTING {
           texture_shader.borrow_mut().deref_mut().set_point_light(
             &mut gl,
@@ -839,16 +852,6 @@ impl<'a> App<'a> {
           texture_shader.borrow_mut().deref_mut().set_ambient_light(
             &mut gl,
             Vec3::new(0.4, 0.4, 0.4),
-          );
-          texture_shader.borrow_mut().deref_mut().with_uniform_location(
-            &mut gl,
-            "normals",
-            |loc| {
-              let v = block::Block::vertex_normals();
-              unsafe {
-                gl::Uniform3fv(loc, v.len() as GLint, mem::transmute(v.as_ptr()));
-              }
-            }
           );
         }
         texture_shader
@@ -941,9 +944,9 @@ impl<'a> App<'a> {
 
       let mut id_allocator = IdAllocator::new();
 
-      let (blocks, block_loader) =
-        time!(timers.deref(), "make_blocks", || {
-          make_blocks(
+      let (terrains, terrain_loader) =
+        time!(timers.deref(), "make_terrain", || {
+          make_terrain(
             &mut physics,
             &mut id_allocator,
           )
@@ -987,13 +990,10 @@ impl<'a> App<'a> {
         player
       };
 
-      let block_textures =
-        load_block_textures(
-          &mut gl,
-          texture_shader.deref().borrow_mut().deref_mut()
-        );
+      let terrain_textures =
+        load_terrain_textures();
 
-      let misc_texture_unit = block_textures.len() as GLint;
+      let misc_texture_unit = terrain_textures.len() as GLint;
       hud_texture_shader.deref().borrow_mut().deref_mut().with_uniform_location(
         &mut gl,
         "texture_in",
@@ -1007,26 +1007,24 @@ impl<'a> App<'a> {
         err => fail!("OpenGL error 0x{:x} in load()", err),
       }
 
-      debug!("load() finished with {} blocks", blocks.len());
+      debug!("load() finished with {} terrain polys", terrains.len());
 
       App {
         line_of_sight: line_of_sight,
         physics: physics,
-        block_loader: block_loader,
+        terrain_loader: terrain_loader,
         octree_loader: octree_loader,
         mob_buffers: mob_buffers,
         octree_buffers: octree_buffers,
-        block_buffers:
-          block::BlockBuffers::new(
+        terrain_buffers:
+          terrain::TerrainBuffers::new(
             &gl,
-            color_shader.clone(),
             texture_shader.clone(),
           ),
-        block_textures: block_textures,
-        blocks: blocks,
+        terrain_textures: terrain_textures,
+        terrains: terrains,
         player: player,
         mobs: mobs,
-        id_allocator: id_allocator,
         hud_triangles: hud_triangles,
         text_textures: text_textures,
         text_triangles: text_triangles,
@@ -1035,7 +1033,7 @@ impl<'a> App<'a> {
         hud_texture_shader: hud_texture_shader,
         mouse_buttons_pressed: Vec::new(),
         render_octree: false,
-        render_outlines: true,
+        render_outlines: false,
         timers: timers.clone(),
         gl: gl,
       }
@@ -1056,27 +1054,8 @@ impl<'a> App<'a> {
     self.physics.octree.cast_ray(&self.player.forward_ray(), self.player.id)
   }
 
-  fn place_block(
-    &mut self,
-    min: Pnt3<GLfloat>,
-    max: Pnt3<GLfloat>,
-    block_type: block::BlockType,
-    check_collisions: bool
-  ) {
-    place_block(
-      &mut self.physics,
-      &mut self.blocks,
-      &mut self.block_loader,
-      &mut self.id_allocator,
-      min,
-      max,
-      block_type,
-      check_collisions,
-    )
-  }
-
-  fn remove_block(&mut self, id: Id) {
-    self.block_loader.push(Unload(id));
+  fn remove_terrain(&mut self, id: Id) {
+    self.terrain_loader.push(Unload(id));
   }
 
   fn translate_mob(gl: &GLContext, physics: &mut Physics<Id>, mob_buffers: &mut mob::MobBuffers, mob: &mut mob::Mob, delta_p: Vec3<GLfloat>) {

@@ -21,7 +21,6 @@ extern crate sdl2;
 extern crate sdl2_game_window;
 extern crate shader_version;
 
-mod block;
 mod borrow;
 mod common;
 mod fontloader;
@@ -35,6 +34,7 @@ mod mob;
 mod octree;
 mod physics;
 mod shader;
+mod terrain;
 mod ttf;
 
 #[allow(dead_code)]

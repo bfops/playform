@@ -10,7 +10,6 @@ uniform vec3 ambient_light;
 uniform sampler2D textures[3];
 
 in vec3 world_position;
-in vec2 texture_position;
 in vec3 normal;
 flat in uint type;
 
@@ -25,13 +24,13 @@ void main() {
     brightness = clamp(brightness, 0, 1);
   #endif
 
-  vec4 base_color = vec4(0);
+  vec4 base_color;
   if(type == uint(0)) {
-    base_color = texture(textures[0], texture_position);
+    base_color = vec4(0, 0.5, 0, 1);
   } else if(type == uint(1)) {
-    base_color = texture(textures[1], texture_position);
+    base_color = vec4(0.5, 0.4, 0.2, 1);
   } else if(type == uint(2)) {
-    base_color = texture(textures[2], texture_position);
+    base_color = vec4(0.5, 0.5, 0.5, 1);
   }
 
   #if $lighting$
