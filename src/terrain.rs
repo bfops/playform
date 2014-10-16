@@ -1,6 +1,6 @@
 use common::*;
 use gl::types::*;
-use glw::gl_buffer::{GLSliceBuffer, Triangles};
+use glw::gl_buffer::{GLArray, Triangles};
 use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
@@ -34,7 +34,7 @@ pub struct TerrainBuffers {
   id_to_index: HashMap<Id, uint>,
   index_to_id: Vec<Id>,
 
-  triangles: GLSliceBuffer<TerrainVertex>,
+  triangles: GLArray<TerrainVertex>,
 }
 
 impl TerrainBuffers {
@@ -45,7 +45,7 @@ impl TerrainBuffers {
     TerrainBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
-      triangles: GLSliceBuffer::new(
+      triangles: GLArray::new(
         gl,
         texture_shader.clone(),
         [

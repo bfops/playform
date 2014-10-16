@@ -31,7 +31,7 @@ unsafe fn aligned_slice_to_ptr<T, U>(vs: &[T], alignment: uint) -> *const U {
 }
 
 /// A fixed-capacity array of bytes passed to OpenGL.
-pub struct GLBuffer {
+pub struct GLByteArray {
   pub vertex_array: u32,
   pub vertex_buffer: u32,
   /// number of bytes in the buffer.
@@ -60,7 +60,7 @@ impl DrawMode {
   }
 }
 
-impl GLBuffer {
+impl GLByteArray {
   #[inline]
   /// Creates a new array of objects on the GPU.
   /// capacity is provided in units of size slice_span.
@@ -69,7 +69,7 @@ impl GLBuffer {
       shader_program: Rc<RefCell<Shader>>,
       attribs: &[vertex::AttribData],
       capacity: uint,
-      mode: DrawMode) -> GLBuffer {
+      mode: DrawMode) -> GLByteArray {
     let mut vertex_array = 0;
     let mut vertex_buffer = 0;
 
@@ -149,7 +149,7 @@ impl GLBuffer {
       err => fail!("OpenGL error 0x{:x}", err),
     }
 
-    GLBuffer {
+    GLByteArray {
       vertex_array:  vertex_array,
       vertex_buffer: vertex_buffer,
       length: 0,
@@ -167,7 +167,7 @@ impl GLBuffer {
     self.capacity
   }
 
-  /// Analog of `std::vec::Vec::swap_remove`, but for GLBuffer data.
+  /// Analog of `std::vec::Vec::swap_remove`, but for GLByteArray data.
   pub fn swap_remove(&mut self, _gl: &GLContext, i: uint, count: uint) {
     self.length -= count;
     assert!(i <= self.length);
@@ -178,7 +178,7 @@ impl GLBuffer {
     if i < self.length {
       assert!(
         i <= self.length - count,
-        "GLBuffer::swap_remove would cause copy in overlapping regions"
+        "GLByteArray::swap_remove would cause copy in overlapping regions"
       );
 
       let va = self.vertex_array;
@@ -201,7 +201,7 @@ impl GLBuffer {
   pub unsafe fn push(&mut self, gl: &GLContext, vs: *const u8, count: uint) {
     assert!(
       self.length + count <= self.capacity,
-      "GLBuffer::push {} into a {}/{} full GLBuffer",
+      "GLByteArray::push {} into a {}/{} full GLBuffer",
       count,
       self.length,
       self.capacity
@@ -236,7 +236,7 @@ impl GLBuffer {
 
     match gl::GetError() {
       gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x} in GLBuffer::update", err),
+      err => fail!("OpenGL error 0x{:x} in GLByteArray::update", err),
     }
   }
 
@@ -258,7 +258,7 @@ impl GLBuffer {
 }
 
 #[unsafe_destructor]
-impl Drop for GLBuffer {
+impl Drop for GLByteArray {
   #[inline]
   fn drop(&mut self) {
     unsafe {
@@ -268,20 +268,20 @@ impl Drop for GLBuffer {
   }
 }
 
-/// A `GLBuffer` that pushes slices of data at a time.
+/// A `GLByteArray` that pushes slices of data at a time.
 /// These slices are expected to be a fixed size (or multiples of that size).
 /// Indexing operations and lengths are in terms of contiguous blocks of that
 /// size (i.e. refering to index 2 when the slice span is 3 means referring to a
-/// contiguous block of size 3 starting at index 6 in the underlying GLBuffer.
-pub struct GLSliceBuffer<T> {
-  pub gl_buffer: GLBuffer,
-  /// Each index in the GLBuffer is the index of a contiguous block of
+/// contiguous block of size 3 starting at index 6 in the underlying GLByteArray.
+pub struct GLArray<T> {
+  pub gl_buffer: GLByteArray,
+  /// Each index in the GLByteArray is the index of a contiguous block of
   /// `slice_span` bytes. Note this is NOT the same as the `slice_span`
   /// param provided to the constructor.
   pub slice_span: uint,
 }
 
-impl<T: Clone> GLSliceBuffer<T> {
+impl<T: Clone> GLArray<T> {
   pub fn new(
     gl: &GLContext,
     shader_program: Rc<RefCell<Shader>>,
@@ -289,10 +289,10 @@ impl<T: Clone> GLSliceBuffer<T> {
     slice_span: uint,
     capacity: uint,
     mode: DrawMode
-  ) -> GLSliceBuffer<T> {
+  ) -> GLArray<T> {
     let capacity = capacity * slice_span;
     let gl_buffer =
-      GLBuffer::new(
+      GLByteArray::new(
         gl,
         shader_program,
         attribs,
@@ -308,7 +308,7 @@ impl<T: Clone> GLSliceBuffer<T> {
       " bytes, but attribs are: ",
       attribs
     );
-    GLSliceBuffer {
+    GLArray {
       gl_buffer: gl_buffer,
       slice_span: slice_span * mem::size_of::<T>(),
     }

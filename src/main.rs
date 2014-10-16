@@ -181,11 +181,11 @@ fn load_terrain_textures() -> HashMap<terrain::TerrainType, Rc<Texture>> {
 fn make_text(
   gl: &GLContext,
   shader: Rc<RefCell<Shader>>,
-) -> (Vec<Texture>, GLSliceBuffer<TextureVertex>) {
+) -> (Vec<Texture>, GLArray<TextureVertex>) {
   let fontloader = fontloader::FontLoader::new();
   let mut textures = Vec::new();
   let mut triangles = {
-    GLSliceBuffer::new(
+    GLArray::new(
         gl,
         shader,
         [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
@@ -223,9 +223,9 @@ fn make_text(
 fn make_hud(
   gl: &GLContext,
   shader: Rc<RefCell<Shader>>,
-) -> GLSliceBuffer<ColoredVertex> {
+) -> GLArray<ColoredVertex> {
   let mut hud_triangles = {
-    GLSliceBuffer::new(
+    GLArray::new(
         gl,
         shader,
         [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
@@ -518,9 +518,9 @@ pub struct App<'a> {
   terrain_buffers: terrain::TerrainBuffers,
   octree_buffers: octree::OctreeBuffers<Id>,
   terrain_textures: HashMap<terrain::TerrainType, Rc<Texture>>,
-  line_of_sight: GLSliceBuffer<ColoredVertex>,
-  hud_triangles: GLSliceBuffer<ColoredVertex>,
-  text_triangles: GLSliceBuffer<TextureVertex>,
+  line_of_sight: GLArray<ColoredVertex>,
+  hud_triangles: GLArray<ColoredVertex>,
+  text_triangles: GLArray<TextureVertex>,
 
   text_textures: Vec<Texture>,
 
@@ -910,7 +910,7 @@ impl<'a> App<'a> {
 
       let line_of_sight = {
         let mut line_of_sight = {
-          GLSliceBuffer::new(
+          GLArray::new(
               &gl,
               color_shader.clone(),
               [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },

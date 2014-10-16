@@ -77,7 +77,7 @@ pub struct OctreeBuffers<V> {
   entry_to_index: HashMap<OctreeId, uint>,
   index_to_entry: Vec<OctreeId>,
 
-  outlines: GLSliceBuffer<ColoredVertex>,
+  outlines: GLArray<ColoredVertex>,
 }
 
 impl<V> OctreeBuffers<V> {
@@ -89,7 +89,7 @@ impl<V> OctreeBuffers<V> {
       entry_to_index: HashMap::new(),
       index_to_entry: Vec::new(),
 
-      outlines: GLSliceBuffer::new(
+      outlines: GLArray::new(
         gl,
         shader_program.clone(),
         [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },

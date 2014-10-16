@@ -1,6 +1,6 @@
 use common::*;
 use main;
-use glw::gl_buffer::{GLSliceBuffer, Triangles};
+use glw::gl_buffer::{GLArray, Triangles};
 use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
@@ -24,7 +24,7 @@ pub struct MobBuffers {
   id_to_index: HashMap<Id, uint>,
   index_to_id: Vec<Id>,
 
-  triangles: GLSliceBuffer<vertex::ColoredVertex>,
+  triangles: GLArray<vertex::ColoredVertex>,
 }
 
 impl MobBuffers {
@@ -33,7 +33,7 @@ impl MobBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
 
-      triangles: GLSliceBuffer::new(
+      triangles: GLArray::new(
         gl,
         color_shader.clone(),
         [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
