@@ -264,51 +264,53 @@ fn make_terrain(
           terrain_type: terrain_type as GLuint,
         }
       };
-      let (min, max, v1, v2, v3, v4) = match facing {
+      // Return verties such that v1 and v3 are min and max of the bounding box, respectively.
+      // Vertices arranged in CCW order from the front.
+      let (v1, v2, v3, v4) = match facing {
         Up => {
           let v1 = Pnt3::new(x, y, z);
           let v2 = Pnt3::new(x + w, y, z);
           let v3 = Pnt3::new(x + w, y, z + w);
           let v4 = Pnt3::new(x, y, z + w);
-          (v1, v3, v2, v1, v4, v3)
+          (v1, v4, v3, v2)
         },
         Down => {
           let v1 = Pnt3::new(x, y, z);
           let v2 = Pnt3::new(x + w, y, z);
           let v3 = Pnt3::new(x + w, y, z + w);
           let v4 = Pnt3::new(x, y, z + w);
-          (v1, v3, v1, v2, v3, v4)
+          (v1, v2, v3, v4)
         },
         Left => {
           let v1 = Pnt3::new(x, y, z);
           let v2 = Pnt3::new(x, y + w, z);
           let v3 = Pnt3::new(x, y + w, z + w);
           let v4 = Pnt3::new(x, y, z + w);
-          (v1, v3, v1, v4, v3, v2)
+          (v1, v4, v3, v2)
         },
         Right => {
           let v1 = Pnt3::new(x, y, z);
           let v2 = Pnt3::new(x, y + w, z);
           let v3 = Pnt3::new(x, y + w, z + w);
           let v4 = Pnt3::new(x, y, z + w);
-          (v1, v3, v4, v1, v2, v3)
+          (v1, v2, v3, v4)
         },
         Front => {
           let v1 = Pnt3::new(x, y, z);
           let v2 = Pnt3::new(x + w, y, z);
           let v3 = Pnt3::new(x + w, y + w, z);
           let v4 = Pnt3::new(x, y + w, z);
-          (v1, v3, v2, v1, v4, v3)
+          (v1, v4, v3, v2)
         },
         Back => {
           let v1 = Pnt3::new(x, y, z);
           let v2 = Pnt3::new(x + w, y, z);
           let v3 = Pnt3::new(x + w, y + w, z);
           let v4 = Pnt3::new(x, y + w, z);
-          (v1, v3, v1, v2, v3, v4)
+          (v1, v2, v3, v4)
         },
       };
-      let bounds = AABB::new(min, max);
+      let bounds = AABB::new(v1, v3);
       place_terrain(bounds, [vtx(v1), vtx(v2), vtx(v4)]);
       place_terrain(bounds, [vtx(v2), vtx(v3), vtx(v4)]);
     };
