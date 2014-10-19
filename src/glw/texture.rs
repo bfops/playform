@@ -36,12 +36,12 @@ impl Add<u32, TextureUnit> for TextureUnit {
 
 /// A GPU-allocated texture.
 pub struct Texture {
-  pub id: GLuint,
+  pub gl_id: GLuint,
 }
 
 impl Texture {
   pub fn bind_2d(&self, _gl: &GLContext) {
-    gl::BindTexture(gl::TEXTURE_2D, self.id);
+    gl::BindTexture(gl::TEXTURE_2D, self.gl_id);
 
     match gl::GetError() {
       gl::NO_ERROR => {},
@@ -51,7 +51,7 @@ impl Texture {
 
   #[allow(dead_code)]
   pub fn bind_3d(&self, _gl: &GLContext) {
-    gl::BindTexture(gl::TEXTURE_3D, self.id);
+    gl::BindTexture(gl::TEXTURE_3D, self.gl_id);
 
     match gl::GetError() {
       gl::NO_ERROR => {},
@@ -62,6 +62,6 @@ impl Texture {
 
 impl Drop for Texture {
   fn drop(&mut self) {
-    unsafe { gl::DeleteTextures(1, &self.id); }
+    unsafe { gl::DeleteTextures(1, &self.gl_id); }
   }
 }
