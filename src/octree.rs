@@ -293,9 +293,9 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
 
   // Find whether there are objects overlapping the object & bounds provided in
   // this/child trees. Uses equality comparison on V to ignore "same" objects.
-  pub fn intersect(&self, bounds: &AABB, self_v: V) -> bool {
+  pub fn intersect(&self, bounds: &AABB, self_v: Option<V>) -> bool {
     match self.contents {
-      Leaf(ref vs) => vs.iter().any(|&(bs, ref v)| *v != self_v && bounds.intersects(&bs)),
+      Leaf(ref vs) => vs.iter().any(|&(bs, ref v)| Some(*v) != self_v && bounds.intersects(&bs)),
       Branch(ref b) => {
         let mid = middle(&self.bounds, self.dimension);
         let (low_bounds, high_bounds) = split(mid, self.dimension, *bounds);

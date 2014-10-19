@@ -4,7 +4,7 @@ use glw::gl_buffer::{GLArray, GLBuffer, Triangles};
 use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
-use id_allocator::Id;
+use main::EntityId;
 use nalgebra::Pnt3;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -27,12 +27,12 @@ pub struct TerrainVertex {
 
 pub struct TerrainPiece {
   pub vertices: [TerrainVertex, ..3],
-  pub id: Id,
+  pub id: EntityId,
 }
 
 pub struct TerrainBuffers {
-  id_to_index: HashMap<Id, uint>,
-  index_to_id: Vec<Id>,
+  id_to_index: HashMap<EntityId, uint>,
+  index_to_id: Vec<EntityId>,
 
   triangles: GLArray<TerrainVertex>,
 }
@@ -60,7 +60,7 @@ impl TerrainBuffers {
 
   pub fn push(
     &mut self,
-    id: Id,
+    id: EntityId,
     triangles: &[TerrainVertex],
   ) {
     self.id_to_index.insert(id, self.index_to_id.len());
@@ -69,7 +69,7 @@ impl TerrainBuffers {
   }
 
   // Note: `id` must be present in the buffers.
-  pub fn swap_remove(&mut self, id: Id) {
+  pub fn swap_remove(&mut self, id: EntityId) {
     let idx = *self.id_to_index.find(&id).unwrap();
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     self.index_to_id.swap_remove(idx).unwrap();

@@ -39,7 +39,7 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
             bounds.maxs() + amount
           );
 
-        let collision = self.octree.intersect(&new_bounds, t);
+        let collision = self.octree.intersect(&new_bounds, Some(t));
 
         if !collision {
           self.octree.reinsert(t, bounds, new_bounds);

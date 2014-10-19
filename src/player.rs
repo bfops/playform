@@ -1,10 +1,10 @@
 use gl::types::*;
 use glw::camera;
-use id_allocator::Id;
-use physics::Physics;
+use main::EntityId;
 use nalgebra::Vec3;
 use nalgebra::RMul;
 use ncollide::ray::Ray;
+use physics::Physics;
 use std::f32::consts::PI;
 
 static MAX_JUMP_FUEL: uint = 4;
@@ -21,7 +21,7 @@ pub struct Player {
   pub jump_fuel: uint,
   // are we currently trying to jump? (e.g. holding the key).
   pub is_jumping: bool,
-  pub id: Id,
+  pub id: EntityId,
 
   // rotation around the y-axis, in radians
   pub lateral_rotation: f32,
@@ -31,7 +31,7 @@ pub struct Player {
 
 impl Player {
   /// Translates the player/camera by a vector.
-  pub fn translate(&mut self, physics: &mut Physics<Id>, v: Vec3<GLfloat>) {
+  pub fn translate(&mut self, physics: &mut Physics<EntityId>, v: Vec3<GLfloat>) {
     let collided = physics.translate(self.id, v).unwrap();
     if collided {
       self.speed = self.speed - v;
@@ -48,7 +48,7 @@ impl Player {
     }
   }
 
-  pub fn update(&mut self, physics: &mut Physics<Id>) {
+  pub fn update(&mut self, physics: &mut Physics<EntityId>) {
     if self.is_jumping {
       if self.jump_fuel > 0 {
         self.jump_fuel -= 1;

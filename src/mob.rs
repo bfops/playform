@@ -4,7 +4,7 @@ use glw::gl_buffer::{GLArray, GLBuffer, Triangles};
 use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
-use id_allocator::Id;
+use main::EntityId;
 use nalgebra::Vec3;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -17,12 +17,12 @@ pub type Behavior = unsafe fn(&main::App, &mut Mob);
 pub struct Mob {
   pub speed: Vec3<f32>,
   pub behavior: Behavior,
-  pub id: Id,
+  pub id: EntityId,
 }
 
 pub struct MobBuffers {
-  id_to_index: HashMap<Id, uint>,
-  index_to_id: Vec<Id>,
+  id_to_index: HashMap<EntityId, uint>,
+  index_to_id: Vec<EntityId>,
 
   triangles: GLArray<vertex::ColoredVertex>,
 }
@@ -47,7 +47,7 @@ impl MobBuffers {
 
   pub fn push(
     &mut self,
-    id: Id,
+    id: EntityId,
     triangles: &[vertex::ColoredVertex]
   ) {
     self.id_to_index.insert(id, self.index_to_id.len());
@@ -58,7 +58,7 @@ impl MobBuffers {
 
   pub fn update(
     &mut self,
-    id: Id,
+    id: EntityId,
     triangles: &[vertex::ColoredVertex]
   ) {
     let idx = *self.id_to_index.find(&id).unwrap();

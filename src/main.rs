@@ -15,7 +15,7 @@ use glw::shader::Shader;
 use glw::texture::Texture;
 use glw::vertex;
 use glw::vertex::{ColoredVertex, TextureVertex};
-use id_allocator::{Id, IdAllocator};
+use id_allocator::IdAllocator;
 use input;
 use input::{Press,Release,Move,Keyboard,Mouse,MouseCursor};
 use libc::types::common::c95::c_void;
@@ -37,6 +37,7 @@ use stopwatch::*;
 use std::cell::RefCell;
 use std::cmp;
 use std::collections::HashMap;
+use std::default::Default;
 use std::f32::consts::PI;
 use std::iter::range_inclusive;
 use std::mem;
@@ -50,6 +51,29 @@ static OCTREE_LOAD_SPEED: uint = 1 << 11;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
 static USE_LIGHTING: bool = false;
+
+#[deriving(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
+pub struct EntityId(u32);
+
+impl Default for EntityId {
+  fn default() -> EntityId {
+    EntityId(0)
+  }
+}
+
+impl Add<u32, EntityId> for EntityId {
+  fn add(&self, rhs: &u32) -> EntityId {
+    let EntityId(i) = *self;
+    EntityId(i + *rhs)
+  }
+}
+
+impl Mul<u32, EntityId> for EntityId {
+  fn mul(&self, rhs: &u32) -> EntityId {
+    let EntityId(i) = *self;
+    EntityId(i * *rhs)
+  }
+}
 
 /// Defines volumes that can be tightened.
 trait TightBoundingVolume {
@@ -141,11 +165,12 @@ pub fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
 fn load_terrain_textures() -> HashMap<terrain::TerrainType, Rc<Texture>> {
   let mut terrain_textures = HashMap::new();
 
-  for &(terrain_type, path) in [
-        (terrain::Grass, "textures/grass.png"),
-        (terrain::Stone, "textures/stone.png"),
-        (terrain::Dirt, "textures/dirt.png")
-      ].iter() {
+  let terrain_files = [
+    (terrain::Grass, "textures/grass.png"),
+    (terrain::Stone, "textures/stone.png"),
+    (terrain::Dirt, "textures/dirt.png"),
+  ].to_vec();
+  for (terrain_type, path) in terrain_files.into_iter() {
     let img = match png::load_png(&Path::new(path)) {
       Ok(i) => i,
       Err(s) => fail!("Could not load png {}: {}", path, s)
@@ -247,9 +272,9 @@ fn make_hud(
 }
 
 fn make_terrain(
-  physics: &mut Physics<Id>,
-  id_allocator: &mut IdAllocator,
-) -> (HashMap<Id, terrain::TerrainPiece>, Loader<Id, Id>) {
+  physics: &mut Physics<EntityId>,
+  id_allocator: &mut IdAllocator<EntityId>,
+) -> (HashMap<EntityId, terrain::TerrainPiece>, Loader<EntityId, EntityId>) {
   let mut terrains = HashMap::new();
   let mut terrain_loader = Queue::new(1 << 20);
 
@@ -395,10 +420,10 @@ fn make_terrain(
 
 fn make_mobs(
   gl: &GLContext,
-  physics: &mut Physics<Id>,
-  id_allocator: &mut IdAllocator,
+  physics: &mut Physics<EntityId>,
+  id_allocator: &mut IdAllocator<EntityId>,
   shader: Rc<RefCell<Shader>>,
-) -> (HashMap<Id, mob::Mob>, mob::MobBuffers) {
+) -> (HashMap<EntityId, mob::Mob>, mob::MobBuffers) {
   let mut mobs = HashMap::new();
   let mut mob_buffers = mob::MobBuffers::new(gl, shader);
 
@@ -446,24 +471,22 @@ fn make_mobs(
 }
 
 fn place_terrain(
-  physics: &mut Physics<Id>,
-  terrains: &mut HashMap<Id, terrain::TerrainPiece>,
-  terrain_loader: &mut Loader<Id, Id>,
-  id_allocator: &mut IdAllocator,
+  physics: &mut Physics<EntityId>,
+  terrains: &mut HashMap<EntityId, terrain::TerrainPiece>,
+  terrain_loader: &mut Loader<EntityId, EntityId>,
+  id_allocator: &mut IdAllocator<EntityId>,
   bounds: AABB,
   vertices: [terrain::TerrainVertex, ..3],
   check_collisions: bool,
 ) {
-  let mut terrain = terrain::TerrainPiece {
-    vertices: vertices,
-    id: Id::none(),
-  };
-
   // hacky solution to make sure terrain polys have "breathing room" and don't
   // collide with their neighbours.
   let epsilon: GLfloat = 0.00001;
-  if !check_collisions || !physics.octree.intersect(&bounds.tightened(epsilon), Id::none()) {
-    terrain.id = id_allocator.allocate();
+  if !check_collisions || !physics.octree.intersect(&bounds.tightened(epsilon), None) {
+    let terrain = terrain::TerrainPiece {
+      vertices: vertices,
+      id: id_allocator.allocate(),
+    };
     physics.insert(terrain.id, &bounds);
     terrains.insert(terrain.id, terrain);
     terrain_loader.push(Load(terrain.id));
@@ -471,10 +494,10 @@ fn place_terrain(
 }
 
 fn add_mob(
-  physics: &mut Physics<Id>,
-  mobs: &mut HashMap<Id, mob::Mob>,
+  physics: &mut Physics<EntityId>,
+  mobs: &mut HashMap<EntityId, mob::Mob>,
   mob_buffers: &mut mob::MobBuffers,
-  id_allocator: &mut IdAllocator,
+  id_allocator: &mut IdAllocator<EntityId>,
   low_corner: Pnt3<GLfloat>,
   behavior: mob::Behavior,
 ) {
@@ -498,18 +521,18 @@ fn add_mob(
 
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App<'a> {
-  physics: Physics<Id>,
-  terrains: HashMap<Id, terrain::TerrainPiece>,
+  physics: Physics<EntityId>,
+  terrains: HashMap<EntityId, terrain::TerrainPiece>,
   player: Player,
-  mobs: HashMap<Id, mob::Mob>,
+  mobs: HashMap<EntityId, mob::Mob>,
 
-  terrain_loader: Loader<Id, Id>,
+  terrain_loader: Loader<EntityId, EntityId>,
   octree_loader: Rc<RefCell<Loader<(octree::OctreeId, AABB), octree::OctreeId>>>,
 
   // OpenGL buffers
   mob_buffers: mob::MobBuffers,
   terrain_buffers: terrain::TerrainBuffers,
-  octree_buffers: octree::OctreeBuffers<Id>,
+  octree_buffers: octree::OctreeBuffers<EntityId>,
   terrain_textures: HashMap<terrain::TerrainType, Rc<Texture>>,
   line_of_sight: GLArray<ColoredVertex>,
   hud_triangles: GLArray<ColoredVertex>,
@@ -724,7 +747,7 @@ impl<'a> App<'a> {
 
       time!(self.timers.deref(), "update.mobs", || {
         // Unsafely mutably borrow the mobs.
-        let mobs: *mut HashMap<Id, mob:: Mob> = &mut self.mobs;
+        let mobs: *mut HashMap<EntityId, mob:: Mob> = &mut self.mobs;
         for (_, mob) in unsafe { (*mobs).mut_iter() } {
           {
             // This code can do unsafe things with the mob vector.
@@ -815,7 +838,6 @@ impl<'a> App<'a> {
         }
       });
 
-      gl::Flush();
       gl::Finish();
     })
   }
@@ -983,12 +1005,11 @@ impl<'a> App<'a> {
           walk_accel: Vec3::new(0.0, 0.0, 0.0),
           jump_fuel: 0,
           is_jumping: false,
-          id: Id::none(),
+          id: id_allocator.allocate(),
           lateral_rotation: 0.0,
           vertical_rotation: 0.0,
         };
 
-        player.id = id_allocator.allocate();
         let min = Pnt3::new(0.0, 0.0, 0.0);
         let max = Pnt3::new(1.0, 2.0, 1.0);
         let bounds = AABB::new(min, max);
@@ -1059,20 +1080,20 @@ impl<'a> App<'a> {
     self.mouse_buttons_pressed.iter().any(|x| *x == b)
   }
 
-  fn get_bounds(&self, id: Id) -> &AABB {
+  fn get_bounds(&self, id: EntityId) -> &AABB {
     self.physics.get_bounds(id).unwrap()
   }
 
   /// Returns ids of the closest entities in front of the cursor.
-  fn entities_in_front(&self) -> Vec<Id> {
+  fn entities_in_front(&self) -> Vec<EntityId> {
     self.physics.octree.cast_ray(&self.player.forward_ray(), self.player.id)
   }
 
-  fn remove_terrain(&mut self, id: Id) {
+  fn remove_terrain(&mut self, id: EntityId) {
     self.terrain_loader.push(Unload(id));
   }
 
-  fn translate_mob(physics: &mut Physics<Id>, mob_buffers: &mut mob::MobBuffers, mob: &mut mob::Mob, delta_p: Vec3<GLfloat>) {
+  fn translate_mob(physics: &mut Physics<EntityId>, mob_buffers: &mut mob::MobBuffers, mob: &mut mob::Mob, delta_p: Vec3<GLfloat>) {
     if physics.translate(mob.id, delta_p).unwrap() {
       mob.speed = mob.speed - delta_p;
     } else {
