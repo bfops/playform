@@ -16,6 +16,8 @@ pub const VERTICES_PER_LINE: uint = 2;
 pub const LINES_PER_BOX: uint = 12;
 pub const LINE_VERTICES_PER_BOX: uint = LINES_PER_BOX * VERTICES_PER_LINE;
 
+pub const USE_LIGHTING: bool = true;
+
 pub fn partial_min_by<A: Copy, T: Iterator<A>, B: PartialOrd>(t: T, f: |A| -> B) -> Vec<A> {
   let mut t = t;
   let mut min_a = Vec::new();

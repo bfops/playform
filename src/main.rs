@@ -46,8 +46,6 @@ static TERRAIN_LOAD_SPEED: uint = 1 << 11;
 static OCTREE_LOAD_SPEED: uint = 1 << 11;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
-static USE_LIGHTING: bool = false;
-
 #[deriving(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
 pub struct EntityId(u32);
 
@@ -236,7 +234,7 @@ fn make_terrain(
 
   {
     let w = 1.0 / 2.0;
-    let place_terrain = |bounds, vertices| {
+    let place_terrain = |bounds, vertices, normal, typ| {
       place_terrain(
         physics,
         &mut terrains,
@@ -244,7 +242,9 @@ fn make_terrain(
         id_allocator,
         bounds,
         vertices,
-        false
+        normal,
+        typ,
+        false,
       );
     };
 
@@ -257,62 +257,56 @@ fn make_terrain(
       Back,
     }
 
-    let place_square = |x: GLfloat, y: GLfloat, z: GLfloat, terrain_type: terrain::TerrainType, facing: Facing| {
-      let vtx = |v| {
-        terrain::TerrainVertex {
-          position: v,
-          terrain_type: terrain_type as GLuint,
-        }
-      };
+    let place_square = |x: GLfloat, y: GLfloat, z: GLfloat, typ: terrain::TerrainType, facing: Facing| {
       // Return verties such that v1 and v3 are min and max of the bounding box, respectively.
       // Vertices arranged in CCW order from the front.
-      let (v1, v2, v3, v4) = match facing {
+      let (v1, v2, v3, v4, normal) = match facing {
         Up => {
           let v1 = Pnt3::new(x, y, z);
           let v2 = Pnt3::new(x + w, y, z);
           let v3 = Pnt3::new(x + w, y, z + w);
           let v4 = Pnt3::new(x, y, z + w);
-          (v1, v4, v3, v2)
+          (v1, v4, v3, v2, Vec3::new(0.0, 1.0, 0.0))
         },
         Down => {
           let v1 = Pnt3::new(x, y, z);
           let v2 = Pnt3::new(x + w, y, z);
           let v3 = Pnt3::new(x + w, y, z + w);
           let v4 = Pnt3::new(x, y, z + w);
-          (v1, v2, v3, v4)
+          (v1, v2, v3, v4, Vec3::new(0.0, -1.0, 0.0))
         },
         Left => {
           let v1 = Pnt3::new(x, y, z);
           let v2 = Pnt3::new(x, y + w, z);
           let v3 = Pnt3::new(x, y + w, z + w);
           let v4 = Pnt3::new(x, y, z + w);
-          (v1, v4, v3, v2)
+          (v1, v4, v3, v2, Vec3::new(-1.0, 0.0, 0.0))
         },
         Right => {
           let v1 = Pnt3::new(x, y, z);
           let v2 = Pnt3::new(x, y + w, z);
           let v3 = Pnt3::new(x, y + w, z + w);
           let v4 = Pnt3::new(x, y, z + w);
-          (v1, v2, v3, v4)
+          (v1, v2, v3, v4, Vec3::new(1.0, 0.0, 0.0))
         },
         Front => {
           let v1 = Pnt3::new(x, y, z);
           let v2 = Pnt3::new(x + w, y, z);
           let v3 = Pnt3::new(x + w, y + w, z);
           let v4 = Pnt3::new(x, y + w, z);
-          (v1, v4, v3, v2)
+          (v1, v4, v3, v2, Vec3::new(0.0, 0.0, -1.0))
         },
         Back => {
           let v1 = Pnt3::new(x, y, z);
           let v2 = Pnt3::new(x + w, y, z);
           let v3 = Pnt3::new(x + w, y + w, z);
           let v4 = Pnt3::new(x, y + w, z);
-          (v1, v2, v3, v4)
+          (v1, v2, v3, v4, Vec3::new(0.0, 0.0, 1.0))
         },
       };
       let bounds = AABB::new(v1, v3);
-      place_terrain(bounds, [vtx(v1), vtx(v2), vtx(v4)]);
-      place_terrain(bounds, [vtx(v2), vtx(v3), vtx(v4)]);
+      place_terrain(bounds, [v1, v2, v4], normal, typ);
+      place_terrain(bounds, [v2, v3, v4], normal, typ);
     };
 
     let platform_range = (1.0 / w) as int;
@@ -434,7 +428,9 @@ fn place_terrain(
   terrain_loader: &mut Loader<EntityId, EntityId>,
   id_allocator: &mut IdAllocator<EntityId>,
   bounds: AABB,
-  vertices: [terrain::TerrainVertex, ..3],
+  vertices: [Pnt3<GLfloat>, ..3],
+  normal: Vec3<GLfloat>,
+  typ: terrain::TerrainType,
   check_collisions: bool,
 ) {
   // hacky solution to make sure terrain polys have "breathing room" and don't
@@ -443,6 +439,8 @@ fn place_terrain(
   if !check_collisions || !physics.octree.intersect(&bounds.tightened(epsilon), None) {
     let terrain = terrain::TerrainPiece {
       vertices: vertices,
+      normal: normal,
+      typ: typ as GLuint,
       id: id_allocator.allocate(),
     };
     physics.insert(terrain.id, &bounds);
@@ -642,7 +640,7 @@ impl<'a> App<'a> {
               let terrain = terrains.find(&id).unwrap();
               terrain_buffers.push(
                 id,
-                terrain.vertices,
+                terrain,
               );
             },
             Unload(id) => {
@@ -932,6 +930,14 @@ impl<'a> App<'a> {
         octree::OctreeBuffers::new(&gl, &color_shader)
       };
 
+      let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
+
+      let terrain_buffers = {
+        let terrain_buffers = terrain::TerrainBuffers::new(&gl);
+        terrain_buffers.bind(&mut gl, &mut texture_unit_alloc, texture_shader.clone());
+        terrain_buffers
+      };
+
       let (text_textures, text_triangles) = make_text(&gl, hud_texture_shader.clone());
 
       let mut physics =
@@ -987,8 +993,6 @@ impl<'a> App<'a> {
         player
       };
 
-      let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
-
       let misc_texture_unit = texture_unit_alloc.allocate();
       gl::ActiveTexture(misc_texture_unit.gl_id());
       hud_texture_shader.borrow_mut().with_uniform_location(
@@ -1013,11 +1017,7 @@ impl<'a> App<'a> {
         octree_loader: octree_loader,
         mob_buffers: mob_buffers,
         octree_buffers: octree_buffers,
-        terrain_buffers:
-          terrain::TerrainBuffers::new(
-            &gl,
-            texture_shader.clone(),
-          ),
+        terrain_buffers: terrain_buffers,
         terrains: terrains,
         player: player,
         mobs: mobs,

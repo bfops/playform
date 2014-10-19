@@ -2,23 +2,17 @@
 
 uniform mat4 projection_matrix;
 
-uniform vec3 normals[6];
+uniform samplerBuffer positions;
 
-in vec3 position;
-in uint terrain_type;
-
-out vec3 world_position;
-out vec3 normal;
-flat out uint type;
+flat out int vertex_id;
 
 void main() {
-  int id = gl_VertexID % 36;
-  type = terrain_type;
+  int position_id = gl_VertexID * 3;
+  vec3 world_position;
+  world_position.x = texelFetch(positions, position_id).r;
+  world_position.y = texelFetch(positions, position_id + 1).r;
+  world_position.z = texelFetch(positions, position_id + 2).r;
+  vertex_id = gl_VertexID;
 
-  #if $lighting$
-    world_position = position;
-    normal = normals[id / 6];
-  #endif
-
-  gl_Position = projection_matrix * vec4(position, 1.0);
+  gl_Position = projection_matrix * vec4(world_position, 1.0);
 }
