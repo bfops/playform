@@ -1,5 +1,6 @@
 use gl;
 use gl::types::*;
+use gl_buffer::GLBuffer;
 use gl_context::GLContext;
 use std::default::Default;
 
@@ -63,5 +64,32 @@ impl Texture {
 impl Drop for Texture {
   fn drop(&mut self) {
     unsafe { gl::DeleteTextures(1, &self.gl_id); }
+  }
+}
+
+/// See the OpenGL docs on buffer textures.
+pub struct BufferTexture<T> {
+  pub texture: Texture,
+  pub buffer: GLBuffer<T>,
+}
+
+impl<T> BufferTexture<T> {
+  pub fn new(_gl: &GLContext, format: GLenum, capacity: uint) -> BufferTexture<T> {
+    // TODO: enforce that `format` matches T.
+
+    let buffer = GLBuffer::new(capacity);
+
+    let mut gl_id = 0;
+    unsafe {
+      gl::GenTextures(1, &mut gl_id);
+    }
+
+    gl::BindTexture(gl::TEXTURE_BUFFER, gl_id);
+    gl::TexBuffer(gl::TEXTURE_BUFFER, format, buffer.byte_buffer.gl_id);
+
+    BufferTexture {
+      texture: Texture { gl_id: gl_id },
+      buffer: buffer,
+    }
   }
 }
