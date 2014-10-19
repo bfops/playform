@@ -16,18 +16,6 @@ pub fn glGetAttribLocation(shader_program: GLuint, name: &str) -> GLint {
   name.with_c_str(|ptr| unsafe { gl::GetAttribLocation(shader_program, ptr) })
 }
 
-/// Ensures a slice has a given power-of-two alignment, and converts it to a raw pointer.
-unsafe fn aligned_slice_to_ptr<T, U>(vs: &[T], alignment: uint) -> *const U {
-  let ptr: *const U = mem::transmute(vs.as_ptr());
-  assert!(
-    (ptr as uint & (alignment - 1) == 0),
-    "0x{:x} not {}-aligned",
-    ptr as uint,
-    alignment
-  );
-  ptr
-}
-
 /// Fixed-size VRAM buffer for individual bytes.
 pub struct GLByteBuffer {
   pub gl_id: u32,
@@ -186,7 +174,7 @@ impl<T> GLBuffer<T> {
   pub fn push(&mut self, vs: &[T]) {
     unsafe {
       self.byte_buffer.push(
-        aligned_slice_to_ptr(vs, 4),
+        mem::transmute(vs.as_ptr()),
         mem::size_of::<T>() * vs.len()
       );
     }
@@ -197,7 +185,7 @@ impl<T> GLBuffer<T> {
     unsafe {
       self.byte_buffer.update(
         mem::size_of::<T>() * idx,
-        aligned_slice_to_ptr(vs, 4),
+        mem::transmute(vs.as_ptr()),
         mem::size_of::<T>() * vs.len(),
       );
     }
