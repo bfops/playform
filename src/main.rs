@@ -233,7 +233,7 @@ fn make_terrain(
   let mut terrain_loader = Queue::new(1 << 20);
 
   {
-    let w = 1.0 / 2.0;
+    let w = 0.25;
     let place_terrain = |bounds, vertices, normal, typ| {
       place_terrain(
         physics,
@@ -327,7 +327,8 @@ fn make_terrain(
       }
     }
 
-    let ground_range = (32.0 / w) as int;
+    let ground_steps = 32.0;
+    let ground_range = (ground_steps / w) as int;
     // ground
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(-ground_range, ground_range) {
@@ -341,28 +342,28 @@ fn make_terrain(
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(i, j, -32.0, terrain::Stone, Back);
+        place_square(i, j, -ground_steps, terrain::Stone, Back);
       }
     }
     // back wall
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(i, j, 32.0 - w, terrain::Stone, Front);
+        place_square(i, j, ground_steps - w, terrain::Stone, Front);
       }
     }
     // left wall
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(-32.0, j, i, terrain::Stone, Right);
+        place_square(-ground_steps, j, i, terrain::Stone, Right);
       }
     }
     // right wall
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(32.0 - w, j, i, terrain::Stone, Left);
+        place_square(ground_steps - w, j, i, terrain::Stone, Left);
       }
     }
   }
