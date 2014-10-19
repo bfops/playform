@@ -70,7 +70,7 @@ impl Shader {
       None => {
         let (loc, t) = gl.use_shader(self, |_| {
           let loc = unsafe { gl::GetUniformLocation(self.id, name) };
-          assert!(loc != -1, "couldn't find shader uniform {}", s_name);
+          assert!(loc != -1, "couldn't find shader uniform: {}", s_name);
 
           match gl::GetError() {
             gl::NO_ERROR => {},
