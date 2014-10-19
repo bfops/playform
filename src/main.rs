@@ -21,6 +21,7 @@ use input::{Press,Release,Move,Keyboard,Mouse,MouseCursor};
 use loader::{Loader, Load, Unload};
 use mob;
 use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
+use nalgebra::Cross;
 use ncollide::math::Scalar;
 use ncollide::bounding_volume::aabb::AABB;
 use octree;
@@ -260,51 +261,46 @@ fn make_terrain(
     let place_square = |x: GLfloat, y: GLfloat, z: GLfloat, typ: terrain::TerrainType, facing: Facing| {
       // Return verties such that v1 and v3 are min and max of the bounding box, respectively.
       // Vertices arranged in CCW order from the front.
-      let (v1, v2, v3, v4, normal) = match facing {
-        Up => {
-          let v1 = Pnt3::new(x, y, z);
-          let v2 = Pnt3::new(x + w, y, z);
-          let v3 = Pnt3::new(x + w, y, z + w);
-          let v4 = Pnt3::new(x, y, z + w);
-          (v1, v4, v3, v2, Vec3::new(0.0, 1.0, 0.0))
-        },
-        Down => {
-          let v1 = Pnt3::new(x, y, z);
-          let v2 = Pnt3::new(x + w, y, z);
-          let v3 = Pnt3::new(x + w, y, z + w);
-          let v4 = Pnt3::new(x, y, z + w);
-          (v1, v2, v3, v4, Vec3::new(0.0, -1.0, 0.0))
-        },
-        Left => {
-          let v1 = Pnt3::new(x, y, z);
-          let v2 = Pnt3::new(x, y + w, z);
-          let v3 = Pnt3::new(x, y + w, z + w);
-          let v4 = Pnt3::new(x, y, z + w);
-          (v1, v4, v3, v2, Vec3::new(-1.0, 0.0, 0.0))
-        },
-        Right => {
-          let v1 = Pnt3::new(x, y, z);
-          let v2 = Pnt3::new(x, y + w, z);
-          let v3 = Pnt3::new(x, y + w, z + w);
-          let v4 = Pnt3::new(x, y, z + w);
-          (v1, v2, v3, v4, Vec3::new(1.0, 0.0, 0.0))
-        },
-        Front => {
-          let v1 = Pnt3::new(x, y, z);
-          let v2 = Pnt3::new(x + w, y, z);
-          let v3 = Pnt3::new(x + w, y + w, z);
-          let v4 = Pnt3::new(x, y + w, z);
-          (v1, v4, v3, v2, Vec3::new(0.0, 0.0, -1.0))
-        },
-        Back => {
-          let v1 = Pnt3::new(x, y, z);
-          let v2 = Pnt3::new(x + w, y, z);
-          let v3 = Pnt3::new(x + w, y + w, z);
-          let v4 = Pnt3::new(x, y + w, z);
-          (v1, v2, v3, v4, Vec3::new(0.0, 0.0, 1.0))
-        },
+      let [v1, v2, v3, v4] = match facing {
+        Up => [
+          Pnt3::new(x, y, z),
+          Pnt3::new(x, y, z + w),
+          Pnt3::new(x + w, y, z + w),
+          Pnt3::new(x + w, y, z),
+        ],
+        Down => [
+          Pnt3::new(x, y, z),
+          Pnt3::new(x + w, y, z),
+          Pnt3::new(x + w, y, z + w),
+          Pnt3::new(x, y, z + w),
+        ],
+        Left => [
+          Pnt3::new(x, y, z),
+          Pnt3::new(x, y, z + w),
+          Pnt3::new(x, y + w, z + w),
+          Pnt3::new(x, y + w, z),
+        ],
+        Right => [
+          Pnt3::new(x, y, z),
+          Pnt3::new(x, y + w, z),
+          Pnt3::new(x, y + w, z + w),
+          Pnt3::new(x, y, z + w),
+        ],
+        Front => [
+          Pnt3::new(x, y, z),
+          Pnt3::new(x, y + w, z),
+          Pnt3::new(x + w, y + w, z),
+          Pnt3::new(x + w, y, z),
+        ],
+        Back => [
+          Pnt3::new(x, y, z),
+          Pnt3::new(x + w, y, z),
+          Pnt3::new(x + w, y + w, z),
+          Pnt3::new(x, y + w, z),
+        ],
       };
       let bounds = AABB::new(v1, v3);
+      let normal = Norm::normalize_cpy(&Cross::cross(&(v2.as_vec() - v1.as_vec().clone()), &(v3.as_vec() - v2.as_vec().clone())));
       place_terrain(bounds, [v1, v2, v4], normal, typ);
       place_terrain(bounds, [v2, v3, v4], normal, typ);
     };
