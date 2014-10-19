@@ -12,13 +12,12 @@ use glw::gl_context::GLContext;
 use glw::light::Light;
 use glw::queue::Queue;
 use glw::shader::Shader;
-use glw::texture::Texture;
+use glw::texture::{Texture, TextureUnit};
 use glw::vertex;
 use glw::vertex::{ColoredVertex, TextureVertex};
 use id_allocator::IdAllocator;
 use input;
 use input::{Press,Release,Move,Keyboard,Mouse,MouseCursor};
-use libc::types::common::c95::c_void;
 use loader::{Loader, Load, Unload};
 use mob;
 use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
@@ -27,7 +26,6 @@ use ncollide::bounding_volume::aabb::AABB;
 use octree;
 use physics::Physics;
 use player::Player;
-use png;
 use sdl2_game_window::{WindowSDL2};
 use sdl2::mouse;
 use shader;
@@ -40,8 +38,6 @@ use std::collections::HashMap;
 use std::default::Default;
 use std::f32::consts::PI;
 use std::iter::range_inclusive;
-use std::mem;
-use std::raw;
 use std::rc::Rc;
 use terrain;
 
@@ -160,46 +156,6 @@ pub fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
     None => { },
     Some(i) => { v.swap_remove(i); },
   }
-}
-
-fn load_terrain_textures() -> HashMap<terrain::TerrainType, Rc<Texture>> {
-  let mut terrain_textures = HashMap::new();
-
-  let terrain_files = [
-    (terrain::Grass, "textures/grass.png"),
-    (terrain::Stone, "textures/stone.png"),
-    (terrain::Dirt, "textures/dirt.png"),
-  ].to_vec();
-  for (terrain_type, path) in terrain_files.into_iter() {
-    let img = match png::load_png(&Path::new(path)) {
-      Ok(i) => i,
-      Err(s) => fail!("Could not load png {}: {}", path, s)
-    };
-    if img.color_type != png::RGBA8 {
-      fail!("unsupported color type {:} in png", img.color_type);
-    }
-    debug!("loaded rgba8 png file {}", path);
-
-    gl::ActiveTexture(gl::TEXTURE0 + terrain_type as GLuint);
-    let texture = unsafe {
-      let mut texture = 0;
-      gl::GenTextures(1, &mut texture);
-      gl::BindTexture(gl::TEXTURE_2D, texture);
-      let pixels: raw::Slice<c_void> = mem::transmute(img.pixels.as_slice());
-      gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, img.width as i32, img.height as i32,
-                    0, gl::RGBA, gl::UNSIGNED_INT_8_8_8_8_REV, pixels.data);
-      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
-      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-      texture
-    };
-
-    let texture = Texture { id: texture };
-    terrain_textures.insert(terrain_type, Rc::new(texture));
-  }
-
-  gl::ActiveTexture(gl::TEXTURE0 + terrain_textures.len() as GLuint);
-
-  terrain_textures
 }
 
 fn make_text(
@@ -533,11 +489,11 @@ pub struct App<'a> {
   mob_buffers: mob::MobBuffers,
   terrain_buffers: terrain::TerrainBuffers,
   octree_buffers: octree::OctreeBuffers<EntityId>,
-  terrain_textures: HashMap<terrain::TerrainType, Rc<Texture>>,
   line_of_sight: GLArray<ColoredVertex>,
   hud_triangles: GLArray<ColoredVertex>,
   text_triangles: GLArray<TextureVertex>,
 
+  misc_texture_unit: TextureUnit,
   text_textures: Vec<Texture>,
 
   // OpenGL shader "program" ids
@@ -829,9 +785,14 @@ impl<'a> App<'a> {
         self.hud_triangles.draw(gl);
       });
 
+      match gl::GetError() {
+        gl::NO_ERROR => {},
+        err => fail!("OpenGL error 0x{:x}", err),
+      }
+
       // draw hud textures
       self.gl.use_shader(self.hud_texture_shader.borrow().deref(), |gl| {
-        gl::ActiveTexture(gl::TEXTURE0 + self.terrain_textures.len() as GLuint);
+        gl::ActiveTexture(self.misc_texture_unit.gl_id());
         for (i, tex) in self.text_textures.iter().enumerate() {
           tex.bind_2d(gl);
           self.text_triangles.draw_slice(gl, i * 2, 2);
@@ -1024,15 +985,15 @@ impl<'a> App<'a> {
         player
       };
 
-      let terrain_textures =
-        load_terrain_textures();
+      let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
 
-      let misc_texture_unit = terrain_textures.len() as GLint;
+      let misc_texture_unit = texture_unit_alloc.allocate();
+      gl::ActiveTexture(misc_texture_unit.gl_id());
       hud_texture_shader.borrow_mut().with_uniform_location(
         &mut gl,
         "texture_in",
         |loc| {
-          gl::Uniform1i(loc, misc_texture_unit);
+          gl::Uniform1i(loc, misc_texture_unit.glsl_id as GLint);
         }
       );
 
@@ -1055,13 +1016,13 @@ impl<'a> App<'a> {
             &gl,
             texture_shader.clone(),
           ),
-        terrain_textures: terrain_textures,
         terrains: terrains,
         player: player,
         mobs: mobs,
         hud_triangles: hud_triangles,
         text_textures: text_textures,
         text_triangles: text_triangles,
+        misc_texture_unit: misc_texture_unit,
         color_shader: color_shader,
         texture_shader: texture_shader,
         hud_color_shader: hud_color_shader,

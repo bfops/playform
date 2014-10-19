@@ -171,8 +171,8 @@ impl Drop for GLByteBuffer {
 
 /// Fixed-size typed VRAM buffer, optimized for bulk inserts.
 pub struct GLBuffer<T> {
-  byte_buffer: GLByteBuffer,
-  length: uint,
+  pub byte_buffer: GLByteBuffer,
+  pub length: uint,
 }
 
 impl<T> GLBuffer<T> {
