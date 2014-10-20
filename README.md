@@ -1,18 +1,11 @@
 ## Introduction
 
-playform aspires to be an open-world sandbox game written in Rust.
-It's loosely "voxel" based, taking inspiration from [Voxel Farm](http://procworld.blogspot.com/) and Minecraft.
-
-Right now, it renders a basic world and stops the player from colliding with it, as well as allowing the player to place and destroy blocks.
-A lot of work is currently going into making it robust and performant, rather than adding features.
+playform aspires to be an open-world sandbox game written in Rust, taking
+inspiration from [Voxel Farm](http://procworld.blogspot.com/) and Minecraft.
+Our goal is not necessarily to make something full or flashy, but to make
+something that people will want to fork.
 
 Help is appreciated! You can hop over to the [issues page](https://github.com/bfops/playform/issues) to see what needs doing.
-
-## What about [hematite](https://github.com/PistonDevelopers/hematite)?
-
-We're aware of each other! While hematite intends to reproduce Minecraft behavior and interact with actual Minecraft, playform's design goal is just to be fun and Minecraft-inspired - we'll have no reservations about diverging.
-
-That said, these projects should probably keep a closer eye on each other than they do! If you notice redundancies, feel free to point them out.
 
 ## Making it work
 
@@ -26,8 +19,7 @@ Run with `cargo run` and playform will start!
   * Move: WASD
   * Jump: Space
   * Look around: Mouse
-  * Remove block: Left-click
-  * Place dirt block: Right-click
+  * Remove face: Left-click
   * Toggle octree rendering: O
   * Toggle block outline rendering: L
   * Save line-of-sight: M
@@ -38,5 +30,3 @@ One mob spawns that will play a tag-like game with you: touch it and will chase 
 
 ![screenshot 1](/../screenshots/screenshots/screenshot1.png?raw=true)
 ![screenshot 2](/../screenshots/screenshots/screenshot2.png?raw=true)
-![screenshot 3](/../screenshots/screenshots/screenshot3.png?raw=true)
-![screenshot 4](/../screenshots/screenshots/screenshot4.png?raw=true)
