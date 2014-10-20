@@ -8,6 +8,7 @@ dependencies = [
  "input 0.0.0 (git+https://github.com/PistonDevelopers/input#436ca10cbea9b985d005634feb261fda87bd1503)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra#162346ab47c2ff78e8a9fc1e4f2a8619a83b6067)",
  "ncollide 0.1.0 (git+https://github.com/sebcrozet/ncollide#faa6a51c1e15b97c773b1ebae926f007cc3737bf)",
+ "noise-rs 0.0.1 (git+https://github.com/bjz/noise-rs#efd7125385cacae0f911032345729c8cfd98f72c)",
  "png 0.0.1 (git+https://github.com/sebcrozet/rust-png#e6557b6fb3eb8a2efe0a4407a84b05853c6672aa)",
  "sdl2_game_window 0.0.0 (git+https://github.com/PistonDevelopers/sdl2_game_window#6fac008adc79e12d93d9144d94e87ea77b713512)",
  "shader_version 0.0.0 (git+https://github.com/PistonDevelopers/shader_version#c561d15e7d3a561271222daefe073054f5d62b8c)",
@@ -68,6 +69,11 @@ source = "git+https://github.com/sebcrozet/ncollide#faa6a51c1e15b97c773b1ebae926
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra#162346ab47c2ff78e8a9fc1e4f2a8619a83b6067)",
 ]
+
+[[package]]
+name = "noise-rs"
+version = "0.0.1"
+source = "git+https://github.com/bjz/noise-rs#efd7125385cacae0f911032345729c8cfd98f72c"
 
 [[package]]
 name = "png"

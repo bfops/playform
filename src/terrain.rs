@@ -12,8 +12,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-static MAX_WORLD_SIZE: uint = 400000;
-
 #[deriving(Show, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TerrainType {
   Grass,

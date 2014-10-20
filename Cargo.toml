@@ -38,6 +38,9 @@ git = "https://github.com/PistonDevelopers/shader_version"
 features = ["3df32"]
 git = "https://github.com/sebcrozet/ncollide"
 
+[dependencies.noise-rs]
+git = "https://github.com/bjz/noise-rs"
+
 [dependencies.glw]
 name = "glw"
 path = "src/glw/"

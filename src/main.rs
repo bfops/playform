@@ -22,6 +22,8 @@ use loader::{Loader, Load, Unload};
 use mob;
 use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
 use nalgebra::Cross;
+use noise::source::Perlin;
+use noise::model::Plane;
 use ncollide::math::Scalar;
 use ncollide::bounding_volume::aabb::AABB;
 use octree;
@@ -43,7 +45,7 @@ use std::rc::Rc;
 use terrain;
 
 // how many terrain polys to load during every update step
-static TERRAIN_LOAD_SPEED: uint = 1 << 11;
+static TERRAIN_LOAD_SPEED: uint = 1 << 10;
 static OCTREE_LOAD_SPEED: uint = 1 << 11;
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
@@ -249,6 +251,7 @@ fn make_terrain(
       );
     };
 
+    #[allow(dead_code)]
     enum Facing {
       Up,
       Down,
@@ -258,45 +261,45 @@ fn make_terrain(
       Back,
     }
 
-    let place_square = |x: GLfloat, y: GLfloat, z: GLfloat, typ: terrain::TerrainType, facing: Facing| {
+    let place_square = |x: GLfloat, y: GLfloat, z: GLfloat, dl1: GLfloat, dl2: GLfloat, typ: terrain::TerrainType, facing: Facing| {
       // Return verties such that v1 and v3 are min and max of the bounding box, respectively.
       // Vertices arranged in CCW order from the front.
       let [v1, v2, v3, v4] = match facing {
         Up => [
           Pnt3::new(x, y, z),
-          Pnt3::new(x, y, z + w),
-          Pnt3::new(x + w, y, z + w),
-          Pnt3::new(x + w, y, z),
+          Pnt3::new(x, y, z + dl2),
+          Pnt3::new(x + dl1, y, z + dl2),
+          Pnt3::new(x + dl1, y, z),
         ],
         Down => [
           Pnt3::new(x, y, z),
-          Pnt3::new(x + w, y, z),
-          Pnt3::new(x + w, y, z + w),
-          Pnt3::new(x, y, z + w),
+          Pnt3::new(x + dl1, y, z),
+          Pnt3::new(x + dl1, y, z + dl2),
+          Pnt3::new(x, y, z + dl2),
         ],
         Left => [
           Pnt3::new(x, y, z),
-          Pnt3::new(x, y, z + w),
-          Pnt3::new(x, y + w, z + w),
-          Pnt3::new(x, y + w, z),
+          Pnt3::new(x, y, z + dl1),
+          Pnt3::new(x, y + dl2, z + dl1),
+          Pnt3::new(x, y + dl2, z),
         ],
         Right => [
           Pnt3::new(x, y, z),
-          Pnt3::new(x, y + w, z),
-          Pnt3::new(x, y + w, z + w),
-          Pnt3::new(x, y, z + w),
+          Pnt3::new(x, y + dl2, z),
+          Pnt3::new(x, y + dl2, z + dl1),
+          Pnt3::new(x, y, z + dl1),
         ],
         Front => [
           Pnt3::new(x, y, z),
-          Pnt3::new(x, y + w, z),
-          Pnt3::new(x + w, y + w, z),
-          Pnt3::new(x + w, y, z),
+          Pnt3::new(x, y + dl2, z),
+          Pnt3::new(x + dl1, y + dl2, z),
+          Pnt3::new(x + dl1, y, z),
         ],
         Back => [
           Pnt3::new(x, y, z),
-          Pnt3::new(x + w, y, z),
-          Pnt3::new(x + w, y + w, z),
-          Pnt3::new(x, y + w, z),
+          Pnt3::new(x + dl1, y, z),
+          Pnt3::new(x + dl1, y + dl2, z),
+          Pnt3::new(x, y + dl2, z),
         ],
       };
       let bounds = AABB::new(v1, v3);
@@ -305,31 +308,63 @@ fn make_terrain(
       place_terrain(bounds, [v2, v3, v4], normal, typ);
     };
 
-    let platform_range = (1.0 / w) as int;
-    // low platform
-    for i in range_inclusive(-platform_range, platform_range) {
-      for j in range_inclusive(-platform_range, platform_range) {
-        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(6.0 + i, 5.0, 0.0 + j, terrain::Dirt, Down);
-        place_square(6.0 + i, 6.0, 0.0 + j, terrain::Dirt, Up);
-      }
-    }
-    // high platform
-    for i in range_inclusive(-platform_range, platform_range) {
-      for j in range_inclusive(-platform_range, platform_range) {
-        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(0.0 + i, 11.0, 5.0 + j, terrain::Dirt, Down);
-        place_square(0.0 + i, 12.0, 5.0 + j, terrain::Dirt, Up);
-      }
-    }
+    let ground_steps: int = 32;
+    let ground_range = (ground_steps as f32 / w) as int;
+    let ground_len = ground_range as uint * 2 + 1;
 
-    let ground_steps = 32.0;
-    let ground_range = (ground_steps / w) as int;
+    let heightmap = {
+      // NB(bfops): these sizes should == ground_len.
+      let mut heightmap = [[0.0, ..257], ..257];
+      let amplitude = 64.0;
+      let perlin =
+        Perlin::new()
+        .seed(0)
+        .frequency(1.0 / 32.0)
+        .persistence(1.0 / 8.0)
+        .lacunarity(8.0)
+        .octaves(8)
+      ;
+      let plane = Plane::new(&perlin);
+      for i in range(0, ground_len) {
+        for j in range(0, ground_len) {
+          let fi = i as GLfloat * w;
+          let fj = j as GLfloat * w;
+          heightmap[i][j] =
+            amplitude * (plane.get(fi, fj) + 1.0) / 2.0;
+        }
+      }
+      heightmap
+    };
+
     // ground
-    for i in range_inclusive(-ground_range, ground_range) {
-      for j in range_inclusive(-ground_range, ground_range) {
-        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(i, 0.0, j, terrain::Grass, Up);
+    for i in range(0, ground_len) {
+      for j in range(0, ground_len) {
+        let h = heightmap[i][j];
+        let x = (i as int - ground_range) as GLfloat * w;
+        let z = (j as int - ground_range) as GLfloat * w;
+        if i > 0 {
+          let h2 = heightmap[i - 1][j];
+          let dh = h2 - h;
+          let (h, dh, facing) =
+            if dh < 0.0 {
+              (h2, -dh, Left)
+            } else {
+              (h, dh, Right)
+            };
+          place_square(x, h, z, w, dh, terrain::Dirt, facing);
+        }
+        if j > 0 {
+          let h2 = heightmap[i][j - 1];
+          let dh = h2 - h;
+          let (h, dh, facing) =
+            if dh < 0.0 {
+              (h2, -dh, Front)
+            } else {
+              (h, dh, Back)
+            };
+          place_square(x, h, z, w, dh, terrain::Dirt, facing);
+        }
+        place_square(x, h, z, w, w, terrain::Grass, Up);
       }
     }
 
@@ -338,28 +373,28 @@ fn make_terrain(
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(i, j, -ground_steps, terrain::Stone, Back);
+        place_square(i, j, -ground_steps as f32, w, w, terrain::Stone, Back);
       }
     }
     // back wall
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(i, j, ground_steps - w, terrain::Stone, Front);
+        place_square(i, j, ground_steps as f32 - w, w, w, terrain::Stone, Front);
       }
     }
     // left wall
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(-ground_steps, j, i, terrain::Stone, Right);
+        place_square(-ground_steps as f32, j, i, w, w, terrain::Stone, Right);
       }
     }
     // right wall
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(ground_steps - w, j, i, terrain::Stone, Left);
+        place_square(ground_steps as f32 - w, j, i, w, w, terrain::Stone, Left);
       }
     }
   }
@@ -412,7 +447,7 @@ fn make_mobs(
     &mut mobs,
     &mut mob_buffers,
     id_allocator,
-    Pnt3::new(0.0, 8.0, -1.0),
+    Pnt3::new(0.0, 64.0, -1.0),
     mob_behavior
   );
 
@@ -921,7 +956,7 @@ impl<'a> App<'a> {
 
       let hud_triangles = make_hud(&gl, hud_color_shader.clone());
 
-      let octree_loader = Rc::new(RefCell::new(Queue::new(1 << 20)));
+      let octree_loader = Rc::new(RefCell::new(Queue::new(4 * MAX_WORLD_SIZE)));
 
       let octree_buffers = unsafe {
         octree::OctreeBuffers::new(&gl, &color_shader)
@@ -976,16 +1011,14 @@ impl<'a> App<'a> {
           vertical_rotation: 0.0,
         };
 
-        let min = Pnt3::new(0.0, 0.0, 0.0);
-        let max = Pnt3::new(1.0, 2.0, 1.0);
+        let min = Pnt3::new(0.0, 64.0, 4.0);
+        let max = min + Vec3::new(1.0, 2.0, 1.0);
         let bounds = AABB::new(min, max);
         physics.insert(player.id, &bounds);
 
         // initialize the projection matrix
         player.camera.translate(center(&bounds).to_vec());
         player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
-
-        player.translate(&mut physics, Vec3::new(0.0, 4.0, 10.0));
 
         player
       };

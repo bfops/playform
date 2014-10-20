@@ -96,7 +96,7 @@ impl<V> OctreeBuffers<V> {
           vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
         ],
         Lines,
-        GLBuffer::new((1 << 18) * LINE_VERTICES_PER_BOX),
+        GLBuffer::new(10 * MAX_WORLD_SIZE),
       ),
     }
   }
