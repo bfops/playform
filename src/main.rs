@@ -1,4 +1,3 @@
-use borrow::*;
 use common::*;
 use event::{WindowSettings, Event, EventIterator, EventSettings, Update, Input, Render};
 use fontloader;
@@ -665,10 +664,8 @@ impl<'a> App<'a> {
           let terrains = &mut self.terrains;
           let terrain_buffers = &mut self.terrain_buffers;
           let physics = &mut self.physics;
-          let gl = &self.gl;
           match *op {
             Load(id) => {
-              let bounds = physics.get_bounds(id).unwrap();
               let terrain = terrains.find(&id).unwrap();
               terrain_buffers.push(
                 id,
@@ -737,14 +734,14 @@ impl<'a> App<'a> {
         // Unsafely mutably borrow the mobs.
         let mobs: *mut HashMap<EntityId, mob:: Mob> = &mut self.mobs;
         for (_, mob) in unsafe { (*mobs).mut_iter() } {
+          // Please don't do sketchy things with the `mobs` vector.
+          // The first time the unsafety here bites us, it should be replaced
+          // with runtime checks.
+
           {
-            // This code can do unsafe things with the mob vector.
             let behavior = mob.behavior;
             unsafe { (behavior)(self, mob); }
           }
-          // *Safely* mutably borrow the mobs.
-          // Code below here "can't" do unsafe things with the mob vector.
-          let mobs = Borrow::borrow(&mut self.mobs);
 
           mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
 

@@ -9,7 +9,7 @@ Help is appreciated! You can hop over to the [issues page](https://github.com/bf
 
 ## Making it work
 
-Have a `rustc` and `cargo` built no earlier than October 10th, 2014.
+Have a `rustc` and `cargo` built no earlier than October 20th, 2014.
 Install `libpng`, `SDL2` and `SDL2_ttf`.
 Build with `cargo build`, which will grab all the Rust dependencies.
 Run with `cargo run` and playform will start!
