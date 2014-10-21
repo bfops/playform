@@ -321,7 +321,7 @@ fn make_terrain(
         .frequency(1.0 / 32.0)
         .persistence(1.0 / 8.0)
         .lacunarity(8.0)
-        .octaves(8)
+        .octaves(6)
       ;
       let plane = Plane::new(&perlin);
       for i in range(0, ground_len) {
