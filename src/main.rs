@@ -260,6 +260,72 @@ fn make_terrain(
       Back,
     }
 
+    let ground_steps: int = 32;
+    let ground_range = (ground_steps as f32 / w) as int;
+
+    let amplitude = 64.0;
+    let perlin =
+      Perlin::new()
+      .seed(0)
+      .frequency(1.0 / 32.0)
+      .persistence(1.0 / 8.0)
+      .lacunarity(8.0)
+      .octaves(6)
+    ;
+    let plane = Plane::new(&perlin);
+
+    // ground
+    for i in range(-ground_range, ground_range) {
+      for j in range(-ground_range, ground_range) {
+        let at = |x, z| {
+          let y = amplitude * (plane.get::<GLfloat>(x, z) + 1.0) / 2.0;
+          Pnt3::new(x, y, z)
+        };
+
+        let x = i as GLfloat * w;
+        let z = j as GLfloat * w;
+        let center = at(x + w / 2.0, z + w / 2.0);
+
+        let place_terrain = |typ, v1: &Pnt3<GLfloat>, v2: &Pnt3<GLfloat>, minx, minz, maxx, maxz| {
+          let mut maxy = v1.y;
+          if v2.y > v1.y {
+            maxy = v2.y;
+          }
+          if center.y > maxy {
+            maxy = center.y;
+          }
+          let side1: Vec3<GLfloat> = *center.as_vec() - *v1.as_vec();
+          let side2: Vec3<GLfloat> =     *v2.as_vec() - *v1.as_vec();
+          let normal: Vec3<GLfloat> = Norm::normalize_cpy(&Cross::cross(&side1, &side2));
+          let bounds = AABB::new(Pnt3::new(minx, v1.y, minz), Pnt3::new(maxx, maxy, maxz));
+          place_terrain(bounds, [v1.clone(), v2.clone(), center.clone()], normal, typ);
+        };
+
+        let v1 = at(x, z);
+        let v2 = at(x, z + w);
+        let v3 = at(x + w, z + w);
+        let v4 = at(x + w, z);
+        let mut center_lower_than = 0i;
+        for v in [v1, v2, v3, v4].iter() {
+          if center.y < v.y {
+            center_lower_than += 1;
+          }
+        }
+        let terrain =
+          if center_lower_than >= 3 {
+            terrain::Dirt
+          } else {
+            terrain::Grass
+          }
+        ;
+
+        place_terrain(terrain, &v1, &v2, v1.x, v1.z, center.x, v2.z);
+        place_terrain(terrain, &v2, &v3, v2.x, center.z, v3.x, v3.z);
+        place_terrain(terrain, &v3, &v4, center.x, center.z, v3.x, v3.z);
+        place_terrain(terrain, &v4, &v1, v1.x, v1.z, v4.x, center.z);
+      }
+    }
+
     let place_square = |x: GLfloat, y: GLfloat, z: GLfloat, dl1: GLfloat, dl2: GLfloat, typ: terrain::TerrainType, facing: Facing| {
       // Return verties such that v1 and v3 are min and max of the bounding box, respectively.
       // Vertices arranged in CCW order from the front.
@@ -306,66 +372,6 @@ fn make_terrain(
       place_terrain(bounds, [v1, v2, v4], normal, typ);
       place_terrain(bounds, [v2, v3, v4], normal, typ);
     };
-
-    let ground_steps: int = 32;
-    let ground_range = (ground_steps as f32 / w) as int;
-    let ground_len = ground_range as uint * 2 + 1;
-
-    let heightmap = {
-      // NB(bfops): these sizes should == ground_len.
-      let mut heightmap = [[0.0, ..257], ..257];
-      let amplitude = 64.0;
-      let perlin =
-        Perlin::new()
-        .seed(0)
-        .frequency(1.0 / 32.0)
-        .persistence(1.0 / 8.0)
-        .lacunarity(8.0)
-        .octaves(6)
-      ;
-      let plane = Plane::new(&perlin);
-      for i in range(0, ground_len) {
-        for j in range(0, ground_len) {
-          let fi = i as GLfloat * w;
-          let fj = j as GLfloat * w;
-          heightmap[i][j] =
-            amplitude * (plane.get(fi, fj) + 1.0) / 2.0;
-        }
-      }
-      heightmap
-    };
-
-    // ground
-    for i in range(0, ground_len) {
-      for j in range(0, ground_len) {
-        let h = heightmap[i][j];
-        let x = (i as int - ground_range) as GLfloat * w;
-        let z = (j as int - ground_range) as GLfloat * w;
-        if i > 0 {
-          let h2 = heightmap[i - 1][j];
-          let dh = h2 - h;
-          let (h, dh, facing) =
-            if dh < 0.0 {
-              (h2, -dh, Left)
-            } else {
-              (h, dh, Right)
-            };
-          place_square(x, h, z, w, dh, terrain::Dirt, facing);
-        }
-        if j > 0 {
-          let h2 = heightmap[i][j - 1];
-          let dh = h2 - h;
-          let (h, dh, facing) =
-            if dh < 0.0 {
-              (h2, -dh, Front)
-            } else {
-              (h, dh, Back)
-            };
-          place_square(x, h, z, w, dh, terrain::Dirt, facing);
-        }
-        place_square(x, h, z, w, w, terrain::Grass, Up);
-      }
-    }
 
     let wall_height = (32.0 / w) as int;
     // front wall
