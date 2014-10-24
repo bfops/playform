@@ -232,10 +232,10 @@ fn make_terrain(
   id_allocator: &mut IdAllocator<EntityId>,
 ) -> (HashMap<EntityId, terrain::TerrainPiece>, Loader<EntityId, EntityId>) {
   let mut terrains = HashMap::new();
-  let mut terrain_loader = Queue::new(1 << 20);
+  let mut terrain_loader = Queue::new(MAX_WORLD_SIZE);
 
   {
-    let w = 0.25;
+    let w = 1.0 / 4.0;
     let place_terrain = |bounds, vertices, normal, typ| {
       place_terrain(
         physics,
