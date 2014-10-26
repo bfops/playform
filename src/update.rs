@@ -55,7 +55,7 @@ pub fn update<'a>(app: &mut App) {
     time!(app.timers.deref(), "update.mobs", || {
       // Unsafely mutably borrow the mobs.
       let mobs: *mut HashMap<EntityId, mob:: Mob> = &mut app.mobs;
-      for (_, mob) in unsafe { (*mobs).mut_iter() } {
+      for (_, mob) in unsafe { (*mobs).iter_mut() } {
         // Please don't do sketchy things with the `mobs` vector.
         // The first time the unsafety here bites us, it should be replaced
         // with runtime checks.
