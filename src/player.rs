@@ -1,10 +1,10 @@
 use gl::types::*;
 use glw::camera;
-use main::EntityId;
 use nalgebra::Vec3;
 use nalgebra::RMul;
 use ncollide::ray::Ray;
 use physics::Physics;
+use state::EntityId;
 use std::f32::consts::PI;
 
 static MAX_JUMP_FUEL: uint = 4;

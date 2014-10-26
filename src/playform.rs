@@ -22,20 +22,25 @@ extern crate sdl2;
 extern crate sdl2_game_window;
 extern crate shader_version;
 
+// so time! macro is defined in main
+mod stopwatch;
+
 mod common;
+mod event_handler;
 mod fontloader;
 mod id_allocator;
 mod player;
 mod loader;
-// so time! macro is defined in main
-mod stopwatch;
 mod main;
 mod mob;
 mod octree;
 mod physics;
+mod render;
 mod shader;
+mod state;
 mod terrain;
 mod ttf;
+mod update;
 
 #[allow(dead_code)]
 fn main() {

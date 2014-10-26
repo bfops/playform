@@ -1,18 +1,18 @@
 use common::*;
-use main;
 use glw::gl_buffer::{GLArray, GLBuffer, Triangles};
 use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
-use main::EntityId;
 use nalgebra::Vec3;
+use state::App;
+use state::EntityId;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
 // N.B.: Behaviors are unsafe because they take both a mutable and immutable
 // reference to a mob (the mob is also inside the main::App).
-pub type Behavior = unsafe fn(&main::App, &mut Mob);
+pub type Behavior = unsafe fn(&App, &mut Mob);
 
 pub struct Mob {
   pub speed: Vec3<f32>,

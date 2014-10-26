@@ -1,5 +1,6 @@
 #![macro_escape]
 
+use gl::types::*;
 use glw::color::Color4;
 use glw::vertex::{ColoredVertex};
 use nalgebra::Pnt3;
@@ -73,5 +74,40 @@ pub fn to_outlines<'a>(bounds: &AABB) -> [ColoredVertex, ..LINE_VERTICES_PER_BOX
     vtx(x2, y1, z1), vtx(x2, y1, z2),
     vtx(x1, y2, z1), vtx(x1, y2, z2),
     vtx(x2, y2, z1), vtx(x2, y2, z2),
+  ]
+}
+
+pub fn to_triangles(bounds: &AABB, c: &Color4<GLfloat>) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
+  let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
+  let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
+
+  let vtx = |x, y, z| {
+    ColoredVertex {
+      position: Pnt3::new(x, y, z),
+      color: c.clone(),
+    }
+  };
+
+  // Remember: x increases to the right, y increases up, and z becomes more
+  // negative as depth from the viewer increases.
+  [
+    // front
+    vtx(x1, y1, z2), vtx(x2, y2, z2), vtx(x1, y2, z2),
+    vtx(x1, y1, z2), vtx(x2, y1, z2), vtx(x2, y2, z2),
+    // left
+    vtx(x1, y1, z1), vtx(x1, y2, z2), vtx(x1, y2, z1),
+    vtx(x1, y1, z1), vtx(x1, y1, z2), vtx(x1, y2, z2),
+    // top
+    vtx(x1, y2, z1), vtx(x2, y2, z2), vtx(x2, y2, z1),
+    vtx(x1, y2, z1), vtx(x1, y2, z2), vtx(x2, y2, z2),
+    // back
+    vtx(x1, y1, z1), vtx(x2, y2, z1), vtx(x2, y1, z1),
+    vtx(x1, y1, z1), vtx(x1, y2, z1), vtx(x2, y2, z1),
+    // right
+    vtx(x2, y1, z1), vtx(x2, y2, z2), vtx(x2, y1, z2),
+    vtx(x2, y1, z1), vtx(x2, y2, z1), vtx(x2, y2, z2),
+    // bottom
+    vtx(x1, y1, z1), vtx(x2, y1, z2), vtx(x1, y1, z2),
+    vtx(x1, y1, z1), vtx(x2, y1, z1), vtx(x2, y1, z2),
   ]
 }
