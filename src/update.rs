@@ -98,7 +98,7 @@ fn remove_terrain<'a>(app: &mut App<'a>, id: EntityId) {
 }
 
 fn translate_mob(physics: &mut Physics<EntityId>, mob_buffers: &mut mob::MobBuffers, mob: &mut mob::Mob, delta_p: Vec3<GLfloat>) {
-  if physics.translate(mob.id, delta_p).unwrap() {
+  if physics.translate(mob.id, delta_p).is_some() {
     mob.speed = mob.speed - delta_p;
   } else {
     let bounds = physics.get_bounds(mob.id).unwrap();

@@ -32,8 +32,8 @@ pub struct Player {
 impl Player {
   /// Translates the player/camera by a vector.
   pub fn translate(&mut self, physics: &mut Physics<EntityId>, v: Vec3<GLfloat>) {
-    let collided = physics.translate(self.id, v).unwrap();
-    if collided {
+    let collision = physics.translate(self.id, v);
+    if collision.is_some() {
       self.speed = self.speed - v;
 
       if v.y < 0.0 {

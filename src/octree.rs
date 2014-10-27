@@ -293,15 +293,32 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
 
   // Find whether there are objects overlapping the object & bounds provided in
   // this/child trees. Uses equality comparison on V to ignore "same" objects.
-  pub fn intersect(&self, bounds: &AABB, self_v: Option<V>) -> bool {
+  // Returns the value associated with the first object intersected.
+  pub fn intersect(&self, bounds: &AABB, self_v: Option<V>) -> Option<(AABB, V)> {
     match self.contents {
-      Leaf(ref vs) => vs.iter().any(|&(bs, ref v)| Some(*v) != self_v && bounds.intersects(&bs)),
+      Leaf(ref vs) => {
+        vs.iter()
+          .find(|&&(bs, ref v)| Some(*v) != self_v && bounds.intersects(&bs))
+          .map(|&(bounds, v)| (bounds.clone(), v))
+      },
       Branch(ref b) => {
         let mid = middle(&self.bounds, self.dimension);
         let (low_bounds, high_bounds) = split(mid, self.dimension, *bounds);
-        low_bounds.map_or(false, |bs| b.low_tree.intersect(&bs, self_v)) ||
-        high_bounds.map_or(false, |bs| b.high_tree.intersect(&bs, self_v))
-      }
+        let high = || {
+          match high_bounds {
+            None => None,
+            Some(bs) => b.high_tree.intersect(&bs, self_v),
+          }
+        };
+        match low_bounds {
+          None => high(),
+          Some(bs) =>
+            match b.low_tree.intersect(&bs, self_v) {
+              None => high(),
+              r => r,
+            }
+        }
+      },
     }
   }
 

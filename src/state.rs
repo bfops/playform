@@ -660,7 +660,7 @@ fn place_terrain(
   // hacky solution to make sure terrain polys have "breathing room" and don't
   // collide with their neighbours.
   let epsilon: GLfloat = 0.00001;
-  if !check_collisions || !physics.octree.intersect(&bounds.tightened(epsilon), None) {
+  if !(check_collisions && physics.octree.intersect(&bounds.tightened(epsilon), None).is_some()) {
     let terrain = terrain::TerrainPiece {
       vertices: vertices,
       normal: normal,
