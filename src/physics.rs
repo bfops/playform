@@ -29,21 +29,24 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
     self.bounds.find(&t)
   }
 
-  pub fn translate(&mut self, t: T, amount: Vec3<Scalar>) -> Option<(AABB, T)> {
-    let bounds = self.bounds.find_mut(&t).unwrap();
-    let new_bounds =
-      AABB::new(
-        bounds.mins() + amount,
-        bounds.maxs() + amount
-      );
-
-    match self.octree.intersect(&new_bounds, Some(t)) {
+  pub fn reinsert(octree: &mut Octree<T>, t: T, bounds: &mut AABB, new_bounds: AABB) -> Option<(AABB, T)> {
+    match octree.intersect(&new_bounds, Some(t)) {
       None => {
-        self.octree.reinsert(t, bounds, new_bounds);
+        octree.reinsert(t, bounds, new_bounds);
         *bounds = new_bounds;
         None
       },
       collision => collision,
     }
+  }
+
+  pub fn translate(&mut self, t: T, amount: Vec3<Scalar>) -> Option<(AABB, T)> {
+    let bounds = self.bounds.find_mut(&t).unwrap();
+    let new_bounds =
+      AABB::new(
+        bounds.mins() + amount,
+        bounds.maxs() + amount,
+      );
+    Physics::reinsert(&mut self.octree, t, bounds, new_bounds)
   }
 }

@@ -2,12 +2,14 @@ use gl::types::*;
 use glw::camera;
 use nalgebra::Vec3;
 use nalgebra::RMul;
+use ncollide::bounding_volume::AABB;
 use ncollide::ray::Ray;
 use physics::Physics;
 use state::EntityId;
 use std::f32::consts::PI;
 
 static MAX_JUMP_FUEL: uint = 4;
+const MAX_STEP_HEIGHT: f32 = 1.0;
 
 pub struct Player {
   pub camera: camera::Camera,
@@ -31,17 +33,52 @@ pub struct Player {
 
 impl Player {
   /// Translates the player/camera by a vector.
+  /// If the player collides with something with a small height jump, the player will shift upward.
   pub fn translate(&mut self, physics: &mut Physics<EntityId>, v: Vec3<GLfloat>) {
-    let collision = physics.translate(self.id, v);
-    if collision.is_some() {
-      self.speed = self.speed - v;
+    let bounds = physics.bounds.find_mut(&self.id).unwrap();
+    let init_bounds =
+      AABB::new(
+        bounds.mins() + v,
+        bounds.maxs() + v,
+      );
+    let mut new_bounds = init_bounds.clone();
+    // The height of the player's "step".
+    let mut step = 0.0;
+    let mut collided = false;
+    loop {
+      match Physics::reinsert(&mut physics.octree, self.id, bounds, new_bounds) {
+        None => {
+          break;
+        },
+        Some((collision_bounds, _)) => {
+          collided = true;
+          // Step to the top of whatever we hit.
+          step = collision_bounds.maxs().y - init_bounds.mins().y;
+          assert!(step > 0.0);
 
+          if step > MAX_STEP_HEIGHT {
+            // Step is too big; we just ran into something.
+            break;
+          }
+
+          new_bounds =
+            AABB::new(
+              init_bounds.mins() + Vec3::new(0.0, step, 0.0),
+              init_bounds.maxs() + Vec3::new(0.0, step, 0.0),
+            );
+        },
+      }
+    }
+
+    self.camera.translate(v + Vec3::new(0.0, step, 0.0));
+
+    if collided {
       if v.y < 0.0 {
         self.jump_fuel = MAX_JUMP_FUEL;
       }
-    } else {
-      self.camera.translate(v);
 
+      self.speed = self.speed - v;
+    } else {
       if v.y < 0.0 {
         self.jump_fuel = 0;
       }
