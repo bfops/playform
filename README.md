@@ -11,8 +11,8 @@ Help is appreciated! You can hop over to the [issues page](https://github.com/bf
 
 Have a `rustc` and `cargo` built no earlier than October 25th, 2014.
 Install `libpng`, `SDL2` and `SDL2_ttf`.
-Build with `cargo build`, which will grab all the Rust dependencies.
-Run with `cargo run` and playform will start!
+`cargo run` will build and run playform! We suggest running with `RUST_BACKTRACE=1` for debugging.
+To get logging including timing stats, set `RUST_LOG=info`.
 
 ## How to play
 
