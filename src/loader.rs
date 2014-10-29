@@ -1,4 +1,4 @@
-use glw::queue::Queue;
+use std::collections::RingBuf;
 
 #[deriving(Clone)]
 pub enum Operation<L, U> {
@@ -6,4 +6,4 @@ pub enum Operation<L, U> {
   Unload(U),
 }
 
-pub type Loader<L, U> = Queue<Operation<L, U>>;
+pub type Loader<L, U> = RingBuf<Operation<L, U>>;

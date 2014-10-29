@@ -12,6 +12,7 @@ use state::App;
 use stopwatch;
 use stopwatch::*;
 use std::cmp;
+use std::collections::Deque;
 use std::collections::HashMap;
 
 // how many terrain polys to load during every update step
@@ -118,29 +119,30 @@ fn load_terrain<'a>(app: &mut App<'a>, max: Option<uint>) {
   time!(app.timers.deref(), "load.terrain", || {
     // terrain loading
     let count = max.map_or(app.terrain_loader.len(), |x| cmp::min(x, app.terrain_loader.len()));
-    if count > 0 {
-      for op in app.terrain_loader.iter(0, count) {
-        let terrains = &mut app.terrains;
-        let terrain_buffers = &mut app.terrain_buffers;
-        let physics = &mut app.physics;
-        match *op {
-          Load(id) => {
-            let terrain = terrains.find(&id).unwrap();
-            terrain_buffers.push(
-              id,
-              terrain,
-            );
-          },
-          Unload(id) => {
-            if terrains.remove(&id) {
-              terrain_buffers.swap_remove(id);
-              physics.remove(id);
-            }
-          },
+    for _ in range(0, count) {
+      match app.terrain_loader.pop_front() {
+        None => break,
+        Some(op) => {
+          let terrains = &mut app.terrains;
+          let terrain_buffers = &mut app.terrain_buffers;
+          let physics = &mut app.physics;
+          match op {
+            Load(id) => {
+              let terrain = terrains.find(&id).unwrap();
+              terrain_buffers.push(
+                id,
+                terrain,
+              );
+            },
+            Unload(id) => {
+              if terrains.remove(&id) {
+                terrain_buffers.swap_remove(id);
+                physics.remove(id);
+              }
+            },
+          }
         }
       }
-
-      app.terrain_loader.pop(count);
     }
   });
 }
@@ -149,19 +151,16 @@ fn load_octree<'a>(app: &mut App<'a>) {
   time!(app.timers.deref(), "load.octree", || {
     // octree loading
     let count = cmp::min(OCTREE_LOAD_SPEED, app.octree_loader.deref().borrow().deref().len());
-    if count > 0 {
-      for op in app.octree_loader.borrow().iter(0, count) {
-        match *op {
-          Load((id, bounds)) => {
-            app.octree_buffers.push(id, to_outlines(&bounds));
-          },
-          Unload(id) => {
-            app.octree_buffers.swap_remove(id);
-          }
+    for _ in range(0, count) {
+      match app.octree_loader.borrow_mut().pop_front() {
+        None => break,
+        Some(Load((id, bounds))) => {
+          app.octree_buffers.push(id, to_outlines(&bounds));
+        },
+        Some(Unload(id)) => {
+          app.octree_buffers.swap_remove(id);
         }
       }
-
-      app.octree_loader.borrow_mut().pop(count);
     }
   });
 }

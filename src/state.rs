@@ -8,7 +8,6 @@ use glw::color::Color4;
 use glw::gl_buffer::*;
 use glw::gl_context::GLContext;
 use glw::light::Light;
-use glw::queue::Queue;
 use glw::shader::Shader;
 use glw::texture::{Texture, TextureUnit};
 use glw::vertex;
@@ -32,6 +31,7 @@ use stopwatch;
 use stopwatch::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::RingBuf;
 use std::default::Default;
 use std::f32::consts::PI;
 use std::iter::range_inclusive;
@@ -163,7 +163,7 @@ fn make_terrain(
   id_allocator: &mut IdAllocator<EntityId>,
 ) -> (HashMap<EntityId, terrain::TerrainPiece>, Loader<EntityId, EntityId>) {
   let mut terrains = HashMap::new();
-  let mut terrain_loader = Queue::new(1 << 20);
+  let mut terrain_loader = RingBuf::new();
 
   {
     let w = 0.25;
@@ -497,7 +497,7 @@ impl<'a> App<'a> {
 
       let hud_triangles = make_hud(&gl, hud_color_shader.clone());
 
-      let octree_loader = Rc::new(RefCell::new(Queue::new(4 * MAX_WORLD_SIZE)));
+      let octree_loader = Rc::new(RefCell::new(RingBuf::new()));
 
       let octree_buffers = unsafe {
         octree::OctreeBuffers::new(&gl, &color_shader)
