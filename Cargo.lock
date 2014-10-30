@@ -65,7 +65,7 @@ source = "git+https://github.com/sebcrozet/nalgebra#f998368fd7402c3c06a67dcc5be5
 [[package]]
 name = "ncollide"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#2684de2bd529df37685004f611f3b889856083b6"
+source = "git+https://github.com/bfops/ncollide#89289c0e080ea8de5774fff562c4286f4d40759d"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
 ]

@@ -4,6 +4,7 @@
 
 playform aspires to be an open-world sandbox game written in Rust, taking
 inspiration from [Voxel Farm](http://procworld.blogspot.com/) and Minecraft.
+
 Our goal is not necessarily to make something full or flashy, but to make
 something that people will want to fork.
 
@@ -13,8 +14,7 @@ Help is appreciated! You can hop over to the [issues page](https://github.com/bf
 
 Have a `rustc` and `cargo` built no earlier than October 27th, 2014.
 Install `libpng`, `SDL2` and `SDL2_ttf`.
-`cargo run` will build and run playform! We suggest running with `RUST_BACKTRACE=1` for debugging.
-To get logging including timing stats, set `RUST_LOG=info`.
+Run `cargo run`! Consider setting `RUST_BACKTRACE=1` and `RUST_LOG=info` when you run playform.
 
 ## How to play
 
@@ -26,7 +26,7 @@ To get logging including timing stats, set `RUST_LOG=info`.
   * Toggle block outline rendering: L
   * Save line-of-sight: M
 
-One mob spawns that will play a tag-like game with you: touch it and will chase you until it touches you back.
+One mob spawns that will play "tag" with you: tag it and it will chase you until it tags you back.
 
 ## Screenshots
 
