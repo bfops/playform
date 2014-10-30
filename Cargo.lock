@@ -2,49 +2,49 @@
 name = "playform"
 version = "0.0.0"
 dependencies = [
- "event 0.0.0 (git+https://github.com/PistonDevelopers/event#09c4ebe29884f7190339480a1ef21189ad660c2a)",
- "gl 0.0.1 (git+https://github.com/bjz/gl-rs#c78c3b02e99c06ff978b39a400b9b37004714662)",
+ "event 0.0.0 (git+https://github.com/PistonDevelopers/event)",
+ "gl 0.0.1 (git+https://github.com/bjz/gl-rs)",
  "glw 0.0.0",
- "input 0.0.0 (git+https://github.com/PistonDevelopers/input#17ca9c4a96cf56b3c3c5c01824ee237e37542b00)",
- "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra#f998368fd7402c3c06a67dcc5be52b39971e4cce)",
- "ncollide 0.1.0 (git+https://github.com/bfops/ncollide#2684de2bd529df37685004f611f3b889856083b6)",
- "noise-rs 0.0.1 (git+https://github.com/bjz/noise-rs#0f5cc9842328338beaa24e86843a6746ffe4239f)",
- "png 0.0.1 (git+https://github.com/sebcrozet/rust-png#77edbedcfc9884ca2b38a140df098435b229fd9a)",
- "sdl2_game_window 0.0.0 (git+https://github.com/PistonDevelopers/sdl2_game_window#2c83eb91d2be0fcefb4432cf10ac6f6bb5e621cf)",
- "shader_version 0.0.0 (git+https://github.com/PistonDevelopers/shader_version#c561d15e7d3a561271222daefe073054f5d62b8c)",
+ "input 0.0.0 (git+https://github.com/PistonDevelopers/input)",
+ "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
+ "ncollide 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "noise-rs 0.0.1 (git+https://github.com/bjz/noise-rs)",
+ "png 0.0.1 (git+https://github.com/sebcrozet/rust-png)",
+ "sdl2_window 0.0.0 (git+https://github.com/PistonDevelopers/sdl2_window)",
+ "shader_version 0.0.0 (git+https://github.com/PistonDevelopers/shader_version)",
 ]
 
 [[package]]
 name = "event"
 version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/event#09c4ebe29884f7190339480a1ef21189ad660c2a"
+source = "git+https://github.com/PistonDevelopers/event#db3f940300507ba95bd04b8e5ff3b580a903050a"
 dependencies = [
- "input 0.0.0 (git+https://github.com/PistonDevelopers/input#17ca9c4a96cf56b3c3c5c01824ee237e37542b00)",
+ "input 0.0.0 (git+https://github.com/PistonDevelopers/input)",
 ]
 
 [[package]]
 name = "gl"
 version = "0.0.1"
-source = "git+https://github.com/bjz/gl-rs#c78c3b02e99c06ff978b39a400b9b37004714662"
+source = "git+https://github.com/bjz/gl-rs#e3b92c693911bbb3749c2006684f798cd78bf82f"
 dependencies = [
- "gl_generator 0.0.1 (git+https://github.com/bjz/gl-rs#c78c3b02e99c06ff978b39a400b9b37004714662)",
+ "gl_generator 0.0.1 (git+https://github.com/bjz/gl-rs)",
 ]
 
 [[package]]
 name = "gl_generator"
 version = "0.0.1"
-source = "git+https://github.com/bjz/gl-rs#c78c3b02e99c06ff978b39a400b9b37004714662"
+source = "git+https://github.com/bjz/gl-rs#e3b92c693911bbb3749c2006684f798cd78bf82f"
 dependencies = [
- "khronos_api 0.0.1 (git+https://github.com/bjz/gl-rs#c78c3b02e99c06ff978b39a400b9b37004714662)",
- "rust-xml 0.1.0 (git+https://github.com/netvl/rust-xml#cdcadd4761a1e3aa5f937321e4d30507604c6fc2)",
+ "khronos_api 0.0.1 (git+https://github.com/bjz/gl-rs)",
+ "rust-xml 0.1.0 (git+https://github.com/netvl/rust-xml)",
 ]
 
 [[package]]
 name = "glw"
 version = "0.0.0"
 dependencies = [
- "gl 0.0.1 (git+https://github.com/bjz/gl-rs#c78c3b02e99c06ff978b39a400b9b37004714662)",
- "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra#f998368fd7402c3c06a67dcc5be52b39971e4cce)",
+ "gl 0.0.1 (git+https://github.com/bjz/gl-rs)",
+ "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
 ]
 
 [[package]]
@@ -55,7 +55,7 @@ source = "git+https://github.com/PistonDevelopers/input#17ca9c4a96cf56b3c3c5c018
 [[package]]
 name = "khronos_api"
 version = "0.0.1"
-source = "git+https://github.com/bjz/gl-rs#c78c3b02e99c06ff978b39a400b9b37004714662"
+source = "git+https://github.com/bjz/gl-rs#e3b92c693911bbb3749c2006684f798cd78bf82f"
 
 [[package]]
 name = "nalgebra"
@@ -67,7 +67,7 @@ name = "ncollide"
 version = "0.1.0"
 source = "git+https://github.com/bfops/ncollide#2684de2bd529df37685004f611f3b889856083b6"
 dependencies = [
- "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra#f998368fd7402c3c06a67dcc5be52b39971e4cce)",
+ "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
 ]
 
 [[package]]
@@ -91,15 +91,15 @@ version = "0.0.1-alpha.1"
 source = "git+https://github.com/AngryLawyer/rust-sdl2#eaf9b4c60a7b333e557ef6c02abfb8bc758d4092"
 
 [[package]]
-name = "sdl2_game_window"
+name = "sdl2_window"
 version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/sdl2_game_window#2c83eb91d2be0fcefb4432cf10ac6f6bb5e621cf"
+source = "git+https://github.com/PistonDevelopers/sdl2_window#11aaa6f987ee76f57ca13b65475edd7cacbfbd48"
 dependencies = [
- "event 0.0.0 (git+https://github.com/PistonDevelopers/event#09c4ebe29884f7190339480a1ef21189ad660c2a)",
- "gl 0.0.1 (git+https://github.com/bjz/gl-rs#c78c3b02e99c06ff978b39a400b9b37004714662)",
- "input 0.0.0 (git+https://github.com/PistonDevelopers/input#17ca9c4a96cf56b3c3c5c01824ee237e37542b00)",
- "sdl2 0.0.1-alpha.1 (git+https://github.com/AngryLawyer/rust-sdl2#eaf9b4c60a7b333e557ef6c02abfb8bc758d4092)",
- "shader_version 0.0.0 (git+https://github.com/PistonDevelopers/shader_version#c561d15e7d3a561271222daefe073054f5d62b8c)",
+ "event 0.0.0 (git+https://github.com/PistonDevelopers/event)",
+ "gl 0.0.1 (git+https://github.com/bjz/gl-rs)",
+ "input 0.0.0 (git+https://github.com/PistonDevelopers/input)",
+ "sdl2 0.0.1-alpha.1 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "shader_version 0.0.0 (git+https://github.com/PistonDevelopers/shader_version)",
 ]
 
 [[package]]

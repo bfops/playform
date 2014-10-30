@@ -19,7 +19,7 @@ extern crate ncollide;
 extern crate noise;
 extern crate png;
 extern crate sdl2;
-extern crate sdl2_game_window;
+extern crate sdl2_window;
 extern crate shader_version;
 
 // so time! macro is defined in main

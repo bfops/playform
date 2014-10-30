@@ -1,14 +1,14 @@
 use common::*;
 use event::{WindowSettings, EventIterator, EventSettings};
 use event_handler::handle_event;
-use sdl2_game_window::{WindowSDL2};
+use sdl2_window::*;
 use shader_version::opengl::*;
 use state::App;
 
 pub fn main() {
   debug!("starting");
 
-  let mut window = WindowSDL2::new(
+  let mut window = Sdl2Window::new(
     OpenGL_3_3,
     WindowSettings {
       title: "playform".to_string(),

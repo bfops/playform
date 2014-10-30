@@ -6,7 +6,7 @@ use input;
 use input::{Press,Release,Move,Keyboard,Mouse,MouseCursor};
 use nalgebra::Vec3;
 use render::render;
-use sdl2_game_window::{WindowSDL2};
+use sdl2_window::*;
 use sdl2::mouse;
 use state::App;
 use stopwatch;
@@ -22,7 +22,7 @@ fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
   }
 }
 
-pub fn handle_event<'a>(app: &mut App<'a>, game_window: &mut WindowSDL2, event: Event) {
+pub fn handle_event<'a>(app: &mut App<'a>, game_window: &mut Sdl2Window, event: Event) {
   match event {
     Render(_) => render(app),
     Update(_) => update(app),
@@ -119,7 +119,7 @@ fn key_release<'a>(app: &mut App<'a>, key: input::keyboard::Key) {
   })
 }
 
-fn mouse_move<'a>(app: &mut App<'a>, w: &mut WindowSDL2, x: f64, y: f64) {
+fn mouse_move<'a>(app: &mut App<'a>, w: &mut Sdl2Window, x: f64, y: f64) {
   time!(app.timers.deref(), "event.mouse_move", || {
     let (cx, cy) = (WINDOW_WIDTH as f32 / 2.0, WINDOW_HEIGHT as f32 / 2.0);
     // args.y = h - args.y;

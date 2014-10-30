@@ -1,6 +1,7 @@
 use common::*;
 use loader::{Loader,Load,Unload};
-use nalgebra::Pnt3;
+use nalgebra::{Pnt3};
+use ncollide::math::Scalar;
 use ncollide::bounding_volume::aabb::AABB;
 use ncollide::bounding_volume::BoundingVolume;
 use ncollide::ray::{Ray, RayCast};
@@ -16,17 +17,15 @@ use glw::shader::Shader;
 use glw::vertex;
 use glw::vertex::ColoredVertex;
 
-type F = f32;
-
-fn length(bounds: &AABB, d: Dimension) -> F {
+fn length(bounds: &AABB, d: Dimension) -> Scalar {
   get(d, bounds.maxs()) - get(d, bounds.mins())
 }
 
-fn middle(bounds: &AABB, d: Dimension) -> F {
+fn middle(bounds: &AABB, d: Dimension) -> Scalar {
   (get(d, bounds.maxs()) + get(d, bounds.mins())) / 2.0
 }
 
-fn get(d: Dimension, p: &Pnt3<F>) -> F {
+fn get(d: Dimension, p: &Pnt3<Scalar>) -> Scalar {
   match d {
     X => p.x,
     Y => p.y,
@@ -34,7 +33,7 @@ fn get(d: Dimension, p: &Pnt3<F>) -> F {
   }
 }
 
-fn set<F>(d: Dimension, p: &mut Pnt3<F>, v: F) {
+fn set<Scalar>(d: Dimension, p: &mut Pnt3<Scalar>, v: Scalar) {
   match d {
     X => p.x = v,
     Y => p.y = v,
@@ -42,7 +41,7 @@ fn set<F>(d: Dimension, p: &mut Pnt3<F>, v: F) {
   }
 }
 
-fn split(mid: F, d: Dimension, bounds: AABB) -> (Option<AABB>, Option<AABB>) {
+fn split(mid: Scalar, d: Dimension, bounds: AABB) -> (Option<AABB>, Option<AABB>) {
   if get(d, bounds.maxs()) <= mid {
     (Some(bounds), None)
   } else if get(d, bounds.mins()) >= mid {

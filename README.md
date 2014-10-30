@@ -11,7 +11,7 @@ Help is appreciated! You can hop over to the [issues page](https://github.com/bf
 
 ## Making it work
 
-Have a `rustc` and `cargo` built no earlier than October 25th, 2014.
+Have a `rustc` and `cargo` built no earlier than October 27th, 2014.
 Install `libpng`, `SDL2` and `SDL2_ttf`.
 `cargo run` will build and run playform! We suggest running with `RUST_BACKTRACE=1` for debugging.
 To get logging including timing stats, set `RUST_LOG=info`.
