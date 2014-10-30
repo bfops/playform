@@ -1,9 +1,8 @@
 use gl::types::*;
 use glw::camera;
 use nalgebra::Vec3;
-use nalgebra::RMul;
 use ncollide::bounding_volume::AABB;
-use ncollide::ray::Ray;
+use ncollide::ray::{Ray, Ray3};
 use physics::Physics;
 use state::EntityId;
 use std::f32::consts::PI;
@@ -109,8 +108,7 @@ impl Player {
 
     let y_axis = Vec3::new(0.0, 1.0, 0.0);
     let walk_v =
-        camera::from_axis_angle3(y_axis, self.lateral_rotation)
-        .rmul(&self.walk_accel);
+        camera::from_axis_angle3(y_axis, self.lateral_rotation) * self.walk_accel;
     self.speed = self.speed + walk_v + self.accel;
     // friction
     self.speed = self.speed * Vec3::new(0.7, 0.99, 0.7 as f32);
@@ -149,8 +147,8 @@ impl Player {
   /// Return the "right" axis (i.e. the x-axis rotated to match you).
   pub fn right(&self) -> Vec3<GLfloat> {
     return
-      camera::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation)
-        .rmul(&Vec3::new(1.0, 0.0, 0.0))
+      camera::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation) *
+      Vec3::new(1.0, 0.0, 0.0)
   }
 
   /// Return the "Ray axis (i.e. the z-axis rotated to match you).
@@ -160,10 +158,11 @@ impl Player {
       camera::from_axis_angle3(self.right(), self.vertical_rotation) *
       camera::from_axis_angle3(y_axis, self.lateral_rotation);
     let forward_orig = Vec3::new(0.0, 0.0, -1.0);
-    return transform.rmul(&forward_orig);
+
+    transform * forward_orig
   }
 
-  pub fn forward_ray(&self) -> Ray {
-    Ray { orig: self.camera.position, dir: self.forward() }
+  pub fn forward_ray(&self) -> Ray3 {
+    Ray::new(self.camera.position, self.forward())
   }
 }

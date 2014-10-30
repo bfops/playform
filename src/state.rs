@@ -17,11 +17,10 @@ use input;
 use loader::{Loader, Load};
 use mob;
 use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
-use nalgebra::Cross;
+use nalgebra;
 use noise::source::Perlin;
 use noise::model::Plane;
-use ncollide::math::Scalar;
-use ncollide::bounding_volume::aabb::AABB;
+use ncollide::bounding_volume::{AABB, AABB3};
 use octree;
 use physics::Physics;
 use player::Player;
@@ -56,18 +55,18 @@ impl Add<u32, EntityId> for EntityId {
   }
 }
 
-fn center(bounds: &AABB) -> Pnt3<GLfloat> {
+fn center(bounds: &AABB3) -> Pnt3<GLfloat> {
   (bounds.mins() + bounds.maxs().to_vec()) / (2.0 as GLfloat)
 }
 
 /// Defines volumes that can be tightened.
 trait TightBoundingVolume {
   /// Reduce each of a volume's bounds by some amount.
-  fn tightened(&self, amount: Scalar) -> Self;
+  fn tightened(&self, amount: f32) -> Self;
 }
 
-impl TightBoundingVolume for AABB {
-  fn tightened(&self, amount: Scalar) -> AABB {
+impl TightBoundingVolume for AABB3 {
+  fn tightened(&self, amount: f32) -> AABB3 {
     let mut new_min = self.mins() + Vec3::new(amount, amount, amount);
     let mut new_max = self.maxs() - Vec3::new(amount, amount, amount);
     if new_min.x > new_max.x {
@@ -225,9 +224,9 @@ fn make_terrain(
           if center.y > maxy {
             maxy = center.y;
           }
-          let side1: Vec3<GLfloat> = *center.as_vec() - *v1.as_vec();
-          let side2: Vec3<GLfloat> =     *v2.as_vec() - *v1.as_vec();
-          let normal: Vec3<GLfloat> = Norm::normalize_cpy(&Cross::cross(&side1, &side2));
+          let side1: Vec3<GLfloat> = center - *v1;
+          let side2: Vec3<GLfloat> = v2 - *v1;
+          let normal: Vec3<GLfloat> = nalgebra::normalize(&nalgebra::cross(&side1, &side2));
           let bounds = AABB::new(Pnt3::new(minx, v1.y, minz), Pnt3::new(maxx, maxy, maxz));
           place_terrain(bounds, [v1.clone(), v2.clone(), center.clone()], normal, typ);
         };
@@ -299,7 +298,7 @@ fn make_terrain(
         ],
       };
       let bounds = AABB::new(v1, v3);
-      let normal = Norm::normalize_cpy(&Cross::cross(&(v2.as_vec() - v1.as_vec().clone()), &(v3.as_vec() - v2.as_vec().clone())));
+      let normal = nalgebra::normalize(&nalgebra::cross(&(v2 - v1), &(v3 - v2)));
       place_terrain(bounds, [v1, v2, v4], normal, typ);
       place_terrain(bounds, [v2, v3, v4], normal, typ);
     };
@@ -346,7 +345,7 @@ pub struct App<'a> {
   pub mobs: HashMap<EntityId, mob::Mob>,
 
   pub terrain_loader: Loader<EntityId, EntityId>,
-  pub octree_loader: Rc<RefCell<Loader<(octree::OctreeId, AABB), octree::OctreeId>>>,
+  pub octree_loader: Rc<RefCell<Loader<(octree::OctreeId, AABB3), octree::OctreeId>>>,
 
   // OpenGL buffers
   pub mob_buffers: mob::MobBuffers,
@@ -463,7 +462,7 @@ impl<'a> App<'a> {
 
       match gl::GetError() {
         gl::NO_ERROR => {},
-        err => fail!("OpenGL error 0x{:x} setting up shaders", err),
+        err => panic!("OpenGL error 0x{:x} setting up shaders", err),
       }
 
       let line_of_sight = {
@@ -577,7 +576,7 @@ impl<'a> App<'a> {
 
       match gl::GetError() {
         gl::NO_ERROR => {},
-        err => fail!("OpenGL error 0x{:x} in load()", err),
+        err => panic!("OpenGL error 0x{:x} in load()", err),
       }
 
       debug!("load() finished with {} terrain polys", terrains.len());
@@ -615,7 +614,7 @@ impl<'a> App<'a> {
     self.mouse_buttons_pressed.iter().any(|x| *x == b)
   }
 
-  fn get_bounds(&self, id: EntityId) -> &AABB {
+  fn get_bounds(&self, id: EntityId) -> &AABB3 {
     self.physics.get_bounds(id).unwrap()
   }
 
@@ -651,7 +650,7 @@ fn place_terrain(
   terrains: &mut HashMap<EntityId, terrain::TerrainPiece>,
   terrain_loader: &mut Loader<EntityId, EntityId>,
   id_allocator: &mut IdAllocator<EntityId>,
-  bounds: AABB,
+  bounds: AABB3,
   vertices: [Pnt3<GLfloat>, ..3],
   normal: Vec3<GLfloat>,
   typ: terrain::TerrainType,
@@ -684,13 +683,13 @@ fn make_mobs(
 
   fn mob_behavior(world: &App, mob: &mut mob::Mob) {
     let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
-    if Norm::norm(&to_player) < 2.0 {
+    if nalgebra::norm(&to_player) < 2.0 {
       mob.behavior = wait_for_distance;
     }
 
     fn wait_for_distance(world: &App, mob: &mut mob::Mob) {
       let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
-      if Norm::norm(&to_player) > 8.0 {
+      if nalgebra::norm(&to_player) > 8.0 {
         mob.behavior = follow_player;
       }
     }
@@ -707,7 +706,7 @@ fn make_mobs(
 
     fn wait_to_reset(world: &App, mob: &mut mob::Mob) {
       let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
-      if Norm::norm(&to_player) >= 2.0 {
+      if nalgebra::norm(&to_player) >= 2.0 {
         mob.behavior = mob_behavior;
       }
     }

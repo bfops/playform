@@ -1,10 +1,9 @@
 use common::*;
 use loader::{Loader,Load,Unload};
-use nalgebra::{Pnt3};
-use ncollide::math::Scalar;
-use ncollide::bounding_volume::aabb::AABB;
+use nalgebra::Pnt3;
+use ncollide::bounding_volume::{AABB, AABB3};
 use ncollide::bounding_volume::BoundingVolume;
-use ncollide::ray::{Ray, RayCast};
+use ncollide::ray::{Ray3, LocalRayCast};
 use std::cell::RefCell;
 use std::collections::{HashMap,HashSet};
 use std::hash::Hash;
@@ -17,15 +16,15 @@ use glw::shader::Shader;
 use glw::vertex;
 use glw::vertex::ColoredVertex;
 
-fn length(bounds: &AABB, d: Dimension) -> Scalar {
+fn length(bounds: &AABB3, d: Dimension) -> f32 {
   get(d, bounds.maxs()) - get(d, bounds.mins())
 }
 
-fn middle(bounds: &AABB, d: Dimension) -> Scalar {
+fn middle(bounds: &AABB3, d: Dimension) -> f32 {
   (get(d, bounds.maxs()) + get(d, bounds.mins())) / 2.0
 }
 
-fn get(d: Dimension, p: &Pnt3<Scalar>) -> Scalar {
+fn get(d: Dimension, p: &Pnt3<f32>) -> f32 {
   match d {
     X => p.x,
     Y => p.y,
@@ -33,7 +32,7 @@ fn get(d: Dimension, p: &Pnt3<Scalar>) -> Scalar {
   }
 }
 
-fn set<Scalar>(d: Dimension, p: &mut Pnt3<Scalar>, v: Scalar) {
+fn set(d: Dimension, p: &mut Pnt3<f32>, v: f32) {
   match d {
     X => p.x = v,
     Y => p.y = v,
@@ -41,7 +40,7 @@ fn set<Scalar>(d: Dimension, p: &mut Pnt3<Scalar>, v: Scalar) {
   }
 }
 
-fn split(mid: Scalar, d: Dimension, bounds: AABB) -> (Option<AABB>, Option<AABB>) {
+fn split(mid: f32, d: Dimension, bounds: AABB3) -> (Option<AABB3>, Option<AABB3>) {
   if get(d, bounds.maxs()) <= mid {
     (Some(bounds), None)
   } else if get(d, bounds.mins()) >= mid {
@@ -134,7 +133,7 @@ struct Branches<V> {
   high_tree: Box<Octree<V>>,
 }
 
-type LeafContents<V> = Vec<(AABB, V)>;
+type LeafContents<V> = Vec<(AABB3, V)>;
 
 enum OctreeContents<V> {
   Leaf(LeafContents<V>),
@@ -143,13 +142,13 @@ enum OctreeContents<V> {
 
 static mut next_id: OctreeId = OctreeId(0);
 
-pub type OctreeLoader = Loader<(OctreeId, AABB), OctreeId>;
+pub type OctreeLoader = Loader<(OctreeId, AABB3), OctreeId>;
 
 // TODO: allow inserting things with a "mobile" flag; don't subdivide those objects.
 pub struct Octree<V> {
   parent: *mut Octree<V>,
   dimension: Dimension,
-  bounds: AABB,
+  bounds: AABB3,
   contents: OctreeContents<V>,
 
   // for rendering
@@ -160,7 +159,7 @@ pub struct Octree<V> {
 // TODO: fix shaky octree outline insertion/removal conditions.
 
 impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
-  pub fn new(loader: Rc<RefCell<OctreeLoader>>, bounds: &AABB) -> Octree<V> {
+  pub fn new(loader: Rc<RefCell<OctreeLoader>>, bounds: &AABB3) -> Octree<V> {
     Octree {
       parent: RawPtr::null(),
       dimension: X,
@@ -180,7 +179,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     }
   }
 
-  pub fn insert(&mut self, bounds: AABB, v: V) {
+  pub fn insert(&mut self, bounds: AABB3, v: V) {
     assert!(self.bounds.contains(&bounds));
     let contents = match self.contents {
       Leaf(ref mut vs) => {
@@ -228,7 +227,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   fn bisect(
       parent: *mut Octree<V>,
       loader: &Rc<RefCell<OctreeLoader>>,
-      bounds: &AABB,
+      bounds: &AABB3,
       dimension: Dimension,
       vs: &LeafContents<V>
   ) -> (Octree<V>, Octree<V>) {
@@ -268,7 +267,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     (low, high)
   }
 
-  fn on_ancestor<T>(&self, bounds: &AABB, f: |&Octree<V>| -> T) -> T {
+  fn on_ancestor<T>(&self, bounds: &AABB3, f: |&Octree<V>| -> T) -> T {
     if self.bounds.contains(bounds) {
       f(self)
     } else {
@@ -279,7 +278,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     }
   }
 
-  fn on_mut_ancestor<T>(&mut self, bounds: &AABB, f: |&mut Octree<V>| -> T) -> T {
+  fn on_mut_ancestor<T>(&mut self, bounds: &AABB3, f: |&mut Octree<V>| -> T) -> T {
     if self.bounds.contains(bounds) {
       f(self)
     } else {
@@ -293,7 +292,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   // Find whether there are objects overlapping the object & bounds provided in
   // this/child trees. Uses equality comparison on V to ignore "same" objects.
   // Returns the value associated with the first object intersected.
-  pub fn intersect(&self, bounds: &AABB, self_v: Option<V>) -> Option<(AABB, V)> {
+  pub fn intersect(&self, bounds: &AABB3, self_v: Option<V>) -> Option<(AABB3, V)> {
     match self.contents {
       Leaf(ref vs) => {
         vs.iter()
@@ -324,7 +323,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   // Find details of objects overlapping the object & bounds provided in this
   // and child trees. Uses equality comparison on V to ignore "same" objects.
   // Only finds intersects in this and child trees.
-  pub fn intersect_details(&self, bounds: &AABB, self_v: V) -> HashSet<V> {
+  pub fn intersect_details(&self, bounds: &AABB3, self_v: V) -> HashSet<V> {
     match self.contents {
       Leaf(ref vs) => {
         let mut r = HashSet::new();
@@ -360,17 +359,17 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   // Find the details of objects overlapping the object & bounds provided in
   // this tree, any children, or any relatives, starting the search from the
   // current tree. Uses equality comparison on V to ignore "same" objects.
-  pub fn intersect_details_from(&self, bounds: &AABB, self_v: V) -> HashSet<V> {
+  pub fn intersect_details_from(&self, bounds: &AABB3, self_v: V) -> HashSet<V> {
     self.on_ancestor(bounds, |t| t.intersect_details(bounds, self_v))
   }
 
   // like insert, but before recursing downward, we recurse up the parents
   // until the bounds provided are inside the tree.
-  fn insert_from(&mut self, bounds: AABB, v: V) {
+  fn insert_from(&mut self, bounds: AABB3, v: V) {
     self.on_mut_ancestor(&bounds, |t| t.insert(bounds.clone(), v))
   }
 
-  pub fn remove(&mut self, v: V, bounds: &AABB) {
+  pub fn remove(&mut self, v: V, bounds: &AABB3) {
     assert!(self.bounds.contains(bounds));
     let collapse_contents = match self.contents {
       Leaf(ref mut vs) => {
@@ -403,12 +402,12 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     }
   }
 
-  pub fn reinsert(&mut self, v: V, bounds: &AABB, new_bounds: AABB) {
+  pub fn reinsert(&mut self, v: V, bounds: &AABB3, new_bounds: AABB3) {
     self.remove(v, bounds);
     self.insert_from(new_bounds, v)
   }
 
-  pub fn cast_ray(&self, ray: &Ray, self_v: V) -> Vec<V> {
+  pub fn cast_ray(&self, ray: &Ray3, self_v: V) -> Vec<V> {
     match self.contents {
       Leaf(ref vs) => {
         // find the time of intersection (TOI) of the ray with each object in

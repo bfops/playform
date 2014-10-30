@@ -49,7 +49,7 @@ pub fn render<'a>(app: &mut App<'a>) {
 
     match gl::GetError() {
       gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x}", err),
+      err => panic!("OpenGL error 0x{:x}", err),
     }
 
     // draw hud textures
