@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/bfops/playform.svg?branch=master)](https://travis-ci.org/bfops/playform)
+
 ## Introduction
 
 playform aspires to be an open-world sandbox game written in Rust, taking
