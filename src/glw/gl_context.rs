@@ -50,13 +50,13 @@ impl GLContext {
     gl::Enable(gl::CULL_FACE);
   }
 
-  #[allow(missing_doc)]
+  #[allow(missing_docs)]
   pub fn enable_alpha_blending(&self) {
     gl::Enable(gl::BLEND);
     gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
   }
 
-  #[allow(missing_doc)]
+  #[allow(missing_docs)]
   pub fn enable_smooth_lines(&self) {
     gl::Enable(gl::LINE_SMOOTH);
     gl::LineWidth(2.5);

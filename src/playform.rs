@@ -1,7 +1,7 @@
 //! The entry point.
 #![crate_type = "bin"]
 #![deny(warnings)]
-#![deny(missing_doc)]
+#![deny(missing_docs)]
 #![feature(globs)]
 #![feature(macro_rules)]
 #![feature(unsafe_destructor)]

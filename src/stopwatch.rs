@@ -5,6 +5,7 @@ extern crate time;
 use std::cell::{RefCell, Ref};
 use std::rc::Rc;
 use std::collections::HashMap;
+use std::collections::hashmap::{Occupied, Vacant};
 
 /// A simple stopwatch taht can time events and print stats about them.
 #[deriving(Send)]
@@ -71,14 +72,11 @@ impl TimerSet {
   /// This function is not marked `mut` because borrow checking is done
   /// dynamically.
   pub fn time<T>(&self, name: &str, f: || -> T) -> T {
-    if !self.timers.borrow().contains_key_equiv(&name) {
-      self.timers
-          .borrow_mut()
-          .insert(String::from_str(name), Rc::new(RefCell::new(Stopwatch::new())));
-    };
-
     let timer : Rc<RefCell<Stopwatch>> =
-      self.timers.borrow().find_equiv(&name).unwrap().clone();
+      match self.timers.borrow_mut().entry(String::from_str(name)) {
+        Occupied(entry) => entry.get().clone(),
+        Vacant(entry) => entry.set(Rc::new(RefCell::new(Stopwatch::new()))).clone(),
+      };
 
     match timer.try_borrow_mut() {
       None => panic!("timer \"{}\" used recursively", name),

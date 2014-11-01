@@ -7,7 +7,7 @@ dependencies = [
  "glw 0.0.0",
  "input 0.0.0 (git+https://github.com/PistonDevelopers/input)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide 0.2.0 (git+https://github.com/bfops/ncollide)",
  "noise-rs 0.0.1 (git+https://github.com/bjz/noise-rs)",
  "png 0.0.1 (git+https://github.com/sebcrozet/rust-png)",
  "sdl2_window 0.0.0 (git+https://github.com/PistonDevelopers/sdl2_window)",
@@ -17,7 +17,7 @@ dependencies = [
 [[package]]
 name = "event"
 version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/event#db3f940300507ba95bd04b8e5ff3b580a903050a"
+source = "git+https://github.com/PistonDevelopers/event#9b308af5f0f16d312c423f35ac8f7e7adbc1e5e5"
 dependencies = [
  "input 0.0.0 (git+https://github.com/PistonDevelopers/input)",
 ]
@@ -25,7 +25,7 @@ dependencies = [
 [[package]]
 name = "gl"
 version = "0.0.1"
-source = "git+https://github.com/bjz/gl-rs#e3b92c693911bbb3749c2006684f798cd78bf82f"
+source = "git+https://github.com/bjz/gl-rs#df380704256f6eb9c9cf6850181bb7250995c50a"
 dependencies = [
  "gl_generator 0.0.1 (git+https://github.com/bjz/gl-rs)",
 ]
@@ -33,7 +33,7 @@ dependencies = [
 [[package]]
 name = "gl_generator"
 version = "0.0.1"
-source = "git+https://github.com/bjz/gl-rs#e3b92c693911bbb3749c2006684f798cd78bf82f"
+source = "git+https://github.com/bjz/gl-rs#df380704256f6eb9c9cf6850181bb7250995c50a"
 dependencies = [
  "khronos_api 0.0.1 (git+https://github.com/bjz/gl-rs)",
  "rust-xml 0.1.0 (git+https://github.com/netvl/rust-xml)",
@@ -50,22 +50,22 @@ dependencies = [
 [[package]]
 name = "input"
 version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/input#17ca9c4a96cf56b3c3c5c01824ee237e37542b00"
+source = "git+https://github.com/PistonDevelopers/input#27bfb0e86d6f01c26098eab279ae3a07eaac909a"
 
 [[package]]
 name = "khronos_api"
 version = "0.0.1"
-source = "git+https://github.com/bjz/gl-rs#e3b92c693911bbb3749c2006684f798cd78bf82f"
+source = "git+https://github.com/bjz/gl-rs#df380704256f6eb9c9cf6850181bb7250995c50a"
 
 [[package]]
 name = "nalgebra"
 version = "0.1.0"
-source = "git+https://github.com/sebcrozet/nalgebra#f998368fd7402c3c06a67dcc5be52b39971e4cce"
+source = "git+https://github.com/sebcrozet/nalgebra#eb745df4bcd84ffa6644e5b1f5ae8e211e2b0759"
 
 [[package]]
 name = "ncollide"
-version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#89289c0e080ea8de5774fff562c4286f4d40759d"
+version = "0.2.0"
+source = "git+https://github.com/bfops/ncollide#5e5c7c2550ebe039dc7c7299b59792e4e42825dc"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
 ]
@@ -78,22 +78,22 @@ source = "git+https://github.com/bjz/noise-rs#0f5cc9842328338beaa24e86843a6746ff
 [[package]]
 name = "png"
 version = "0.0.1"
-source = "git+https://github.com/sebcrozet/rust-png#77edbedcfc9884ca2b38a140df098435b229fd9a"
+source = "git+https://github.com/sebcrozet/rust-png#4330695002a80b547d65f2f813970d83d708cfe8"
 
 [[package]]
 name = "rust-xml"
 version = "0.1.0"
-source = "git+https://github.com/netvl/rust-xml#cdcadd4761a1e3aa5f937321e4d30507604c6fc2"
+source = "git+https://github.com/netvl/rust-xml#4876722236a9c0f973e4867e3b2971368ed3111b"
 
 [[package]]
 name = "sdl2"
 version = "0.0.1-alpha.1"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#eaf9b4c60a7b333e557ef6c02abfb8bc758d4092"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#b8c95a4b0b586ce35e55916d52fc1a99a3afbb70"
 
 [[package]]
 name = "sdl2_window"
 version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/sdl2_window#11aaa6f987ee76f57ca13b65475edd7cacbfbd48"
+source = "git+https://github.com/PistonDevelopers/sdl2_window#98aad0d980e4bd8ca62983d172552c8966722f83"
 dependencies = [
  "event 0.0.0 (git+https://github.com/PistonDevelopers/event)",
  "gl 0.0.1 (git+https://github.com/bjz/gl-rs)",
@@ -105,5 +105,5 @@ dependencies = [
 [[package]]
 name = "shader_version"
 version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/shader_version#c561d15e7d3a561271222daefe073054f5d62b8c"
+source = "git+https://github.com/PistonDevelopers/shader_version#03509f5d6dc3c1ccf64471615f438be25186e73a"
 
