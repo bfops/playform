@@ -7,7 +7,7 @@ dependencies = [
  "glw 0.0.0",
  "input 0.0.0 (git+https://github.com/PistonDevelopers/input)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide 0.2.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide 0.2.0 (git+https://github.com/sebcrozet/ncollide)",
  "noise-rs 0.0.1 (git+https://github.com/bjz/noise-rs)",
  "png 0.0.1 (git+https://github.com/sebcrozet/rust-png)",
  "sdl2_window 0.0.0 (git+https://github.com/PistonDevelopers/sdl2_window)",
@@ -65,7 +65,7 @@ source = "git+https://github.com/sebcrozet/nalgebra#eb745df4bcd84ffa6644e5b1f5ae
 [[package]]
 name = "ncollide"
 version = "0.2.0"
-source = "git+https://github.com/bfops/ncollide#5e5c7c2550ebe039dc7c7299b59792e4e42825dc"
+source = "git+https://github.com/sebcrozet/ncollide#c10bcb00177255f7719bd06378c79412aa30d85e"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
 ]

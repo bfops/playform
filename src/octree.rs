@@ -1,11 +1,12 @@
 use common::*;
 use loader::{Loader,Load,Unload};
 use nalgebra::Pnt3;
+use nalgebra::partial_lt;
 use ncollide::bounding_volume::{AABB, AABB3};
 use ncollide::bounding_volume::BoundingVolume;
 use ncollide::ray::{Ray3, LocalRayCast};
 use std::cell::RefCell;
-use std::collections::{HashMap,HashSet};
+use std::collections::HashMap;
 use std::hash::Hash;
 use std::num::NumCast;
 use std::ptr::RawPtr;
@@ -15,6 +16,11 @@ use glw::gl_context::GLContext;
 use glw::shader::Shader;
 use glw::vertex;
 use glw::vertex::ColoredVertex;
+
+fn aabb_overlap(aabb1: &AABB3, aabb2: &AABB3) -> bool {
+  partial_lt(aabb1.mins(), aabb2.maxs()) &&
+  partial_lt(aabb2.mins(), aabb1.maxs())
+}
 
 fn length(bounds: &AABB3, d: Dimension) -> f32 {
   get(d, bounds.maxs()) - get(d, bounds.mins())
@@ -267,6 +273,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     (low, high)
   }
 
+  #[allow(dead_code)]
   fn on_ancestor<T>(&self, bounds: &AABB3, f: |&Octree<V>| -> T) -> T {
     if self.bounds.contains(bounds) {
       f(self)
@@ -296,7 +303,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     match self.contents {
       Leaf(ref vs) => {
         vs.iter()
-          .find(|&&(bs, ref v)| Some(*v) != self_v && bounds.intersects(&bs))
+          .find(|&&(bs, ref v)| Some(*v) != self_v && aabb_overlap(bounds, &bs))
           .map(|&(bounds, v)| (bounds.clone(), v))
       },
       Branch(ref b) => {
@@ -318,49 +325,6 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
         }
       },
     }
-  }
-
-  // Find details of objects overlapping the object & bounds provided in this
-  // and child trees. Uses equality comparison on V to ignore "same" objects.
-  // Only finds intersects in this and child trees.
-  pub fn intersect_details(&self, bounds: &AABB3, self_v: V) -> HashSet<V> {
-    match self.contents {
-      Leaf(ref vs) => {
-        let mut r = HashSet::new();
-        for &(bs, v) in vs.iter() {
-          if v != self_v {
-            if bounds.intersects(&bs) {
-              r.insert(v);
-            }
-          }
-        }
-        r
-      },
-      Branch(ref b) => {
-        let mut r = HashSet::new();
-        let mid = middle(&self.bounds, self.dimension);
-        let (low_bounds, high_bounds) = split(mid, self.dimension, *bounds);
-        low_bounds.map(|bs| {
-          for v in b.low_tree.intersect_details(&bs, self_v).iter() {
-            r.insert(*v);
-          }
-        });
-        high_bounds.map(|bs| {
-          for v in b.high_tree.intersect_details(&bs, self_v).iter() {
-            r.insert(*v);
-          }
-        });
-        r
-      }
-    }
-  }
-
-  #[allow(dead_code)]
-  // Find the details of objects overlapping the object & bounds provided in
-  // this tree, any children, or any relatives, starting the search from the
-  // current tree. Uses equality comparison on V to ignore "same" objects.
-  pub fn intersect_details_from(&self, bounds: &AABB3, self_v: V) -> HashSet<V> {
-    self.on_ancestor(bounds, |t| t.intersect_details(bounds, self_v))
   }
 
   // like insert, but before recursing downward, we recurse up the parents
