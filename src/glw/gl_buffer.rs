@@ -50,8 +50,8 @@ impl GLByteBuffer {
 
     match gl::GetError() {
       gl::NO_ERROR => {},
-      gl::OUT_OF_MEMORY => fail!("Out of VRAM"),
-      err => fail!("OpenGL error 0x{:x}", err),
+      gl::OUT_OF_MEMORY => panic!("Out of VRAM"),
+      err => panic!("OpenGL error 0x{:x}", err),
     }
 
     GLByteBuffer {
@@ -82,7 +82,7 @@ impl GLByteBuffer {
 
       match gl::GetError() {
         gl::NO_ERROR => {},
-        err => fail!("OpenGL error 0x{:x} in update", err),
+        err => panic!("OpenGL error 0x{:x} in update", err),
       }
 
     // In the `i == self.length` case, we don't bother with the swap;
@@ -98,7 +98,7 @@ impl GLByteBuffer {
 
       match gl::GetError() {
         gl::NO_ERROR => {},
-        err => fail!("OpenGL error 0x{:x} in update", err),
+        err => panic!("OpenGL error 0x{:x} in update", err),
       }
 
       gl::CopyBufferSubData(
@@ -111,7 +111,7 @@ impl GLByteBuffer {
 
       match gl::GetError() {
         gl::NO_ERROR => {},
-        err => fail!("OpenGL error 0x{:x} in update", err),
+        err => panic!("OpenGL error 0x{:x} in update", err),
       }
     }
   }
@@ -126,7 +126,7 @@ impl GLByteBuffer {
 
     match gl::GetError() {
       gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x} in GLByteBuffer::update", err),
+      err => panic!("OpenGL error 0x{:x} in GLByteBuffer::update", err),
     }
 
     gl::BindBuffer(gl::ARRAY_BUFFER, self.gl_id);
@@ -142,7 +142,7 @@ impl GLByteBuffer {
 
     match gl::GetError() {
       gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x} in GLByteBuffer::update_inner", err),
+      err => panic!("OpenGL error 0x{:x} in GLByteBuffer::update_inner", err),
     }
   }
 }
@@ -287,7 +287,7 @@ impl<T> GLArray<T> {
 
     match gl::GetError() {
       gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x}", err),
+      err => panic!("OpenGL error 0x{:x}", err),
     }
 
     assert!(mem::size_of::<T>() % attrib_span == 0);
@@ -328,7 +328,7 @@ impl<T> GLArray<T> {
 
     match gl::GetError() {
       gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x}", err),
+      err => panic!("OpenGL error 0x{:x}", err),
     }
   }
 }

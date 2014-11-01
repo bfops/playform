@@ -48,7 +48,7 @@ impl Shader {
         unsafe {
           gl::GetProgramInfoLog(program, len, ptr::null_mut(), buf.as_mut_ptr() as *mut GLchar);
         }
-        fail!("{}", str::from_utf8(buf.as_slice()).expect("ProgramInfoLog not valid utf8"));
+        panic!("{}", str::from_utf8(buf.as_slice()).expect("ProgramInfoLog not valid utf8"));
     }
 
     Shader {
@@ -74,7 +74,7 @@ impl Shader {
 
           match gl::GetError() {
             gl::NO_ERROR => {},
-            err => fail!("OpenGL error 0x{:x} in GetUniformLocation", err),
+            err => panic!("OpenGL error 0x{:x} in GetUniformLocation", err),
           }
 
           (loc, f(loc))
@@ -88,7 +88,7 @@ impl Shader {
 
     match gl::GetError() {
       gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x} in with_uniform_location callback", err),
+      err => panic!("OpenGL error 0x{:x} in with_uniform_location callback", err),
     }
 
     t
@@ -120,7 +120,7 @@ impl Shader {
 
       match gl::GetError() {
         gl::NO_ERROR => {},
-        err => fail!("OpenGL error 0x{:x} in UniformMat4fv", err),
+        err => panic!("OpenGL error 0x{:x} in UniformMat4fv", err),
       }
     })
   }

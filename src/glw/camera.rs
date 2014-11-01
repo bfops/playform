@@ -1,5 +1,6 @@
 use gl::types::*;
-use nalgebra::{Mat3, Mat4, Vec3, Pnt3, Eye, Outer};
+use nalgebra::{Mat3, Mat4, Vec3, Pnt3};
+use nalgebra;
 
 pub struct Camera {
   // projection matrix components
@@ -23,7 +24,7 @@ pub fn from_axis_angle3(axis: Vec3<GLfloat>, angle: GLfloat) -> Mat3<GLfloat> {
   let (s, c) = angle.sin_cos();
   let Vec3 { x: xs, y: ys, z: zs } = axis * s;
   let vsub1c = axis * (1.0 - c);
-  Outer::outer(&vsub1c, &vsub1c) +
+  nalgebra::outer(&vsub1c, &vsub1c) +
     Mat3 {
       m11: c,   m12: -zs, m13: ys,
       m21: zs,  m22: c,   m23: -xs,
@@ -82,9 +83,9 @@ impl Camera {
   /// and [0, -1] in z in depth.
   pub fn unit() -> Camera {
     Camera {
-      translation: Eye::new_identity(4),
-      rotation: Eye::new_identity(4),
-      fov: Eye::new_identity(4),
+      translation: nalgebra::new_identity(4),
+      rotation: nalgebra::new_identity(4),
+      fov: nalgebra::new_identity(4),
       position: Pnt3::new(0.0, 0.0, 0.0),
     }
   }

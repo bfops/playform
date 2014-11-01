@@ -46,7 +46,7 @@ impl Texture {
 
     match gl::GetError() {
       gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x}", err),
+      err => panic!("OpenGL error 0x{:x}", err),
     }
   }
 
@@ -56,7 +56,7 @@ impl Texture {
 
     match gl::GetError() {
       gl::NO_ERROR => {},
-      err => fail!("OpenGL error 0x{:x}", err),
+      err => panic!("OpenGL error 0x{:x}", err),
     }
   }
 }

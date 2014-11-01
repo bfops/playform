@@ -36,7 +36,7 @@ pub fn update<'a>(app: &mut App) {
 
       match gl::GetError() {
         gl::NO_ERROR => {},
-        err => fail!("OpenGL error 0x{:x} in update", err),
+        err => panic!("OpenGL error 0x{:x} in update", err),
       }
 
     time!(app.timers.deref(), "update.load", || {
@@ -44,7 +44,7 @@ pub fn update<'a>(app: &mut App) {
 
       match gl::GetError() {
         gl::NO_ERROR => {},
-        err => fail!("OpenGL error 0x{:x} in update", err),
+        err => panic!("OpenGL error 0x{:x} in update", err),
       }
       load_octree(app);
     });

@@ -81,7 +81,7 @@ impl TimerSet {
       self.timers.borrow().find_equiv(&name).unwrap().clone();
 
     match timer.try_borrow_mut() {
-      None => fail!("timer \"{}\" used recursively", name),
+      None => panic!("timer \"{}\" used recursively", name),
       Some(mut timer) => timer.timed(f),
     }
   }

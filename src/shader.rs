@@ -156,17 +156,17 @@ pub fn from_files<T: Iterator<(String, GLenum)>>(
           Ok(s) => {
             match preprocess(s, vars) {
               None => {
-                fail!("Failed to preprocess shader \"{}\".", path);
+                panic!("Failed to preprocess shader \"{}\".", path);
               },
               Some(s) => (s, component_type),
             }
           },
           Err(e) => {
-            fail!("Couldn't read shader file \"{}\": {}", path, e);
+            panic!("Couldn't read shader file \"{}\": {}", path, e);
           }
         },
       Err(e) => {
-        fail!("Couldn't open shader file \"{}\" for reading: {}", path, e);
+        panic!("Couldn't open shader file \"{}\" for reading: {}", path, e);
       }
     }
   }))
@@ -185,7 +185,7 @@ pub fn from_file_prefix<T: Iterator<GLenum>>(
         gl::VERTEX_SHADER => "vert",
         gl::FRAGMENT_SHADER => "frag",
         gl::GEOMETRY_SHADER => "geom",
-        _ => fail!("Unknown shader component type: {}", component),
+        _ => panic!("Unknown shader component type: {}", component),
       };
       ((prefix + "." + suffix), component)
     }),
