@@ -34,11 +34,11 @@ impl Player {
   /// Translates the player/camera by a vector.
   /// If the player collides with something with a small height jump, the player will shift upward.
   pub fn translate(&mut self, physics: &mut Physics<EntityId>, v: Vec3<GLfloat>) {
-    let bounds = physics.bounds.find_mut(&self.id).unwrap();
+    let bounds = physics.bounds.get_mut(&self.id).unwrap();
     let init_bounds =
       AABB::new(
-        bounds.mins() + v,
-        bounds.maxs() + v,
+        *bounds.mins() + v,
+        *bounds.maxs() + v,
       );
     let mut new_bounds = init_bounds.clone();
     // The height of the player's "step".
@@ -62,8 +62,8 @@ impl Player {
 
           new_bounds =
             AABB::new(
-              init_bounds.mins() + Vec3::new(0.0, step, 0.0),
-              init_bounds.maxs() + Vec3::new(0.0, step, 0.0),
+              *init_bounds.mins() + Vec3::new(0.0, step, 0.0),
+              *init_bounds.maxs() + Vec3::new(0.0, step, 0.0),
             );
         },
       }

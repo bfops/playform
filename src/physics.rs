@@ -16,7 +16,7 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
   }
 
   pub fn remove(&mut self, t: T) {
-    match self.bounds.find(&t) {
+    match self.bounds.get(&t) {
       None => {},
       Some(bounds) => {
         self.octree.remove(t, bounds);
@@ -25,7 +25,7 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
   }
 
   pub fn get_bounds(&self, t: T) -> Option<&AABB3> {
-    self.bounds.find(&t)
+    self.bounds.get(&t)
   }
 
   pub fn reinsert(octree: &mut Octree<T>, t: T, bounds: &mut AABB3, new_bounds: AABB3) -> Option<(AABB3, T)> {
@@ -40,11 +40,11 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
   }
 
   pub fn translate(&mut self, t: T, amount: Vec3<f32>) -> Option<(AABB3, T)> {
-    let bounds = self.bounds.find_mut(&t).unwrap();
+    let bounds = self.bounds.get_mut(&t).unwrap();
     let new_bounds =
       AABB::new(
-        bounds.mins() + amount,
-        bounds.maxs() + amount,
+        *bounds.mins() + amount,
+        *bounds.maxs() + amount,
       );
     Physics::reinsert(&mut self.octree, t, bounds, new_bounds)
   }

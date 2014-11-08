@@ -37,9 +37,9 @@ impl GLByteBuffer {
 
     assert!(gl_id != 0);
 
-    gl::BindBuffer(gl::ARRAY_BUFFER, gl_id);
-
     unsafe {
+      gl::BindBuffer(gl::ARRAY_BUFFER, gl_id);
+
       gl::BufferData(
         gl::ARRAY_BUFFER,
         capacity as GLsizeiptr,
@@ -48,7 +48,7 @@ impl GLByteBuffer {
       );
     }
 
-    match gl::GetError() {
+    match unsafe { gl::GetError() } {
       gl::NO_ERROR => {},
       gl::OUT_OF_MEMORY => panic!("Out of VRAM"),
       err => panic!("OpenGL error 0x{:x}", err),
@@ -80,11 +80,6 @@ impl GLByteBuffer {
     self.length -= count;
     assert!(i <= self.length);
 
-      match gl::GetError() {
-        gl::NO_ERROR => {},
-        err => panic!("OpenGL error 0x{:x} in update", err),
-      }
-
     // In the `i == self.length` case, we don't bother with the swap;
     // decreasing `self.length` is enough.
 
@@ -94,24 +89,16 @@ impl GLByteBuffer {
         "GLByteBuffer::swap_remove would cause copy in overlapping regions"
       );
 
-      gl::BindBuffer(gl::ARRAY_BUFFER, self.gl_id);
+      unsafe {
+        gl::BindBuffer(gl::ARRAY_BUFFER, self.gl_id);
 
-      match gl::GetError() {
-        gl::NO_ERROR => {},
-        err => panic!("OpenGL error 0x{:x} in update", err),
-      }
-
-      gl::CopyBufferSubData(
-        gl::ARRAY_BUFFER,
-        gl::ARRAY_BUFFER,
-        self.length as i64,
-        i as i64,
-        count as i64,
-      );
-
-      match gl::GetError() {
-        gl::NO_ERROR => {},
-        err => panic!("OpenGL error 0x{:x} in update", err),
+        gl::CopyBufferSubData(
+          gl::ARRAY_BUFFER,
+          gl::ARRAY_BUFFER,
+          self.length as i64,
+          i as i64,
+          count as i64,
+        );
       }
     }
   }
@@ -124,11 +111,6 @@ impl GLByteBuffer {
   unsafe fn update_inner(&self, idx: uint, vs: *const u8, count: uint) {
     assert!(idx + count <= self.capacity);
 
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      err => panic!("OpenGL error 0x{:x} in GLByteBuffer::update", err),
-    }
-
     gl::BindBuffer(gl::ARRAY_BUFFER, self.gl_id);
 
     gl::BufferSubData(
@@ -137,13 +119,6 @@ impl GLByteBuffer {
       count as i64,
       mem::transmute(vs)
     );
-
-    gl::Finish();
-
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      err => panic!("OpenGL error 0x{:x} in GLByteBuffer::update_inner", err),
-    }
   }
 }
 
@@ -245,9 +220,8 @@ impl<T> GLArray<T> {
 
     unsafe {
       gl::GenVertexArrays(1, &mut gl_id);
+      gl::BindVertexArray(gl_id);
     }
-
-    gl::BindVertexArray(gl_id);
 
     let mut offset = 0;
     let attrib_span = {
@@ -261,8 +235,9 @@ impl<T> GLArray<T> {
       let shader_attrib = glGetAttribLocation(shader_program.deref().borrow().id, attrib.name) as GLuint;
       assert!(shader_attrib != -1, "shader attribute \"{}\" not found", attrib.name);
 
-      gl::EnableVertexAttribArray(shader_attrib);
       unsafe {
+        gl::EnableVertexAttribArray(shader_attrib);
+
         if attrib.unit.is_integral() {
           gl::VertexAttribIPointer(
             shader_attrib,
@@ -285,7 +260,7 @@ impl<T> GLArray<T> {
       offset += (attrib.size * attrib.unit.size()) as int;
     }
 
-    match gl::GetError() {
+    match unsafe { gl::GetError() } {
       gl::NO_ERROR => {},
       err => panic!("OpenGL error 0x{:x}", err),
     }
@@ -321,14 +296,11 @@ impl<T> GLArray<T> {
   pub fn draw_slice(&self, _gl: &GLContext, start: uint, len: uint) {
     assert!(start + len <= self.length);
 
-    gl::BindVertexArray(self.gl_id);
-    gl::BindBuffer(gl::ARRAY_BUFFER, self.buffer.byte_buffer.gl_id);
+    unsafe {
+      gl::BindVertexArray(self.gl_id);
+      gl::BindBuffer(gl::ARRAY_BUFFER, self.buffer.byte_buffer.gl_id);
 
-    gl::DrawArrays(self.mode, (start * self.attrib_span) as i32, (len * self.attrib_span) as i32);
-
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      err => panic!("OpenGL error 0x{:x}", err),
+      gl::DrawArrays(self.mode, (start * self.attrib_span) as i32, (len * self.attrib_span) as i32);
     }
   }
 }

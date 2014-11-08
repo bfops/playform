@@ -5,7 +5,7 @@ extern crate time;
 use std::cell::{RefCell, Ref};
 use std::rc::Rc;
 use std::collections::HashMap;
-use std::collections::hashmap::{Occupied, Vacant};
+use std::collections::hash_map::{Occupied, Vacant};
 
 /// A simple stopwatch taht can time events and print stats about them.
 #[deriving(Send)]
@@ -94,7 +94,7 @@ impl TimerSet {
         .map(|(name, sw)| (name.as_slice(), sw.borrow()))
         .collect();
 
-    timer_vec.sort_by(|&(k1, _), &(k2, _)| k1.cmp(&k2));
+    timer_vec.sort_by(|&(k1, _), &(k2, _)| k1.cmp(k2));
 
     for &(name, ref timer) in timer_vec.iter() {
       timer.print(name);

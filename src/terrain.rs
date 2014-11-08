@@ -67,10 +67,14 @@ impl TerrainBuffers {
   ) {
     let bind = |name, id| {
       let unit = texture_unit_alloc.allocate();
-      gl::ActiveTexture(unit.gl_id());
-      gl::BindTexture(gl::TEXTURE_BUFFER, id);
+      unsafe {
+        gl::ActiveTexture(unit.gl_id());
+        gl::BindTexture(gl::TEXTURE_BUFFER, id);
+      }
       shader.borrow_mut().with_uniform_location(gl, name, |loc| {
-        gl::Uniform1i(loc, unit.glsl_id as GLint);
+        unsafe {
+          gl::Uniform1i(loc, unit.glsl_id as GLint);
+        }
       });
     };
 
@@ -109,7 +113,7 @@ impl TerrainBuffers {
 
   // Note: `id` must be present in the buffers.
   pub fn swap_remove(&mut self, id: EntityId) {
-    let idx = *self.id_to_index.find(&id).unwrap();
+    let idx = *self.id_to_index.get(&id).unwrap();
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     self.index_to_id.swap_remove(idx).unwrap();
     self.id_to_index.remove(&id);
@@ -127,8 +131,10 @@ impl TerrainBuffers {
   }
 
   pub fn draw(&self, _gl: &GLContext) {
-    gl::BindVertexArray(self.empty_array);
-    gl::DrawArrays(gl::TRIANGLES, 0, self.length as GLint);
+    unsafe {
+      gl::BindVertexArray(self.empty_array);
+      gl::DrawArrays(gl::TRIANGLES, 0, self.length as GLint);
+    }
   }
 }
 

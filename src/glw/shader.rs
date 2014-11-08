@@ -21,16 +21,18 @@ impl Shader {
       shader_components: T,
   ) -> Shader {
     let mut shader_components = shader_components;
-    let program = gl::CreateProgram();
+    let program = unsafe { gl::CreateProgram() };
 
     let mut components = Vec::new();
     for (content, component) in shader_components {
       let s = gl.compile_shader(content, component);
-      gl::AttachShader(program, s);
+      unsafe { gl::AttachShader(program, s) };
       components.push(s);
     }
 
-    gl::LinkProgram(program);
+    unsafe {
+      gl::LinkProgram(program);
+    }
 
     // Get the link status
     let mut status = gl::FALSE as GLint;
@@ -66,16 +68,11 @@ impl Shader {
   ) -> T {
     let s_name = String::from_str(name);
     let name = gl.scache.convert(name).as_ptr();
-    let t = match self.uniforms.find(&s_name) {
+    let t = match self.uniforms.get(&s_name) {
       None => {
         let (loc, t) = gl.use_shader(self, |_| {
           let loc = unsafe { gl::GetUniformLocation(self.id, name) };
           assert!(loc != -1, "couldn't find shader uniform: {}", s_name);
-
-          match gl::GetError() {
-            gl::NO_ERROR => {},
-            err => panic!("OpenGL error 0x{:x} in GetUniformLocation", err),
-          }
 
           (loc, f(loc))
         });
@@ -86,27 +83,22 @@ impl Shader {
       Some(&loc) => gl.use_shader(self, |_| f(loc)),
     };
 
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      err => panic!("OpenGL error 0x{:x} in with_uniform_location callback", err),
-    }
-
     t
   }
 
   /// Sets the variable `light` in some shader.
   pub fn set_point_light(&mut self, gl: &mut GLContext, light: &Light) {
     self.with_uniform_location(gl, "light.position", |light_pos| {
-      gl::Uniform3f(light_pos, light.position.x, light.position.y, light.position.z);
+      unsafe { gl::Uniform3f(light_pos, light.position.x, light.position.y, light.position.z); }
     });
     self.with_uniform_location(gl, "light.intensity", |light_intensity| {
-      gl::Uniform3f(light_intensity, light.intensity.x, light.intensity.y, light.intensity.z);
+      unsafe { gl::Uniform3f(light_intensity, light.intensity.x, light.intensity.y, light.intensity.z); }
     });
   }
 
   pub fn set_ambient_light(&mut self, gl: &mut GLContext, intensity: Vec3<GLfloat>) {
     self.with_uniform_location(gl, "ambient_light", |loc| {
-      gl::Uniform3f(loc, intensity.x, intensity.y, intensity.z);
+      unsafe { gl::Uniform3f(loc, intensity.x, intensity.y, intensity.z); }
     });
   }
 
@@ -116,11 +108,6 @@ impl Shader {
       unsafe {
         let p = mem::transmute(m);
         gl::UniformMatrix4fv(loc, 1, 0, p);
-      }
-
-      match gl::GetError() {
-        gl::NO_ERROR => {},
-        err => panic!("OpenGL error 0x{:x} in UniformMat4fv", err),
       }
     })
   }
@@ -132,9 +119,9 @@ impl Shader {
 
 impl Drop for Shader {
   fn drop(&mut self) {
-    gl::DeleteProgram(self.id);
+    unsafe { gl::DeleteProgram(self.id); }
     for &s in self.components.iter() {
-      gl::DeleteShader(s);
+      unsafe { gl::DeleteShader(s); }
     }
   }
 }

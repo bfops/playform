@@ -12,7 +12,7 @@ Help is appreciated! You can hop over to the [issues page](https://github.com/bf
 
 ## Making it work
 
-Have a `rustc` and `cargo` built no earlier than October 31st, 2014.
+Have a `rustc` and `cargo` built no earlier than November 7th, 2014.
 Install `libpng`, `SDL2` and `SDL2_ttf`.
 Run `cargo run`! Consider setting `RUST_BACKTRACE=1` and `RUST_LOG=info` when you run playform.
 

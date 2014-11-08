@@ -56,7 +56,7 @@ impl Add<u32, EntityId> for EntityId {
 }
 
 fn center(bounds: &AABB3) -> Pnt3<GLfloat> {
-  (bounds.mins() + bounds.maxs().to_vec()) / (2.0 as GLfloat)
+  (*bounds.mins() + bounds.maxs().to_vec()) / (2.0 as GLfloat)
 }
 
 /// Defines volumes that can be tightened.
@@ -67,8 +67,8 @@ trait TightBoundingVolume {
 
 impl TightBoundingVolume for AABB3 {
   fn tightened(&self, amount: f32) -> AABB3 {
-    let mut new_min = self.mins() + Vec3::new(amount, amount, amount);
-    let mut new_max = self.maxs() - Vec3::new(amount, amount, amount);
+    let mut new_min = *self.mins() + Vec3::new(amount, amount, amount);
+    let mut new_max = *self.maxs() - Vec3::new(amount, amount, amount);
     if new_min.x > new_max.x {
       let mid = (new_min.x + new_max.x) / 2.0;
       new_min.x = mid;
@@ -225,7 +225,7 @@ fn make_terrain(
             maxy = center.y;
           }
           let side1: Vec3<GLfloat> = center - *v1;
-          let side2: Vec3<GLfloat> = v2 - *v1;
+          let side2: Vec3<GLfloat> = *v2 - *v1;
           let normal: Vec3<GLfloat> = nalgebra::normalize(&nalgebra::cross(&side1, &side2));
           let bounds = AABB::new(Pnt3::new(minx, v1.y, minz), Pnt3::new(maxx, maxy, maxz));
           place_terrain(bounds, [v1.clone(), v2.clone(), center.clone()], normal, typ);
@@ -383,9 +383,11 @@ impl<'a> App<'a> {
 
       gl.print_stats();
 
-      gl::FrontFace(gl::CCW);
-      gl::CullFace(gl::BACK);
-      gl::Enable(gl::CULL_FACE);
+      unsafe {
+        gl::FrontFace(gl::CCW);
+        gl::CullFace(gl::BACK);
+        gl::Enable(gl::CULL_FACE);
+      }
       gl.enable_alpha_blending();
       gl.enable_smooth_lines();
       gl.enable_depth_buffer(100.0);
@@ -460,7 +462,7 @@ impl<'a> App<'a> {
         hud_texture_shader.borrow_mut().set_camera(&mut gl, &hud_camera);
       }
 
-      match gl::GetError() {
+      match unsafe { gl::GetError() } {
         gl::NO_ERROR => {},
         err => panic!("OpenGL error 0x{:x} setting up shaders", err),
       }
@@ -565,16 +567,20 @@ impl<'a> App<'a> {
       };
 
       let misc_texture_unit = texture_unit_alloc.allocate();
-      gl::ActiveTexture(misc_texture_unit.gl_id());
+      unsafe {
+        gl::ActiveTexture(misc_texture_unit.gl_id());
+      }
       hud_texture_shader.borrow_mut().with_uniform_location(
         &mut gl,
         "texture_in",
         |loc| {
-          gl::Uniform1i(loc, misc_texture_unit.glsl_id as GLint);
+          unsafe {
+            gl::Uniform1i(loc, misc_texture_unit.glsl_id as GLint);
+          }
         }
       );
 
-      match gl::GetError() {
+      match unsafe { gl::GetError() } {
         gl::NO_ERROR => {},
         err => panic!("OpenGL error 0x{:x} in load()", err),
       }
@@ -668,7 +674,7 @@ fn place_terrain(
     };
     physics.insert(terrain.id, &bounds);
     terrains.insert(terrain.id, terrain);
-    terrain_loader.push(Load(terrain.id));
+    terrain_loader.push_back(Load(terrain.id));
   }
 }
 

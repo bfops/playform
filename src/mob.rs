@@ -61,7 +61,7 @@ impl MobBuffers {
     id: EntityId,
     triangles: &[vertex::ColoredVertex]
   ) {
-    let idx = *self.id_to_index.find(&id).unwrap();
+    let idx = *self.id_to_index.get(&id).unwrap();
     self.triangles.buffer.update(idx, triangles);
   }
 

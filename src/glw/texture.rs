@@ -42,22 +42,12 @@ pub struct Texture {
 
 impl Texture {
   pub fn bind_2d(&self, _gl: &GLContext) {
-    gl::BindTexture(gl::TEXTURE_2D, self.gl_id);
-
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      err => panic!("OpenGL error 0x{:x}", err),
-    }
+    unsafe { gl::BindTexture(gl::TEXTURE_2D, self.gl_id); }
   }
 
   #[allow(dead_code)]
   pub fn bind_3d(&self, _gl: &GLContext) {
-    gl::BindTexture(gl::TEXTURE_3D, self.gl_id);
-
-    match gl::GetError() {
-      gl::NO_ERROR => {},
-      err => panic!("OpenGL error 0x{:x}", err),
-    }
+    unsafe { gl::BindTexture(gl::TEXTURE_3D, self.gl_id); }
   }
 }
 
@@ -84,8 +74,10 @@ impl<T> BufferTexture<T> {
       gl::GenTextures(1, &mut gl_id);
     }
 
-    gl::BindTexture(gl::TEXTURE_BUFFER, gl_id);
-    gl::TexBuffer(gl::TEXTURE_BUFFER, format, buffer.byte_buffer.gl_id);
+    unsafe {
+      gl::BindTexture(gl::TEXTURE_BUFFER, gl_id);
+      gl::TexBuffer(gl::TEXTURE_BUFFER, format, buffer.byte_buffer.gl_id);
+    }
 
     BufferTexture {
       texture: Texture { gl_id: gl_id },

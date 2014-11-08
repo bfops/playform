@@ -2,7 +2,7 @@
 //! allocation.
 //!
 //! Note that strings are never deallocated, and are per-thread.
-use std::collections::hashmap::{ HashMap, Occupied, Vacant };
+use std::collections::hash_map::{ HashMap, Occupied, Vacant };
 use std::c_str::CString;
 use std::mem;
 

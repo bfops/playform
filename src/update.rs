@@ -1,5 +1,4 @@
 use common::*;
-use gl;
 use gl::types::*;
 use glw::color::Color4;
 use input;
@@ -12,7 +11,6 @@ use state::App;
 use stopwatch;
 use stopwatch::*;
 use std::cmp;
-use std::collections::Deque;
 use std::collections::HashMap;
 
 // how many terrain polys to load during every update step
@@ -34,18 +32,8 @@ pub fn update<'a>(app: &mut App) {
   time!(app.timers.deref(), "update", || {
     // TODO(cgaebel): Ideally, the update thread should not be touching OpenGL.
 
-      match gl::GetError() {
-        gl::NO_ERROR => {},
-        err => panic!("OpenGL error 0x{:x} in update", err),
-      }
-
     time!(app.timers.deref(), "update.load", || {
       load_terrain(app, Some(TERRAIN_LOAD_SPEED));
-
-      match gl::GetError() {
-        gl::NO_ERROR => {},
-        err => panic!("OpenGL error 0x{:x} in update", err),
-      }
       load_octree(app);
     });
 
@@ -95,7 +83,7 @@ pub fn update<'a>(app: &mut App) {
 }
 
 fn remove_terrain<'a>(app: &mut App<'a>, id: EntityId) {
-  app.terrain_loader.push(Unload(id));
+  app.terrain_loader.push_back(Unload(id));
 }
 
 fn translate_mob(physics: &mut Physics<EntityId>, mob_buffers: &mut mob::MobBuffers, mob: &mut mob::Mob, delta_p: Vec3<GLfloat>) {
@@ -128,14 +116,14 @@ fn load_terrain<'a>(app: &mut App<'a>, max: Option<uint>) {
           let physics = &mut app.physics;
           match op {
             Load(id) => {
-              let terrain = terrains.find(&id).unwrap();
+              let terrain = terrains.get(&id).unwrap();
               terrain_buffers.push(
                 id,
                 terrain,
               );
             },
             Unload(id) => {
-              if terrains.remove(&id) {
+              if terrains.remove(&id).is_some() {
                 terrain_buffers.swap_remove(id);
                 physics.remove(id);
               }

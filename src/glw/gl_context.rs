@@ -45,53 +45,65 @@ impl GLContext {
 
   /// Stops the processing of any triangles hidden from view when rendering.
   pub fn enable_culling(&self) {
-    gl::FrontFace(gl::CCW);
-    gl::CullFace(gl::BACK);
-    gl::Enable(gl::CULL_FACE);
+    unsafe {
+      gl::FrontFace(gl::CCW);
+      gl::CullFace(gl::BACK);
+      gl::Enable(gl::CULL_FACE);
+    }
   }
 
   #[allow(missing_docs)]
   pub fn enable_alpha_blending(&self) {
-    gl::Enable(gl::BLEND);
-    gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+    unsafe {
+      gl::Enable(gl::BLEND);
+      gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+    }
   }
 
   #[allow(missing_docs)]
   pub fn enable_smooth_lines(&self) {
-    gl::Enable(gl::LINE_SMOOTH);
-    gl::LineWidth(2.5);
+    unsafe {
+      gl::Enable(gl::LINE_SMOOTH);
+      gl::LineWidth(2.5);
+    }
   }
 
   /// Allows us to use the OpenGL depth buffer, which makes OpenGL do logical
   /// things when two things are rendered at the same x and y coordinates, but
   /// different z coordinates.
   pub fn enable_depth_buffer(&self, depth: GLclampd) {
-    gl::Enable(gl::DEPTH_TEST);
-    gl::DepthFunc(gl::LESS);
-    gl::ClearDepth(depth);
+    unsafe {
+      gl::Enable(gl::DEPTH_TEST);
+      gl::DepthFunc(gl::LESS);
+      gl::ClearDepth(depth);
+    }
   }
 
   /// At the beginning of each frame, OpenGL clears the buffer. This sets the
   /// color the buffer is cleared to.
   pub fn set_background_color(&self, background_color: Color4<GLfloat>) {
-    gl::ClearColor(
-      background_color.r,
-      background_color.g,
-      background_color.b,
-      background_color.a
-    );
+    unsafe {
+      gl::ClearColor(
+        background_color.r,
+        background_color.g,
+        background_color.b,
+        background_color.a
+      );
+    }
   }
 
   /// Replace the current OpenGL buffer with all pixels of the
   /// "background color", as set with `set_background_color`.
   pub fn clear_buffer(&self) {
-    gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+    unsafe {
+      gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+    }
   }
 
   /// Compiles a shader for the current graphics card.
   pub fn compile_shader(&self, src: String, ty: GLenum) -> GLuint {
-    let shader = gl::CreateShader(ty);
     unsafe {
+      let shader = gl::CreateShader(ty);
       // Attempt to compile the shader
       src.with_c_str(|ptr| gl::ShaderSource(shader, 1, &ptr, ptr::null()));
       gl::CompileShader(shader);
@@ -108,8 +120,8 @@ impl GLContext {
         gl::GetShaderInfoLog(shader, len, ptr::null_mut(), buf.as_mut_ptr() as *mut GLchar);
         panic!("error compiling 0x{:x} shader: {}", ty, str::from_utf8(buf.as_slice()).expect("ShaderInfoLog not valid utf8"));
       }
+      shader
     }
-    shader
   }
 
   fn get_current_shader(&self) -> GLuint {
@@ -127,9 +139,15 @@ impl GLContext {
     // `Get` functions, which means this will be unnecessarily slow. One day
     // we should think about maintaining the shader stack ourselves.
     let old_shader = self.get_current_shader();
-    gl::UseProgram(shader.id);
+    unsafe {
+      gl::UseProgram(shader.id);
+    }
     let r = f(self);
-    if old_shader != 0 { gl::UseProgram(old_shader); }
+    if old_shader != 0 {
+      unsafe {
+        gl::UseProgram(old_shader);
+      }
+    }
     r
   }
 
@@ -149,15 +167,17 @@ impl GLContext {
 
   /// Prints opengl version information.
   pub fn print_stats(&self) {
-    let opengl_version = gl::GetString(gl::VERSION);
-    let glsl_version = gl::GetString(gl::SHADING_LANGUAGE_VERSION);
-    info!(
-      "OpenGL version: {}", 
-      unsafe { from_c_str(opengl_version) },
-    );
-    info!(
-      "GLSL version: {}",
-      unsafe { from_c_str(glsl_version) },
-    );
+    unsafe {
+      let opengl_version = gl::GetString(gl::VERSION);
+      let glsl_version = gl::GetString(gl::SHADING_LANGUAGE_VERSION);
+      info!(
+        "OpenGL version: {}", 
+        from_c_str(opengl_version),
+      );
+      info!(
+        "GLSL version: {}",
+        from_c_str(glsl_version),
+      );
+    }
   }
 }

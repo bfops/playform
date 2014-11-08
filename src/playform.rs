@@ -7,6 +7,7 @@
 #![feature(unsafe_destructor)]
 #![feature(phase)]
 
+extern crate current;
 extern crate gl;
 extern crate glw;
 extern crate event;

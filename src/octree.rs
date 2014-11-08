@@ -118,7 +118,7 @@ impl<V> OctreeBuffers<V> {
   }
 
   pub fn swap_remove(&mut self, entry: OctreeId) {
-    let &idx = self.entry_to_index.find(&entry).unwrap();
+    let &idx = self.entry_to_index.get(&entry).unwrap();
     let swapped_id = self.index_to_entry[self.index_to_entry.len() - 1];
     self.index_to_entry.swap_remove(idx).unwrap();
     self.entry_to_index.remove(&entry);
@@ -190,7 +190,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     let contents = match self.contents {
       Leaf(ref mut vs) => {
         if vs.is_empty() {
-          self.loader.borrow_mut().push(Load((self.id, self.bounds.clone())));
+          self.loader.borrow_mut().push_back(Load((self.id, self.bounds.clone())));
         }
 
         vs.push((bounds, v));
@@ -203,7 +203,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
           ) / NumCast::from(vs.len()).unwrap();
 
         if avg_length < length(&self.bounds, self.dimension) / 2.0 {
-          self.loader.borrow_mut().push(Unload(self.id));
+          self.loader.borrow_mut().push_back(Unload(self.id));
 
           let (low, high) =
             Octree::bisect(
@@ -340,7 +340,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
         let i = vs.iter().position(|&(_, ref x)| *x == v).unwrap();
         vs.swap_remove(i);
         if vs.is_empty() {
-          self.loader.borrow_mut().push(Unload(self.id));
+          self.loader.borrow_mut().push_back(Unload(self.id));
           false
         } else {
           false

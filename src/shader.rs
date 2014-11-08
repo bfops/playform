@@ -36,7 +36,7 @@ fn preprocess(shader: String, vars: &HashMap<String, String>) -> Option<String> 
           }
         }
 
-        match vars.find(&var_name) {
+        match vars.get(&var_name) {
           None => {
             error!("Reference to undefined variable: {}", var_name);
             return None;
