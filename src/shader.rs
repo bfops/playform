@@ -1,6 +1,6 @@
 use gl;
 use gl::types::*;
-use glw::gl_context::GLContext;
+use glw::gl_context::GLContextExistence;
 use glw::shader::Shader;
 use std::collections::HashMap;
 use std::io::fs::File;
@@ -144,11 +144,11 @@ baz
   );
 }
 
-pub fn from_files<T: Iterator<(String, GLenum)>>(
-  gl: &mut GLContext,
+pub fn from_files<'a, T: Iterator<(String, GLenum)>>(
+  gl: &'a GLContextExistence,
   component_paths: T,
   vars: &HashMap<String, String>,
-) -> Shader {
+) -> Shader<'a> {
   Shader::new(gl, component_paths.map(|(path, component_type)| {
     match File::open(&Path::new(path.as_slice())) {
       Ok(mut f) =>
@@ -172,21 +172,23 @@ pub fn from_files<T: Iterator<(String, GLenum)>>(
   }))
 }
 
-pub fn from_file_prefix<T: Iterator<GLenum>>(
-  gl: &mut GLContext,
+pub fn from_file_prefix<'a, T: Iterator<GLenum>>(
+  gl: &'a GLContextExistence,
   prefix: String,
   components: T,
   vars: &HashMap<String, String>,
-) -> Shader {
+) -> Shader<'a> {
   from_files(
     gl,
     components.map(|component| {
-      let suffix = match component {
-        gl::VERTEX_SHADER => "vert",
-        gl::FRAGMENT_SHADER => "frag",
-        gl::GEOMETRY_SHADER => "geom",
-        _ => panic!("Unknown shader component type: {}", component),
-      };
+      let suffix =
+        match component {
+          gl::VERTEX_SHADER => "vert",
+          gl::FRAGMENT_SHADER => "frag",
+          gl::GEOMETRY_SHADER => "geom",
+          _ => panic!("Unknown shader component type: {}", component),
+        }
+      ;
       ((prefix + "." + suffix), component)
     }),
     vars,

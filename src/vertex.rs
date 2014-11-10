@@ -1,9 +1,7 @@
 //! A vertex with and without textures attached.
-use gl;
 use gl::types::*;
 use color::Color4;
 use nalgebra::{Pnt2,Pnt3,Vec2,Vec3};
-use std::mem;
 
 #[deriving(Show, Clone, Copy, PartialEq)]
 /// An untextured rendering vertex, with position and color.
@@ -89,48 +87,4 @@ pub struct WorldTextureVertex {
 
   /// The normal vector for this vertex. We assume the length is 1.
   pub normal: Vec3<GLfloat>,
-}
-
-#[deriving(Show)]
-pub enum GLType {
-  Float,
-  UInt,
-  Int,
-}
-
-impl GLType {
-  pub fn size(&self) -> uint {
-    match *self {
-      Float => mem::size_of::<GLfloat>(),
-      UInt => mem::size_of::<GLuint>(),
-      Int => mem::size_of::<GLint>(),
-    }
-  }
-
-  pub fn gl_enum(&self) -> GLenum {
-    match *self {
-      Float => gl::FLOAT,
-      UInt => gl::UNSIGNED_INT,
-      Int => gl::INT,
-    }
-  }
-
-  pub fn is_integral(&self) -> bool {
-    match *self {
-      Float => false,
-      UInt => true,
-      Int => true,
-    }
-  }
-}
-
-#[deriving(Show)]
-/// A data structure which specifies how to pass data from opengl to the vertex
-/// shaders.
-pub struct AttribData<'a> {
-  /// Cooresponds to the shader's `input variable`.
-  pub name: &'a str,
-  /// The size of this attribute, in the provided units.
-  pub size: uint,
-  pub unit: GLType,
 }

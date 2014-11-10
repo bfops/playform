@@ -1,7 +1,6 @@
+use color::Color4;
 use common::*;
 use event::{Event, Update, Input, Render};
-use glw::color::Color4;
-use glw::vertex::ColoredVertex;
 use input;
 use input::{Press,Release,Move,Keyboard,Mouse,MouseCursor};
 use nalgebra::Vec3;
@@ -13,6 +12,7 @@ use stopwatch;
 use stopwatch::*;
 use std::f32::consts::PI;
 use update::update;
+use vertex::ColoredVertex;
 
 #[inline]
 fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
@@ -78,7 +78,7 @@ fn key_press<'a>(app: &mut App<'a>, key: input::keyboard::Key) {
             color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
           },
         ];
-        app.line_of_sight.buffer.update(0, updates);
+        app.line_of_sight.buffer.update(app.gl_context, 0, updates);
       },
       input::keyboard::O => {
         app.render_octree = !app.render_octree;

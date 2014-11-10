@@ -1,10 +1,10 @@
 #![macro_escape]
 
 use gl::types::*;
-use glw::color::Color4;
-use glw::vertex::{ColoredVertex};
+use color::Color4;
 use nalgebra::Pnt3;
 use ncollide::bounding_volume::AABB3;
+use vertex::ColoredVertex;
 
 pub const WINDOW_WIDTH:  uint = 800;
 pub const WINDOW_HEIGHT: uint = 600;

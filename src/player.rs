@@ -1,5 +1,5 @@
+use camera;
 use gl::types::*;
-use glw::camera;
 use nalgebra::Vec3;
 use ncollide::bounding_volume::AABB;
 use ncollide::ray::{Ray, Ray3};

@@ -1,11 +1,10 @@
 #![macro_escape]
 
-extern crate time;
-
 use std::cell::{RefCell, Ref};
 use std::rc::Rc;
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
+use time;
 
 /// A simple stopwatch taht can time events and print stats about them.
 #[deriving(Send)]

@@ -1,6 +1,10 @@
+use gl;
 use gl::types::*;
+use glw::gl_context::GLContext;
+use glw::shader::Shader;
 use nalgebra::{Mat3, Mat4, Vec3, Pnt3};
 use nalgebra;
+use std::mem;
 
 pub struct Camera {
   // projection matrix components
@@ -103,5 +107,14 @@ impl Camera {
   /// Rotate about a given vector, by `r` radians.
   pub fn rotate(&mut self, v: Vec3<GLfloat>, r: GLfloat) {
     self.rotation = self.rotation * from_axis_angle4(v, -r);
+  }
+}
+
+pub fn set_camera(shader: &mut Shader, gl: &mut GLContext, c: &Camera) {
+  let projection_matrix = shader.get_uniform_location("projection_matrix");
+  shader.use_shader(gl);
+  unsafe {
+    let ptr = mem::transmute(&c.projection_matrix());
+    gl::UniformMatrix4fv(projection_matrix, 1, 0, ptr);
   }
 }

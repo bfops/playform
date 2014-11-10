@@ -45,5 +45,4 @@ git = "https://github.com/sebcrozet/ncollide"
 git = "https://github.com/bjz/noise-rs"
 
 [dependencies.glw]
-name = "glw"
-path = "src/glw/"
+git = "https://github.com/bfops/glw"

@@ -5,7 +5,7 @@ dependencies = [
  "current 0.0.0 (git+https://github.com/PistonDevelopers/current)",
  "event 0.0.0 (git+https://github.com/PistonDevelopers/event)",
  "gl 0.0.1 (git+https://github.com/bjz/gl-rs)",
- "glw 0.0.0",
+ "glw 0.0.0 (git+https://github.com/bfops/glw)",
  "input 0.0.0 (git+https://github.com/PistonDevelopers/input)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide 0.2.0 (git+https://github.com/sebcrozet/ncollide)",
@@ -55,9 +55,9 @@ dependencies = [
 [[package]]
 name = "glw"
 version = "0.0.0"
+source = "git+https://github.com/bfops/glw#13e93692e466ce3f9bc740c6fdfa146bcacd800a"
 dependencies = [
  "gl 0.0.1 (git+https://github.com/bjz/gl-rs)",
- "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
 ]
 
 [[package]]

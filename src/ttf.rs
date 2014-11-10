@@ -1,7 +1,8 @@
 extern crate gl;
 
-use glw::texture::Texture;
-use glw::color::Color4;
+use color::Color4;
+use glw::gl_context::GLContextExistence;
+use glw::texture::Texture2D;
 use sdl2::pixels::ll::{SDL_Color,SDL_PIXELFORMAT_ARGB8888};
 use sdl2::surface::ll::SDL_Surface;
 use sdl2::surface;
@@ -92,51 +93,63 @@ impl Font {
   }
 
   /// Color is rgba
-  pub fn render(&self, txt: &str, color: Color4<u8>) -> Texture {
-    unsafe {
-      let sdl_color = SDL_Color {
-        r: color.r,
-        g: color.g,
-        b: color.b,
-        a: color.a
-      };
+  pub fn render<'a>(
+    &self,
+    gl: &'a GLContextExistence,
+    txt: &str,
+    color: Color4<u8>,
+  ) -> Texture2D<'a> {
+    let sdl_color = SDL_Color {
+      r: color.r,
+      g: color.g,
+      b: color.b,
+      a: color.a
+    };
 
-      let surface_ptr = txt.with_c_str(|c_txt| {
+    let surface_ptr =
+      txt.with_c_str(|c_txt| {
+        unsafe {
           ffi::TTF_RenderUTF8_Blended(self.p as *const ffi::c_void, c_txt, sdl_color)
-        });
+        }
+      });
 
-      let tex = surface_ptr.as_ref().expect("Cannot render text.");
+    let tex = unsafe {
+      surface_ptr.as_ref().expect("Cannot render text.")
+    };
 
+    unsafe {
       assert_eq!((*tex.format).format, SDL_PIXELFORMAT_ARGB8888);
+    }
 
-      let mut texture = 0;
-      gl::GenTextures(1, &mut texture);
-      gl::BindTexture(gl::TEXTURE_2D, texture);
+    let texture = Texture2D::new(gl);
+    unsafe {
+      gl::BindTexture(gl::TEXTURE_2D, texture.handle.gl_id);
       gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, tex.w, tex.h, 0, gl::BGRA, gl::UNSIGNED_INT_8_8_8_8_REV, tex.pixels);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
       surface::ll::SDL_FreeSurface(surface_ptr as *const SDL_Surface);
-      Texture { gl_id: texture }
     }
+
+    texture
   }
 
   /// Color the text red.
   #[allow(dead_code)]
-  pub fn red(&self, txt: &str) -> Texture {
-    self.render(txt, Color4::of_rgba(0xFF, 0x00, 0x00, 0xFF))
+  pub fn red<'a>(&self, gl: &'a GLContextExistence, txt: &str) -> Texture2D<'a> {
+    self.render(gl, txt, Color4::of_rgba(0xFF, 0x00, 0x00, 0xFF))
   }
 
   /// dark black #333
   #[allow(dead_code)]
-  pub fn dark(&self, txt: &str) -> Texture {
-    self.render(txt, Color4::of_rgba(0x33, 0x33, 0x33, 0xFF))
+  pub fn dark<'a>(&self, gl: &'a GLContextExistence, txt: &str) -> Texture2D<'a> {
+    self.render(gl, txt, Color4::of_rgba(0x33, 0x33, 0x33, 0xFF))
   }
 
   /// light black #555
   #[allow(dead_code)]
-  pub fn light(&self, txt: &str) -> Texture {
-    self.render(txt, Color4::of_rgba(0x55, 0x55, 0x55, 0xFF))
+  pub fn light<'a>(&self, gl: &'a GLContextExistence, txt: &str) -> Texture2D<'a> {
+    self.render(gl, txt, Color4::of_rgba(0x55, 0x55, 0x55, 0xFF))
   }
 }
 

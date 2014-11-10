@@ -1,6 +1,7 @@
+use color::Color4;
 use common::*;
 use gl::types::*;
-use glw::color::Color4;
+use glw::gl_context::GLContext;
 use input;
 use loader::{Load, Unload};
 use mob;
@@ -20,6 +21,7 @@ static OCTREE_LOAD_SPEED: uint = 1 << 11;
 macro_rules! translate_mob(
   ($world:expr, $mob:expr, $v:expr) => (
     translate_mob(
+      $world.gl_context,
       &mut $world.physics,
       &mut $world.mob_buffers,
       $mob,
@@ -86,12 +88,19 @@ fn remove_terrain<'a>(app: &mut App<'a>, id: EntityId) {
   app.terrain_loader.push_back(Unload(id));
 }
 
-fn translate_mob(physics: &mut Physics<EntityId>, mob_buffers: &mut mob::MobBuffers, mob: &mut mob::Mob, delta_p: Vec3<GLfloat>) {
+fn translate_mob(
+  gl: &mut GLContext,
+  physics: &mut Physics<EntityId>,
+  mob_buffers: &mut mob::MobBuffers,
+  mob: &mut mob::Mob,
+  delta_p: Vec3<GLfloat>,
+) {
   if physics.translate(mob.id, delta_p).is_some() {
     mob.speed = mob.speed - delta_p;
   } else {
     let bounds = physics.get_bounds(mob.id).unwrap();
     mob_buffers.update(
+      gl,
       mob.id,
       to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
     );
@@ -118,13 +127,14 @@ fn load_terrain<'a>(app: &mut App<'a>, max: Option<uint>) {
             Load(id) => {
               let terrain = terrains.get(&id).unwrap();
               terrain_buffers.push(
+                app.gl_context,
                 id,
                 terrain,
               );
             },
             Unload(id) => {
               if terrains.remove(&id).is_some() {
-                terrain_buffers.swap_remove(id);
+                terrain_buffers.swap_remove(app.gl_context, id);
                 physics.remove(id);
               }
             },
@@ -143,10 +153,10 @@ fn load_octree<'a>(app: &mut App<'a>) {
       match app.octree_loader.borrow_mut().pop_front() {
         None => break,
         Some(Load((id, bounds))) => {
-          app.octree_buffers.push(id, to_outlines(&bounds));
+          app.octree_buffers.push(app.gl_context, id, to_outlines(&bounds));
         },
         Some(Unload(id)) => {
-          app.octree_buffers.swap_remove(id);
+          app.octree_buffers.swap_remove(app.gl_context, id);
         }
       }
     }

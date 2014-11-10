@@ -1,19 +1,16 @@
+use camera;
+use color::Color4;
 use common::*;
 use fontloader;
 use gl;
 use gl::types::*;
-use glw::camera;
-use glw::camera::Camera;
-use glw::color::Color4;
-use glw::gl_buffer::*;
-use glw::gl_context::GLContext;
-use glw::light::Light;
+use glw::vertex_buffer::*;
+use glw::gl_context::{GLContext, GLContextExistence};
 use glw::shader::Shader;
-use glw::texture::{Texture, TextureUnit};
-use glw::vertex;
-use glw::vertex::{ColoredVertex, TextureVertex};
+use glw::texture::{Texture2D, TextureUnit};
 use id_allocator::IdAllocator;
 use input;
+use light::{Light, set_point_light, set_ambient_light};
 use loader::{Loader, Load};
 use mob;
 use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
@@ -36,6 +33,7 @@ use std::f32::consts::PI;
 use std::iter::range_inclusive;
 use std::rc::Rc;
 use terrain;
+use vertex::{ColoredVertex, TextureVertex};
 
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
@@ -88,35 +86,41 @@ impl TightBoundingVolume for AABB3 {
   }
 }
 
-fn make_text(
-  gl: &GLContext,
-  shader: Rc<RefCell<Shader>>,
-) -> (Vec<Texture>, GLArray<TextureVertex>) {
+fn make_text<'a>(
+  gl: &'a GLContextExistence,
+  gl_context: &mut GLContext,
+  shader: Rc<RefCell<Shader<'a>>>,
+) -> (Vec<Texture2D<'a>>, GLArray<'a, TextureVertex>) {
   let fontloader = fontloader::FontLoader::new();
   let mut textures = Vec::new();
+  let buffer = GLBuffer::new(gl, gl_context, 8 * VERTICES_PER_TRIANGLE);
   let mut triangles = {
     GLArray::new(
       gl,
+      gl_context,
       shader,
-      [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
-        vertex::AttribData { name: "texture_position", size: 2, unit: vertex::Float },
+      [
+        VertexAttribData { name: "position", size: 3, unit: Float },
+        VertexAttribData { name: "texture_position", size: 2, unit: Float },
       ],
       Triangles,
-      GLBuffer::new(8 * VERTICES_PER_TRIANGLE),
+      buffer,
     )
   };
 
-  let instructions = [
-          "Use WASD to move, and spacebar to jump.",
-          "Use the mouse to look around, and click to remove terrain."
-      ].to_vec();
+  let instructions =
+    [
+      "Use WASD to move, and spacebar to jump.",
+      "Use the mouse to look around, and click to remove terrain."
+    ].to_vec();
 
   let mut y = 0.99;
 
   for line in instructions.iter() {
-    textures.push(fontloader.sans.red(*line));
+    textures.push(fontloader.sans.red(gl, *line));
 
     triangles.push(
+      gl_context,
       TextureVertex::square(
         Vec2 { x: -0.97, y: y - 0.2 },
         Vec2 { x: 0.0,   y: y       }
@@ -128,25 +132,29 @@ fn make_text(
   (textures, triangles)
 }
 
-fn make_hud(
-  gl: &GLContext,
-  shader: Rc<RefCell<Shader>>,
-) -> GLArray<ColoredVertex> {
+fn make_hud<'a>(
+  gl: &'a GLContextExistence,
+  gl_context: &mut GLContext,
+  shader: Rc<RefCell<Shader<'a>>>,
+) -> GLArray<'a ,ColoredVertex> {
+  let buffer = GLBuffer::new(gl, gl_context, 16 * VERTICES_PER_TRIANGLE);
   let mut hud_triangles = {
     GLArray::new(
       gl,
+      gl_context,
       shader,
-      [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
-        vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
+      [ VertexAttribData { name: "position", size: 3, unit: Float },
+        VertexAttribData { name: "in_color", size: 4, unit: Float },
       ],
       Triangles,
-      GLBuffer::new(16 * VERTICES_PER_TRIANGLE),
+      buffer,
     )
   };
 
   let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
 
   hud_triangles.push(
+    gl_context,
     ColoredVertex::square(
       Pnt2 { x: -0.02, y: -0.02 },
       Pnt2 { x:  0.02, y:  0.02 },
@@ -348,21 +356,21 @@ pub struct App<'a> {
   pub octree_loader: Rc<RefCell<Loader<(octree::OctreeId, AABB3), octree::OctreeId>>>,
 
   // OpenGL buffers
-  pub mob_buffers: mob::MobBuffers,
-  pub terrain_buffers: terrain::TerrainBuffers,
-  pub octree_buffers: octree::OctreeBuffers<EntityId>,
-  pub line_of_sight: GLArray<ColoredVertex>,
-  pub hud_triangles: GLArray<ColoredVertex>,
-  pub text_triangles: GLArray<TextureVertex>,
+  pub mob_buffers: mob::MobBuffers<'a>,
+  pub terrain_buffers: terrain::TerrainBuffers<'a>,
+  pub octree_buffers: octree::OctreeBuffers<'a, EntityId>,
+  pub line_of_sight: GLArray<'a, ColoredVertex>,
+  pub hud_triangles: GLArray<'a, ColoredVertex>,
+  pub text_triangles: GLArray<'a, TextureVertex>,
 
   pub misc_texture_unit: TextureUnit,
-  pub text_textures: Vec<Texture>,
+  pub text_textures: Vec<Texture2D<'a>>,
 
   // OpenGL shader "program" ids
-  pub color_shader: Rc<RefCell<Shader>>,
-  pub texture_shader: Rc<RefCell<Shader>>,
-  pub hud_texture_shader: Rc<RefCell<Shader>>,
-  pub hud_color_shader: Rc<RefCell<Shader>>,
+  pub color_shader: Rc<RefCell<Shader<'a>>>,
+  pub texture_shader: Rc<RefCell<Shader<'a>>>,
+  pub hud_texture_shader: Rc<RefCell<Shader<'a>>>,
+  pub hud_color_shader: Rc<RefCell<Shader<'a>>>,
 
   // which mouse buttons are currently pressed
   pub mouse_buttons_pressed: Vec<input::mouse::Button>,
@@ -371,248 +379,250 @@ pub struct App<'a> {
   pub render_outlines: bool,
 
   pub timers: Rc<stopwatch::TimerSet>,
-  pub gl: GLContext,
+  pub gl: &'a GLContextExistence,
+  pub gl_context: &'a mut GLContext,
 }
 
 impl<'a> App<'a> {
   /// Initializes an empty app.
-  pub fn new() -> App<'a> {
+  pub fn new(gl: &'a GLContextExistence, gl_context: &'a mut GLContext) -> App<'a> {
     let timers = Rc::new(stopwatch::TimerSet::new());
-    time!(timers.deref(), "load", || {
-      let mut gl = GLContext::new();
+    gl_context.print_stats();
 
-      gl.print_stats();
+    unsafe {
+      gl::FrontFace(gl::CCW);
+      gl::CullFace(gl::BACK);
+      gl::Enable(gl::CULL_FACE);
+    }
+    gl_context.enable_alpha_blending();
+    gl_context.enable_smooth_lines();
+    gl_context.enable_depth_buffer(100.0);
+    gl_context.set_background_color(SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a);
+    mouse::show_cursor(false);
 
-      unsafe {
-        gl::FrontFace(gl::CCW);
-        gl::CullFace(gl::BACK);
-        gl::Enable(gl::CULL_FACE);
-      }
-      gl.enable_alpha_blending();
-      gl.enable_smooth_lines();
-      gl.enable_depth_buffer(100.0);
-      gl.set_background_color(SKY_COLOR);
-      mouse::show_cursor(false);
+    let world_bounds = AABB::new(
+      Pnt3 { x: -512.0, y: -32.0, z: -512.0 },
+      Pnt3 { x: 512.0, y: 512.0, z: 512.0 },
+    );
 
-      let world_bounds = AABB::new(
-        Pnt3 { x: -512.0, y: -32.0, z: -512.0 },
-        Pnt3 { x: 512.0, y: 512.0, z: 512.0 },
-      );
-
-      let texture_shader = {
-        let texture_shader =
-          Rc::new(RefCell::new(shader::from_file_prefix(
-            &mut gl,
-            String::from_str("shaders/world_texture"),
-            [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
-            &FromIterator::from_iter(
-              [(String::from_str("lighting"), (USE_LIGHTING as uint).to_string())].to_vec().into_iter(),
-            ),
-          )));
-        if USE_LIGHTING {
-          texture_shader.borrow_mut().set_point_light(
-            &mut gl,
-            &Light {
-              position: Vec3::new(0.0, 16.0, 0.0),
-              intensity: Vec3::new(0.6, 0.6, 0.6),
-            }
-          );
-          texture_shader.borrow_mut().set_ambient_light(
-            &mut gl,
-            Vec3::new(0.4, 0.4, 0.4),
-          );
-          texture_shader.borrow_mut().set_ambient_light(
-            &mut gl,
-            Vec3::new(0.4, 0.4, 0.4),
-          );
-        }
-        texture_shader
-      };
-      let color_shader =
+    let texture_shader = {
+      let texture_shader =
         Rc::new(RefCell::new(shader::from_file_prefix(
-          &mut gl,
-          String::from_str("shaders/color"),
+          gl,
+          String::from_str("shaders/world_texture"),
           [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
-          &HashMap::new(),
+          &FromIterator::from_iter(
+            [(String::from_str("lighting"), (USE_LIGHTING as uint).to_string())].to_vec().into_iter(),
+          ),
         )));
-      let hud_color_shader =
-        Rc::new(RefCell::new(shader::from_file_prefix(
-          &mut gl,
-          String::from_str("shaders/color"),
-          [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
-          &HashMap::new(),
-        )));
-      let hud_texture_shader =
-        Rc::new(RefCell::new(shader::from_file_prefix(
-          &mut gl,
-          String::from_str("shaders/hud_texture"),
-          [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
-          &HashMap::new(),
-        )));
-
-      {
-        let hud_camera = {
-          let mut c = Camera::unit();
-          c.fov = camera::sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
-          c.fov = camera::translation(Vec3::new(0.0, 0.0, -1.0)) * c.fov;
-          c
-        };
-
-        hud_color_shader.borrow_mut().set_camera(&mut gl, &hud_camera);
-        hud_texture_shader.borrow_mut().set_camera(&mut gl, &hud_camera);
-      }
-
-      match unsafe { gl::GetError() } {
-        gl::NO_ERROR => {},
-        err => panic!("OpenGL error 0x{:x} setting up shaders", err),
-      }
-
-      let line_of_sight = {
-        let mut line_of_sight = {
-          GLArray::new(
-            &gl,
-            color_shader.clone(),
-            [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
-              vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
-            ],
-            Lines,
-            GLBuffer::new(2 * 2),
-          )
-        };
-
-        line_of_sight.push(
-          [
-            ColoredVertex {
-              position: Pnt3::new(0.0, 0.0, 0.0),
-              color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
-            },
-            ColoredVertex {
-              position: Pnt3::new(0.0, 0.0, 0.0),
-              color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
-            },
-          ]
-        );
-
-        line_of_sight
-      };
-
-      let hud_triangles = make_hud(&gl, hud_color_shader.clone());
-
-      let octree_loader = Rc::new(RefCell::new(RingBuf::new()));
-
-      let octree_buffers = unsafe {
-        octree::OctreeBuffers::new(&gl, &color_shader)
-      };
-
-      let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
-
-      let terrain_buffers = {
-        let terrain_buffers = terrain::TerrainBuffers::new(&gl);
-        terrain_buffers.bind(&mut gl, &mut texture_unit_alloc, texture_shader.clone());
-        terrain_buffers
-      };
-
-      let (text_textures, text_triangles) = make_text(&gl, hud_texture_shader.clone());
-
-      let mut physics =
-        Physics {
-          octree: octree::Octree::new(octree_loader.clone(), &world_bounds),
-          bounds: HashMap::new(),
-        };
-
-      let mut id_allocator = IdAllocator::new();
-
-      let (terrains, terrain_loader) =
-        time!(timers.deref(), "make_terrain", || {
-          make_terrain(
-            &mut physics,
-            &mut id_allocator,
-          )
-        });
-
-      let (mobs, mob_buffers) =
-        time!(timers.deref(), "make_mobs", || {
-          make_mobs(
-            &gl,
-            &mut physics,
-            &mut id_allocator,
-            color_shader.clone(),
-          )
-        });
-
-      let player = {
-        let mut player = Player {
-          camera: Camera::unit(),
-          speed: Vec3::new(0.0, 0.0, 0.0),
-          accel: Vec3::new(0.0, -0.1, 0.0),
-          walk_accel: Vec3::new(0.0, 0.0, 0.0),
-          jump_fuel: 0,
-          is_jumping: false,
-          id: id_allocator.allocate(),
-          lateral_rotation: 0.0,
-          vertical_rotation: 0.0,
-        };
-
-        let min = Pnt3::new(0.0, 64.0, 4.0);
-        let max = min + Vec3::new(1.0, 2.0, 1.0);
-        let bounds = AABB::new(min, max);
-        physics.insert(player.id, &bounds);
-
-        // initialize the projection matrix
-        player.camera.translate(center(&bounds).to_vec());
-        player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
-        player.rotate_lateral(PI / 2.0);
-
-        player
-      };
-
-      let misc_texture_unit = texture_unit_alloc.allocate();
-      unsafe {
-        gl::ActiveTexture(misc_texture_unit.gl_id());
-      }
-      hud_texture_shader.borrow_mut().with_uniform_location(
-        &mut gl,
-        "texture_in",
-        |loc| {
-          unsafe {
-            gl::Uniform1i(loc, misc_texture_unit.glsl_id as GLint);
+      if USE_LIGHTING {
+        set_point_light(
+          texture_shader.borrow_mut().deref_mut(),
+          gl_context,
+          &Light {
+            position: Vec3::new(0.0, 16.0, 0.0),
+            intensity: Vec3::new(0.6, 0.6, 0.6),
           }
-        }
+        );
+        set_ambient_light(
+          texture_shader.borrow_mut().deref_mut(),
+          gl_context,
+          Vec3::new(0.4, 0.4, 0.4),
+        );
+      }
+      texture_shader
+    };
+    let color_shader =
+      Rc::new(RefCell::new(shader::from_file_prefix(
+        gl,
+        String::from_str("shaders/color"),
+        [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
+        &HashMap::new(),
+      )));
+    let hud_color_shader =
+      Rc::new(RefCell::new(shader::from_file_prefix(
+        gl,
+        String::from_str("shaders/color"),
+        [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
+        &HashMap::new(),
+      )));
+    let hud_texture_shader =
+      Rc::new(RefCell::new(shader::from_file_prefix(
+        gl,
+        String::from_str("shaders/hud_texture"),
+        [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
+        &HashMap::new(),
+      )));
+
+    {
+      let hud_camera = {
+        let mut c = camera::Camera::unit();
+        c.fov = camera::sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
+        c.fov = camera::translation(Vec3::new(0.0, 0.0, -1.0)) * c.fov;
+        c
+      };
+
+      camera::set_camera(
+        hud_color_shader.borrow_mut().deref_mut(),
+        gl_context,
+        &hud_camera,
+      );
+      camera::set_camera(
+        hud_texture_shader.borrow_mut().deref_mut(),
+        gl_context,
+        &hud_camera,
+      );
+    }
+
+    match unsafe { gl::GetError() } {
+      gl::NO_ERROR => {},
+      err => panic!("OpenGL error 0x{:x} setting up shaders", err),
+    }
+
+    let line_of_sight = {
+      let buffer = GLBuffer::new(gl, gl_context, 2 * 2);
+      let mut line_of_sight = {
+        GLArray::new(
+          gl,
+          gl_context,
+          color_shader.clone(),
+          [ VertexAttribData { name: "position", size: 3, unit: Float },
+            VertexAttribData { name: "in_color", size: 4, unit: Float },
+          ],
+          Lines,
+          buffer,
+        )
+      };
+
+      line_of_sight.push(
+        gl_context,
+        [
+          ColoredVertex {
+            position: Pnt3::new(0.0, 0.0, 0.0),
+            color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
+          },
+          ColoredVertex {
+            position: Pnt3::new(0.0, 0.0, 0.0),
+            color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
+          },
+        ]
       );
 
-      match unsafe { gl::GetError() } {
-        gl::NO_ERROR => {},
-        err => panic!("OpenGL error 0x{:x} in load()", err),
-      }
+      line_of_sight
+    };
 
-      debug!("load() finished with {} terrain polys", terrains.len());
+    let hud_triangles = make_hud(gl, gl_context, hud_color_shader.clone());
 
-      App {
-        line_of_sight: line_of_sight,
-        physics: physics,
-        terrain_loader: terrain_loader,
-        octree_loader: octree_loader,
-        mob_buffers: mob_buffers,
-        octree_buffers: octree_buffers,
-        terrain_buffers: terrain_buffers,
-        terrains: terrains,
-        player: player,
-        mobs: mobs,
-        hud_triangles: hud_triangles,
-        text_textures: text_textures,
-        text_triangles: text_triangles,
-        misc_texture_unit: misc_texture_unit,
-        color_shader: color_shader,
-        texture_shader: texture_shader,
-        hud_color_shader: hud_color_shader,
-        hud_texture_shader: hud_texture_shader,
-        mouse_buttons_pressed: Vec::new(),
-        render_octree: false,
-        render_outlines: false,
-        timers: timers.clone(),
-        gl: gl,
-      }
-    })
+    let octree_loader = Rc::new(RefCell::new(RingBuf::new()));
+    let octree_buffers = octree::OctreeBuffers::new(gl, gl_context, &color_shader);
+
+    let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
+
+    let terrain_buffers = {
+      let terrain_buffers = terrain::TerrainBuffers::new(gl, gl_context);
+      terrain_buffers.bind(gl_context, &mut texture_unit_alloc, texture_shader.clone());
+      terrain_buffers
+    };
+
+    let (text_textures, text_triangles) =
+      make_text(gl, gl_context, hud_texture_shader.clone());
+
+    let mut physics =
+      Physics {
+        octree: octree::Octree::new(octree_loader.clone(), &world_bounds),
+        bounds: HashMap::new(),
+      };
+
+    let mut id_allocator = IdAllocator::new();
+
+    let (terrains, terrain_loader) =
+      time!(timers.deref(), "make_terrain", || {
+        make_terrain(
+          &mut physics,
+          &mut id_allocator,
+        )
+      });
+
+    let (mobs, mob_buffers) =
+      time!(timers.deref(), "make_mobs", || {
+        make_mobs(
+          gl,
+          gl_context,
+          &mut physics,
+          &mut id_allocator,
+          color_shader.clone(),
+        )
+      });
+
+    let player = {
+      let mut player = Player {
+        camera: camera::Camera::unit(),
+        speed: Vec3::new(0.0, 0.0, 0.0),
+        accel: Vec3::new(0.0, -0.1, 0.0),
+        walk_accel: Vec3::new(0.0, 0.0, 0.0),
+        jump_fuel: 0,
+        is_jumping: false,
+        id: id_allocator.allocate(),
+        lateral_rotation: 0.0,
+        vertical_rotation: 0.0,
+      };
+
+      let min = Pnt3::new(0.0, 64.0, 4.0);
+      let max = min + Vec3::new(1.0, 2.0, 1.0);
+      let bounds = AABB::new(min, max);
+      physics.insert(player.id, &bounds);
+
+      // initialize the projection matrix
+      player.camera.translate(center(&bounds).to_vec());
+      player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
+      player.rotate_lateral(PI / 2.0);
+
+      player
+    };
+
+    let misc_texture_unit = texture_unit_alloc.allocate();
+    unsafe {
+      gl::ActiveTexture(misc_texture_unit.gl_id());
+    }
+    let texture_in = hud_texture_shader.borrow_mut().get_uniform_location("texture_in");
+    hud_texture_shader.borrow_mut().use_shader(gl_context);
+    unsafe {
+      gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
+    }
+
+    match unsafe { gl::GetError() } {
+      gl::NO_ERROR => {},
+      err => panic!("OpenGL error 0x{:x} in load()", err),
+    }
+
+    debug!("load() finished with {} terrain polys", terrains.len());
+
+    App {
+      line_of_sight: line_of_sight,
+      physics: physics,
+      terrain_loader: terrain_loader,
+      octree_loader: octree_loader,
+      mob_buffers: mob_buffers,
+      octree_buffers: octree_buffers,
+      terrain_buffers: terrain_buffers,
+      terrains: terrains,
+      player: player,
+      mobs: mobs,
+      hud_triangles: hud_triangles,
+      text_textures: text_textures,
+      text_triangles: text_triangles,
+      misc_texture_unit: misc_texture_unit,
+      color_shader: color_shader,
+      texture_shader: texture_shader,
+      hud_color_shader: hud_color_shader,
+      hud_texture_shader: hud_texture_shader,
+      mouse_buttons_pressed: Vec::new(),
+      render_octree: false,
+      render_outlines: false,
+      timers: timers.clone(),
+      gl: gl,
+      gl_context: gl_context,
+    }
   }
 
   #[inline]
@@ -625,6 +635,7 @@ impl<'a> App<'a> {
   }
 
   fn add_mob(
+    gl: &mut GLContext,
     physics: &mut Physics<EntityId>,
     mobs: &mut HashMap<EntityId, mob::Mob>,
     mob_buffers: &mut mob::MobBuffers,
@@ -644,7 +655,7 @@ impl<'a> App<'a> {
       };
 
     let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
-    mob_buffers.push(id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
+    mob_buffers.push(gl, id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
 
     physics.insert(id, &bounds);
     mobs.insert(id, mob);
@@ -678,14 +689,15 @@ fn place_terrain(
   }
 }
 
-fn make_mobs(
-  gl: &GLContext,
+fn make_mobs<'a>(
+  gl: &'a GLContextExistence,
+  gl_context: & mut GLContext,
   physics: &mut Physics<EntityId>,
   id_allocator: &mut IdAllocator<EntityId>,
   shader: Rc<RefCell<Shader>>,
-) -> (HashMap<EntityId, mob::Mob>, mob::MobBuffers) {
+) -> (HashMap<EntityId, mob::Mob>, mob::MobBuffers<'a>) {
   let mut mobs = HashMap::new();
-  let mut mob_buffers = mob::MobBuffers::new(gl, shader);
+  let mut mob_buffers = mob::MobBuffers::new(gl, gl_context, shader);
 
   fn mob_behavior(world: &App, mob: &mut mob::Mob) {
     let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
@@ -719,6 +731,7 @@ fn make_mobs(
   }
 
   App::add_mob(
+    gl_context,
     physics,
     &mut mobs,
     &mut mob_buffers,

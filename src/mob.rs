@@ -1,14 +1,14 @@
 use common::*;
-use glw::gl_buffer::{GLArray, GLBuffer, Triangles};
-use glw::gl_context::GLContext;
+use glw::vertex_buffer::*;
+use glw::gl_context::{GLContext, GLContextExistence};
 use glw::shader::Shader;
-use glw::vertex;
 use nalgebra::Vec3;
 use state::App;
 use state::EntityId;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use vertex::ColoredVertex;
 
 // N.B.: Behaviors are unsafe because they take both a mutable and immutable
 // reference to a mob (the mob is also inside the main::App).
@@ -20,52 +20,61 @@ pub struct Mob {
   pub id: EntityId,
 }
 
-pub struct MobBuffers {
+pub struct MobBuffers<'a> {
   id_to_index: HashMap<EntityId, uint>,
   index_to_id: Vec<EntityId>,
 
-  triangles: GLArray<vertex::ColoredVertex>,
+  triangles: GLArray<'a, ColoredVertex>,
 }
 
-impl MobBuffers {
-  pub fn new(gl: &GLContext, color_shader: Rc<RefCell<Shader>>) -> MobBuffers {
+impl<'a> MobBuffers<'a> {
+  pub fn new(
+    gl: &'a GLContextExistence,
+    gl_context: &mut GLContext,
+    color_shader: Rc<RefCell<Shader>>,
+  ) -> MobBuffers<'a> {
+    let buffer = GLBuffer::new(gl, gl_context, 32 * TRIANGLE_VERTICES_PER_BOX);
     MobBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
 
       triangles: GLArray::new(
         gl,
+        gl_context,
         color_shader.clone(),
-        [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
-          vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
+        [
+          VertexAttribData { name: "position", size: 3, unit: Float },
+          VertexAttribData { name: "in_color", size: 4, unit: Float },
         ],
         Triangles,
-        GLBuffer::new(32 * TRIANGLE_VERTICES_PER_BOX),
+        buffer,
       ),
     }
   }
 
   pub fn push(
     &mut self,
+    gl: &mut GLContext,
     id: EntityId,
-    triangles: &[vertex::ColoredVertex]
+    triangles: &[ColoredVertex]
   ) {
     self.id_to_index.insert(id, self.index_to_id.len());
     self.index_to_id.push(id);
 
-    self.triangles.push(triangles);
+    self.triangles.push(gl, triangles);
   }
 
   pub fn update(
     &mut self,
+    gl: &mut GLContext,
     id: EntityId,
-    triangles: &[vertex::ColoredVertex]
+    triangles: &[ColoredVertex]
   ) {
     let idx = *self.id_to_index.get(&id).unwrap();
-    self.triangles.buffer.update(idx, triangles);
+    self.triangles.buffer.update(gl, idx, triangles);
   }
 
-  pub fn draw(&self, gl: &GLContext) {
+  pub fn draw(&self, gl: &mut GLContext) {
     self.triangles.draw(gl);
   }
 }

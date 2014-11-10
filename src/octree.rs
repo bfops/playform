@@ -1,4 +1,8 @@
 use common::*;
+use glw::vertex_buffer::*;
+use glw::gl_context::{GLContext, GLContextExistence};
+use glw::shader::Shader;
+use vertex::ColoredVertex;
 use loader::{Loader,Load,Unload};
 use nalgebra::Pnt3;
 use nalgebra::partial_lt;
@@ -11,11 +15,6 @@ use std::hash::Hash;
 use std::num::NumCast;
 use std::ptr::RawPtr;
 use std::rc::Rc;
-use glw::gl_buffer::*;
-use glw::gl_context::GLContext;
-use glw::shader::Shader;
-use glw::vertex;
-use glw::vertex::ColoredVertex;
 
 fn aabb_overlap(aabb1: &AABB3, aabb2: &AABB3) -> bool {
   partial_lt(aabb1.mins(), aabb2.maxs()) &&
@@ -77,59 +76,63 @@ impl Add<uint, OctreeId> for OctreeId {
   }
 }
 
-pub struct OctreeBuffers<V> {
+pub struct OctreeBuffers<'a, V> {
   entry_to_index: HashMap<OctreeId, uint>,
   index_to_entry: Vec<OctreeId>,
 
-  outlines: GLArray<ColoredVertex>,
+  outlines: GLArray<'a, ColoredVertex>,
 }
 
-impl<V> OctreeBuffers<V> {
-  pub unsafe fn new(
-      gl: &GLContext,
-      shader_program: &Rc<RefCell<Shader>>
-  ) -> OctreeBuffers<V> {
+impl<'a, V> OctreeBuffers<'a, V> {
+  pub fn new(
+    gl: &'a GLContextExistence,
+    gl_context: &mut GLContext,
+    shader_program: &Rc<RefCell<Shader>>
+  ) -> OctreeBuffers<'a, V> {
+    let buffer = GLBuffer::new(gl, gl_context, 10 * MAX_WORLD_SIZE);
     OctreeBuffers {
       entry_to_index: HashMap::new(),
       index_to_entry: Vec::new(),
 
       outlines: GLArray::new(
         gl,
+        gl_context,
         shader_program.clone(),
-        [ vertex::AttribData { name: "position", size: 3, unit: vertex::Float },
-          vertex::AttribData { name: "in_color", size: 4, unit: vertex::Float },
+        [ VertexAttribData { name: "position", size: 3, unit: Float },
+          VertexAttribData { name: "in_color", size: 4, unit: Float },
         ],
         Lines,
-        GLBuffer::new(10 * MAX_WORLD_SIZE),
+        buffer,
       ),
     }
   }
 
   pub fn push(
     &mut self,
+    gl: &mut GLContext,
     entry: OctreeId,
-    outlines: &[ColoredVertex]
+    outlines: &[ColoredVertex],
   ) {
     assert!(!self.entry_to_index.contains_key(&entry));
     self.entry_to_index.insert(entry, self.index_to_entry.len());
     self.index_to_entry.push(entry);
 
-    self.outlines.push(outlines);
+    self.outlines.push(gl, outlines);
   }
 
-  pub fn swap_remove(&mut self, entry: OctreeId) {
+  pub fn swap_remove(&mut self, gl: &mut GLContext, entry: OctreeId) {
     let &idx = self.entry_to_index.get(&entry).unwrap();
     let swapped_id = self.index_to_entry[self.index_to_entry.len() - 1];
     self.index_to_entry.swap_remove(idx).unwrap();
     self.entry_to_index.remove(&entry);
-    self.outlines.swap_remove(idx * LINE_VERTICES_PER_BOX, LINE_VERTICES_PER_BOX);
+    self.outlines.swap_remove(gl, idx * LINE_VERTICES_PER_BOX, LINE_VERTICES_PER_BOX);
     if entry != swapped_id {
       self.entry_to_index.insert(swapped_id, idx);
       assert!(self.index_to_entry[idx] == swapped_id);
     }
   }
 
-  pub fn draw(&self, gl: &GLContext) {
+  pub fn draw(&self, gl: &mut GLContext) {
     self.outlines.draw(gl);
   }
 }

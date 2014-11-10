@@ -1,3 +1,4 @@
+use camera::set_camera;
 use gl;
 use state::App;
 use stopwatch;
@@ -6,20 +7,20 @@ use stopwatch::*;
 // TODO: make this parameter non-mut
 pub fn render<'a>(app: &mut App<'a>) {
   time!(app.timers.deref(), "render", || {
-    app.gl.clear_buffer();
+    app.gl_context.clear_buffer();
 
-    app.color_shader.borrow_mut().set_camera(&mut app.gl, &app.player.camera);
+    set_camera(app.color_shader.borrow_mut().deref_mut(), app.gl_context, &app.player.camera);
 
-    app.gl.use_shader(app.color_shader.borrow().deref(), |_| {
-      // debug stuff
-      app.line_of_sight.draw(&app.gl);
+    app.color_shader.borrow().use_shader(app.gl_context);
 
-      if app.render_octree {
-        app.octree_buffers.draw(&app.gl);
-      }
-    });
+    // debug stuff
+    app.line_of_sight.draw(app.gl_context);
 
-    app.texture_shader.borrow_mut().set_camera(&mut app.gl, &app.player.camera);
+    if app.render_octree {
+      app.octree_buffers.draw(app.gl_context);
+    }
+
+    set_camera(app.texture_shader.borrow_mut().deref_mut(), app.gl_context, &app.player.camera);
 
     // draw the world
     if app.render_outlines {
@@ -27,39 +28,37 @@ pub fn render<'a>(app: &mut App<'a>) {
         gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
         gl::Disable(gl::CULL_FACE);
       }
-      app.gl.use_shader(app.texture_shader.borrow().deref(), |gl| {
-        app.terrain_buffers.draw(gl);
-      });
-      app.gl.use_shader(app.color_shader.borrow().deref(), |gl| {
-        app.mob_buffers.draw(gl);
-      });
+
+      app.texture_shader.borrow().use_shader(app.gl_context);
+      app.terrain_buffers.draw(app.gl_context);
+      app.color_shader.borrow().use_shader(app.gl_context);
+      app.mob_buffers.draw(app.gl_context);
+
       unsafe {
         gl::PolygonMode(gl::FRONT_AND_BACK, gl::FILL);
         gl::Enable(gl::CULL_FACE);
       }
     } else {
-      app.gl.use_shader(app.texture_shader.borrow().deref(), |gl| {
-        app.terrain_buffers.draw(gl);
-      });
-      app.gl.use_shader(app.color_shader.borrow().deref(), |gl| {
-        app.mob_buffers.draw(gl);
-      });
+      app.texture_shader.borrow().use_shader(app.gl_context);
+      app.terrain_buffers.draw(app.gl_context);
+      app.color_shader.borrow().use_shader(app.gl_context);
+      app.mob_buffers.draw(app.gl_context);
     }
 
     // draw the hud
-    app.gl.use_shader(app.hud_color_shader.borrow().deref(), |gl| {
-      app.hud_triangles.draw(gl);
-    });
+    app.hud_color_shader.borrow().use_shader(app.gl_context);
+    app.hud_triangles.draw(app.gl_context);
 
     // draw hud textures
-    app.gl.use_shader(app.hud_texture_shader.borrow().deref(), |gl| {
+    app.hud_texture_shader.borrow().use_shader(app.gl_context);
+    unsafe {
+      gl::ActiveTexture(app.misc_texture_unit.gl_id());
+    }
+    for (i, tex) in app.text_textures.iter().enumerate() {
       unsafe {
-        gl::ActiveTexture(app.misc_texture_unit.gl_id());
+        gl::BindTexture(gl::TEXTURE_2D, tex.handle.gl_id);
       }
-      for (i, tex) in app.text_textures.iter().enumerate() {
-        tex.bind_2d(gl);
-        app.text_triangles.draw_slice(gl, i * 2, 2);
-      }
-    });
+      app.text_triangles.draw_slice(app.gl_context, i * 2, 2);
+    }
   })
 }

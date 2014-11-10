@@ -3,10 +3,12 @@ use current::Modifier;
 use event::WindowSettings;
 use event::{Events, Ups, MaxFps};
 use event_handler::handle_event;
+use glw::gl_context::GLContext;
 use sdl2_window::*;
 use shader_version::opengl::*;
 use state::App;
 use std::cell::RefCell;
+use time;
 
 pub fn main() {
   debug!("starting");
@@ -23,7 +25,15 @@ pub fn main() {
   );
   let window = RefCell::new(window);
 
-  let mut app = App::new();
+  let (gl, mut gl_context) = unsafe {
+    GLContext::new()
+  };
+
+  let then = time::precise_time_ns();
+  let mut app = App::new(&gl, &mut gl_context);
+  let time_elapsed = time::precise_time_ns() - then;
+  println!("load finished after {}ms", time_elapsed / 1000000);
+
   let mut game_iter = Events::new(&window);
   Ups(30).modify(&mut game_iter);
   MaxFps(30).modify(&mut game_iter);

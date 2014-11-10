@@ -22,15 +22,19 @@ extern crate png;
 extern crate sdl2;
 extern crate sdl2_window;
 extern crate shader_version;
+extern crate time;
 
 // so time! macro is defined in main
 mod stopwatch;
 
+mod camera;
+mod color;
 mod common;
 mod event_handler;
 mod fontloader;
 mod id_allocator;
 mod player;
+mod light;
 mod loader;
 mod main;
 mod mob;
@@ -42,6 +46,7 @@ mod state;
 mod terrain;
 mod ttf;
 mod update;
+mod vertex;
 
 #[allow(dead_code)]
 fn main() {
