@@ -2,6 +2,8 @@
 use gl::types::*;
 use color::Color4;
 use nalgebra::{Pnt2,Pnt3,Vec2,Vec3};
+#[cfg(test)]
+use std::mem;
 
 #[deriving(Show, Clone, Copy, PartialEq)]
 /// An untextured rendering vertex, with position and color.
