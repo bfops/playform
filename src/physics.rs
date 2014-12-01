@@ -6,11 +6,11 @@ use std::hash::Hash;
 
 pub struct Physics<T> {
   pub octree: Octree<T>,
-  pub bounds: HashMap<T, AABB3>,
+  pub bounds: HashMap<T, AABB3<f32>>,
 }
 
 impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
-  pub fn insert(&mut self, t: T, bounds: &AABB3) {
+  pub fn insert(&mut self, t: T, bounds: &AABB3<f32>) {
     self.octree.insert(bounds.clone(), t);
     self.bounds.insert(t, bounds.clone());
   }
@@ -24,11 +24,11 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
     }
   }
 
-  pub fn get_bounds(&self, t: T) -> Option<&AABB3> {
+  pub fn get_bounds(&self, t: T) -> Option<&AABB3<f32>> {
     self.bounds.get(&t)
   }
 
-  pub fn reinsert(octree: &mut Octree<T>, t: T, bounds: &mut AABB3, new_bounds: AABB3) -> Option<(AABB3, T)> {
+  pub fn reinsert(octree: &mut Octree<T>, t: T, bounds: &mut AABB3<f32>, new_bounds: AABB3<f32>) -> Option<(AABB3<f32>, T)> {
     match octree.intersect(&new_bounds, Some(t)) {
       None => {
         octree.reinsert(t, bounds, new_bounds);
@@ -39,7 +39,7 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
     }
   }
 
-  pub fn translate(&mut self, t: T, amount: Vec3<f32>) -> Option<(AABB3, T)> {
+  pub fn translate(&mut self, t: T, amount: Vec3<f32>) -> Option<(AABB3<f32>, T)> {
     let bounds = self.bounds.get_mut(&t).unwrap();
     let new_bounds =
       AABB::new(

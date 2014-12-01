@@ -1,8 +1,8 @@
 use gl;
 use gl::types::GLfloat;
-use glw::gl_context::GLContext;
-use glw::shader::Shader;
 use nalgebra::Vec3;
+use yaglw::gl_context::GLContext;
+use yaglw::shader::Shader;
 
 pub struct Light {
   pub position: Vec3<GLfloat>,

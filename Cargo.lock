@@ -5,34 +5,50 @@ dependencies = [
  "current 0.0.0 (git+https://github.com/PistonDevelopers/current)",
  "event 0.0.0 (git+https://github.com/PistonDevelopers/event)",
  "gl 0.0.1 (git+https://github.com/bjz/gl-rs)",
- "glw 0.0.0 (git+https://github.com/bfops/glw)",
  "input 0.0.0 (git+https://github.com/PistonDevelopers/input)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide 0.2.0 (git+https://github.com/sebcrozet/ncollide)",
- "noise-rs 0.0.1 (git+https://github.com/bjz/noise-rs)",
- "png 0.0.1 (git+https://github.com/sebcrozet/rust-png)",
+ "noise 0.0.3 (git+https://github.com/bjz/noise-rs)",
+ "png 0.1.0 (git+https://github.com/servo/rust-png)",
  "sdl2_window 0.0.0 (git+https://github.com/PistonDevelopers/sdl2_window)",
  "shader_version 0.0.0 (git+https://github.com/PistonDevelopers/shader_version)",
+ "yaglw 0.0.0 (git+https://github.com/bfops/yaglw)",
 ]
 
 [[package]]
 name = "current"
 version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/current#607d6028ae101ea77fae23b17e8f1c83e5d3231a"
+source = "git+https://github.com/PistonDevelopers/current#ad63ba6a342071ddbcc1652e503c91358504d708"
 
 [[package]]
 name = "event"
 version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/event#58da25cf2f06d7bfcaa20b716762352d5459d5de"
+source = "git+https://github.com/PistonDevelopers/event#04fa0d834574c6b59e6773d485387f55ebebfcb6"
 dependencies = [
  "current 0.0.0 (git+https://github.com/PistonDevelopers/current)",
+ "event_loop 0.0.0 (git+https://github.com/PistonDevelopers/event_loop)",
  "input 0.0.0 (git+https://github.com/PistonDevelopers/input)",
+ "window 0.0.0 (git+https://github.com/PistonDevelopers/window)",
 ]
+
+[[package]]
+name = "event_loop"
+version = "0.0.0"
+source = "git+https://github.com/PistonDevelopers/event_loop#b2a47dd133069467b3ec83d4ff3d585789d6a851"
+dependencies = [
+ "current 0.0.0 (git+https://github.com/PistonDevelopers/current)",
+ "time 0.1.1 (git+https://github.com/rust-lang/time)",
+]
+
+[[package]]
+name = "gcc"
+version = "0.1.0"
+source = "git+https://github.com/alexcrichton/gcc-rs#3caf7309ef72644cd56a9d3a6f515ae553683176"
 
 [[package]]
 name = "gl"
 version = "0.0.1"
-source = "git+https://github.com/bjz/gl-rs#79cd3b3f9f19aa0e39f6af572fc8673a6d9760bc"
+source = "git+https://github.com/bjz/gl-rs#d212190fa35b0c5192565a4e3ac08be16ef8d235"
 dependencies = [
  "gl_generator 0.0.1 (git+https://github.com/bjz/gl-rs)",
 ]
@@ -40,83 +56,109 @@ dependencies = [
 [[package]]
 name = "gl_common"
 version = "0.0.1"
-source = "git+https://github.com/bjz/gl-rs#79cd3b3f9f19aa0e39f6af572fc8673a6d9760bc"
+source = "git+https://github.com/bjz/gl-rs#d212190fa35b0c5192565a4e3ac08be16ef8d235"
 
 [[package]]
 name = "gl_generator"
 version = "0.0.1"
-source = "git+https://github.com/bjz/gl-rs#79cd3b3f9f19aa0e39f6af572fc8673a6d9760bc"
+source = "git+https://github.com/bjz/gl-rs#d212190fa35b0c5192565a4e3ac08be16ef8d235"
 dependencies = [
  "gl_common 0.0.1 (git+https://github.com/bjz/gl-rs)",
- "khronos_api 0.0.1 (git+https://github.com/bjz/gl-rs)",
- "rust-xml 0.1.0 (git+https://github.com/netvl/rust-xml)",
-]
-
-[[package]]
-name = "glw"
-version = "0.0.0"
-source = "git+https://github.com/bfops/glw#13e93692e466ce3f9bc740c6fdfa146bcacd800a"
-dependencies = [
- "gl 0.0.1 (git+https://github.com/bjz/gl-rs)",
+ "khronos_api 0.0.2 (git+https://github.com/bjz/gl-rs)",
+ "rust-xml 0.1.2-pre (git+https://github.com/netvl/rust-xml)",
 ]
 
 [[package]]
 name = "input"
 version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/input#27bfb0e86d6f01c26098eab279ae3a07eaac909a"
+source = "git+https://github.com/PistonDevelopers/input#fb351501f522c8ee0d88954d5c77936458def122"
 
 [[package]]
 name = "khronos_api"
-version = "0.0.1"
-source = "git+https://github.com/bjz/gl-rs#79cd3b3f9f19aa0e39f6af572fc8673a6d9760bc"
+version = "0.0.2"
+source = "git+https://github.com/bjz/gl-rs#d212190fa35b0c5192565a4e3ac08be16ef8d235"
 
 [[package]]
 name = "nalgebra"
 version = "0.1.0"
-source = "git+https://github.com/sebcrozet/nalgebra#15d1fa0b8b012cc1e5cf365b0eb64c7089e93e32"
+source = "git+https://github.com/sebcrozet/nalgebra#4abbe6803e4b291009816cc50b1832d9e706401d"
 
 [[package]]
 name = "ncollide"
 version = "0.2.0"
-source = "git+https://github.com/sebcrozet/ncollide#ae5739ba1b1355e51fc0c9c84470690623daced2"
+source = "git+https://github.com/sebcrozet/ncollide#faa3ad898745ce72f56be8f9e211c188d4576a78"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
 ]
 
 [[package]]
-name = "noise-rs"
-version = "0.0.1"
-source = "git+https://github.com/bjz/noise-rs#0f5cc9842328338beaa24e86843a6746ffe4239f"
+name = "noise"
+version = "0.0.3"
+source = "git+https://github.com/bjz/noise-rs#921fb3daf5fe8e8bd38cf103b15a9abdcddb9986"
 
 [[package]]
 name = "png"
-version = "0.0.1"
-source = "git+https://github.com/sebcrozet/rust-png#4330695002a80b547d65f2f813970d83d708cfe8"
+version = "0.1.0"
+source = "git+https://github.com/servo/rust-png#f060a2d9484a150de286f930eb80f9f3bff3ea38"
+dependencies = [
+ "png-sys 1.6.3 (git+https://github.com/servo/libpng?ref=servo)",
+]
+
+[[package]]
+name = "png-sys"
+version = "1.6.3"
+source = "git+https://github.com/servo/libpng?ref=servo#d01f32b4eb86904695efe7fc02b574f902e21a98"
 
 [[package]]
 name = "rust-xml"
-version = "0.1.0"
-source = "git+https://github.com/netvl/rust-xml#d6c57380a300b94f7e7881979dbe5459dbe4ca06"
+version = "0.1.2-pre"
+source = "git+https://github.com/netvl/rust-xml#2d9df3267aeaa4d442e1e19a4dfed733cb1397ed"
 
 [[package]]
 name = "sdl2"
-version = "0.0.1-alpha.1"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#93cc0d4184b3f66dbced0e46798dc3800717cb3b"
+version = "0.0.7"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#81daa9f8eed74e154f34597cde2d4ed9041f0ac4"
 
 [[package]]
 name = "sdl2_window"
 version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/sdl2_window#b91a24279403cf1e2b81277ab787730d62a93326"
+source = "git+https://github.com/PistonDevelopers/sdl2_window#ca4e5d89d67a502ffa31ceb99781192cb38cea50"
 dependencies = [
- "event 0.0.0 (git+https://github.com/PistonDevelopers/event)",
  "gl 0.0.1 (git+https://github.com/bjz/gl-rs)",
  "input 0.0.0 (git+https://github.com/PistonDevelopers/input)",
- "sdl2 0.0.1-alpha.1 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "sdl2 0.0.7 (git+https://github.com/AngryLawyer/rust-sdl2)",
  "shader_version 0.0.0 (git+https://github.com/PistonDevelopers/shader_version)",
+ "window 0.0.0 (git+https://github.com/PistonDevelopers/window)",
 ]
 
 [[package]]
 name = "shader_version"
 version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/shader_version#03509f5d6dc3c1ccf64471615f438be25186e73a"
+source = "git+https://github.com/PistonDevelopers/shader_version#9b1ec24a100505f338c45e7878b54594afe62b5d"
+
+[[package]]
+name = "time"
+version = "0.1.1"
+source = "git+https://github.com/rust-lang/time#c22414be22894905e4692896da4d2d246a361797"
+dependencies = [
+ "gcc 0.1.0 (git+https://github.com/alexcrichton/gcc-rs)",
+]
+
+[[package]]
+name = "window"
+version = "0.0.0"
+source = "git+https://github.com/PistonDevelopers/window#888aeccd551a9bd12cd0324a13b919c1ae34e9ee"
+dependencies = [
+ "current 0.0.0 (git+https://github.com/PistonDevelopers/current)",
+ "event_loop 0.0.0 (git+https://github.com/PistonDevelopers/event_loop)",
+ "input 0.0.0 (git+https://github.com/PistonDevelopers/input)",
+]
+
+[[package]]
+name = "yaglw"
+version = "0.0.0"
+source = "git+https://github.com/bfops/yaglw#b000960ddb3a16fe40615843b801c5cd491a918e"
+dependencies = [
+ "gl 0.0.1 (git+https://github.com/bjz/gl-rs)",
+]
 

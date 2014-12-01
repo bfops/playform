@@ -1,10 +1,11 @@
 use gl;
 use gl::types::*;
-use glw::gl_context::GLContext;
-use glw::shader::Shader;
 use nalgebra::{Mat3, Mat4, Vec3, Pnt3};
 use nalgebra;
 use std::mem;
+use std::num::FloatMath;
+use yaglw::gl_context::GLContext;
+use yaglw::shader::Shader;
 
 pub struct Camera {
   // projection matrix components

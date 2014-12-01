@@ -1,17 +1,17 @@
 use common::*;
 use gl;
 use gl::types::*;
-use glw::gl_context::{GLContext, GLContextExistence};
-use glw::shader::Shader;
-use glw::texture::BufferTexture;
-use glw::texture::TextureUnit;
-use glw::vertex_buffer::ArrayHandle;
 use id_allocator::IdAllocator;
 use nalgebra::{Pnt3, Vec3};
 use state::EntityId;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use yaglw::gl_context::{GLContext, GLContextExistence};
+use yaglw::shader::Shader;
+use yaglw::texture::BufferTexture;
+use yaglw::texture::TextureUnit;
+use yaglw::vertex_buffer::ArrayHandle;
 
 #[deriving(Show, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TerrainType {
@@ -115,7 +115,7 @@ impl<'a> TerrainBuffers<'a> {
     self.length += 3;
     self.vertex_positions.buffer.push(
       gl,
-      [
+      &[
         terrain.vertices[0].x,
         terrain.vertices[0].y,
         terrain.vertices[0].z,
@@ -130,7 +130,7 @@ impl<'a> TerrainBuffers<'a> {
     if USE_LIGHTING {
       self.normals.buffer.push(
         gl,
-        [terrain.normal.x, terrain.normal.y, terrain.normal.z]
+        &[terrain.normal.x, terrain.normal.y, terrain.normal.z]
       );
     }
     self.types.buffer.push(gl, &[terrain.typ as GLuint]);

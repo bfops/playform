@@ -32,7 +32,7 @@ git = "https://github.com/PistonDevelopers/input"
 git = "https://github.com/sebcrozet/nalgebra"
 
 [dependencies.png]
-git = "https://github.com/sebcrozet/rust-png"
+git = "https://github.com/servo/rust-png"
 
 [dependencies.shader_version]
 git = "https://github.com/PistonDevelopers/shader_version"
@@ -41,8 +41,8 @@ git = "https://github.com/PistonDevelopers/shader_version"
 features = ["3df32"]
 git = "https://github.com/sebcrozet/ncollide"
 
-[dependencies.noise-rs]
+[dependencies.noise]
 git = "https://github.com/bjz/noise-rs"
 
-[dependencies.glw]
-git = "https://github.com/bfops/glw"
+[dependencies.yaglw]
+git = "https://github.com/bfops/yaglw"

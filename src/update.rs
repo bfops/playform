@@ -1,9 +1,8 @@
 use color::Color4;
 use common::*;
 use gl::types::*;
-use glw::gl_context::GLContext;
 use input;
-use loader::{Load, Unload};
+use loader::Operation;
 use mob;
 use nalgebra::Vec3;
 use physics::Physics;
@@ -13,6 +12,7 @@ use stopwatch;
 use stopwatch::*;
 use std::cmp;
 use std::collections::HashMap;
+use yaglw::gl_context::GLContext;
 
 // how many terrain polys to load during every update step
 static TERRAIN_LOAD_SPEED: uint = 1 << 10;
@@ -72,7 +72,7 @@ pub fn update<'a>(app: &mut App) {
     });
 
     // terrain deletion
-    if app.is_mouse_pressed(input::mouse::Left) {
+    if app.is_mouse_pressed(input::mouse::Button::Left) {
       time!(app.timers.deref(), "update.delete_terrain", || {
         for id in entities_in_front(app).into_iter() {
           if app.terrains.contains_key(&id) {
@@ -85,7 +85,7 @@ pub fn update<'a>(app: &mut App) {
 }
 
 fn remove_terrain<'a>(app: &mut App<'a>, id: EntityId) {
-  app.terrain_loader.push_back(Unload(id));
+  app.terrain_loader.push_back(Operation::Unload(id));
 }
 
 fn translate_mob(
@@ -102,7 +102,7 @@ fn translate_mob(
     mob_buffers.update(
       gl,
       mob.id,
-      to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
+      &to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
     );
   }
 }
@@ -124,7 +124,7 @@ fn load_terrain<'a>(app: &mut App<'a>, max: Option<uint>) {
           let terrain_buffers = &mut app.terrain_buffers;
           let physics = &mut app.physics;
           match op {
-            Load(id) => {
+            Operation::Load(id) => {
               let terrain = terrains.get(&id).unwrap();
               terrain_buffers.push(
                 app.gl_context,
@@ -132,7 +132,7 @@ fn load_terrain<'a>(app: &mut App<'a>, max: Option<uint>) {
                 terrain,
               );
             },
-            Unload(id) => {
+            Operation::Unload(id) => {
               if terrains.remove(&id).is_some() {
                 terrain_buffers.swap_remove(app.gl_context, id);
                 physics.remove(id);
@@ -152,10 +152,10 @@ fn load_octree<'a>(app: &mut App<'a>) {
     for _ in range(0, count) {
       match app.octree_loader.borrow_mut().pop_front() {
         None => break,
-        Some(Load((id, bounds))) => {
-          app.octree_buffers.push(app.gl_context, id, to_outlines(&bounds));
+        Some(Operation::Load((id, bounds))) => {
+          app.octree_buffers.push(app.gl_context, id, &to_outlines(&bounds));
         },
-        Some(Unload(id)) => {
+        Some(Operation::Unload(id)) => {
           app.octree_buffers.swap_remove(app.gl_context, id);
         }
       }

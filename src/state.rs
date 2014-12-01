@@ -4,14 +4,10 @@ use common::*;
 use fontloader;
 use gl;
 use gl::types::*;
-use glw::vertex_buffer::*;
-use glw::gl_context::{GLContext, GLContextExistence};
-use glw::shader::Shader;
-use glw::texture::{Texture2D, TextureUnit};
 use id_allocator::IdAllocator;
 use input;
 use light::{Light, set_point_light, set_ambient_light};
-use loader::{Loader, Load};
+use loader::{Loader, Operation};
 use mob;
 use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
 use nalgebra;
@@ -32,8 +28,12 @@ use std::default::Default;
 use std::f32::consts::PI;
 use std::iter::range_inclusive;
 use std::rc::Rc;
-use terrain;
+use terrain::{TerrainBuffers, TerrainType, TerrainPiece};
 use vertex::{ColoredVertex, TextureVertex};
+use yaglw::vertex_buffer::*;
+use yaglw::gl_context::{GLContext, GLContextExistence};
+use yaglw::shader::Shader;
+use yaglw::texture::{Texture2D, TextureUnit};
 
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
@@ -53,7 +53,7 @@ impl Add<u32, EntityId> for EntityId {
   }
 }
 
-fn center(bounds: &AABB3) -> Pnt3<GLfloat> {
+fn center(bounds: &AABB3<f32>) -> Pnt3<GLfloat> {
   (*bounds.mins() + bounds.maxs().to_vec()) / (2.0 as GLfloat)
 }
 
@@ -63,8 +63,8 @@ trait TightBoundingVolume {
   fn tightened(&self, amount: f32) -> Self;
 }
 
-impl TightBoundingVolume for AABB3 {
-  fn tightened(&self, amount: f32) -> AABB3 {
+impl TightBoundingVolume for AABB3<f32> {
+  fn tightened(&self, amount: f32) -> AABB3<f32> {
     let mut new_min = *self.mins() + Vec3::new(amount, amount, amount);
     let mut new_max = *self.maxs() - Vec3::new(amount, amount, amount);
     if new_min.x > new_max.x {
@@ -99,17 +99,17 @@ fn make_text<'a>(
       gl,
       gl_context,
       shader,
-      [
-        VertexAttribData { name: "position", size: 3, unit: Float },
-        VertexAttribData { name: "texture_position", size: 2, unit: Float },
+      &[
+        VertexAttribData { name: "position", size: 3, unit: GLType::Float },
+        VertexAttribData { name: "texture_position", size: 2, unit: GLType::Float },
       ],
-      Triangles,
+      DrawMode::Triangles,
       buffer,
     )
   };
 
   let instructions =
-    [
+    &[
       "Use WASD to move, and spacebar to jump.",
       "Use the mouse to look around, and click to remove terrain."
     ].to_vec();
@@ -121,7 +121,7 @@ fn make_text<'a>(
 
     triangles.push(
       gl_context,
-      TextureVertex::square(
+      &TextureVertex::square(
         Vec2 { x: -0.97, y: y - 0.2 },
         Vec2 { x: 0.0,   y: y       }
       )
@@ -143,10 +143,11 @@ fn make_hud<'a>(
       gl,
       gl_context,
       shader,
-      [ VertexAttribData { name: "position", size: 3, unit: Float },
-        VertexAttribData { name: "in_color", size: 4, unit: Float },
+      &[
+        VertexAttribData { name: "position", size: 3, unit: GLType::Float },
+        VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },
       ],
-      Triangles,
+      DrawMode::Triangles,
       buffer,
     )
   };
@@ -155,7 +156,7 @@ fn make_hud<'a>(
 
   hud_triangles.push(
     gl_context,
-    ColoredVertex::square(
+    &ColoredVertex::square(
       Pnt2 { x: -0.02, y: -0.02 },
       Pnt2 { x:  0.02, y:  0.02 },
       cursor_color
@@ -168,7 +169,7 @@ fn make_hud<'a>(
 fn make_terrain(
   physics: &mut Physics<EntityId>,
   id_allocator: &mut IdAllocator<EntityId>,
-) -> (HashMap<EntityId, terrain::TerrainPiece>, Loader<EntityId, EntityId>) {
+) -> (HashMap<EntityId, TerrainPiece>, Loader<EntityId, EntityId>) {
   let mut terrains = HashMap::new();
   let mut terrain_loader = RingBuf::new();
 
@@ -251,9 +252,9 @@ fn make_terrain(
         }
         let terrain =
           if center_lower_than >= 3 {
-            terrain::Dirt
+            TerrainType::Dirt
           } else {
-            terrain::Grass
+            TerrainType::Grass
           }
         ;
 
@@ -264,41 +265,41 @@ fn make_terrain(
       }
     }
 
-    let place_square = |x: GLfloat, y: GLfloat, z: GLfloat, dl1: GLfloat, dl2: GLfloat, typ: terrain::TerrainType, facing: Facing| {
+    let place_square = |x: GLfloat, y: GLfloat, z: GLfloat, dl1: GLfloat, dl2: GLfloat, typ: TerrainType, facing: Facing| {
       // Return verties such that v1 and v3 are min and max of the bounding box, respectively.
       // Vertices arranged in CCW order from the front.
       let [v1, v2, v3, v4] = match facing {
-        Up => [
+        Facing::Up => [
           Pnt3::new(x, y, z),
           Pnt3::new(x, y, z + dl2),
           Pnt3::new(x + dl1, y, z + dl2),
           Pnt3::new(x + dl1, y, z),
         ],
-        Down => [
+        Facing::Down => [
           Pnt3::new(x, y, z),
           Pnt3::new(x + dl1, y, z),
           Pnt3::new(x + dl1, y, z + dl2),
           Pnt3::new(x, y, z + dl2),
         ],
-        Left => [
+        Facing::Left => [
           Pnt3::new(x, y, z),
           Pnt3::new(x, y, z + dl1),
           Pnt3::new(x, y + dl2, z + dl1),
           Pnt3::new(x, y + dl2, z),
         ],
-        Right => [
+        Facing::Right => [
           Pnt3::new(x, y, z),
           Pnt3::new(x, y + dl2, z),
           Pnt3::new(x, y + dl2, z + dl1),
           Pnt3::new(x, y, z + dl1),
         ],
-        Front => [
+        Facing::Front => [
           Pnt3::new(x, y, z),
           Pnt3::new(x, y + dl2, z),
           Pnt3::new(x + dl1, y + dl2, z),
           Pnt3::new(x + dl1, y, z),
         ],
-        Back => [
+        Facing::Back => [
           Pnt3::new(x, y, z),
           Pnt3::new(x + dl1, y, z),
           Pnt3::new(x + dl1, y + dl2, z),
@@ -316,28 +317,28 @@ fn make_terrain(
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(i, j, -ground_steps as f32, w, w, terrain::Stone, Back);
+        place_square(i, j, -ground_steps as f32, w, w, TerrainType::Stone, Facing::Back);
       }
     }
     // back wall
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(i, j, ground_steps as f32 - w, w, w, terrain::Stone, Front);
+        place_square(i, j, ground_steps as f32 - w, w, w, TerrainType::Stone, Facing::Front);
       }
     }
     // left wall
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(-ground_steps as f32, j, i, w, w, terrain::Stone, Right);
+        place_square(-ground_steps as f32, j, i, w, w, TerrainType::Stone, Facing::Right);
       }
     }
     // right wall
     for i in range_inclusive(-ground_range, ground_range) {
       for j in range_inclusive(0i, wall_height) {
         let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(ground_steps as f32 - w, j, i, w, w, terrain::Stone, Left);
+        place_square(ground_steps as f32 - w, j, i, w, w, TerrainType::Stone, Facing::Left);
       }
     }
   }
@@ -348,16 +349,16 @@ fn make_terrain(
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App<'a> {
   pub physics: Physics<EntityId>,
-  pub terrains: HashMap<EntityId, terrain::TerrainPiece>,
+  pub terrains: HashMap<EntityId, TerrainPiece>,
   pub player: Player,
   pub mobs: HashMap<EntityId, mob::Mob>,
 
   pub terrain_loader: Loader<EntityId, EntityId>,
-  pub octree_loader: Rc<RefCell<Loader<(octree::OctreeId, AABB3), octree::OctreeId>>>,
+  pub octree_loader: Rc<RefCell<Loader<(octree::OctreeId, AABB3<f32>), octree::OctreeId>>>,
 
   // OpenGL buffers
   pub mob_buffers: mob::MobBuffers<'a>,
-  pub terrain_buffers: terrain::TerrainBuffers<'a>,
+  pub terrain_buffers: TerrainBuffers<'a>,
   pub octree_buffers: octree::OctreeBuffers<'a, EntityId>,
   pub line_of_sight: GLArray<'a, ColoredVertex>,
   pub hud_triangles: GLArray<'a, ColoredVertex>,
@@ -486,17 +487,18 @@ impl<'a> App<'a> {
           gl,
           gl_context,
           color_shader.clone(),
-          [ VertexAttribData { name: "position", size: 3, unit: Float },
-            VertexAttribData { name: "in_color", size: 4, unit: Float },
+          &[
+	          VertexAttribData { name: "position", size: 3, unit: GLType::Float },
+            VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },
           ],
-          Lines,
+          DrawMode::Lines,
           buffer,
         )
       };
 
       line_of_sight.push(
         gl_context,
-        [
+        &[
           ColoredVertex {
             position: Pnt3::new(0.0, 0.0, 0.0),
             color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
@@ -519,7 +521,7 @@ impl<'a> App<'a> {
     let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
 
     let terrain_buffers = {
-      let terrain_buffers = terrain::TerrainBuffers::new(gl, gl_context);
+      let terrain_buffers = TerrainBuffers::new(gl, gl_context);
       terrain_buffers.bind(gl_context, &mut texture_unit_alloc, texture_shader.clone());
       terrain_buffers
     };
@@ -630,7 +632,7 @@ impl<'a> App<'a> {
     self.mouse_buttons_pressed.iter().any(|x| *x == b)
   }
 
-  fn get_bounds(&self, id: EntityId) -> &AABB3 {
+  fn get_bounds(&self, id: EntityId) -> &AABB3<f32> {
     self.physics.get_bounds(id).unwrap()
   }
 
@@ -655,7 +657,7 @@ impl<'a> App<'a> {
       };
 
     let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
-    mob_buffers.push(gl, id, to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
+    mob_buffers.push(gl, id, &to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
 
     physics.insert(id, &bounds);
     mobs.insert(id, mob);
@@ -664,20 +666,20 @@ impl<'a> App<'a> {
 
 fn place_terrain(
   physics: &mut Physics<EntityId>,
-  terrains: &mut HashMap<EntityId, terrain::TerrainPiece>,
+  terrains: &mut HashMap<EntityId, TerrainPiece>,
   terrain_loader: &mut Loader<EntityId, EntityId>,
   id_allocator: &mut IdAllocator<EntityId>,
-  bounds: AABB3,
+  bounds: AABB3<f32>,
   vertices: [Pnt3<GLfloat>, ..3],
   normal: Vec3<GLfloat>,
-  typ: terrain::TerrainType,
+  typ: TerrainType,
   check_collisions: bool,
 ) {
   // hacky solution to make sure terrain polys have "breathing room" and don't
   // collide with their neighbours.
   let epsilon: GLfloat = 0.00001;
   if !(check_collisions && physics.octree.intersect(&bounds.tightened(epsilon), None).is_some()) {
-    let terrain = terrain::TerrainPiece {
+    let terrain = TerrainPiece {
       vertices: vertices,
       normal: normal,
       typ: typ as GLuint,
@@ -685,7 +687,7 @@ fn place_terrain(
     };
     physics.insert(terrain.id, &bounds);
     terrains.insert(terrain.id, terrain);
-    terrain_loader.push_back(Load(terrain.id));
+    terrain_loader.push_back(Operation::Load(terrain.id));
   }
 }
 

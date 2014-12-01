@@ -1,8 +1,9 @@
 use color::Color4;
 use common::*;
-use event::{Event, Update, Input, Render};
+use event::Event;
 use input;
-use input::{Press,Release,Move,Keyboard,Mouse,MouseCursor};
+use input::{InputEvent,Button,Motion};
+use input::keyboard::Key;
 use nalgebra::Vec3;
 use render::render;
 use sdl2_window::*;
@@ -24,14 +25,14 @@ fn swap_remove_first<T: PartialEq + Copy>(v: &mut Vec<T>, t: T) {
 
 pub fn handle_event<'a>(app: &mut App<'a>, game_window: &mut Sdl2Window, event: Event) {
   match event {
-    Render(_) => render(app),
-    Update(_) => update(app),
-    Input(ref i) => match *i {
-      Press(Keyboard(key)) => key_press(app, key),
-      Release(Keyboard(key)) => key_release(app, key),
-      Press(Mouse(button)) => mouse_press(app, button),
-      Release(Mouse(button)) => mouse_release(app, button),
-      Move(MouseCursor(x, y)) => mouse_move(app, game_window, x, y),
+    Event::Render(_) => render(app),
+    Event::Update(_) => update(app),
+    Event::Input(ref i) => match *i {
+      InputEvent::Press(Button::Keyboard(key)) => key_press(app, key),
+      InputEvent::Release(Button::Keyboard(key)) => key_release(app, key),
+      InputEvent::Press(Button::Mouse(button)) => mouse_press(app, button),
+      InputEvent::Release(Button::Mouse(button)) => mouse_release(app, button),
+      InputEvent::Move(Motion::MouseCursor(x, y)) => mouse_move(app, game_window, x, y),
       _ => {},
     },
   }
@@ -40,34 +41,34 @@ pub fn handle_event<'a>(app: &mut App<'a>, game_window: &mut Sdl2Window, event: 
 fn key_press<'a>(app: &mut App<'a>, key: input::keyboard::Key) {
   time!(app.timers.deref(), "event.key_press", || {
     match key {
-      input::keyboard::A => {
+      Key::A => {
         app.player.walk(Vec3::new(-1.0, 0.0, 0.0));
       },
-      input::keyboard::D => {
+      Key::D => {
         app.player.walk(Vec3::new(1.0, 0.0, 0.0));
       },
-      input::keyboard::Space => {
+      Key::Space => {
         if !app.player.is_jumping {
           app.player.is_jumping = true;
           // this 0.3 is duplicated in a few places
           app.player.accel.y = app.player.accel.y + 0.3;
         }
       },
-      input::keyboard::W => {
+      Key::W => {
         app.player.walk(Vec3::new(0.0, 0.0, -1.0));
       },
-      input::keyboard::S => {
+      Key::S => {
         app.player.walk(Vec3::new(0.0, 0.0, 1.0));
       },
-      input::keyboard::Left =>
+      Key::Left =>
         app.player.rotate_lateral(PI / 12.0),
-      input::keyboard::Right =>
+      Key::Right =>
         app.player.rotate_lateral(-PI / 12.0),
-      input::keyboard::Up =>
+      Key::Up =>
         app.player.rotate_vertical(PI / 12.0),
-      input::keyboard::Down =>
+      Key::Down =>
         app.player.rotate_vertical(-PI / 12.0),
-      input::keyboard::M => {
+      Key::M => {
         let updates = [
           ColoredVertex {
             position: app.player.camera.position,
@@ -78,12 +79,12 @@ fn key_press<'a>(app: &mut App<'a>, key: input::keyboard::Key) {
             color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
           },
         ];
-        app.line_of_sight.buffer.update(app.gl_context, 0, updates);
+        app.line_of_sight.buffer.update(app.gl_context, 0, &updates);
       },
-      input::keyboard::O => {
+      Key::O => {
         app.render_octree = !app.render_octree;
       }
-      input::keyboard::L => {
+      Key::L => {
         app.render_outlines = !app.render_outlines;
       }
       _ => {},
@@ -91,27 +92,27 @@ fn key_press<'a>(app: &mut App<'a>, key: input::keyboard::Key) {
   })
 }
 
-fn key_release<'a>(app: &mut App<'a>, key: input::keyboard::Key) {
+fn key_release<'a>(app: &mut App<'a>, key: Key) {
   time!(app.timers.deref(), "event.key_release", || {
     match key {
       // accelerations are negated from those in key_press.
-      input::keyboard::A => {
+      Key::A => {
         app.player.walk(Vec3::new(1.0, 0.0, 0.0));
       },
-      input::keyboard::D => {
+      Key::D => {
         app.player.walk(Vec3::new(-1.0, 0.0, 0.0));
       },
-      input::keyboard::Space => {
+      Key::Space => {
         if app.player.is_jumping {
           app.player.is_jumping = false;
           // this 0.3 is duplicated in a few places
           app.player.accel.y = app.player.accel.y - 0.3;
         }
       },
-      input::keyboard::W => {
+      Key::W => {
         app.player.walk(Vec3::new(0.0, 0.0, 1.0));
       },
-      input::keyboard::S => {
+      Key::S => {
         app.player.walk(Vec3::new(0.0, 0.0, -1.0));
       },
       _ => { }

@@ -1,9 +1,9 @@
 use gl;
 use gl::types::*;
-use glw::gl_context::GLContextExistence;
-use glw::shader::Shader;
 use std::collections::HashMap;
 use std::io::fs::File;
+use yaglw::gl_context::GLContextExistence;
+use yaglw::shader::Shader;
 
 // Turn a shader definition into a vanilla GLSL shader definition.
 // See the README in the shaders folder for details.

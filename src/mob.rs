@@ -1,7 +1,4 @@
 use common::*;
-use glw::vertex_buffer::*;
-use glw::gl_context::{GLContext, GLContextExistence};
-use glw::shader::Shader;
 use nalgebra::Vec3;
 use state::App;
 use state::EntityId;
@@ -9,6 +6,10 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use vertex::ColoredVertex;
+use yaglw::vertex_buffer::{GLArray, GLBuffer, VertexAttribData};
+use yaglw::vertex_buffer::{DrawMode, GLType};
+use yaglw::gl_context::{GLContext, GLContextExistence};
+use yaglw::shader::Shader;
 
 // N.B.: Behaviors are unsafe because they take both a mutable and immutable
 // reference to a mob (the mob is also inside the main::App).
@@ -42,11 +43,11 @@ impl<'a> MobBuffers<'a> {
         gl,
         gl_context,
         color_shader.clone(),
-        [
-          VertexAttribData { name: "position", size: 3, unit: Float },
-          VertexAttribData { name: "in_color", size: 4, unit: Float },
+        &[
+          VertexAttribData { name: "position", size: 3, unit: GLType::Float },
+          VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },
         ],
-        Triangles,
+        DrawMode::Triangles,
         buffer,
       ),
     }

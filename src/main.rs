@@ -3,18 +3,18 @@ use current::Modifier;
 use event::WindowSettings;
 use event::{Events, Ups, MaxFps};
 use event_handler::handle_event;
-use glw::gl_context::GLContext;
 use sdl2_window::*;
-use shader_version::opengl::*;
+use shader_version::opengl::OpenGL;
 use state::App;
 use std::cell::RefCell;
 use time;
+use yaglw::gl_context::GLContext;
 
 pub fn main() {
   debug!("starting");
 
   let window = Sdl2Window::new(
-    OpenGL_3_3,
+    OpenGL::OpenGL_3_3,
     WindowSettings {
       title: "playform".to_string(),
       size: [WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32],

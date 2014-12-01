@@ -9,7 +9,6 @@
 
 extern crate current;
 extern crate gl;
-extern crate glw;
 extern crate event;
 extern crate input;
 extern crate libc;
@@ -23,6 +22,7 @@ extern crate sdl2;
 extern crate sdl2_window;
 extern crate shader_version;
 extern crate time;
+extern crate yaglw;
 
 // so time! macro is defined in main
 mod stopwatch;
