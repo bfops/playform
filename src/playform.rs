@@ -17,7 +17,6 @@ extern crate log;
 extern crate nalgebra;
 extern crate ncollide;
 extern crate noise;
-extern crate png;
 extern crate sdl2;
 extern crate sdl2_window;
 extern crate shader_version;

@@ -9,7 +9,6 @@ dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide 0.2.0 (git+https://github.com/sebcrozet/ncollide)",
  "noise 0.0.3 (git+https://github.com/bjz/noise-rs)",
- "png 0.1.0 (git+https://github.com/servo/rust-png)",
  "sdl2_window 0.0.0 (git+https://github.com/PistonDevelopers/sdl2_window)",
  "shader_version 0.0.0 (git+https://github.com/PistonDevelopers/shader_version)",
  "yaglw 0.0.0 (git+https://github.com/bfops/yaglw)",
@@ -95,19 +94,6 @@ dependencies = [
 name = "noise"
 version = "0.0.3"
 source = "git+https://github.com/bjz/noise-rs#921fb3daf5fe8e8bd38cf103b15a9abdcddb9986"
-
-[[package]]
-name = "png"
-version = "0.1.0"
-source = "git+https://github.com/servo/rust-png#f060a2d9484a150de286f930eb80f9f3bff3ea38"
-dependencies = [
- "png-sys 1.6.3 (git+https://github.com/servo/libpng?ref=servo)",
-]
-
-[[package]]
-name = "png-sys"
-version = "1.6.3"
-source = "git+https://github.com/servo/libpng?ref=servo#d01f32b4eb86904695efe7fc02b574f902e21a98"
 
 [[package]]
 name = "rust-xml"
