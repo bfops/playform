@@ -57,35 +57,6 @@ fn center(bounds: &AABB3<f32>) -> Pnt3<GLfloat> {
   (*bounds.mins() + bounds.maxs().to_vec()) / (2.0 as GLfloat)
 }
 
-/// Defines volumes that can be tightened.
-trait TightBoundingVolume {
-  /// Reduce each of a volume's bounds by some amount.
-  fn tightened(&self, amount: f32) -> Self;
-}
-
-impl TightBoundingVolume for AABB3<f32> {
-  fn tightened(&self, amount: f32) -> AABB3<f32> {
-    let mut new_min = *self.mins() + Vec3::new(amount, amount, amount);
-    let mut new_max = *self.maxs() - Vec3::new(amount, amount, amount);
-    if new_min.x > new_max.x {
-      let mid = (new_min.x + new_max.x) / 2.0;
-      new_min.x = mid;
-      new_max.x = mid;
-    }
-    if new_min.y > new_max.x {
-      let mid = (new_min.y + new_max.x) / 2.0;
-      new_min.y = mid;
-      new_max.y = mid;
-    }
-    if new_min.z > new_max.x {
-      let mid = (new_min.z + new_max.x) / 2.0;
-      new_min.z = mid;
-      new_max.z = mid;
-    }
-    AABB::new(new_min, new_max)
-  }
-}
-
 fn make_text<'a>(
   gl: &'a GLContextExistence,
   gl_context: &mut GLContext,
@@ -675,10 +646,7 @@ fn place_terrain(
   typ: TerrainType,
   check_collisions: bool,
 ) {
-  // hacky solution to make sure terrain polys have "breathing room" and don't
-  // collide with their neighbours.
-  let epsilon: GLfloat = 0.00001;
-  if !(check_collisions && physics.octree.intersect(&bounds.tightened(epsilon), None).is_some()) {
+  if !(check_collisions && physics.octree.intersect(&bounds, None).is_some()) {
     let terrain = TerrainPiece {
       vertices: vertices,
       normal: normal,
