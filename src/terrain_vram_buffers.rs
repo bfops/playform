@@ -1,0 +1,128 @@
+use common::*;
+use gl;
+use gl::types::*;
+use id_allocator::IdAllocator;
+use state::EntityId;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+use yaglw::gl_context::{GLContext,GLContextExistence};
+use yaglw::shader::Shader;
+use yaglw::texture::BufferTexture;
+use yaglw::texture::TextureUnit;
+
+pub struct TerrainVRAMBuffers<'a> {
+  id_to_index: HashMap<EntityId, uint>,
+  index_to_id: Vec<EntityId>,
+
+  empty_array: GLuint,
+  length: uint,
+  // Each position is buffered as 3 separate floats due to image format restrictions.
+  vertex_positions: BufferTexture<'a, GLfloat>,
+  // Each normal component is buffered separately floats due to image format restrictions.
+  normals: BufferTexture<'a, GLfloat>,
+  types: BufferTexture<'a, GLuint>,
+}
+
+impl<'a> TerrainVRAMBuffers<'a> {
+  pub fn new(
+    gl: &'a GLContextExistence,
+    gl_context: &mut GLContext,
+  ) -> TerrainVRAMBuffers<'a> {
+    TerrainVRAMBuffers {
+      id_to_index: HashMap::new(),
+      index_to_id: Vec::new(),
+      empty_array: unsafe {
+        let mut empty_array = 0;
+        gl::GenVertexArrays(1, &mut empty_array);
+        empty_array
+      },
+      length: 0,
+      // There are 3 R32F components per vertex.
+      vertex_positions: BufferTexture::new(gl, gl_context, gl::R32F, 3 * VERTICES_PER_TRIANGLE * MAX_WORLD_SIZE),
+      // There are 3 R32F components per normal.
+      normals: BufferTexture::new(gl, gl_context, gl::R32F, 3 * MAX_WORLD_SIZE),
+      types: BufferTexture::new(gl, gl_context, gl::R32UI, MAX_WORLD_SIZE),
+    }
+  }
+
+  pub fn bind(
+    &self,
+    gl: &mut GLContext,
+    texture_unit_alloc: &mut IdAllocator<TextureUnit>,
+    shader: Rc<RefCell<Shader>>,
+  ) {
+    shader.borrow().use_shader(gl);
+    let bind = |name, id| {
+      let unit = texture_unit_alloc.allocate();
+      unsafe {
+        gl::ActiveTexture(unit.gl_id());
+        gl::BindTexture(gl::TEXTURE_BUFFER, id);
+      }
+      let loc = shader.borrow_mut().get_uniform_location(name);
+      unsafe {
+        gl::Uniform1i(loc, unit.glsl_id as GLint);
+      }
+    };
+
+    bind("positions", self.vertex_positions.handle.gl_id);
+    if USE_LIGHTING {
+      bind("normals", self.normals.handle.gl_id);
+    }
+    bind("terrain_types", self.types.handle.gl_id);
+  }
+
+  pub fn push(
+    &mut self,
+    gl: &mut GLContext,
+    vertices: &[GLfloat],
+    normals: &[GLfloat],
+    types: &[GLuint],
+    ids: &[EntityId],
+  ) {
+    assert_eq!(vertices.len(), 9 * ids.len());
+    assert_eq!(types.len(), ids.len());
+
+    if USE_LIGHTING {
+      assert_eq!(normals.len(), 3 * ids.len());
+    }
+
+    for &id in ids.iter() {
+      self.id_to_index.insert(id, self.index_to_id.len());
+      self.index_to_id.push(id);
+    }
+
+    self.length += 3 * ids.len();
+    self.vertex_positions.buffer.push(gl, vertices);
+    self.types.buffer.push(gl, types);
+    if USE_LIGHTING {
+      self.normals.buffer.push(gl, normals);
+    }
+  }
+
+  // Note: `id` must be present in the buffers.
+  pub fn swap_remove(&mut self, gl: &mut GLContext, id: EntityId) {
+    let idx = *self.id_to_index.get(&id).unwrap();
+    let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
+    self.index_to_id.swap_remove(idx).unwrap();
+    self.id_to_index.remove(&id);
+
+    if id != swapped_id {
+      self.id_to_index.insert(swapped_id, idx);
+    }
+
+    self.length -= 3;
+    self.vertex_positions.buffer.swap_remove(gl, idx * 3 * VERTICES_PER_TRIANGLE, 3 * VERTICES_PER_TRIANGLE);
+    self.types.buffer.swap_remove(gl, idx, 1);
+    if USE_LIGHTING {
+      self.normals.buffer.swap_remove(gl, 3 * idx, 3);
+    }
+  }
+
+  pub fn draw(&self, _gl: &mut GLContext) {
+    unsafe {
+      gl::BindVertexArray(self.empty_array);
+      gl::DrawArrays(gl::TRIANGLES, 0, self.length as GLint);
+    }
+  }
+}

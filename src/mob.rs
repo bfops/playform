@@ -1,5 +1,5 @@
 use common::*;
-use nalgebra::Vec3;
+use nalgebra::{Pnt3, Vec3};
 use state::App;
 use state::EntityId;
 use std::cell::RefCell;
@@ -16,6 +16,7 @@ use yaglw::shader::Shader;
 pub type Behavior = unsafe fn(&App, &mut Mob);
 
 pub struct Mob {
+  pub position: Pnt3<f32>,
   pub speed: Vec3<f32>,
   pub behavior: Behavior,
   pub id: EntityId,

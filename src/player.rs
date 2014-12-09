@@ -162,6 +162,7 @@ impl Player {
     transform * forward_orig
   }
 
+  #[allow(dead_code)]
   pub fn forward_ray(&self) -> Ray3<f32> {
     Ray::new(self.camera.position, self.forward())
   }

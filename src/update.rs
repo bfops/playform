@@ -1,7 +1,6 @@
 use color::Color4;
 use common::*;
 use gl::types::*;
-use input;
 use loader::Operation;
 use mob;
 use nalgebra::Vec3;
@@ -10,12 +9,10 @@ use state::EntityId;
 use state::App;
 use stopwatch;
 use stopwatch::*;
-use std::cmp;
 use std::collections::HashMap;
+use terrain::Terrain;
 use yaglw::gl_context::GLContext;
 
-// how many terrain polys to load during every update step
-static TERRAIN_LOAD_SPEED: uint = 1 << 10;
 static OCTREE_LOAD_SPEED: uint = 1 << 11;
 
 macro_rules! translate_mob(
@@ -32,62 +29,62 @@ macro_rules! translate_mob(
 
 pub fn update<'a>(app: &mut App) {
   time!(app.timers.deref(), "update", || {
-    // TODO(cgaebel): Ideally, the update thread should not be touching OpenGL.
+    let player_block_position = Terrain::to_block_position(app.player.camera.position);
 
     time!(app.timers.deref(), "update.load", || {
-      load_terrain(app, Some(TERRAIN_LOAD_SPEED));
-      load_octree(app);
+      time!(app.timers.deref(), "update.load.terrain", || {
+        app.surroundings_loader.update(
+          app.gl_context,
+          &mut app.terrain_buffers,
+          &mut app.id_allocator,
+          &mut app.physics,
+          player_block_position,
+        );
+      });
+      time!(app.timers.deref(), "update.load.octree", || {
+        load_octree(app);
+      });
     });
 
     time!(app.timers.deref(), "update.player", || {
-      app.player.update(&mut app.physics);
+      if app.surroundings_loader.loaded.contains(&player_block_position) {
+        app.player.update(&mut app.physics);
+      }
     });
 
     time!(app.timers.deref(), "update.mobs", || {
       // Unsafely mutably borrow the mobs.
       let mobs: *mut HashMap<EntityId, mob:: Mob> = &mut app.mobs;
       for (_, mob) in unsafe { (*mobs).iter_mut() } {
-        // Please don't do sketchy things with the `mobs` vector.
-        // The first time the unsafety here bites us, it should be replaced
-        // with runtime checks.
+        // Please don't do sketchy things with the `mobs` vector. The first time the
+        // unsafety here bites us, it should be replaced with runtime checks.
 
-        {
-          let behavior = mob.behavior;
-          unsafe { (behavior)(app, mob); }
-        }
+        let block_position = Terrain::to_block_position(mob.position);
 
-        mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
+        if app.surroundings_loader.loaded.contains(&block_position) {
+          {
+            let behavior = mob.behavior;
+            unsafe { (behavior)(app, mob); }
+          }
 
-        let delta_p = mob.speed;
-        if delta_p.x != 0.0 {
-          translate_mob!(app, mob, Vec3::new(delta_p.x, 0.0, 0.0));
-        }
-        if delta_p.y != 0.0 {
-          translate_mob!(app, mob, Vec3::new(0.0, delta_p.y, 0.0));
-        }
-        if delta_p.z != 0.0 {
-          translate_mob!(app, mob, Vec3::new(0.0, 0.0, delta_p.z));
+          mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
+
+          let delta_p = mob.speed;
+          if delta_p.x != 0.0 {
+            translate_mob!(app, mob, Vec3::new(delta_p.x, 0.0, 0.0));
+          }
+          if delta_p.y != 0.0 {
+            translate_mob!(app, mob, Vec3::new(0.0, delta_p.y, 0.0));
+          }
+          if delta_p.z != 0.0 {
+            translate_mob!(app, mob, Vec3::new(0.0, 0.0, delta_p.z));
+          }
         }
       }
     });
-
-    // terrain deletion
-    if app.is_mouse_pressed(input::mouse::Button::Left) {
-      time!(app.timers.deref(), "update.delete_terrain", || {
-        for id in entities_in_front(app).into_iter() {
-          if app.terrains.contains_key(&id) {
-            remove_terrain(app, id);
-          }
-        }
-      })
-    }
   })
 }
-
-fn remove_terrain<'a>(app: &mut App<'a>, id: EntityId) {
-  app.terrain_loader.push_back(Operation::Unload(id));
-}
-
+ 
 fn translate_mob(
   gl: &mut GLContext,
   physics: &mut Physics<EntityId>,
@@ -107,58 +104,17 @@ fn translate_mob(
   }
 }
 
-/// Returns ids of the closest entities in front of the cursor.
-fn entities_in_front<'a>(app: &mut App<'a>) -> Vec<EntityId> {
-  app.physics.octree.cast_ray(&app.player.forward_ray(), app.player.id)
-}
-
-fn load_terrain<'a>(app: &mut App<'a>, max: Option<uint>) {
-  time!(app.timers.deref(), "load.terrain", || {
-    // terrain loading
-    let count = max.map_or(app.terrain_loader.len(), |x| cmp::min(x, app.terrain_loader.len()));
-    for _ in range(0, count) {
-      match app.terrain_loader.pop_front() {
-        None => break,
-        Some(op) => {
-          let terrains = &mut app.terrains;
-          let terrain_buffers = &mut app.terrain_buffers;
-          let physics = &mut app.physics;
-          match op {
-            Operation::Load(id) => {
-              let terrain = terrains.get(&id).unwrap();
-              terrain_buffers.push(
-                app.gl_context,
-                id,
-                terrain,
-              );
-            },
-            Operation::Unload(id) => {
-              if terrains.remove(&id).is_some() {
-                terrain_buffers.swap_remove(app.gl_context, id);
-                physics.remove(id);
-              }
-            },
-          }
-        }
-      }
-    }
-  });
-}
-
 fn load_octree<'a>(app: &mut App<'a>) {
-  time!(app.timers.deref(), "load.octree", || {
-    // octree loading
-    let count = cmp::min(OCTREE_LOAD_SPEED, app.octree_loader.deref().borrow().deref().len());
-    for _ in range(0, count) {
-      match app.octree_loader.borrow_mut().pop_front() {
-        None => break,
-        Some(Operation::Load((id, bounds))) => {
-          app.octree_buffers.push(app.gl_context, id, &to_outlines(&bounds));
-        },
-        Some(Operation::Unload(id)) => {
-          app.octree_buffers.swap_remove(app.gl_context, id);
-        }
+  // octree loading
+  for _ in range(0, OCTREE_LOAD_SPEED) {
+    match app.octree_loader.borrow_mut().pop_front() {
+      None => break,
+      Some(Operation::Load((id, bounds))) => {
+        app.octree_buffers.push(app.gl_context, id, &to_outlines(&bounds));
+      },
+      Some(Operation::Unload(id)) => {
+        app.octree_buffers.swap_remove(app.gl_context, id);
       }
     }
-  });
+  }
 }

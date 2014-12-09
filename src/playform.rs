@@ -42,6 +42,8 @@ mod physics;
 mod render;
 mod shader;
 mod state;
+mod surroundings_loader;
+mod terrain_vram_buffers;
 mod terrain;
 mod ttf;
 mod update;

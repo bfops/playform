@@ -375,6 +375,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     self.insert_from(new_bounds, v)
   }
 
+  #[allow(dead_code)]
   pub fn cast_ray(&self, ray: &Ray3<f32>, self_v: V) -> Vec<V> {
     match self.contents {
       OctreeContents::Leaf(ref vs) => {

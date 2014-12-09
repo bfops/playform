@@ -7,12 +7,10 @@ use gl::types::*;
 use id_allocator::IdAllocator;
 use input;
 use light::{Light, set_point_light, set_ambient_light};
-use loader::{Loader, Operation};
+use loader::Loader;
 use mob;
 use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
 use nalgebra;
-use noise::source::Perlin;
-use noise::model::Plane;
 use ncollide::bounding_volume::{AABB, AABB3};
 use octree;
 use physics::Physics;
@@ -26,9 +24,9 @@ use std::collections::HashMap;
 use std::collections::RingBuf;
 use std::default::Default;
 use std::f32::consts::PI;
-use std::iter::range_inclusive;
 use std::rc::Rc;
-use terrain::{TerrainBuffers, TerrainType, TerrainPiece};
+use surroundings_loader::SurroundingsLoader;
+use terrain_vram_buffers::TerrainVRAMBuffers;
 use vertex::{ColoredVertex, TextureVertex};
 use yaglw::vertex_buffer::*;
 use yaglw::gl_context::{GLContext, GLContextExistence};
@@ -137,199 +135,19 @@ fn make_hud<'a>(
   hud_triangles
 }
 
-fn make_terrain(
-  physics: &mut Physics<EntityId>,
-  id_allocator: &mut IdAllocator<EntityId>,
-) -> (HashMap<EntityId, TerrainPiece>, Loader<EntityId, EntityId>) {
-  let mut terrains = HashMap::new();
-  let mut terrain_loader = RingBuf::new();
-
-  {
-    let w = 0.25;
-    let place_terrain = |bounds, vertices, normal, typ| {
-      place_terrain(
-        physics,
-        &mut terrains,
-        &mut terrain_loader,
-        id_allocator,
-        bounds,
-        vertices,
-        normal,
-        typ,
-        false,
-      );
-    };
-
-    #[allow(dead_code)]
-    enum Facing {
-      Up,
-      Down,
-      Left,
-      Right,
-      Front,
-      Back,
-    }
-
-    let ground_steps: int = 32;
-    let ground_range = (ground_steps as f32 / w) as int;
-
-    let amplitude = 64.0;
-    let perlin =
-      Perlin::new()
-      .seed(0)
-      .frequency(1.0 / 32.0)
-      .persistence(1.0 / 8.0)
-      .lacunarity(8.0)
-      .octaves(6)
-    ;
-    let plane = Plane::new(&perlin);
-
-    // ground
-    for i in range(-ground_range, ground_range) {
-      for j in range(-ground_range, ground_range) {
-        let at = |x, z| {
-          let y = amplitude * (plane.get::<GLfloat>(x, z) + 1.0) / 2.0;
-          Pnt3::new(x, y, z)
-        };
-
-        let x = i as GLfloat * w;
-        let z = j as GLfloat * w;
-        let center = at(x + w / 2.0, z + w / 2.0);
-
-        let place_terrain = |typ, v1: &Pnt3<GLfloat>, v2: &Pnt3<GLfloat>, minx, minz, maxx, maxz| {
-          let mut maxy = v1.y;
-          if v2.y > v1.y {
-            maxy = v2.y;
-          }
-          if center.y > maxy {
-            maxy = center.y;
-          }
-          let side1: Vec3<GLfloat> = center - *v1;
-          let side2: Vec3<GLfloat> = *v2 - *v1;
-          let normal: Vec3<GLfloat> = nalgebra::normalize(&nalgebra::cross(&side1, &side2));
-          let bounds = AABB::new(Pnt3::new(minx, v1.y, minz), Pnt3::new(maxx, maxy, maxz));
-          place_terrain(bounds, [v1.clone(), v2.clone(), center.clone()], normal, typ);
-        };
-
-        let v1 = at(x, z);
-        let v2 = at(x, z + w);
-        let v3 = at(x + w, z + w);
-        let v4 = at(x + w, z);
-        let mut center_lower_than = 0i;
-        for v in [v1, v2, v3, v4].iter() {
-          if center.y < v.y {
-            center_lower_than += 1;
-          }
-        }
-        let terrain =
-          if center_lower_than >= 3 {
-            TerrainType::Dirt
-          } else {
-            TerrainType::Grass
-          }
-        ;
-
-        place_terrain(terrain, &v1, &v2, v1.x, v1.z, center.x, v2.z);
-        place_terrain(terrain, &v2, &v3, v2.x, center.z, v3.x, v3.z);
-        place_terrain(terrain, &v3, &v4, center.x, center.z, v3.x, v3.z);
-        place_terrain(terrain, &v4, &v1, v1.x, v1.z, v4.x, center.z);
-      }
-    }
-
-    let place_square = |x: GLfloat, y: GLfloat, z: GLfloat, dl1: GLfloat, dl2: GLfloat, typ: TerrainType, facing: Facing| {
-      // Return verties such that v1 and v3 are min and max of the bounding box, respectively.
-      // Vertices arranged in CCW order from the front.
-      let [v1, v2, v3, v4] = match facing {
-        Facing::Up => [
-          Pnt3::new(x, y, z),
-          Pnt3::new(x, y, z + dl2),
-          Pnt3::new(x + dl1, y, z + dl2),
-          Pnt3::new(x + dl1, y, z),
-        ],
-        Facing::Down => [
-          Pnt3::new(x, y, z),
-          Pnt3::new(x + dl1, y, z),
-          Pnt3::new(x + dl1, y, z + dl2),
-          Pnt3::new(x, y, z + dl2),
-        ],
-        Facing::Left => [
-          Pnt3::new(x, y, z),
-          Pnt3::new(x, y, z + dl1),
-          Pnt3::new(x, y + dl2, z + dl1),
-          Pnt3::new(x, y + dl2, z),
-        ],
-        Facing::Right => [
-          Pnt3::new(x, y, z),
-          Pnt3::new(x, y + dl2, z),
-          Pnt3::new(x, y + dl2, z + dl1),
-          Pnt3::new(x, y, z + dl1),
-        ],
-        Facing::Front => [
-          Pnt3::new(x, y, z),
-          Pnt3::new(x, y + dl2, z),
-          Pnt3::new(x + dl1, y + dl2, z),
-          Pnt3::new(x + dl1, y, z),
-        ],
-        Facing::Back => [
-          Pnt3::new(x, y, z),
-          Pnt3::new(x + dl1, y, z),
-          Pnt3::new(x + dl1, y + dl2, z),
-          Pnt3::new(x, y + dl2, z),
-        ],
-      };
-      let bounds = AABB::new(v1, v3);
-      let normal = nalgebra::normalize(&nalgebra::cross(&(v2 - v1), &(v3 - v2)));
-      place_terrain(bounds, [v1, v2, v4], normal, typ);
-      place_terrain(bounds, [v2, v3, v4], normal, typ);
-    };
-
-    let wall_height = (32.0 / w) as int;
-    // front wall
-    for i in range_inclusive(-ground_range, ground_range) {
-      for j in range_inclusive(0i, wall_height) {
-        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(i, j, -ground_steps as f32, w, w, TerrainType::Stone, Facing::Back);
-      }
-    }
-    // back wall
-    for i in range_inclusive(-ground_range, ground_range) {
-      for j in range_inclusive(0i, wall_height) {
-        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(i, j, ground_steps as f32 - w, w, w, TerrainType::Stone, Facing::Front);
-      }
-    }
-    // left wall
-    for i in range_inclusive(-ground_range, ground_range) {
-      for j in range_inclusive(0i, wall_height) {
-        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(-ground_steps as f32, j, i, w, w, TerrainType::Stone, Facing::Right);
-      }
-    }
-    // right wall
-    for i in range_inclusive(-ground_range, ground_range) {
-      for j in range_inclusive(0i, wall_height) {
-        let (i, j) = (i as GLfloat * w, j as GLfloat * w);
-        place_square(ground_steps as f32 - w, j, i, w, w, TerrainType::Stone, Facing::Left);
-      }
-    }
-  }
-
-  (terrains, terrain_loader)
-}
-
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App<'a> {
   pub physics: Physics<EntityId>,
-  pub terrains: HashMap<EntityId, TerrainPiece>,
   pub player: Player,
   pub mobs: HashMap<EntityId, mob::Mob>,
 
-  pub terrain_loader: Loader<EntityId, EntityId>,
-  pub octree_loader: Rc<RefCell<Loader<(octree::OctreeId, AABB3<f32>), octree::OctreeId>>>,
+  pub id_allocator: IdAllocator<EntityId>,
+  pub surroundings_loader: SurroundingsLoader<'a>,
+  pub octree_loader: Rc<RefCell<Loader<(octree::OctreeId, AABB3<GLfloat>), octree::OctreeId>>>,
 
   // OpenGL buffers
+  pub terrain_buffers: TerrainVRAMBuffers<'a>,
   pub mob_buffers: mob::MobBuffers<'a>,
-  pub terrain_buffers: TerrainBuffers<'a>,
   pub octree_buffers: octree::OctreeBuffers<'a, EntityId>,
   pub line_of_sight: GLArray<'a, ColoredVertex>,
   pub hud_triangles: GLArray<'a, ColoredVertex>,
@@ -446,7 +264,7 @@ impl<'a> App<'a> {
       );
     }
 
-    match unsafe { gl::GetError() } {
+    match gl_context.get_error() {
       gl::NO_ERROR => {},
       err => panic!("OpenGL error 0x{:x} setting up shaders", err),
     }
@@ -490,9 +308,8 @@ impl<'a> App<'a> {
     let octree_buffers = octree::OctreeBuffers::new(gl, gl_context, &color_shader);
 
     let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
-
     let terrain_buffers = {
-      let terrain_buffers = TerrainBuffers::new(gl, gl_context);
+      let terrain_buffers = TerrainVRAMBuffers::new(gl, gl_context);
       terrain_buffers.bind(gl_context, &mut texture_unit_alloc, texture_shader.clone());
       terrain_buffers
     };
@@ -507,14 +324,6 @@ impl<'a> App<'a> {
       };
 
     let mut id_allocator = IdAllocator::new();
-
-    let (terrains, terrain_loader) =
-      time!(timers.deref(), "make_terrain", || {
-        make_terrain(
-          &mut physics,
-          &mut id_allocator,
-        )
-      });
 
     let (mobs, mob_buffers) =
       time!(timers.deref(), "make_mobs", || {
@@ -557,28 +366,27 @@ impl<'a> App<'a> {
     unsafe {
       gl::ActiveTexture(misc_texture_unit.gl_id());
     }
+
     let texture_in = hud_texture_shader.borrow_mut().get_uniform_location("texture_in");
     hud_texture_shader.borrow_mut().use_shader(gl_context);
     unsafe {
       gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
     }
 
-    match unsafe { gl::GetError() } {
+    match gl_context.get_error() {
       gl::NO_ERROR => {},
       err => panic!("OpenGL error 0x{:x} in load()", err),
     }
 
-    debug!("load() finished with {} terrain polys", terrains.len());
-
     App {
       line_of_sight: line_of_sight,
       physics: physics,
-      terrain_loader: terrain_loader,
+      id_allocator: id_allocator,
+      surroundings_loader: SurroundingsLoader::new(),
       octree_loader: octree_loader,
       mob_buffers: mob_buffers,
       octree_buffers: octree_buffers,
       terrain_buffers: terrain_buffers,
-      terrains: terrains,
       player: player,
       mobs: mobs,
       hud_triangles: hud_triangles,
@@ -599,6 +407,7 @@ impl<'a> App<'a> {
   }
 
   #[inline]
+  #[allow(dead_code)]
   pub fn is_mouse_pressed(&self, b: input::mouse::Button) -> bool {
     self.mouse_buttons_pressed.iter().any(|x| *x == b)
   }
@@ -619,43 +428,20 @@ impl<'a> App<'a> {
     // TODO: mob loader instead of pushing directly to gl buffers
 
     let id = id_allocator.allocate();
+    let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
 
     let mob =
       mob::Mob {
+        position: (*bounds.mins() + bounds.maxs().to_vec()) / 2.0,
         speed: Vec3::new(0.0, 0.0, 0.0),
         behavior: behavior,
         id: id,
       };
 
-    let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
     mob_buffers.push(gl, id, &to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
 
     physics.insert(id, &bounds);
     mobs.insert(id, mob);
-  }
-}
-
-fn place_terrain(
-  physics: &mut Physics<EntityId>,
-  terrains: &mut HashMap<EntityId, TerrainPiece>,
-  terrain_loader: &mut Loader<EntityId, EntityId>,
-  id_allocator: &mut IdAllocator<EntityId>,
-  bounds: AABB3<f32>,
-  vertices: [Pnt3<GLfloat>, ..3],
-  normal: Vec3<GLfloat>,
-  typ: TerrainType,
-  check_collisions: bool,
-) {
-  if !(check_collisions && physics.octree.intersect(&bounds, None).is_some()) {
-    let terrain = TerrainPiece {
-      vertices: vertices,
-      normal: normal,
-      typ: typ as GLuint,
-      id: id_allocator.allocate(),
-    };
-    physics.insert(terrain.id, &bounds);
-    terrains.insert(terrain.id, terrain);
-    terrain_loader.push_back(Operation::Load(terrain.id));
   }
 }
 

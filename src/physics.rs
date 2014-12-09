@@ -15,6 +15,7 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
     self.bounds.insert(t, bounds.clone());
   }
 
+  #[allow(dead_code)]
   pub fn remove(&mut self, t: T) {
     match self.bounds.get(&t) {
       None => {},

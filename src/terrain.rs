@@ -1,17 +1,24 @@
-use common::*;
-use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
+use nalgebra::{normalize, cross};
 use nalgebra::{Pnt3, Vec3};
+use ncollide::bounding_volume::{AABB, AABB3};
+use noise::source::Perlin;
+use noise::model::Plane;
 use state::EntityId;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::rc::Rc;
-use yaglw::gl_context::{GLContext, GLContextExistence};
-use yaglw::shader::Shader;
-use yaglw::texture::BufferTexture;
-use yaglw::texture::TextureUnit;
-use yaglw::vertex_buffer::ArrayHandle;
+use std::collections::hash_map::{HashMap, Occupied, Vacant};
+use std::num::Float;
+
+pub const BLOCK_WIDTH: int = 4;
+// Number of samples in a single dimension per block.
+pub const SAMPLES_PER_BLOCK: int = 16;
+pub const SAMPLE_WIDTH: f32 = BLOCK_WIDTH as f32 / SAMPLES_PER_BLOCK as f32;
+
+pub const AMPLITUDE: f32 = 64.0;
+pub const FREQUENCY: f64 = 1.0 / 32.0;
+pub const PERSISTENCE: f64 = 1.0 / 8.0;
+pub const LACUNARITY: f64 = 8.0;
+pub const OCTAVES: uint = 6;
 
 #[deriving(Show, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TerrainType {
@@ -20,149 +27,177 @@ pub enum TerrainType {
   Stone,
 }
 
-pub struct TerrainPiece {
-  pub vertices: [Pnt3<GLfloat>, ..3],
-  pub normal: Vec3<GLfloat>,
-  pub typ: GLuint,
-  pub id: EntityId,
+pub type BlockPosition = Pnt3<int>;
+
+/// This struct contains and lazily generates the world's terrain.
+pub struct Terrain<'a> {
+  // this is used for generating new blocks.
+  pub heightmap: Perlin,
+  // all the blocks that have ever been created.
+  pub all_blocks: HashMap<BlockPosition, TerrainBlock>,
 }
 
-pub struct TerrainBuffers<'a> {
-  id_to_index: HashMap<EntityId, uint>,
-  index_to_id: Vec<EntityId>,
-
-  empty_array: ArrayHandle<'a>,
-  length: uint,
-  // Each position is buffered as 3 separate floats due to image format restrictions.
-  vertex_positions: BufferTexture<'a, GLfloat>,
-  // Each normal component is buffered separately floats due to image format restrictions.
-  normals: BufferTexture<'a, GLfloat>,
-  types: BufferTexture<'a, GLuint>,
-}
-
-impl<'a> TerrainBuffers<'a> {
-  pub fn new(
-    gl: &'a GLContextExistence,
-    gl_context: & mut GLContext,
-  ) -> TerrainBuffers<'a> {
-    let vertex_positions =
-      BufferTexture::new(
-        gl,
-        gl_context,
-        gl::R32F,
-        3 * MAX_WORLD_SIZE * VERTICES_PER_TRIANGLE,
-      );
-    let normals = BufferTexture::new(
-        gl,
-        gl_context,
-        gl::R32F,
-        3 * MAX_WORLD_SIZE,
-      );
-    let types =
-      BufferTexture::new(
-        gl,
-        gl_context,
-        gl::R32UI,
-        MAX_WORLD_SIZE,
-      );
-    TerrainBuffers {
-      id_to_index: HashMap::new(),
-      index_to_id: Vec::new(),
-      empty_array: ArrayHandle::new(gl),
-      length: 0,
-      // multiply by 3 because there are 3 R32F components
-      vertex_positions: vertex_positions,
-      normals: normals,
-      types: types,
+impl<'a> Terrain<'a> {
+  pub fn new() -> Terrain<'a> {
+    Terrain {
+      heightmap:
+        Perlin::new()
+        .seed(0)
+        .frequency(FREQUENCY)
+        .persistence(PERSISTENCE)
+        .lacunarity(LACUNARITY)
+        .octaves(OCTAVES),
+      all_blocks: HashMap::new(),
     }
   }
 
-  pub fn bind(
-    &self,
-    gl: &mut GLContext,
-    texture_unit_alloc: &mut IdAllocator<TextureUnit>,
-    shader: Rc<RefCell<Shader>>,
+  pub fn to_block_position(world_position: Pnt3<f32>) -> BlockPosition {
+    let convert_coordinate =
+      |x: f32| {
+        let x = x.floor() as int;
+        let x =
+          if x < 0 {
+            x - (BLOCK_WIDTH - 1)
+          } else {
+            x
+          };
+        x / BLOCK_WIDTH
+      };
+    let position =
+      Pnt3::new(
+        convert_coordinate(world_position.x),
+        convert_coordinate(world_position.y),
+        convert_coordinate(world_position.z),
+      );
+    position
+  }
+
+  pub fn load(
+    &'a mut self,
+    id_allocator: &mut IdAllocator<EntityId>,
+    position: &BlockPosition,
+  ) -> &'a TerrainBlock {
+    match self.all_blocks.entry(*position) {
+      Occupied(entry) => entry.get().clone(),
+      Vacant(entry) => {
+        let block = Terrain::generate_block(id_allocator, &self.heightmap, position);
+        let block: &TerrainBlock = entry.set(block);
+        block
+      },
+    }
+  }
+
+  pub fn generate_block(
+    id_allocator: &mut IdAllocator<EntityId>,
+    heightmap: &Perlin,
+    position: &BlockPosition,
+  ) -> TerrainBlock {
+    let mut block = TerrainBlock::new();
+
+    let x = (position.x * BLOCK_WIDTH) as f32;
+    let y = (position.y * BLOCK_WIDTH) as f32;
+    let z = (position.z * BLOCK_WIDTH) as f32;
+    for dx in range(0, SAMPLES_PER_BLOCK) {
+      let x = x + dx as f32 * SAMPLE_WIDTH;
+      for dz in range(0, SAMPLES_PER_BLOCK) {
+        let z = z + dz as f32 * SAMPLE_WIDTH;
+        let position = Pnt3::new(x, y, z);
+        Terrain::add_square(heightmap, id_allocator, &mut block, &position);
+      }
+    }
+
+    block
+  }
+
+  fn add_square(
+    heightmap: &Perlin,
+    id_allocator: &mut IdAllocator<EntityId>,
+    block: &mut TerrainBlock,
+    position: &Pnt3<f32>,
   ) {
-    let bind = |name, id| {
-      let unit = texture_unit_alloc.allocate();
-      unsafe {
-        gl::ActiveTexture(unit.gl_id());
-        gl::BindTexture(gl::TEXTURE_BUFFER, id);
-      }
-      let loc = shader.borrow_mut().get_uniform_location(name);
-      shader.borrow_mut().use_shader(gl);
-      unsafe {
-        gl::Uniform1i(loc, unit.glsl_id as GLint);
-      }
+    let heightmap = Plane::new(heightmap);
+
+    let at = |x, z| {
+      let y = AMPLITUDE * (heightmap.get::<GLfloat>(x, z) + 1.0) / 2.0;
+      Pnt3::new(x, y, z)
     };
 
-    bind("positions", self.vertex_positions.handle.gl_id);
-    bind("terrain_types", self.types.handle.gl_id);
-    if USE_LIGHTING {
-      bind("normals", self.normals.handle.gl_id);
+    let center = at(position.x + SAMPLE_WIDTH / 2.0, position.z + SAMPLE_WIDTH / 2.0);
+
+    if position.y < center.y && center.y <= position.y + BLOCK_WIDTH as f32 {
+      let v1 = at(position.x, position.z);
+      let v2 = at(position.x, position.z + SAMPLE_WIDTH);
+      let v3 = at(position.x + SAMPLE_WIDTH, position.z + SAMPLE_WIDTH);
+      let v4 = at(position.x + SAMPLE_WIDTH, position.z);
+      let mut center_lower_than: int = 0;
+      for v in [v1, v2, v3, v4].iter() {
+        if center.y < v.y {
+          center_lower_than += 1;
+        }
+      }
+      let terrain_type =
+        if center_lower_than >= 3 {
+          TerrainType::Dirt
+        } else {
+          TerrainType::Grass
+        };
+
+      let place_terrain = |v1: &Pnt3<GLfloat>, v2: &Pnt3<GLfloat>, minx, minz, maxx, maxz| {
+        let mut maxy = v1.y;
+        if v2.y > v1.y {
+          maxy = v2.y;
+        }
+        if center.y > maxy {
+          maxy = center.y;
+        }
+        let side1: Vec3<GLfloat> = center - *v1;
+        let side2: Vec3<GLfloat> = v2.to_vec() - v1.to_vec();
+        let normal: Vec3<GLfloat> = normalize(&cross(&side1, &side2));
+
+        let id = id_allocator.allocate();
+        block.vertices.push_all(&[
+          v1.x, v1.y, v1.z,
+          v2.x, v2.y, v2.z,
+          center.x, center.y, center.z,
+        ]);
+        block.normals.push_all(&[
+          normal.x, normal.y, normal.z,
+        ]);
+        block.typs.push(terrain_type as GLuint);
+        block.ids.push(id);
+        block.bounds.insert(
+          id,
+          AABB::new(
+            Pnt3::new(minx, v1.y, minz),
+            Pnt3::new(maxx, maxy, maxz),
+          ),
+        );
+      };
+
+      place_terrain(&v1, &v2, v1.x, v1.z, center.x, v2.z);
+      place_terrain(&v2, &v3, v2.x, center.z, v3.x, v3.z);
+      place_terrain(&v3, &v4, center.x, center.z, v3.x, v3.z);
+      place_terrain(&v4, &v1, v1.x, v1.z, v4.x, center.z);
     }
   }
+}
 
-  pub fn push(
-    &mut self,
-    gl: &mut GLContext,
-    id: EntityId,
-    terrain: &TerrainPiece,
-  ) {
-    self.id_to_index.insert(id, self.index_to_id.len());
-    self.index_to_id.push(id);
+pub struct TerrainBlock {
+  pub vertices: Vec<GLfloat>,
+  pub normals: Vec<GLfloat>,
+  pub typs: Vec<GLuint>,
+  pub ids: Vec<EntityId>,
+  pub bounds: HashMap<EntityId, AABB3<GLfloat>>,
+}
 
-    self.length += 3;
-    self.vertex_positions.buffer.push(
-      gl,
-      &[
-        terrain.vertices[0].x,
-        terrain.vertices[0].y,
-        terrain.vertices[0].z,
-        terrain.vertices[1].x,
-        terrain.vertices[1].y,
-        terrain.vertices[1].z,
-        terrain.vertices[2].x,
-        terrain.vertices[2].y,
-        terrain.vertices[2].z,
-      ]
-    );
-    if USE_LIGHTING {
-      self.normals.buffer.push(
-        gl,
-        &[terrain.normal.x, terrain.normal.y, terrain.normal.z]
-      );
-    }
-    self.types.buffer.push(gl, &[terrain.typ as GLuint]);
-  }
-
-  // Note: `id` must be present in the buffers.
-  pub fn swap_remove(&mut self, gl: &mut GLContext, id: EntityId) {
-    let idx = *self.id_to_index.get(&id).unwrap();
-    let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
-    self.index_to_id.swap_remove(idx).unwrap();
-    self.id_to_index.remove(&id);
-
-    if id != swapped_id {
-      self.id_to_index.insert(swapped_id, idx);
-    }
-
-    self.length -= 3;
-    self.vertex_positions.buffer.swap_remove(
-      gl,
-      idx * 3 * VERTICES_PER_TRIANGLE,
-      3 * VERTICES_PER_TRIANGLE
-    );
-    self.types.buffer.swap_remove(gl, idx, 1);
-    if USE_LIGHTING {
-      self.normals.buffer.swap_remove(gl, 3 * idx, 3);
-    }
-  }
-
-  pub fn draw(&self, _gl: &GLContext) {
-    unsafe {
-      gl::BindVertexArray(self.empty_array.gl_id);
-      gl::DrawArrays(gl::TRIANGLES, 0, self.length as GLint);
+impl TerrainBlock {
+  pub fn new() -> TerrainBlock {
+    TerrainBlock {
+      vertices: Vec::new(),
+      normals: Vec::new(),
+      typs: Vec::new(),
+      ids: Vec::new(),
+      bounds: HashMap::new(),
     }
   }
 }

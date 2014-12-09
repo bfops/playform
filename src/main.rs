@@ -7,7 +7,6 @@ use sdl2_window::*;
 use shader_version::opengl::OpenGL;
 use state::App;
 use std::cell::RefCell;
-use time;
 use yaglw::gl_context::GLContext;
 
 pub fn main() {
@@ -29,11 +28,7 @@ pub fn main() {
     GLContext::new()
   };
 
-  let then = time::precise_time_ns();
   let mut app = App::new(&gl, &mut gl_context);
-  let time_elapsed = time::precise_time_ns() - then;
-  println!("load finished after {}ms", time_elapsed / 1000000);
-
   let mut game_iter = Events::new(&window);
   Ups(30).modify(&mut game_iter);
   MaxFps(30).modify(&mut game_iter);
