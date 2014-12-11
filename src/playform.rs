@@ -23,9 +23,6 @@ extern crate shader_version;
 extern crate time;
 extern crate yaglw;
 
-// so time! macro is defined in main
-mod stopwatch;
-
 mod camera;
 mod color;
 mod common;
@@ -42,6 +39,7 @@ mod physics;
 mod render;
 mod shader;
 mod state;
+mod stopwatch;
 mod surroundings_loader;
 mod terrain_vram_buffers;
 mod terrain;

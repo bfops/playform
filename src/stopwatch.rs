@@ -65,9 +65,6 @@ impl TimerSet {
   /// Times the execution of a function, and logs it under a timer with
   /// the given name.
   ///
-  /// You probably want to use the `time!` macro instead of using this
-  /// directly.
-  ///
   /// This function is not marked `mut` because borrow checking is done
   /// dynamically.
   pub fn time<T>(&self, name: &str, f: || -> T) -> T {

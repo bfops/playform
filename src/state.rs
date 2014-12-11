@@ -168,15 +168,18 @@ pub struct App<'a> {
   pub render_octree: bool,
   pub render_outlines: bool,
 
-  pub timers: Rc<stopwatch::TimerSet>,
+  pub timers: &'a stopwatch::TimerSet,
   pub gl: &'a GLContextExistence,
   pub gl_context: &'a mut GLContext,
 }
 
 impl<'a> App<'a> {
   /// Initializes an empty app.
-  pub fn new(gl: &'a GLContextExistence, gl_context: &'a mut GLContext) -> App<'a> {
-    let timers = Rc::new(stopwatch::TimerSet::new());
+  pub fn new(
+    gl: &'a GLContextExistence,
+    gl_context: &'a mut GLContext,
+    timers: &'a stopwatch::TimerSet,
+  ) -> App<'a> {
     gl_context.print_stats();
 
     unsafe {
@@ -326,7 +329,7 @@ impl<'a> App<'a> {
     let mut id_allocator = IdAllocator::new();
 
     let (mobs, mob_buffers) =
-      time!(timers.deref(), "make_mobs", || {
+      timers.time("make_mobs", || {
         make_mobs(
           gl,
           gl_context,
@@ -400,7 +403,7 @@ impl<'a> App<'a> {
       mouse_buttons_pressed: Vec::new(),
       render_octree: false,
       render_outlines: false,
-      timers: timers.clone(),
+      timers: timers,
       gl: gl,
       gl_context: gl_context,
     }

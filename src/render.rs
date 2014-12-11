@@ -1,12 +1,10 @@
 use camera::set_camera;
 use gl;
 use state::App;
-use stopwatch;
-use stopwatch::*;
 
 // TODO: make this parameter non-mut
 pub fn render<'a>(app: &mut App<'a>) {
-  time!(app.timers.deref(), "render", || {
+  app.timers.time("render", || {
     app.gl_context.clear_buffer();
 
     set_camera(app.color_shader.borrow_mut().deref_mut(), app.gl_context, &app.player.camera);

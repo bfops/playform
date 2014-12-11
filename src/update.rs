@@ -7,8 +7,6 @@ use nalgebra::Vec3;
 use physics::Physics;
 use state::EntityId;
 use state::App;
-use stopwatch;
-use stopwatch::*;
 use std::collections::HashMap;
 use terrain::Terrain;
 use yaglw::gl_context::GLContext;
@@ -28,11 +26,11 @@ macro_rules! translate_mob(
 )
 
 pub fn update<'a>(app: &mut App) {
-  time!(app.timers.deref(), "update", || {
+  app.timers.time("update", || {
     let player_block_position = Terrain::to_block_position(app.player.camera.position);
 
-    time!(app.timers.deref(), "update.load", || {
-      time!(app.timers.deref(), "update.load.terrain", || {
+    app.timers.time("update.load", || {
+      app.timers.time("update.load.terrain", || {
         app.surroundings_loader.update(
           app.gl_context,
           &mut app.terrain_buffers,
@@ -41,18 +39,18 @@ pub fn update<'a>(app: &mut App) {
           player_block_position,
         );
       });
-      time!(app.timers.deref(), "update.load.octree", || {
+      app.timers.time("update.load.octree", || {
         load_octree(app);
       });
     });
 
-    time!(app.timers.deref(), "update.player", || {
+    app.timers.time("update.player", || {
       if app.surroundings_loader.loaded.contains(&player_block_position) {
         app.player.update(&mut app.physics);
       }
     });
 
-    time!(app.timers.deref(), "update.mobs", || {
+    app.timers.time("update.mobs", || {
       // Unsafely mutably borrow the mobs.
       let mobs: *mut HashMap<EntityId, mob:: Mob> = &mut app.mobs;
       for (_, mob) in unsafe { (*mobs).iter_mut() } {

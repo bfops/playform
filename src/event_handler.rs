@@ -9,8 +9,6 @@ use render::render;
 use sdl2_window::*;
 use sdl2::mouse;
 use state::App;
-use stopwatch;
-use stopwatch::*;
 use std::f32::consts::PI;
 use update::update;
 use vertex::ColoredVertex;
@@ -39,7 +37,7 @@ pub fn handle_event<'a>(app: &mut App<'a>, game_window: &mut Sdl2Window, event: 
 }
 
 fn key_press<'a>(app: &mut App<'a>, key: input::keyboard::Key) {
-  time!(app.timers.deref(), "event.key_press", || {
+  app.timers.time("event.key_press", || {
     match key {
       Key::A => {
         app.player.walk(Vec3::new(-1.0, 0.0, 0.0));
@@ -93,7 +91,7 @@ fn key_press<'a>(app: &mut App<'a>, key: input::keyboard::Key) {
 }
 
 fn key_release<'a>(app: &mut App<'a>, key: Key) {
-  time!(app.timers.deref(), "event.key_release", || {
+  app.timers.time("event.key_release", || {
     match key {
       // accelerations are negated from those in key_press.
       Key::A => {
@@ -121,7 +119,7 @@ fn key_release<'a>(app: &mut App<'a>, key: Key) {
 }
 
 fn mouse_move<'a>(app: &mut App<'a>, w: &mut Sdl2Window, x: f64, y: f64) {
-  time!(app.timers.deref(), "event.mouse_move", || {
+  app.timers.time("event.mouse_move", || {
     let (cx, cy) = (WINDOW_WIDTH as f32 / 2.0, WINDOW_HEIGHT as f32 / 2.0);
     // args.y = h - args.y;
     // dy = args.y - cy;
@@ -140,7 +138,7 @@ fn mouse_move<'a>(app: &mut App<'a>, w: &mut Sdl2Window, x: f64, y: f64) {
 }
 
 fn mouse_press<'a>(app: &mut App<'a>, button: input::mouse::Button) {
-  time!(app.timers.deref(), "event.mouse_press", || {
+  app.timers.time("event.mouse_press", || {
     app.mouse_buttons_pressed.push(button);
   })
 }
