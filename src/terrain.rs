@@ -1,3 +1,4 @@
+use common::*;
 use gl::types::*;
 use id_allocator::IdAllocator;
 use nalgebra::{normalize, cross};
@@ -8,6 +9,7 @@ use noise::model::Plane;
 use state::EntityId;
 use std::collections::hash_map::{HashMap, Occupied, Vacant};
 use std::num::Float;
+use stopwatch::TimerSet;
 
 pub const BLOCK_WIDTH: int = 4;
 // Number of samples in a single dimension per block.
@@ -51,10 +53,11 @@ impl<'a> Terrain<'a> {
     }
   }
 
+  #[inline]
   pub fn to_block_position(world_position: Pnt3<f32>) -> BlockPosition {
-    let convert_coordinate =
-      |x: f32| {
-        let x = x.floor() as int;
+    macro_rules! convert_coordinate(
+      ($x: expr) => ({
+        let x = $x.floor() as int;
         let x =
           if x < 0 {
             x - (BLOCK_WIDTH - 1)
@@ -62,38 +65,53 @@ impl<'a> Terrain<'a> {
             x
           };
         x / BLOCK_WIDTH
-      };
+      });
+    )
     let position =
       Pnt3::new(
-        convert_coordinate(world_position.x),
-        convert_coordinate(world_position.y),
-        convert_coordinate(world_position.z),
+        convert_coordinate!(world_position.x),
+        convert_coordinate!(world_position.y),
+        convert_coordinate!(world_position.z),
       );
     position
   }
 
+  #[inline]
   pub fn load(
     &'a mut self,
+    timers: &TimerSet,
     id_allocator: &mut IdAllocator<EntityId>,
     position: &BlockPosition,
   ) -> &'a TerrainBlock {
     match self.all_blocks.entry(*position) {
       Occupied(entry) => entry.get().clone(),
       Vacant(entry) => {
-        let block = Terrain::generate_block(id_allocator, &self.heightmap, position);
+        let heightmap = &self.heightmap;
+        let block =
+          timers.time("update.generate_block", || {
+            Terrain::generate_block(
+              timers,
+              id_allocator,
+              heightmap,
+              position,
+            )
+          });
         let block: &TerrainBlock = entry.set(block);
         block
       },
     }
   }
 
+  #[inline]
   pub fn generate_block(
+    timers: &TimerSet,
     id_allocator: &mut IdAllocator<EntityId>,
     heightmap: &Perlin,
     position: &BlockPosition,
   ) -> TerrainBlock {
     let mut block = TerrainBlock::new();
 
+    let heightmap = Plane::new(heightmap);
     let x = (position.x * BLOCK_WIDTH) as f32;
     let y = (position.y * BLOCK_WIDTH) as f32;
     let z = (position.z * BLOCK_WIDTH) as f32;
@@ -102,82 +120,98 @@ impl<'a> Terrain<'a> {
       for dz in range(0, SAMPLES_PER_BLOCK) {
         let z = z + dz as f32 * SAMPLE_WIDTH;
         let position = Pnt3::new(x, y, z);
-        Terrain::add_square(heightmap, id_allocator, &mut block, &position);
+        Terrain::add_square(
+          timers,
+          &heightmap,
+          id_allocator,
+          &mut block,
+          &position
+        );
       }
     }
 
     block
   }
 
-  fn add_square(
-    heightmap: &Perlin,
+  #[inline]
+  fn add_square<'a>(
+    timers: &TimerSet,
+    heightmap: &Plane<'a, Perlin>,
     id_allocator: &mut IdAllocator<EntityId>,
     block: &mut TerrainBlock,
     position: &Pnt3<f32>,
   ) {
-    let heightmap = Plane::new(heightmap);
+    macro_rules! at(
+      ($x: expr, $z: expr) => ({
+        let y = AMPLITUDE * (heightmap.get::<GLfloat>($x, $z) + 1.0) / 2.0;
+        Pnt3::new($x, y, $z)
+      });
+    )
 
-    let at = |x, z| {
-      let y = AMPLITUDE * (heightmap.get::<GLfloat>(x, z) + 1.0) / 2.0;
-      Pnt3::new(x, y, z)
-    };
-
-    let center = at(position.x + SAMPLE_WIDTH / 2.0, position.z + SAMPLE_WIDTH / 2.0);
+    let half_width = SAMPLE_WIDTH / 2.0;
+    let center = at!(position.x + half_width, position.z + half_width);
 
     if position.y < center.y && center.y <= position.y + BLOCK_WIDTH as f32 {
-      let v1 = at(position.x, position.z);
-      let v2 = at(position.x, position.z + SAMPLE_WIDTH);
-      let v3 = at(position.x + SAMPLE_WIDTH, position.z + SAMPLE_WIDTH);
-      let v4 = at(position.x + SAMPLE_WIDTH, position.z);
-      let mut center_lower_than: int = 0;
-      for v in [v1, v2, v3, v4].iter() {
-        if center.y < v.y {
-          center_lower_than += 1;
+      timers.time("update.generate_block.add_square", || {
+        let x2 = position.x + SAMPLE_WIDTH;
+        let z2 = position.z + SAMPLE_WIDTH;
+        let v1 = at!(position.x, position.z);
+        let v2 = at!(position.x, z2);
+        let v3 = at!(x2, z2);
+        let v4 = at!(x2, position.z);
+        let mut center_lower_than: int = 0;
+        for v in [v1, v2, v3, v4].iter() {
+          if center.y < v.y {
+            center_lower_than += 1;
+          }
         }
-      }
-      let terrain_type =
-        if center_lower_than >= 3 {
-          TerrainType::Dirt
-        } else {
-          TerrainType::Grass
+        let terrain_type =
+          if center_lower_than >= 3 {
+            TerrainType::Dirt
+          } else {
+            TerrainType::Grass
+          };
+
+        let place_terrain = |v1: &Pnt3<GLfloat>, v2: &Pnt3<GLfloat>, minx, minz, maxx, maxz| {
+          let mut maxy = v1.y;
+          if v2.y > v1.y {
+            maxy = v2.y;
+          }
+          if center.y > maxy {
+            maxy = center.y;
+          }
+
+          if USE_LIGHTING {
+            let side1: Vec3<GLfloat> = center - *v1;
+            let side2: Vec3<GLfloat> = v2.to_vec() - v1.to_vec();
+            let normal: Vec3<GLfloat> = normalize(&cross(&side1, &side2));
+            block.normals.push_all(&[
+              normal.x, normal.y, normal.z,
+            ]);
+          }
+
+          let id = id_allocator.allocate();
+          block.vertices.push_all(&[
+            v1.x, v1.y, v1.z,
+            v2.x, v2.y, v2.z,
+            center.x, center.y, center.z,
+          ]);
+          block.typs.push(terrain_type as GLuint);
+          block.ids.push(id);
+          block.bounds.insert(
+            id,
+            AABB::new(
+              Pnt3::new(minx, v1.y, minz),
+              Pnt3::new(maxx, maxy, maxz),
+            ),
+          );
         };
 
-      let place_terrain = |v1: &Pnt3<GLfloat>, v2: &Pnt3<GLfloat>, minx, minz, maxx, maxz| {
-        let mut maxy = v1.y;
-        if v2.y > v1.y {
-          maxy = v2.y;
-        }
-        if center.y > maxy {
-          maxy = center.y;
-        }
-        let side1: Vec3<GLfloat> = center - *v1;
-        let side2: Vec3<GLfloat> = v2.to_vec() - v1.to_vec();
-        let normal: Vec3<GLfloat> = normalize(&cross(&side1, &side2));
-
-        let id = id_allocator.allocate();
-        block.vertices.push_all(&[
-          v1.x, v1.y, v1.z,
-          v2.x, v2.y, v2.z,
-          center.x, center.y, center.z,
-        ]);
-        block.normals.push_all(&[
-          normal.x, normal.y, normal.z,
-        ]);
-        block.typs.push(terrain_type as GLuint);
-        block.ids.push(id);
-        block.bounds.insert(
-          id,
-          AABB::new(
-            Pnt3::new(minx, v1.y, minz),
-            Pnt3::new(maxx, maxy, maxz),
-          ),
-        );
-      };
-
-      place_terrain(&v1, &v2, v1.x, v1.z, center.x, v2.z);
-      place_terrain(&v2, &v3, v2.x, center.z, v3.x, v3.z);
-      place_terrain(&v3, &v4, center.x, center.z, v3.x, v3.z);
-      place_terrain(&v4, &v1, v1.x, v1.z, v4.x, center.z);
+        place_terrain(&v1, &v2, v1.x, v1.z, center.x, v2.z);
+        place_terrain(&v2, &v3, v2.x, center.z, v3.x, v3.z);
+        place_terrain(&v3, &v4, center.x, center.z, v3.x, v3.z);
+        place_terrain(&v4, &v1, v1.x, v1.z, v4.x, center.z);
+      })
     }
   }
 }

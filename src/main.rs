@@ -6,7 +6,7 @@ use event_handler::handle_event;
 use sdl2_window::*;
 use shader_version::opengl::OpenGL;
 use state::App;
-use stopwatch;
+use stopwatch::TimerSet;
 use std::cell::RefCell;
 use yaglw::gl_context::GLContext;
 
@@ -29,7 +29,7 @@ pub fn main() {
     GLContext::new()
   };
 
-  let timers = stopwatch::TimerSet::new();
+  let timers = TimerSet::new();
   let mut app = App::new(&gl, &mut gl_context, &timers);
   let mut game_iter = Events::new(&window);
   Ups(30).modify(&mut game_iter);

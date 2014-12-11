@@ -32,6 +32,7 @@ pub fn update<'a>(app: &mut App) {
     app.timers.time("update.load", || {
       app.timers.time("update.load.terrain", || {
         app.surroundings_loader.update(
+          app.timers,
           app.gl_context,
           &mut app.terrain_buffers,
           &mut app.id_allocator,

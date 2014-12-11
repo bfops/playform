@@ -17,8 +17,7 @@ use physics::Physics;
 use player::Player;
 use sdl2::mouse;
 use shader;
-use stopwatch;
-use stopwatch::*;
+use stopwatch::TimerSet;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::RingBuf;
@@ -168,7 +167,7 @@ pub struct App<'a> {
   pub render_octree: bool,
   pub render_outlines: bool,
 
-  pub timers: &'a stopwatch::TimerSet,
+  pub timers: &'a TimerSet,
   pub gl: &'a GLContextExistence,
   pub gl_context: &'a mut GLContext,
 }
@@ -178,7 +177,7 @@ impl<'a> App<'a> {
   pub fn new(
     gl: &'a GLContextExistence,
     gl_context: &'a mut GLContext,
-    timers: &'a stopwatch::TimerSet,
+    timers: &'a TimerSet,
   ) -> App<'a> {
     gl_context.print_stats();
 
