@@ -312,7 +312,7 @@ impl<'a> App<'a> {
     let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
     let terrain_buffers = {
       let terrain_buffers = TerrainVRAMBuffers::new(gl, gl_context);
-      terrain_buffers.bind(gl_context, &mut texture_unit_alloc, texture_shader.clone());
+      terrain_buffers.bind_glsl_uniforms(gl_context, &mut texture_unit_alloc, texture_shader.clone());
       terrain_buffers
     };
 

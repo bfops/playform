@@ -12,6 +12,7 @@ pub fn render<'a>(app: &mut App<'a>) {
     app.color_shader.borrow().use_shader(app.gl_context);
 
     // debug stuff
+    app.line_of_sight.bind(app.gl_context);
     app.line_of_sight.draw(app.gl_context);
 
     if app.render_octree {
@@ -45,6 +46,7 @@ pub fn render<'a>(app: &mut App<'a>) {
 
     // draw the hud
     app.hud_color_shader.borrow().use_shader(app.gl_context);
+    app.hud_triangles.bind(app.gl_context);
     app.hud_triangles.draw(app.gl_context);
 
     // draw hud textures
@@ -52,6 +54,8 @@ pub fn render<'a>(app: &mut App<'a>) {
     unsafe {
       gl::ActiveTexture(app.misc_texture_unit.gl_id());
     }
+
+    app.text_triangles.bind(app.gl_context);
     for (i, tex) in app.text_textures.iter().enumerate() {
       unsafe {
         gl::BindTexture(gl::TEXTURE_2D, tex.handle.gl_id);

@@ -119,6 +119,7 @@ impl<'a, V> OctreeBuffers<'a, V> {
     self.entry_to_index.insert(entry, self.index_to_entry.len());
     self.index_to_entry.push(entry);
 
+    self.outlines.buffer.byte_buffer.bind(gl);
     self.outlines.push(gl, outlines);
   }
 
@@ -127,7 +128,10 @@ impl<'a, V> OctreeBuffers<'a, V> {
     let swapped_id = self.index_to_entry[self.index_to_entry.len() - 1];
     self.index_to_entry.swap_remove(idx).unwrap();
     self.entry_to_index.remove(&entry);
+
+    self.outlines.buffer.byte_buffer.bind(gl);
     self.outlines.swap_remove(gl, idx * LINE_VERTICES_PER_BOX, LINE_VERTICES_PER_BOX);
+
     if entry != swapped_id {
       self.entry_to_index.insert(swapped_id, idx);
       assert!(self.index_to_entry[idx] == swapped_id);
@@ -135,6 +139,7 @@ impl<'a, V> OctreeBuffers<'a, V> {
   }
 
   pub fn draw(&self, gl: &mut GLContext) {
+    self.outlines.bind(gl);
     self.outlines.draw(gl);
   }
 }

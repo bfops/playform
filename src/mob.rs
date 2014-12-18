@@ -63,6 +63,7 @@ impl<'a> MobBuffers<'a> {
     self.id_to_index.insert(id, self.index_to_id.len());
     self.index_to_id.push(id);
 
+    self.triangles.buffer.byte_buffer.bind(gl);
     self.triangles.push(gl, triangles);
   }
 
@@ -73,10 +74,12 @@ impl<'a> MobBuffers<'a> {
     triangles: &[ColoredVertex]
   ) {
     let idx = *self.id_to_index.get(&id).unwrap();
+    self.triangles.buffer.byte_buffer.bind(gl);
     self.triangles.buffer.update(gl, idx, triangles);
   }
 
   pub fn draw(&self, gl: &mut GLContext) {
+    self.triangles.bind(gl);
     self.triangles.draw(gl);
   }
 }

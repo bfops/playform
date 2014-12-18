@@ -46,7 +46,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
     }
   }
 
-  pub fn bind(
+  pub fn bind_glsl_uniforms(
     &self,
     gl: &mut GLContext,
     texture_unit_alloc: &mut IdAllocator<TextureUnit>,
@@ -93,9 +93,12 @@ impl<'a> TerrainVRAMBuffers<'a> {
     }
 
     self.length += 3 * ids.len();
+    self.vertex_positions.buffer.byte_buffer.bind(gl);
     self.vertex_positions.buffer.push(gl, vertices);
+    self.types.buffer.byte_buffer.bind(gl);
     self.types.buffer.push(gl, types);
     if USE_LIGHTING {
+      self.normals.buffer.byte_buffer.bind(gl);
       self.normals.buffer.push(gl, normals);
     }
   }
@@ -112,9 +115,12 @@ impl<'a> TerrainVRAMBuffers<'a> {
     }
 
     self.length -= 3;
+    self.vertex_positions.buffer.byte_buffer.bind(gl);
     self.vertex_positions.buffer.swap_remove(gl, idx * 3 * VERTICES_PER_TRIANGLE, 3 * VERTICES_PER_TRIANGLE);
+    self.types.buffer.byte_buffer.bind(gl);
     self.types.buffer.swap_remove(gl, idx, 1);
     if USE_LIGHTING {
+      self.normals.buffer.byte_buffer.bind(gl);
       self.normals.buffer.swap_remove(gl, 3 * idx, 3);
     }
   }
