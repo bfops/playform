@@ -32,7 +32,7 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
   pub fn reinsert(octree: &mut Octree<T>, t: T, bounds: &mut AABB3<f32>, new_bounds: AABB3<f32>) -> Option<(AABB3<f32>, T)> {
     match octree.intersect(&new_bounds, Some(t)) {
       None => {
-        octree.reinsert(t, bounds, new_bounds);
+        octree.reinsert(t, bounds, new_bounds.clone());
         *bounds = new_bounds;
         None
       },

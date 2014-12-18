@@ -14,7 +14,7 @@ pub fn main() {
   debug!("starting");
 
   let window = Sdl2Window::new(
-    OpenGL::OpenGL_3_3,
+    OpenGL::_3_3,
     WindowSettings {
       title: "playform".to_string(),
       size: [WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32],

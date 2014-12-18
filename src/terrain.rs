@@ -8,6 +8,7 @@ use noise::source::Perlin;
 use noise::model::Plane;
 use state::EntityId;
 use std::collections::hash_map::{HashMap, Occupied, Vacant};
+use std::mem;
 use std::num::Float;
 use stopwatch::TimerSet;
 
@@ -76,6 +77,9 @@ impl<'a> Terrain<'a> {
     position
   }
 
+  // Once a reference is returned from `load`, is should be valid forever.
+  // TODO: Figure out a way to specify that the reference can only be valid
+  // until this object is touched again (or deleted).
   #[inline]
   pub fn load(
     &'a mut self,
@@ -84,7 +88,10 @@ impl<'a> Terrain<'a> {
     position: &BlockPosition,
   ) -> &'a TerrainBlock {
     match self.all_blocks.entry(*position) {
-      Occupied(entry) => entry.get().clone(),
+      Occupied(entry) => unsafe {
+        // Escape lifetime bounds.
+        mem::transmute(entry.get())
+      },
       Vacant(entry) => {
         let heightmap = &self.heightmap;
         let block =
@@ -134,7 +141,7 @@ impl<'a> Terrain<'a> {
   }
 
   #[inline]
-  fn add_square<'a>(
+  fn add_square(
     timers: &TimerSet,
     heightmap: &Plane<'a, Perlin>,
     id_allocator: &mut IdAllocator<EntityId>,

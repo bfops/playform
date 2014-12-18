@@ -189,7 +189,7 @@ pub fn from_file_prefix<'a, T: Iterator<GLenum>>(
           _ => panic!("Unknown shader component type: {}", component),
         }
       ;
-      ((prefix + "." + suffix), component)
+      ((prefix.clone() + "." + suffix), component)
     }),
     vars,
   )

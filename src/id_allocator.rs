@@ -17,7 +17,7 @@ impl<Id> IdAllocator<Id> where
   // Produce an Id that hasn't been produced yet by this object.
   pub fn allocate(&mut self) -> Id {
     let ret = self.next.clone();
-    self.next = self.next + 1;
+    self.next = self.next.clone() + 1;
     ret
   }
 }

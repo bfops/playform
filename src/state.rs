@@ -44,9 +44,9 @@ impl Default for EntityId {
 }
 
 impl Add<u32, EntityId> for EntityId {
-  fn add(&self, rhs: &u32) -> EntityId {
-    let EntityId(i) = *self;
-    EntityId(i + *rhs)
+  fn add(self, rhs: u32) -> EntityId {
+    let EntityId(i) = self;
+    EntityId(i + rhs)
   }
 }
 
@@ -162,7 +162,7 @@ pub struct App<'a> {
   pub hud_color_shader: Rc<RefCell<Shader<'a>>>,
 
   // which mouse buttons are currently pressed
-  pub mouse_buttons_pressed: Vec<input::mouse::Button>,
+  pub mouse_buttons_pressed: Vec<input::mouse::MouseButton>,
 
   pub render_octree: bool,
   pub render_outlines: bool,
@@ -410,7 +410,7 @@ impl<'a> App<'a> {
 
   #[inline]
   #[allow(dead_code)]
-  pub fn is_mouse_pressed(&self, b: input::mouse::Button) -> bool {
+  pub fn is_mouse_pressed(&self, b: input::mouse::MouseButton) -> bool {
     self.mouse_buttons_pressed.iter().any(|x| *x == b)
   }
 

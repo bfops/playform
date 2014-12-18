@@ -2,7 +2,7 @@ use color::Color4;
 use common::*;
 use event::Event;
 use input;
-use input::{InputEvent,Button,Motion};
+use input::{Input,Button,Motion};
 use input::keyboard::Key;
 use nalgebra::Vec3;
 use render::render;
@@ -26,11 +26,11 @@ pub fn handle_event<'a>(app: &mut App<'a>, game_window: &mut Sdl2Window, event: 
     Event::Render(_) => render(app),
     Event::Update(_) => update(app),
     Event::Input(ref i) => match *i {
-      InputEvent::Press(Button::Keyboard(key)) => key_press(app, key),
-      InputEvent::Release(Button::Keyboard(key)) => key_release(app, key),
-      InputEvent::Press(Button::Mouse(button)) => mouse_press(app, button),
-      InputEvent::Release(Button::Mouse(button)) => mouse_release(app, button),
-      InputEvent::Move(Motion::MouseCursor(x, y)) => mouse_move(app, game_window, x, y),
+      Input::Press(Button::Keyboard(key)) => key_press(app, key),
+      Input::Release(Button::Keyboard(key)) => key_release(app, key),
+      Input::Press(Button::Mouse(button)) => mouse_press(app, button),
+      Input::Release(Button::Mouse(button)) => mouse_release(app, button),
+      Input::Move(Motion::MouseCursor(x, y)) => mouse_move(app, game_window, x, y),
       _ => {},
     },
   }
@@ -137,12 +137,12 @@ fn mouse_move<'a>(app: &mut App<'a>, w: &mut Sdl2Window, x: f64, y: f64) {
   })
 }
 
-fn mouse_press<'a>(app: &mut App<'a>, button: input::mouse::Button) {
+fn mouse_press<'a>(app: &mut App<'a>, button: input::mouse::MouseButton) {
   app.timers.time("event.mouse_press", || {
     app.mouse_buttons_pressed.push(button);
   })
 }
 
-fn mouse_release<'a>(app: &mut App<'a>, button: input::mouse::Button) {
+fn mouse_release<'a>(app: &mut App<'a>, button: input::mouse::MouseButton) {
   swap_remove_first(&mut app.mouse_buttons_pressed, button)
 }

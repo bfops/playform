@@ -64,15 +64,16 @@ fn split(mid: f32, d: Dimension, bounds: AABB3<f32>) -> (Option<AABB3<f32>>, Opt
   }
 }
 
+#[deriving(Copy)]
 pub enum Dimension { X, Y, Z }
 
 #[deriving(Copy, Clone, PartialEq, Eq, Hash, Show)]
 pub struct OctreeId(uint);
 
 impl Add<uint, OctreeId> for OctreeId {
-  fn add(&self, rhs: &uint) -> OctreeId {
-    let OctreeId(id) = *self;
-    OctreeId(id + *rhs)
+  fn add(self, rhs: uint) -> OctreeId {
+    let OctreeId(id) = self;
+    OctreeId(id + rhs)
   }
 }
 
@@ -203,7 +204,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
         let avg_length =
           vs.iter().fold(
             0.0,
-            |x, &(bounds, _)| x + length(&bounds, d)
+            |x, &(ref bounds, _)| x + length(bounds, d)
           ) / NumCast::from(vs.len()).unwrap();
 
         if avg_length < length(&self.bounds, self.dimension) / 2.0 {
@@ -268,8 +269,8 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       loader: loader.clone(),
     };
 
-    for &(bounds, v) in vs.iter() {
-      let (low_bounds, high_bounds) = split(mid, dimension, bounds);
+    for &(ref bounds, v) in vs.iter() {
+      let (low_bounds, high_bounds) = split(mid, dimension, bounds.clone());
       low_bounds.map(|bs| low.insert(bs, v));
       high_bounds.map(|bs| high.insert(bs, v));
     }
@@ -307,23 +308,23 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     match self.contents {
       OctreeContents::Leaf(ref vs) => {
         vs.iter()
-          .find(|&&(bs, ref v)| Some(*v) != self_v && aabb_overlap(bounds, &bs))
-          .map(|&(bounds, v)| (bounds.clone(), v))
+          .find(|&&(ref bs, ref v)| Some(*v) != self_v && aabb_overlap(bounds, bs))
+          .map(|&(ref bounds, v)| (bounds.clone(), v))
       },
       OctreeContents::Branch(ref b) => {
         let mid = middle(&self.bounds, self.dimension);
-        let (low_bounds, high_bounds) = split(mid, self.dimension, *bounds);
-        let high = || {
+        let (low_bounds, high_bounds) = split(mid, self.dimension, bounds.clone());
+        let high = |high_bounds| {
           match high_bounds {
             None => None,
             Some(bs) => b.high_tree.intersect(&bs, self_v),
           }
         };
         match low_bounds {
-          None => high(),
+          None => high(high_bounds),
           Some(bs) =>
             match b.low_tree.intersect(&bs, self_v) {
-              None => high(),
+              None => high(high_bounds),
               r => r,
             }
         }
@@ -351,7 +352,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
         }
       },
       OctreeContents::Branch(ref mut bs) => {
-        let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, *bounds);
+        let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, bounds.clone());
         l.map(|low_half| bs.low_tree.remove(v, &low_half));
         h.map(|high_half| bs.high_tree.remove(v, &high_half));
         bs.low_tree.is_empty() && bs.high_tree.is_empty()
@@ -383,7 +384,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
         // this leaf; filter out the objects it doesn't intersect at all. Then
         // find the object with the lowest TOI.
         partial_min_by(
-          vs.iter().filter_map(|&(bounds, v)| {
+          vs.iter().filter_map(|&(ref bounds, v)| {
               if v == self_v {
                 None
               } else {
