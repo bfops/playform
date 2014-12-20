@@ -62,7 +62,7 @@ fn make_text<'a>(
   let fontloader = fontloader::FontLoader::new();
   let mut textures = Vec::new();
   let buffer = GLBuffer::new(gl, gl_context, 8 * VERTICES_PER_TRIANGLE);
-  let mut triangles = {
+  let mut triangles =
     GLArray::new(
       gl,
       gl_context,
@@ -73,13 +73,12 @@ fn make_text<'a>(
       ],
       DrawMode::Triangles,
       buffer,
-    )
-  };
+    );
 
   let instructions =
     &[
       "Use WASD to move, and spacebar to jump.",
-      "Use the mouse to look around, and click to remove terrain."
+      "Use the mouse to look around.",
     ].to_vec();
 
   let mut y = 0.99;
