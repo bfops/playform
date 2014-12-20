@@ -60,7 +60,7 @@ pub fn render<'a>(app: &mut App<'a>) {
       unsafe {
         gl::BindTexture(gl::TEXTURE_2D, tex.handle.gl_id);
       }
-      app.text_triangles.draw_slice(app.gl_context, i * 2, 2);
+      app.text_triangles.draw_slice(app.gl_context, i * 6, 6);
     }
   })
 }
