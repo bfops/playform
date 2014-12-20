@@ -4,14 +4,14 @@ use terrain::BlockPosition;
 use terrain::Terrain;
 use nalgebra::Pnt3;
 use physics::Physics;
+use range_abs::range_abs;
 use state::EntityId;
 use std::collections::HashSet;
 use std::collections::RingBuf;
-use std::iter::range_inclusive;
 use stopwatch::TimerSet;
 use yaglw::gl_context::GLContext;
 
-static BLOCK_LOAD_SPEED: uint = 1;
+static BLOCK_LOAD_SPEED: uint = 4;
 static LOAD_DISTANCE: int = 1;
 
 /// Keep surroundings loaded around a given world position.
@@ -71,9 +71,9 @@ impl<'a> SurroundingsLoader<'a> {
       let mut want_loaded_set = HashSet::new();
 
       timers.time("update.update_queues.want_loaded", || {
-        for x in range_inclusive(block_position.x - LOAD_DISTANCE, block_position.x + LOAD_DISTANCE) {
-          for y in range_inclusive(block_position.y - LOAD_DISTANCE, block_position.y + LOAD_DISTANCE) {
-            for z in range_inclusive(block_position.z - LOAD_DISTANCE, block_position.z + LOAD_DISTANCE) {
+        for x in range_abs(LOAD_DISTANCE).map(|x| x + block_position.x) {
+          for y in range_abs(LOAD_DISTANCE).map(|y| y + block_position.y) {
+            for z in range_abs(LOAD_DISTANCE).map(|z| z + block_position.z) {
               let block_position = Pnt3::new(x, y, z);
               want_loaded.push(block_position);
               want_loaded_set.insert(block_position);
