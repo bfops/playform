@@ -111,10 +111,3 @@ fn test_nested() {
     ts.time("world", || {});
   });
 }
-
-#[macro_export]
-macro_rules! time(
-  ($timers:expr, $name:expr, $f:expr) => (
-    unsafe { ($timers as *const stopwatch::TimerSet).as_ref().unwrap() }.time($name, $f)
-  );
-)

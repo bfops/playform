@@ -67,7 +67,7 @@ impl<'a> Terrain<'a> {
           };
         x / BLOCK_WIDTH
       });
-    )
+    );
     let position =
       Pnt3::new(
         convert_coordinate!(world_position.x),
@@ -153,7 +153,7 @@ impl<'a> Terrain<'a> {
         let y = AMPLITUDE * (heightmap.get::<GLfloat>($x, $z) + 1.0) / 2.0;
         Pnt3::new($x, y, $z)
       });
-    )
+    );
 
     let half_width = SAMPLE_WIDTH / 2.0;
     let center = at!(position.x + half_width, position.z + half_width);

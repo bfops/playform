@@ -23,7 +23,7 @@ macro_rules! translate_mob(
       $v
     );
   );
-)
+);
 
 pub fn update<'a>(app: &mut App) {
   app.timers.time("update", || {
