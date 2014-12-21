@@ -11,8 +11,11 @@ use std::iter::range_inclusive;
 use stopwatch::TimerSet;
 use yaglw::gl_context::GLContext;
 
-pub const BLOCK_LOAD_SPEED: uint = 8;
 pub const LOAD_DISTANCE: int = 10;
+
+pub const BLOCK_UPDATE_BUDGET: int = 16;
+pub const BLOCK_LOAD_COST: int = 2;
+pub const BLOCK_UNLOAD_COST: int = 1;
 
 /// Keep surroundings loaded around a given world position.
 pub struct SurroundingsLoader<'a> {
@@ -119,7 +122,8 @@ impl<'a> SurroundingsLoader<'a> {
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics<EntityId>,
   ) {
-    for _ in range(0, BLOCK_LOAD_SPEED) {
+    let mut budget = BLOCK_UPDATE_BUDGET;
+    while budget > 0 {
       match self.unload_queue.pop_front() {
         None =>
           match self.load_queue.pop_front() {
@@ -148,6 +152,7 @@ impl<'a> SurroundingsLoader<'a> {
               });
 
               self.loaded.insert(block_position);
+              budget -= BLOCK_LOAD_COST;
             },
           },
         Some(block_position) => {
@@ -159,6 +164,7 @@ impl<'a> SurroundingsLoader<'a> {
             }
 
             self.loaded.remove(&block_position);
+            budget -= BLOCK_UNLOAD_COST;
           })
         }
       }
