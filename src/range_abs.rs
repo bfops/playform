@@ -7,6 +7,7 @@ pub struct RangeAbs {
 }
 
 pub fn range_abs(inclusive_max: int) -> RangeAbs {
+  assert!(inclusive_max >= 0);
   RangeAbs {
     n: 0,
     max: inclusive_max,
@@ -40,12 +41,19 @@ impl Iterator<int> for RangeAbs {
 }
 
 #[test]
-pub fn basic_test() {
+fn basic_test() {
   let mut range = range_abs(2);
   assert_eq!(range.next(), Some(0));
   assert_eq!(range.next(), Some(1));
   assert_eq!(range.next(), Some(-1));
   assert_eq!(range.next(), Some(2));
   assert_eq!(range.next(), Some(-2));
+  assert_eq!(range.next(), None);
+}
+
+#[test]
+fn test_range_abs_0() {
+  let mut range = range_abs(0);
+  assert_eq!(range.next(), Some(0));
   assert_eq!(range.next(), None);
 }
