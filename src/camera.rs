@@ -115,7 +115,8 @@ pub fn set_camera(shader: &mut Shader, gl: &mut GLContext, c: &Camera) {
   let projection_matrix = shader.get_uniform_location("projection_matrix");
   shader.use_shader(gl);
   unsafe {
-    let ptr = mem::transmute(&c.projection_matrix());
+    let val = c.projection_matrix();
+    let ptr = mem::transmute(&val);
     gl::UniformMatrix4fv(projection_matrix, 1, 0, ptr);
   }
 }
