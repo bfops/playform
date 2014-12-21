@@ -28,6 +28,9 @@ git = "https://github.com/PistonDevelopers/event"
 [dependencies.pistoncore-input]
 git = "https://github.com/PistonDevelopers/input"
 
+[dependencies.pistoncore-window]
+git = "https://github.com/PistonDevelopers/window"
+
 [dependencies.nalgebra]
 git = "https://github.com/sebcrozet/nalgebra"
 
