@@ -20,12 +20,14 @@ extern crate noise;
 extern crate sdl2;
 extern crate sdl2_window;
 extern crate shader_version;
+extern crate test;
 extern crate time;
 extern crate yaglw;
 
 mod camera;
 mod color;
 mod common;
+mod cube_shell;
 mod event_handler;
 mod fontloader;
 mod id_allocator;

@@ -1,18 +1,18 @@
+use cube_shell::cube_shell;
 use id_allocator::IdAllocator;
 use terrain_vram_buffers::TerrainVRAMBuffers;
 use terrain::BlockPosition;
 use terrain::Terrain;
-use nalgebra::Pnt3;
 use physics::Physics;
-use range_abs::range_abs;
 use state::EntityId;
 use std::collections::HashSet;
 use std::collections::RingBuf;
+use std::iter::range_inclusive;
 use stopwatch::TimerSet;
 use yaglw::gl_context::GLContext;
 
-static BLOCK_LOAD_SPEED: uint = 4;
-static LOAD_DISTANCE: int = 1;
+pub const BLOCK_LOAD_SPEED: uint = 8;
+pub const LOAD_DISTANCE: int = 10;
 
 /// Keep surroundings loaded around a given world position.
 pub struct SurroundingsLoader<'a> {
@@ -71,13 +71,14 @@ impl<'a> SurroundingsLoader<'a> {
       let mut want_loaded_set = HashSet::new();
 
       timers.time("update.update_queues.want_loaded", || {
-        for x in range_abs(LOAD_DISTANCE).map(|x| x + block_position.x) {
-          for y in range_abs(LOAD_DISTANCE).map(|y| y + block_position.y) {
-            for z in range_abs(LOAD_DISTANCE).map(|z| z + block_position.z) {
-              let block_position = Pnt3::new(x, y, z);
-              want_loaded.push(block_position);
-              want_loaded_set.insert(block_position);
-            }
+        want_loaded.push(block_position);
+        want_loaded_set.insert(block_position);
+
+        for radius in range_inclusive(1, LOAD_DISTANCE) {
+          let blocks_at_radius = cube_shell(block_position, radius);
+          want_loaded.push_all(blocks_at_radius.as_slice());
+          for block_position in blocks_at_radius.into_iter() {
+            want_loaded_set.insert(block_position);
           }
         }
       });
@@ -122,7 +123,9 @@ impl<'a> SurroundingsLoader<'a> {
       match self.unload_queue.pop_front() {
         None =>
           match self.load_queue.pop_front() {
-            None => break,
+            None => {
+              break;
+            },
             Some(block_position) => {
               timers.time("update.load_some.load", || {
                 let block = self.terrain.load(timers, id_allocator, &block_position);
