@@ -27,7 +27,7 @@ macro_rules! translate_mob(
 
 pub fn update<'a>(app: &mut App) {
   app.timers.time("update", || {
-    let player_block_position = Terrain::to_block_position(app.player.camera.position);
+    let player_block_position = Terrain::to_block_position(&app.player.camera.position);
 
     app.timers.time("update.load", || {
       app.timers.time("update.load.terrain", || {
@@ -58,7 +58,7 @@ pub fn update<'a>(app: &mut App) {
         // Please don't do sketchy things with the `mobs` vector. The first time the
         // unsafety here bites us, it should be replaced with runtime checks.
 
-        let block_position = Terrain::to_block_position(mob.position);
+        let block_position = Terrain::to_block_position(&mob.position);
 
         if app.surroundings_loader.loaded.contains(&block_position) {
           {

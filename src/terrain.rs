@@ -55,7 +55,7 @@ impl<'a> Terrain<'a> {
   }
 
   #[inline]
-  pub fn to_block_position(world_position: Pnt3<f32>) -> BlockPosition {
+  pub fn to_block_position(world_position: &Pnt3<f32>) -> BlockPosition {
     macro_rules! convert_coordinate(
       ($x: expr) => ({
         let x = $x.floor() as int;

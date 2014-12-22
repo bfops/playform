@@ -69,7 +69,6 @@ impl<'a> SurroundingsLoader<'a> {
     if Some(block_position) != self.last_position {
       self.last_position = Some(block_position);
 
-      // TODO: Order this in rings around block_position.
       let mut want_loaded = Vec::new();
       let mut want_loaded_set = HashSet::new();
 
