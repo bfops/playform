@@ -263,7 +263,7 @@ impl<'a> App<'a> {
 
     match gl_context.get_error() {
       gl::NO_ERROR => {},
-      err => panic!("OpenGL error 0x{:x} setting up shaders", err),
+      err => warn!("OpenGL error 0x{:x} setting up shaders", err),
     }
 
     let line_of_sight = {
@@ -372,7 +372,7 @@ impl<'a> App<'a> {
 
     match gl_context.get_error() {
       gl::NO_ERROR => {},
-      err => panic!("OpenGL error 0x{:x} in load()", err),
+      err => warn!("OpenGL error 0x{:x} in load()", err),
     }
 
     App {
