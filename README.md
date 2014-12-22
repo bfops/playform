@@ -27,6 +27,13 @@ Run `cargo run`! Consider setting `RUST_BACKTRACE=1` and `RUST_LOG=info` when yo
 
 One mob spawns that will play "tag" with you: tag it and it will chase you until it tags you back.
 
+## If things don't work
+
+If things are broken, like compile errors, problems getting playform to start, or you get crashes, please consider opening an issue!
+
+If things are laggy, there are some constants scattered around that you can tweak;
+the settings in `surroundings_loader.rs` (especially `LOAD_DISTANCE`) will probably make the biggest difference.
+
 ## Screenshots
 
 ![screenshot 1](/../screenshots/screenshots/screenshot1.png?raw=true)
