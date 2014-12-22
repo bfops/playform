@@ -7,10 +7,7 @@
 #![feature(unsafe_destructor)]
 #![feature(phase)]
 
-extern crate current;
 extern crate gl;
-extern crate event;
-extern crate input;
 extern crate libc;
 #[phase(plugin, link)]
 extern crate log;
@@ -18,11 +15,8 @@ extern crate nalgebra;
 extern crate ncollide;
 extern crate noise;
 extern crate sdl2;
-extern crate sdl2_window;
-extern crate shader_version;
 extern crate test;
 extern crate time;
-extern crate window;
 extern crate yaglw;
 
 mod camera;
@@ -33,7 +27,7 @@ mod fontloader;
 mod id_allocator;
 mod interval_timer;
 mod player;
-mod process_input;
+mod process_event;
 mod light;
 mod loader;
 mod main;

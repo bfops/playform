@@ -3,22 +3,19 @@ name = "playform"
 version = "0.0.0"
 dependencies = [
  "gl 0.0.2 (git+https://github.com/bjz/gl-rs)",
+ "log 0.1.2 (git+https://github.com/rust-lang/log)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide 0.2.0 (git+https://github.com/sebcrozet/ncollide)",
  "noise 0.0.3 (git+https://github.com/bjz/noise-rs)",
- "pistoncore-current 0.0.3 (git+https://github.com/PistonDevelopers/current)",
- "pistoncore-event 0.0.1 (git+https://github.com/PistonDevelopers/event)",
- "pistoncore-input 0.0.2 (git+https://github.com/PistonDevelopers/input)",
- "pistoncore-sdl2_window 0.0.0 (git+https://github.com/PistonDevelopers/sdl2_window)",
- "pistoncore-window 0.0.1 (git+https://github.com/PistonDevelopers/window)",
- "shader_version 0.0.0 (git+https://github.com/PistonDevelopers/shader_version)",
+ "sdl2 0.0.11 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "time 0.1.3 (git+https://github.com/rust-lang/time)",
  "yaglw 0.0.0 (git+https://github.com/bfops/yaglw)",
 ]
 
 [[package]]
 name = "gcc"
 version = "0.1.2"
-source = "git+https://github.com/alexcrichton/gcc-rs#f7b47d923a78155f88d13c7030e61445d46b3245"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "gl"
@@ -49,6 +46,22 @@ version = "0.0.3"
 source = "git+https://github.com/bjz/gl-rs#bfdc2c6416ea6d955b3ffe1a58fb55e98f4d0108"
 
 [[package]]
+name = "log"
+version = "0.1.2"
+source = "git+https://github.com/rust-lang/log#605cf5a1cd1bb7cc490dd8b85664b7489d7c8eaf"
+dependencies = [
+ "regex 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "log"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "regex 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "nalgebra"
 version = "0.1.0"
 source = "git+https://github.com/sebcrozet/nalgebra#8a291b8cce3c7a066f6fd105ecc21b8e13de55b9"
@@ -67,56 +80,9 @@ version = "0.0.3"
 source = "git+https://github.com/bjz/noise-rs#c08828ea536aabc8733307a248e2a44e09d5df8a"
 
 [[package]]
-name = "pistoncore-current"
-version = "0.0.3"
-source = "git+https://github.com/PistonDevelopers/current#1b51b7d29581c7578c483263875d21a12bc0e89b"
-
-[[package]]
-name = "pistoncore-event"
-version = "0.0.1"
-source = "git+https://github.com/PistonDevelopers/event#8f095d7946d119d04c3547a7a9f403981946a3c8"
-dependencies = [
- "pistoncore-current 0.0.3 (git+https://github.com/PistonDevelopers/current)",
- "pistoncore-event_loop 0.0.2 (git+https://github.com/PistonDevelopers/event_loop)",
- "pistoncore-input 0.0.2 (git+https://github.com/PistonDevelopers/input)",
- "pistoncore-window 0.0.1 (git+https://github.com/PistonDevelopers/window)",
-]
-
-[[package]]
-name = "pistoncore-event_loop"
-version = "0.0.2"
-source = "git+https://github.com/PistonDevelopers/event_loop#4df43fe7e4c7ec5bbd5bf50a34f24ad6009e957f"
-dependencies = [
- "pistoncore-current 0.0.3 (git+https://github.com/PistonDevelopers/current)",
- "time 0.1.3 (git+https://github.com/rust-lang/time)",
-]
-
-[[package]]
-name = "pistoncore-input"
-version = "0.0.2"
-source = "git+https://github.com/PistonDevelopers/input#887d85ec7d71d66cd7a99de4a8e34a2dd0585a7a"
-
-[[package]]
-name = "pistoncore-sdl2_window"
-version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/sdl2_window#1b2db0c8e891507d51eb062c0ef4b921f13f7741"
-dependencies = [
- "gl 0.0.2 (git+https://github.com/bjz/gl-rs)",
- "pistoncore-input 0.0.2 (git+https://github.com/PistonDevelopers/input)",
- "pistoncore-window 0.0.1 (git+https://github.com/PistonDevelopers/window)",
- "sdl2 0.0.11 (git+https://github.com/AngryLawyer/rust-sdl2)",
- "shader_version 0.0.0 (git+https://github.com/PistonDevelopers/shader_version)",
-]
-
-[[package]]
-name = "pistoncore-window"
-version = "0.0.1"
-source = "git+https://github.com/PistonDevelopers/window#9e281b62aa3292d9554044ee846264783e3212da"
-dependencies = [
- "pistoncore-current 0.0.3 (git+https://github.com/PistonDevelopers/current)",
- "pistoncore-event_loop 0.0.2 (git+https://github.com/PistonDevelopers/event_loop)",
- "pistoncore-input 0.0.2 (git+https://github.com/PistonDevelopers/input)",
-]
+name = "regex"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "sdl2"
@@ -124,16 +90,12 @@ version = "0.0.11"
 source = "git+https://github.com/AngryLawyer/rust-sdl2#432bbeef202fe71f72848865d960bbc4e0793cbb"
 
 [[package]]
-name = "shader_version"
-version = "0.0.0"
-source = "git+https://github.com/PistonDevelopers/shader_version#d06e44721e837d0d016cbe10872a9c9faa65f964"
-
-[[package]]
 name = "time"
 version = "0.1.3"
-source = "git+https://github.com/rust-lang/time#914a48401168169ccd1a822c2d32d87965306141"
+source = "git+https://github.com/rust-lang/time#fd4b53a7db653dd26c83820f871ce21ed2d20269"
 dependencies = [
- "gcc 0.1.2 (git+https://github.com/alexcrichton/gcc-rs)",
+ "gcc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

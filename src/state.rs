@@ -5,7 +5,6 @@ use fontloader;
 use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
-use input;
 use light::{Light, set_point_light, set_ambient_light};
 use loader::Loader;
 use mob;
@@ -159,9 +158,6 @@ pub struct App<'a> {
   pub texture_shader: Rc<RefCell<Shader<'a>>>,
   pub hud_texture_shader: Rc<RefCell<Shader<'a>>>,
   pub hud_color_shader: Rc<RefCell<Shader<'a>>>,
-
-  // which mouse buttons are currently pressed
-  pub mouse_buttons_pressed: Vec<input::mouse::MouseButton>,
 
   pub render_octree: bool,
   pub render_outlines: bool,
@@ -398,7 +394,6 @@ impl<'a> App<'a> {
       texture_shader: texture_shader,
       hud_color_shader: hud_color_shader,
       hud_texture_shader: hud_texture_shader,
-      mouse_buttons_pressed: Vec::new(),
       render_octree: false,
       render_outlines: false,
       timers: timers,
@@ -408,11 +403,6 @@ impl<'a> App<'a> {
   }
 
   #[inline]
-  #[allow(dead_code)]
-  pub fn is_mouse_pressed(&self, b: input::mouse::MouseButton) -> bool {
-    self.mouse_buttons_pressed.iter().any(|x| *x == b)
-  }
-
   fn get_bounds(&self, id: EntityId) -> &AABB3<f32> {
     self.physics.get_bounds(id).unwrap()
   }

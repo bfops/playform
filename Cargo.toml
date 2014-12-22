@@ -13,29 +13,23 @@ authors = [
 name = "playform"
 path = "./src/playform.rs"
 
+[dependencies.time]
+git = "https://github.com/rust-lang/time"
+
+[dependencies.log]
+git = "https://github.com/rust-lang/log"
+
 [dependencies.gl]
 git = "https://github.com/bjz/gl-rs"
 
-[dependencies.pistoncore-sdl2_window]
-git = "https://github.com/PistonDevelopers/sdl2_window"
+[dependencies.sdl2]
+git = "https://github.com/AngryLawyer/rust-sdl2"
 
-[dependencies.pistoncore-current]
-git = "https://github.com/PistonDevelopers/current"
-
-[dependencies.pistoncore-event]
-git = "https://github.com/PistonDevelopers/event"
-
-[dependencies.pistoncore-input]
-git = "https://github.com/PistonDevelopers/input"
-
-[dependencies.pistoncore-window]
-git = "https://github.com/PistonDevelopers/window"
+[dependencies.yaglw]
+git = "https://github.com/bfops/yaglw"
 
 [dependencies.nalgebra]
 git = "https://github.com/sebcrozet/nalgebra"
-
-[dependencies.shader_version]
-git = "https://github.com/PistonDevelopers/shader_version"
 
 [dependencies.ncollide]
 features = ["3df32"]
@@ -43,6 +37,3 @@ git = "https://github.com/sebcrozet/ncollide"
 
 [dependencies.noise]
 git = "https://github.com/bjz/noise-rs"
-
-[dependencies.yaglw]
-git = "https://github.com/bfops/yaglw"
