@@ -7,7 +7,7 @@ dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide 0.2.0 (git+https://github.com/sebcrozet/ncollide)",
  "noise 0.0.3 (git+https://github.com/bjz/noise-rs)",
- "sdl2 0.0.11 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "sdl2 0.0.12 (git+https://github.com/AngryLawyer/rust-sdl2)",
  "time 0.1.3 (git+https://github.com/rust-lang/time)",
  "yaglw 0.0.0 (git+https://github.com/bfops/yaglw)",
 ]
@@ -69,7 +69,7 @@ source = "git+https://github.com/sebcrozet/nalgebra#8a291b8cce3c7a066f6fd105ecc2
 [[package]]
 name = "ncollide"
 version = "0.2.0"
-source = "git+https://github.com/sebcrozet/ncollide#f546d69ff59178c4c330ff5040fd35c9c21bebf2"
+source = "git+https://github.com/sebcrozet/ncollide#60a4cd69246bd3571bbccfdcc3f3e59ab635c581"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
 ]
@@ -86,8 +86,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "sdl2"
-version = "0.0.11"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#432bbeef202fe71f72848865d960bbc4e0793cbb"
+version = "0.0.12"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#f475e9a78b43acb5d1c5ed91c09dc93ca5ecce7a"
 
 [[package]]
 name = "time"
