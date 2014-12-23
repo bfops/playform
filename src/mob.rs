@@ -11,9 +11,7 @@ use yaglw::vertex_buffer::{DrawMode, GLType};
 use yaglw::gl_context::{GLContext, GLContextExistence};
 use yaglw::shader::Shader;
 
-// N.B.: Behaviors are unsafe because they take both a mutable and immutable
-// reference to a mob (the mob is also inside the main::App).
-pub type Behavior = unsafe fn(&App, &mut Mob);
+pub type Behavior = fn(&App, &mut Mob);
 
 pub struct Mob {
   pub position: Pnt3<f32>,

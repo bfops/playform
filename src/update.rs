@@ -7,7 +7,6 @@ use nalgebra::Vec3;
 use physics::Physics;
 use state::EntityId;
 use state::App;
-use std::collections::HashMap;
 use terrain::Terrain;
 use yaglw::gl_context::GLContext;
 
@@ -52,18 +51,15 @@ pub fn update<'a>(app: &mut App) {
     });
 
     app.timers.time("update.mobs", || {
-      // Unsafely mutably borrow the mobs.
-      let mobs: *mut HashMap<EntityId, mob:: Mob> = &mut app.mobs;
-      for (_, mob) in unsafe { (*mobs).iter_mut() } {
-        // Please don't do sketchy things with the `mobs` vector. The first time the
-        // unsafety here bites us, it should be replaced with runtime checks.
-
+      for (_, mob) in app.mobs.iter() {
+        let mut mob_cell = mob.deref().borrow_mut();
+        let mob = mob_cell.deref_mut();
         let block_position = Terrain::to_block_position(&mob.position);
 
         if app.surroundings_loader.loaded.contains(&block_position) {
           {
             let behavior = mob.behavior;
-            unsafe { (behavior)(app, mob); }
+            (behavior)(app, mob);
           }
 
           mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);

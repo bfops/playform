@@ -136,7 +136,7 @@ fn make_hud<'a>(
 pub struct App<'a> {
   pub physics: Physics<EntityId>,
   pub player: Player,
-  pub mobs: HashMap<EntityId, mob::Mob>,
+  pub mobs: HashMap<EntityId, Rc<RefCell<mob::Mob>>>,
 
   pub id_allocator: IdAllocator<EntityId>,
   pub surroundings_loader: SurroundingsLoader<'a>,
@@ -406,34 +406,35 @@ impl<'a> App<'a> {
   fn get_bounds(&self, id: EntityId) -> &AABB3<f32> {
     self.physics.get_bounds(id).unwrap()
   }
+}
 
-  fn add_mob(
-    gl: &mut GLContext,
-    physics: &mut Physics<EntityId>,
-    mobs: &mut HashMap<EntityId, mob::Mob>,
-    mob_buffers: &mut mob::MobBuffers,
-    id_allocator: &mut IdAllocator<EntityId>,
-    low_corner: Pnt3<GLfloat>,
-    behavior: mob::Behavior,
-  ) {
-    // TODO: mob loader instead of pushing directly to gl buffers
+fn add_mob(
+  gl: &mut GLContext,
+  physics: &mut Physics<EntityId>,
+  mobs: &mut HashMap<EntityId, Rc<RefCell<mob::Mob>>>,
+  mob_buffers: &mut mob::MobBuffers,
+  id_allocator: &mut IdAllocator<EntityId>,
+  low_corner: Pnt3<GLfloat>,
+  behavior: mob::Behavior,
+) {
+  // TODO: mob loader instead of pushing directly to gl buffers
 
-    let id = id_allocator.allocate();
-    let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
+  let id = id_allocator.allocate();
+  let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
 
-    let mob =
-      mob::Mob {
-        position: (*bounds.mins() + bounds.maxs().to_vec()) / 2.0,
-        speed: Vec3::new(0.0, 0.0, 0.0),
-        behavior: behavior,
-        id: id,
-      };
+  let mob =
+    mob::Mob {
+      position: (*bounds.mins() + bounds.maxs().to_vec()) / 2.0,
+      speed: Vec3::new(0.0, 0.0, 0.0),
+      behavior: behavior,
+      id: id,
+    };
+  let mob = Rc::new(RefCell::new(mob));
 
-    mob_buffers.push(gl, id, &to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
+  mob_buffers.push(gl, id, &to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
 
-    physics.insert(id, &bounds);
-    mobs.insert(id, mob);
-  }
+  physics.insert(id, &bounds);
+  mobs.insert(id, mob);
 }
 
 fn make_mobs<'a>(
@@ -442,7 +443,7 @@ fn make_mobs<'a>(
   physics: &mut Physics<EntityId>,
   id_allocator: &mut IdAllocator<EntityId>,
   shader: Rc<RefCell<Shader>>,
-) -> (HashMap<EntityId, mob::Mob>, mob::MobBuffers<'a>) {
+) -> (HashMap<EntityId, Rc<RefCell<mob::Mob>>>, mob::MobBuffers<'a>) {
   let mut mobs = HashMap::new();
   let mut mob_buffers = mob::MobBuffers::new(gl, gl_context, shader);
 
@@ -477,7 +478,7 @@ fn make_mobs<'a>(
     }
   }
 
-  App::add_mob(
+  add_mob(
     gl_context,
     physics,
     &mut mobs,
