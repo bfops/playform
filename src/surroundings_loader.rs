@@ -53,7 +53,7 @@ impl<'a> SurroundingsLoader<'a> {
     gl: &mut GLContext,
     terrain_buffers: &mut TerrainVRAMBuffers<'a>,
     id_allocator: &mut IdAllocator<EntityId>,
-    physics: &mut Physics<EntityId>,
+    physics: &mut Physics,
     position: BlockPosition,
   ) {
     timers.time("update.update_queues", || {
@@ -119,7 +119,7 @@ impl<'a> SurroundingsLoader<'a> {
     gl: &mut GLContext,
     terrain_buffers: &mut TerrainVRAMBuffers<'a>,
     id_allocator: &mut IdAllocator<EntityId>,
-    physics: &mut Physics<EntityId>,
+    physics: &mut Physics,
   ) {
     let mut budget = BLOCK_UPDATE_BUDGET;
     while budget > 0 {
@@ -135,7 +135,7 @@ impl<'a> SurroundingsLoader<'a> {
 
                 timers.time("update.load_some.load.physics", || {
                   for (&id, bounds) in block.bounds.iter() {
-                    physics.insert(id, bounds);
+                    physics.insert_terrain(id, bounds);
                   }
                 });
 
@@ -158,7 +158,7 @@ impl<'a> SurroundingsLoader<'a> {
           timers.time("update.load_some.unload", || {
             let block = self.terrain.all_blocks.get(&block_position).unwrap();
             for id in block.ids.iter() {
-              physics.remove(*id);
+              physics.remove_terrain(*id);
               terrain_buffers.swap_remove(gl, *id);
             }
 

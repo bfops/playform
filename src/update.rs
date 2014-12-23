@@ -5,7 +5,6 @@ use loader::Operation;
 use mob;
 use nalgebra::Vec3;
 use physics::Physics;
-use state::EntityId;
 use state::App;
 use terrain::Terrain;
 use yaglw::gl_context::GLContext;
@@ -82,12 +81,12 @@ pub fn update<'a>(app: &mut App) {
  
 fn translate_mob(
   gl: &mut GLContext,
-  physics: &mut Physics<EntityId>,
+  physics: &mut Physics,
   mob_buffers: &mut mob::MobBuffers,
   mob: &mut mob::Mob,
   delta_p: Vec3<GLfloat>,
 ) {
-  if physics.translate(mob.id, delta_p).is_some() {
+  if physics.translate_misc(mob.id, delta_p).is_some() {
     mob.speed = mob.speed - delta_p;
   } else {
     let bounds = physics.get_bounds(mob.id).unwrap();

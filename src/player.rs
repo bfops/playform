@@ -33,7 +33,7 @@ pub struct Player {
 impl Player {
   /// Translates the player/camera by a vector.
   /// If the player collides with something with a small height jump, the player will shift upward.
-  pub fn translate(&mut self, physics: &mut Physics<EntityId>, v: Vec3<GLfloat>) {
+  pub fn translate(&mut self, physics: &mut Physics, v: Vec3<GLfloat>) {
     let bounds = physics.bounds.get_mut(&self.id).unwrap();
     let init_bounds =
       AABB::new(
@@ -45,8 +45,12 @@ impl Player {
     let mut step = 0.0;
     let mut collided = false;
     loop {
-      match Physics::reinsert(&mut physics.octree, self.id, bounds, new_bounds) {
+      match physics.terrain_octree.intersect(&new_bounds, None) {
         None => {
+          let move_successful = Physics::reinsert(&mut physics.misc_octree, self.id, bounds, new_bounds).is_none();
+          if move_successful {
+            self.camera.translate(v + Vec3::new(0.0, step, 0.0));
+          }
           break;
         },
         Some((collision_bounds, _)) => {
@@ -69,8 +73,6 @@ impl Player {
       }
     }
 
-    self.camera.translate(v + Vec3::new(0.0, step, 0.0));
-
     if collided {
       if v.y < 0.0 {
         self.jump_fuel = MAX_JUMP_FUEL;
@@ -84,7 +86,7 @@ impl Player {
     }
   }
 
-  pub fn update(&mut self, physics: &mut Physics<EntityId>) {
+  pub fn update(&mut self, physics: &mut Physics) {
     if self.is_jumping {
       if self.jump_fuel > 0 {
         self.jump_fuel -= 1;

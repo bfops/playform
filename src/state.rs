@@ -134,7 +134,7 @@ fn make_hud<'a>(
 
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App<'a> {
-  pub physics: Physics<EntityId>,
+  pub physics: Physics,
   pub player: Player,
   pub mobs: HashMap<EntityId, Rc<RefCell<mob::Mob>>>,
 
@@ -316,7 +316,8 @@ impl<'a> App<'a> {
 
     let mut physics =
       Physics {
-        octree: octree::Octree::new(octree_loader.clone(), &world_bounds),
+        terrain_octree: octree::Octree::new(octree_loader.clone(), &world_bounds),
+        misc_octree: octree::Octree::new(octree_loader.clone(), &world_bounds),
         bounds: HashMap::new(),
       };
 
@@ -349,7 +350,7 @@ impl<'a> App<'a> {
       let min = Pnt3::new(0.0, 64.0, 4.0);
       let max = min + Vec3::new(1.0, 2.0, 1.0);
       let bounds = AABB::new(min, max);
-      physics.insert(player.id, &bounds);
+      physics.insert_misc(player.id, &bounds);
 
       // initialize the projection matrix
       player.camera.translate(center(&bounds).to_vec());
@@ -410,7 +411,7 @@ impl<'a> App<'a> {
 
 fn add_mob(
   gl: &mut GLContext,
-  physics: &mut Physics<EntityId>,
+  physics: &mut Physics,
   mobs: &mut HashMap<EntityId, Rc<RefCell<mob::Mob>>>,
   mob_buffers: &mut mob::MobBuffers,
   id_allocator: &mut IdAllocator<EntityId>,
@@ -433,14 +434,14 @@ fn add_mob(
 
   mob_buffers.push(gl, id, &to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
 
-  physics.insert(id, &bounds);
+  physics.insert_misc(id, &bounds);
   mobs.insert(id, mob);
 }
 
 fn make_mobs<'a>(
   gl: &'a GLContextExistence,
   gl_context: & mut GLContext,
-  physics: &mut Physics<EntityId>,
+  physics: &mut Physics,
   id_allocator: &mut IdAllocator<EntityId>,
   shader: Rc<RefCell<Shader>>,
 ) -> (HashMap<EntityId, Rc<RefCell<mob::Mob>>>, mob::MobBuffers<'a>) {

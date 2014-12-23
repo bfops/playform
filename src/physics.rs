@@ -1,38 +1,48 @@
 use nalgebra::Vec3;
 use ncollide::bounding_volume::{AABB, AABB3};
 use octree::Octree;
+use state::EntityId;
 use std::collections::HashMap;
-use std::hash::Hash;
 
-pub struct Physics<T> {
-  pub octree: Octree<T>,
-  pub bounds: HashMap<T, AABB3<f32>>,
+pub struct Physics {
+  pub terrain_octree: Octree<EntityId>,
+  pub misc_octree: Octree<EntityId>,
+  pub bounds: HashMap<EntityId, AABB3<f32>>,
 }
 
-impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
-  pub fn insert(&mut self, t: T, bounds: &AABB3<f32>) {
-    self.octree.insert(bounds.clone(), t);
-    self.bounds.insert(t, bounds.clone());
+impl Physics {
+  pub fn insert_terrain(&mut self, id: EntityId, bounds: &AABB3<f32>) {
+    self.terrain_octree.insert(bounds.clone(), id);
+    self.bounds.insert(id, bounds.clone());
   }
 
-  #[allow(dead_code)]
-  pub fn remove(&mut self, t: T) {
-    match self.bounds.get(&t) {
+  pub fn insert_misc(&mut self, id: EntityId, bounds: &AABB3<f32>) {
+    self.misc_octree.insert(bounds.clone(), id);
+    self.bounds.insert(id, bounds.clone());
+  }
+
+  pub fn remove_terrain(&mut self, id: EntityId) {
+    match self.bounds.get(&id) {
       None => {},
       Some(bounds) => {
-        self.octree.remove(t, bounds);
+        self.terrain_octree.remove(bounds, id);
       },
     }
   }
 
-  pub fn get_bounds(&self, t: T) -> Option<&AABB3<f32>> {
-    self.bounds.get(&t)
+  pub fn get_bounds(&self, id: EntityId) -> Option<&AABB3<f32>> {
+    self.bounds.get(&id)
   }
 
-  pub fn reinsert(octree: &mut Octree<T>, t: T, bounds: &mut AABB3<f32>, new_bounds: AABB3<f32>) -> Option<(AABB3<f32>, T)> {
-    match octree.intersect(&new_bounds, Some(t)) {
+  pub fn reinsert(
+    octree: &mut Octree<EntityId>,
+    id: EntityId,
+    bounds: &mut AABB3<f32>,
+    new_bounds: AABB3<f32>,
+  ) -> Option<(AABB3<f32>, EntityId)> {
+    match octree.intersect(&new_bounds, Some(id)) {
       None => {
-        octree.reinsert(t, bounds, new_bounds.clone());
+        octree.reinsert(id, bounds, new_bounds.clone());
         *bounds = new_bounds;
         None
       },
@@ -40,13 +50,18 @@ impl<T: Copy + Eq + PartialOrd + Hash> Physics<T> {
     }
   }
 
-  pub fn translate(&mut self, t: T, amount: Vec3<f32>) -> Option<(AABB3<f32>, T)> {
-    let bounds = self.bounds.get_mut(&t).unwrap();
+  pub fn translate_misc(&mut self, id: EntityId, amount: Vec3<f32>) -> Option<(AABB3<f32>, EntityId)> {
+    let bounds = self.bounds.get_mut(&id).unwrap();
     let new_bounds =
       AABB::new(
         *bounds.mins() + amount,
         *bounds.maxs() + amount,
       );
-    Physics::reinsert(&mut self.octree, t, bounds, new_bounds)
+    let terrain_collision = self.terrain_octree.intersect(&new_bounds, None);
+    if terrain_collision.is_none() {
+      Physics::reinsert(&mut self.misc_octree, id, bounds, new_bounds)
+    } else {
+      terrain_collision
+    }
   }
 }

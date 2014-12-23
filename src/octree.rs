@@ -343,7 +343,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     self.on_mut_ancestor(&bounds, |t| t.insert(bounds.clone(), v))
   }
 
-  pub fn remove(&mut self, v: V, bounds: &AABB3<f32>) {
+  pub fn remove(&mut self, bounds: &AABB3<f32>, v: V) {
     assert!(self.bounds.contains(bounds));
     let collapse_contents = match self.contents {
       OctreeContents::Leaf(ref mut vs) => {
@@ -358,8 +358,8 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       },
       OctreeContents::Branch(ref mut bs) => {
         let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, bounds.clone());
-        l.map(|low_half| bs.low_tree.remove(v, &low_half));
-        h.map(|high_half| bs.high_tree.remove(v, &high_half));
+        l.map(|low_half| bs.low_tree.remove(&low_half, v));
+        h.map(|high_half| bs.high_tree.remove(&high_half, v));
         bs.low_tree.is_empty() && bs.high_tree.is_empty()
       }
     };
@@ -377,7 +377,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   }
 
   pub fn reinsert(&mut self, v: V, bounds: &AABB3<f32>, new_bounds: AABB3<f32>) {
-    self.remove(v, bounds);
+    self.remove(bounds, v);
     self.insert_from(new_bounds, v)
   }
 
