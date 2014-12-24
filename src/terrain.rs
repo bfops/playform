@@ -7,7 +7,7 @@ use ncollide::bounding_volume::{AABB, AABB3};
 use noise::source::Perlin;
 use noise::model::Plane;
 use state::EntityId;
-use std::collections::hash_map::{HashMap, Occupied, Vacant};
+use std::collections::hash_map::{HashMap, Entry};
 use std::mem;
 use std::num::Float;
 use stopwatch::TimerSet;
@@ -88,11 +88,11 @@ impl<'a> Terrain<'a> {
     position: &BlockPosition,
   ) -> &'a TerrainBlock {
     match self.all_blocks.entry(*position) {
-      Occupied(entry) => unsafe {
+      Entry::Occupied(entry) => unsafe {
         // Escape lifetime bounds.
         mem::transmute(entry.get())
       },
-      Vacant(entry) => {
+      Entry::Vacant(entry) => {
         let heightmap = &self.heightmap;
         let block =
           timers.time("update.generate_block", || {

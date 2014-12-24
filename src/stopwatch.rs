@@ -3,7 +3,7 @@
 use std::cell::{RefCell, Ref};
 use std::rc::Rc;
 use std::collections::HashMap;
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry;
 use time;
 
 /// A simple stopwatch taht can time events and print stats about them.
@@ -70,8 +70,8 @@ impl TimerSet {
   pub fn time<T>(&self, name: &str, f: || -> T) -> T {
     let timer : Rc<RefCell<Stopwatch>> =
       match self.timers.borrow_mut().entry(String::from_str(name)) {
-        Occupied(entry) => entry.get().clone(),
-        Vacant(entry) => entry.set(Rc::new(RefCell::new(Stopwatch::new()))).clone(),
+        Entry::Occupied(entry) => entry.get().clone(),
+        Entry::Vacant(entry) => entry.set(Rc::new(RefCell::new(Stopwatch::new()))).clone(),
       };
 
     match timer.try_borrow_mut() {
