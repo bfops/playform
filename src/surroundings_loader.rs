@@ -22,9 +22,10 @@ use std::num::SignedInt;
 
 pub const LOAD_DISTANCE: int = 10;
 
-pub const BLOCK_UPDATE_BUDGET: int = 16;
-pub const BLOCK_LOAD_COST: int = 2;
-pub const BLOCK_UNLOAD_COST: int = 1;
+// values are approximately in microseconds, but they don't have to be.
+pub const BLOCK_UPDATE_BUDGET: int = 5000;
+pub const BLOCK_LOAD_COST: int = 500;
+pub const BLOCK_UNLOAD_COST: int = 300;
 
 /// Keep surroundings loaded around a given world position.
 pub struct SurroundingsLoader<'a> {
