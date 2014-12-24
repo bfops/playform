@@ -78,7 +78,7 @@ pub fn update<'a>(app: &mut App) {
     });
   })
 }
- 
+
 fn translate_mob(
   gl: &mut GLContext,
   physics: &mut Physics,

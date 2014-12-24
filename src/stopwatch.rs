@@ -26,7 +26,7 @@ impl Stopwatch {
 
   #[inline]
   /// Times a function, updating stats as necessary.
-  pub fn timed<T>(&mut self, event: | | -> T) -> T {
+  pub fn timed<T, F: FnOnce() -> T>(&mut self, event: F) -> T {
     let then = time::precise_time_ns();
     let ret = event();
     self.total_time += time::precise_time_ns() - then;
@@ -67,7 +67,7 @@ impl TimerSet {
   ///
   /// This function is not marked `mut` because borrow checking is done
   /// dynamically.
-  pub fn time<T>(&self, name: &str, f: || -> T) -> T {
+  pub fn time<T, F: FnOnce() -> T>(&self, name: &str, f: F) -> T {
     let timer : Rc<RefCell<Stopwatch>> =
       match self.timers.borrow_mut().entry(String::from_str(name)) {
         Entry::Occupied(entry) => entry.get().clone(),
