@@ -10,7 +10,6 @@ use mob;
 use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
 use nalgebra;
 use ncollide::bounding_volume::{AABB, AABB3};
-use octree;
 use physics::Physics;
 use player::Player;
 use sdl2::mouse;
@@ -182,11 +181,6 @@ impl<'a> App<'a> {
     gl_context.set_background_color(SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a);
     mouse::show_cursor(false);
 
-    let world_bounds = AABB::new(
-      Pnt3 { x: -512.0, y: -32.0, z: -512.0 },
-      Pnt3 { x: 512.0, y: 512.0, z: 512.0 },
-    );
-
     let texture_shader = {
       let texture_shader =
         Rc::new(RefCell::new(shader::from_file_prefix(
@@ -307,11 +301,12 @@ impl<'a> App<'a> {
       make_text(gl, gl_context, hud_texture_shader.clone());
 
     let mut physics =
-      Physics {
-        terrain_octree: octree::Octree::new(&world_bounds),
-        misc_octree: octree::Octree::new(&world_bounds),
-        bounds: HashMap::new(),
-      };
+      Physics::new(
+        AABB::new(
+          Pnt3 { x: -512.0, y: -32.0, z: -512.0 },
+          Pnt3 { x: 512.0, y: 512.0, z: 512.0 },
+        )
+      );
 
     let mut id_allocator = IdAllocator::new();
 

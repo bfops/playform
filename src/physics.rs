@@ -11,6 +11,14 @@ pub struct Physics {
 }
 
 impl Physics {
+  pub fn new(world_bounds: AABB3<f32>) -> Physics {
+    Physics {
+      terrain_octree: Octree::new(&world_bounds),
+      misc_octree: Octree::new(&world_bounds),
+      bounds: HashMap::new(),
+    }
+  }
+
   pub fn insert_terrain(&mut self, id: EntityId, bounds: &AABB3<f32>) {
     self.terrain_octree.insert(bounds.clone(), id);
     self.bounds.insert(id, bounds.clone());
