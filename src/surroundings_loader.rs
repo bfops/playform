@@ -11,6 +11,15 @@ use std::iter::range_inclusive;
 use stopwatch::TimerSet;
 use yaglw::gl_context::GLContext;
 
+#[cfg(test)]
+use cube_shell::cube_shell_area;
+#[cfg(test)]
+use nalgebra::Pnt3;
+#[cfg(test)]
+use std::cmp::max;
+#[cfg(test)]
+use std::num::SignedInt;
+
 pub const LOAD_DISTANCE: int = 10;
 
 pub const BLOCK_UPDATE_BUDGET: int = 16;
@@ -169,4 +178,32 @@ impl<'a> SurroundingsLoader<'a> {
       }
     }
   }
+}
+
+#[test]
+fn shell_ordering() {
+  fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> int {
+    let dx = (p1.x - p2.x).abs();
+    let dy = (p1.y - p2.y).abs();;
+    let dz = (p1.z - p2.z).abs();;
+    max(max(dx, dy), dz)
+  }
+
+  let mut loader = SurroundingsLoader::new();
+  let timers = TimerSet::new();
+  let position = Pnt3::new(1, -4, 7);
+  loader.update_queues(&timers, position);
+  let mut loader = loader.load_queue.into_iter();
+
+  // The load queue should contain cube shells in increasing order of radius, up to LOAD_DISTANCE radius.
+  for radius in range_inclusive(0, LOAD_DISTANCE) {
+    for _ in range(0, cube_shell_area(radius)) {
+      let load_position = loader.next();
+      // The next load position should be in the cube shell of the given radius, relative to the center position.
+      assert_eq!(radius_between(&position, &load_position.unwrap()), radius);
+    }
+  }
+
+  // The load queue should be exactly the shells specified above, and nothing else.
+  assert!(loader.next().is_none());
 }

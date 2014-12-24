@@ -1,10 +1,12 @@
 use nalgebra::Pnt3;
 use range_abs::range_abs;
+
 #[cfg(test)]
 use std::collections::HashSet;
 #[cfg(test)]
 use test::Bencher;
 
+#[inline]
 /// Generate the set of points corresponding to the surface of a cube made of voxels.
 pub fn cube_shell(center: Pnt3<int>, radius: int) -> Vec<Pnt3<int>> {
   let mut shell = Vec::new();
@@ -44,6 +46,22 @@ pub fn cube_shell(center: Pnt3<int>, radius: int) -> Vec<Pnt3<int>> {
   shell
 }
 
+#[cfg(test)]
+/// the number of elements in a cube shell
+pub fn cube_shell_area(radius: int) -> uint {
+  assert!(radius >= 0);
+  if radius == 0 {
+    return 1;
+  }
+
+  let width = 2 * radius + 1;
+  // volume of the cube
+  let outer = width * width * width;
+  // volume of the cube of radius r - 1.
+  let inner = (width - 2) * (width - 2) * (width - 2);
+  (outer - inner) as uint
+}
+
 #[test]
 // Check that the surface area is correct for a few different shells.
 fn test_surface_area() {
@@ -53,12 +71,10 @@ fn test_surface_area() {
   ];
   for center in centers.iter() {
     for radius in range(1, 5) {
-      let width = 2 * radius + 1;
-      // volume of the cube
-      let outer = width * width * width;
-      // volume of the cube of radius r - 1.
-      let inner = (width - 2) * (width - 2) * (width - 2);
-      assert_eq!(cube_shell(center.clone(), radius as int).len(), outer - inner);
+      assert_eq!(
+        cube_shell(center.clone(), radius as int).len(),
+        cube_shell_area(radius)
+      );
     }
   }
 }
