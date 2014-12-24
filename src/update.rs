@@ -1,15 +1,12 @@
 use color::Color4;
 use common::*;
 use gl::types::*;
-use loader::Operation;
 use mob;
 use nalgebra::Vec3;
 use physics::Physics;
 use state::App;
 use terrain::Terrain;
 use yaglw::gl_context::GLContext;
-
-static OCTREE_LOAD_SPEED: uint = 1 << 11;
 
 macro_rules! translate_mob(
   ($world:expr, $mob:expr, $v:expr) => (
@@ -27,20 +24,15 @@ pub fn update<'a>(app: &mut App) {
   app.timers.time("update", || {
     let player_block_position = Terrain::to_block_position(&app.player.camera.position);
 
-    app.timers.time("update.load", || {
-      app.timers.time("update.load.terrain", || {
-        app.surroundings_loader.update(
-          app.timers,
-          app.gl_context,
-          &mut app.terrain_buffers,
-          &mut app.id_allocator,
-          &mut app.physics,
-          player_block_position,
-        );
-      });
-      app.timers.time("update.load.octree", || {
-        load_octree(app);
-      });
+    app.timers.time("update.load.terrain", || {
+      app.surroundings_loader.update(
+        app.timers,
+        app.gl_context,
+        &mut app.terrain_buffers,
+        &mut app.id_allocator,
+        &mut app.physics,
+        player_block_position,
+      );
     });
 
     app.timers.time("update.player", || {
@@ -95,20 +87,5 @@ fn translate_mob(
       mob.id,
       &to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
     );
-  }
-}
-
-fn load_octree<'a>(app: &mut App<'a>) {
-  // octree loading
-  for _ in range(0, OCTREE_LOAD_SPEED) {
-    match app.octree_loader.borrow_mut().pop_front() {
-      None => break,
-      Some(Operation::Load((id, bounds))) => {
-        app.octree_buffers.push(app.gl_context, id, &to_outlines(&bounds));
-      },
-      Some(Operation::Unload(id)) => {
-        app.octree_buffers.swap_remove(app.gl_context, id);
-      }
-    }
   }
 }

@@ -6,7 +6,6 @@ use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
 use light::{Light, set_point_light, set_ambient_light};
-use loader::Loader;
 use mob;
 use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
 use nalgebra;
@@ -19,7 +18,6 @@ use shader;
 use stopwatch::TimerSet;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::collections::RingBuf;
 use std::default::Default;
 use std::f32::consts::PI;
 use std::rc::Rc;
@@ -140,12 +138,10 @@ pub struct App<'a> {
 
   pub id_allocator: IdAllocator<EntityId>,
   pub surroundings_loader: SurroundingsLoader<'a>,
-  pub octree_loader: Rc<RefCell<Loader<(octree::OctreeId, AABB3<GLfloat>), octree::OctreeId>>>,
 
   // OpenGL buffers
   pub terrain_buffers: TerrainVRAMBuffers<'a>,
   pub mob_buffers: mob::MobBuffers<'a>,
-  pub octree_buffers: octree::OctreeBuffers<'a, EntityId>,
   pub line_of_sight: GLArray<'a, ColoredVertex>,
   pub hud_triangles: GLArray<'a, ColoredVertex>,
   pub text_triangles: GLArray<'a, TextureVertex>,
@@ -159,7 +155,6 @@ pub struct App<'a> {
   pub hud_texture_shader: Rc<RefCell<Shader<'a>>>,
   pub hud_color_shader: Rc<RefCell<Shader<'a>>>,
 
-  pub render_octree: bool,
   pub render_outlines: bool,
 
   pub timers: &'a TimerSet,
@@ -301,9 +296,6 @@ impl<'a> App<'a> {
 
     let hud_triangles = make_hud(gl, gl_context, hud_color_shader.clone());
 
-    let octree_loader = Rc::new(RefCell::new(RingBuf::new()));
-    let octree_buffers = octree::OctreeBuffers::new(gl, gl_context, &color_shader);
-
     let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
     let terrain_buffers = {
       let terrain_buffers = TerrainVRAMBuffers::new(gl, gl_context);
@@ -316,8 +308,8 @@ impl<'a> App<'a> {
 
     let mut physics =
       Physics {
-        terrain_octree: octree::Octree::new(octree_loader.clone(), &world_bounds),
-        misc_octree: octree::Octree::new(octree_loader.clone(), &world_bounds),
+        terrain_octree: octree::Octree::new(&world_bounds),
+        misc_octree: octree::Octree::new(&world_bounds),
         bounds: HashMap::new(),
       };
 
@@ -381,9 +373,7 @@ impl<'a> App<'a> {
       physics: physics,
       id_allocator: id_allocator,
       surroundings_loader: SurroundingsLoader::new(),
-      octree_loader: octree_loader,
       mob_buffers: mob_buffers,
-      octree_buffers: octree_buffers,
       terrain_buffers: terrain_buffers,
       player: player,
       mobs: mobs,
@@ -395,7 +385,6 @@ impl<'a> App<'a> {
       texture_shader: texture_shader,
       hud_color_shader: hud_color_shader,
       hud_texture_shader: hud_texture_shader,
-      render_octree: false,
       render_outlines: false,
       timers: timers,
       gl: gl,

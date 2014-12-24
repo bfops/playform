@@ -12,7 +12,7 @@ Help is appreciated! You can hop over to the [issues page](https://github.com/bf
 
 ## Making it work
 
-Have a `rustc` and `cargo` built no earlier than December 18th, 2014.
+Have a `rustc` and `cargo` built no earlier than December 23rd, 2014.
 Install `libpng`, `SDL2` and `SDL2_ttf`.
 Run `cargo run`! Consider setting `RUST_BACKTRACE=1` and `RUST_LOG=info` when you run playform.
 
@@ -21,7 +21,6 @@ Run `cargo run`! Consider setting `RUST_BACKTRACE=1` and `RUST_LOG=info` when yo
   * Move: WASD
   * Jump: Space
   * Look around: Mouse
-  * Toggle octree rendering: O
   * Toggle block outline rendering: L
   * Save line-of-sight: M
 

@@ -71,9 +71,6 @@ fn key_press<'a>(app: &mut App<'a>, key: KeyCode) {
         ];
         app.line_of_sight.buffer.update(app.gl_context, 0, &updates);
       },
-      KeyCode::O => {
-        app.render_octree = !app.render_octree;
-      }
       KeyCode::L => {
         app.render_outlines = !app.render_outlines;
       }

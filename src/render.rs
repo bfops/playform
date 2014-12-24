@@ -15,10 +15,6 @@ pub fn render<'a>(app: &mut App<'a>) {
     app.line_of_sight.bind(app.gl_context);
     app.line_of_sight.draw(app.gl_context);
 
-    if app.render_octree {
-      app.octree_buffers.draw(app.gl_context);
-    }
-
     set_camera(app.texture_shader.borrow_mut().deref_mut(), app.gl_context, &app.player.camera);
 
     // draw the world

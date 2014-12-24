@@ -13,10 +13,6 @@ pub const TRIANGLES_PER_BOX: uint = 12;
 pub const VERTICES_PER_TRIANGLE: uint = 3;
 pub const TRIANGLE_VERTICES_PER_BOX: uint = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
 
-pub const VERTICES_PER_LINE: uint = 2;
-pub const LINES_PER_BOX: uint = 12;
-pub const LINE_VERTICES_PER_BOX: uint = LINES_PER_BOX * VERTICES_PER_LINE;
-
 pub const USE_LIGHTING: bool = true;
 
 pub const MAX_WORLD_SIZE: uint = 800000;
@@ -45,36 +41,6 @@ pub fn partial_min_by<A: Copy, T: Iterator<A>, B: PartialOrd>(t: T, f: |A| -> B)
   }
 
   min_a
-}
-
-pub fn to_outlines<'a>(bounds: &AABB3<GLfloat>) -> [ColoredVertex, ..LINE_VERTICES_PER_BOX] {
-  let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
-  let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
-  let c = Color4::of_rgba(0.0, 0.0, 0.0, 0.1);
-
-  let vtx = |x: f32, y: f32, z: f32| -> ColoredVertex {
-    ColoredVertex {
-      position: Pnt3::new(x, y, z),
-      color: c
-    }
-  };
-
-  [
-    vtx(x1, y1, z1), vtx(x2, y1, z1),
-    vtx(x1, y2, z1), vtx(x2, y2, z1),
-    vtx(x1, y1, z2), vtx(x2, y1, z2),
-    vtx(x1, y2, z2), vtx(x2, y2, z2),
-
-    vtx(x1, y1, z1), vtx(x1, y2, z1),
-    vtx(x2, y1, z1), vtx(x2, y2, z1),
-    vtx(x1, y1, z2), vtx(x1, y2, z2),
-    vtx(x2, y1, z2), vtx(x2, y2, z2),
-
-    vtx(x1, y1, z1), vtx(x1, y1, z2),
-    vtx(x2, y1, z1), vtx(x2, y1, z2),
-    vtx(x1, y2, z1), vtx(x1, y2, z2),
-    vtx(x2, y2, z1), vtx(x2, y2, z2),
-  ]
 }
 
 pub fn to_triangles(bounds: &AABB3<GLfloat>, c: &Color4<GLfloat>) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {

@@ -1,20 +1,12 @@
 use common::*;
-use vertex::ColoredVertex;
-use loader::{Loader,Operation};
 use nalgebra::Pnt3;
 use nalgebra::partial_lt;
 use ncollide::bounding_volume::{AABB, AABB3};
 use ncollide::bounding_volume::BoundingVolume;
 use ncollide::ray::{Ray3, LocalRayCast};
-use std::cell::RefCell;
-use std::collections::HashMap;
 use std::hash::Hash;
 use std::num::NumCast;
 use std::ptr::RawPtr;
-use std::rc::Rc;
-use yaglw::vertex_buffer::*;
-use yaglw::gl_context::{GLContext, GLContextExistence};
-use yaglw::shader::Shader;
 
 fn aabb_overlap(aabb1: &AABB3<f32>, aabb2: &AABB3<f32>) -> bool {
   partial_lt(aabb1.mins(), aabb2.maxs()) &&
@@ -67,83 +59,6 @@ fn split(mid: f32, d: Dimension, bounds: AABB3<f32>) -> (Option<AABB3<f32>>, Opt
 #[deriving(Copy)]
 pub enum Dimension { X, Y, Z }
 
-#[deriving(Copy, Clone, PartialEq, Eq, Hash, Show)]
-pub struct OctreeId(uint);
-
-impl Add<uint, OctreeId> for OctreeId {
-  fn add(self, rhs: uint) -> OctreeId {
-    let OctreeId(id) = self;
-    OctreeId(id + rhs)
-  }
-}
-
-pub struct OctreeBuffers<'a, V> {
-  entry_to_index: HashMap<OctreeId, uint>,
-  index_to_entry: Vec<OctreeId>,
-
-  outlines: GLArray<'a, ColoredVertex>,
-}
-
-impl<'a, V> OctreeBuffers<'a, V> {
-  pub fn new(
-    gl: &'a GLContextExistence,
-    gl_context: &mut GLContext,
-    shader_program: &Rc<RefCell<Shader>>
-  ) -> OctreeBuffers<'a, V> {
-    let buffer = GLBuffer::new(gl, gl_context, 10 * MAX_WORLD_SIZE);
-    OctreeBuffers {
-      entry_to_index: HashMap::new(),
-      index_to_entry: Vec::new(),
-
-      outlines: GLArray::new(
-        gl,
-        gl_context,
-        shader_program.clone(),
-        &[
-	        VertexAttribData { name: "position", size: 3, unit: GLType::Float },
-          VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },
-        ],
-        DrawMode::Lines,
-        buffer,
-      ),
-    }
-  }
-
-  pub fn push(
-    &mut self,
-    gl: &mut GLContext,
-    entry: OctreeId,
-    outlines: &[ColoredVertex],
-  ) {
-    assert!(!self.entry_to_index.contains_key(&entry));
-    self.entry_to_index.insert(entry, self.index_to_entry.len());
-    self.index_to_entry.push(entry);
-
-    self.outlines.buffer.byte_buffer.bind(gl);
-    self.outlines.push(gl, outlines);
-  }
-
-  pub fn swap_remove(&mut self, gl: &mut GLContext, entry: OctreeId) {
-    let &idx = self.entry_to_index.get(&entry).unwrap();
-    let swapped_id = self.index_to_entry[self.index_to_entry.len() - 1];
-    self.index_to_entry.swap_remove(idx).unwrap();
-    self.entry_to_index.remove(&entry);
-
-    self.outlines.buffer.byte_buffer.bind(gl);
-    self.outlines.swap_remove(gl, idx * LINE_VERTICES_PER_BOX, LINE_VERTICES_PER_BOX);
-
-    if entry != swapped_id {
-      self.entry_to_index.insert(swapped_id, idx);
-      assert!(self.index_to_entry[idx] == swapped_id);
-    }
-  }
-
-  pub fn draw(&self, gl: &mut GLContext) {
-    self.outlines.bind(gl);
-    self.outlines.draw(gl);
-  }
-}
-
 struct Branches<V> {
   low_tree: Box<Octree<V>>,
   high_tree: Box<Octree<V>>,
@@ -156,42 +71,23 @@ enum OctreeContents<V> {
   Branch(Branches<V>),
 }
 
-static mut next_id: OctreeId = OctreeId(0);
-
-pub type OctreeLoader = Loader<(OctreeId, AABB3<f32>), OctreeId>;
-
 // TODO: allow inserting things with a "mobile" flag; don't subdivide those objects.
 pub struct Octree<V> {
   parent: *mut Octree<V>,
   dimension: Dimension,
   bounds: AABB3<f32>,
   contents: OctreeContents<V>,
-
-  // for rendering
-  id: OctreeId,
-  loader: Rc<RefCell<OctreeLoader>>,
 }
 
 // TODO: fix shaky octree outline insertion/removal conditions.
 
 impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
-  pub fn new(loader: Rc<RefCell<OctreeLoader>>, bounds: &AABB3<f32>) -> Octree<V> {
+  pub fn new(bounds: &AABB3<f32>) -> Octree<V> {
     Octree {
       parent: RawPtr::null(),
       dimension: Dimension::X,
       bounds: bounds.clone(),
       contents: OctreeContents::Leaf(Vec::new()),
-      id: Octree::<V>::alloc_id(),
-      loader: loader,
-    }
-  }
-
-  /// Create a new unique OctreeId.
-  fn alloc_id() -> OctreeId {
-    unsafe {
-      let id = next_id;
-      next_id = next_id + 1;
-      id
     }
   }
 
@@ -199,10 +95,6 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     assert!(self.bounds.contains(&bounds));
     let contents = match self.contents {
       OctreeContents::Leaf(ref mut vs) => {
-        if vs.is_empty() {
-          self.loader.borrow_mut().push_back(Operation::Load((self.id, self.bounds.clone())));
-        }
-
         vs.push((bounds, v));
 
         let d = self.dimension;
@@ -213,12 +105,9 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
           ) / NumCast::from(vs.len()).unwrap();
 
         if avg_length < length(&self.bounds, self.dimension) / 2.0 {
-          self.loader.borrow_mut().push_back(Operation::Unload(self.id));
-
           let (low, high) =
             Octree::bisect(
               self,
-              &self.loader,
               &self.bounds,
               self.dimension,
               vs
@@ -241,11 +130,10 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
 
   // Split a leaf into two subtrees.
   fn bisect(
-      parent: *mut Octree<V>,
-      loader: &Rc<RefCell<OctreeLoader>>,
-      bounds: &AABB3<f32>,
-      dimension: Dimension,
-      vs: &LeafContents<V>
+    parent: *mut Octree<V>,
+    bounds: &AABB3<f32>,
+    dimension: Dimension,
+    vs: &LeafContents<V>
   ) -> (Octree<V>, Octree<V>) {
     let mid = middle(bounds, dimension);
     let (low_bounds, high_bounds) = split(mid, dimension, bounds.clone());
@@ -262,16 +150,12 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       dimension: new_d,
       bounds: low_bounds.clone(),
       contents: OctreeContents::Leaf(Vec::new()),
-      id: Octree::<V>::alloc_id(),
-      loader: loader.clone(),
     };
     let mut high = Octree {
       parent: parent,
       dimension: new_d,
       bounds: high_bounds.clone(),
       contents: OctreeContents::Leaf(Vec::new()),
-      id: Octree::<V>::alloc_id(),
-      loader: loader.clone(),
     };
 
     for &(ref bounds, v) in vs.iter() {
@@ -349,12 +233,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       OctreeContents::Leaf(ref mut vs) => {
         let i = vs.iter().position(|&(_, ref x)| *x == v).unwrap();
         vs.swap_remove(i);
-        if vs.is_empty() {
-          self.loader.borrow_mut().push_back(Operation::Unload(self.id));
-          false
-        } else {
-          false
-        }
+        false
       },
       OctreeContents::Branch(ref mut bs) => {
         let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, bounds.clone());
