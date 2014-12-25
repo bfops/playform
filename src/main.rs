@@ -12,7 +12,7 @@ use std::io::timer;
 use stopwatch::TimerSet;
 use time;
 use update::update;
-use yaglw::gl_context::{GLContext, GLContextExistence};
+use yaglw::gl_context::GLContext;
 
 pub const FRAMES_PER_SECOND: u64 = 30;
 pub const UPDATES_PER_SECOND: u64 = 30;
@@ -20,9 +20,42 @@ pub const UPDATES_PER_SECOND: u64 = 30;
 pub fn main() {
   debug!("starting");
 
-  with_sdl2_gl_loaded(|window, gl, gl_context| {
+  sdl2::init(sdl2::INIT_EVERYTHING);
+
+  sdl2::video::gl_set_attribute(sdl2::video::GLAttr::GLContextMajorVersion, 3);
+  sdl2::video::gl_set_attribute(sdl2::video::GLAttr::GLContextMinorVersion, 3);
+  sdl2::video::gl_set_attribute(
+    sdl2::video::GLAttr::GLContextProfileMask,
+    sdl2::video::GLProfile::GLCoreProfile as int
+  );
+
+  let mut window =
+    sdl2::video::Window::new(
+      "playform",
+      sdl2::video::WindowPos::PosCentered,
+      sdl2::video::WindowPos::PosCentered,
+      WINDOW_WIDTH as int,
+      WINDOW_HEIGHT as int,
+      sdl2::video::OPENGL,
+    ).unwrap();
+
+  // Send text input events.
+  sdl2::keyboard::start_text_input();
+
+  {
+    let _sdl_gl_context = window.gl_create_context().unwrap();
+
+    // Load the OpenGL function pointers.
+    gl::load_with(|s| unsafe {
+      mem::transmute(sdl2::video::gl_get_proc_address(s))
+    });
+
+    let (gl, mut gl_context) = unsafe {
+      GLContext::new()
+    };
+
     let timers = TimerSet::new();
-    let mut app = App::new(gl, gl_context, &timers);
+    let mut app = App::new(&gl, &mut gl_context, &timers);
 
     let mut render_timer;
     let mut update_timer;
@@ -58,50 +91,13 @@ pub fn main() {
             return;
           }
           event => {
-            process_event(&mut app, window, event);
+            process_event(&mut app, &mut window, event);
           },
         }
       }
       timer::sleep(Duration::microseconds(10));
     }
-  });
+  }
 
   debug!("finished");
-}
-
-#[allow(unused_variables)]
-fn with_sdl2_gl_loaded(act: |&mut sdl2::video::Window, &GLContextExistence, &mut GLContext|) {
-  sdl2::init(sdl2::INIT_EVERYTHING);
-
-  sdl2::video::gl_set_attribute(sdl2::video::GLAttr::GLContextMajorVersion, 3);
-  sdl2::video::gl_set_attribute(sdl2::video::GLAttr::GLContextMinorVersion, 3);
-  sdl2::video::gl_set_attribute(
-    sdl2::video::GLAttr::GLContextProfileMask,
-    sdl2::video::GLProfile::GLCoreProfile as int
-  );
-
-  let mut window = sdl2::video::Window::new(
-    "playform",
-    sdl2::video::WindowPos::PosCentered,
-    sdl2::video::WindowPos::PosCentered,
-    WINDOW_WIDTH as int,
-    WINDOW_HEIGHT as int,
-    sdl2::video::OPENGL,
-  ).unwrap();
-
-  // Send text input events.
-  sdl2::keyboard::start_text_input();
-
-  let sdl_gl_context = window.gl_create_context().unwrap();
-
-  // Load the OpenGL function pointers.
-  gl::load_with(|s| unsafe {
-    mem::transmute(sdl2::video::gl_get_proc_address(s))
-  });
-
-  let (gl, mut gl_context) = unsafe {
-    GLContext::new()
-  };
-
-  act(&mut window, &gl, &mut gl_context);
 }
