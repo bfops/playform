@@ -161,7 +161,9 @@ impl<'a> SurroundingsLoader<'a> {
             },
             Some(block_position) => {
               timers.time("update.load_some.load", || {
-                let block = self.terrain.load(timers, id_allocator, &block_position);
+                let block = unsafe {
+                  self.terrain.load(timers, id_allocator, &block_position)
+                };
 
                 timers.time("update.load_some.load.physics", || {
                   for (&id, bounds) in block.bounds.iter() {
@@ -172,7 +174,7 @@ impl<'a> SurroundingsLoader<'a> {
                 timers.time("update.load_some.load.vram", || {
                   terrain_buffers.push(
                     gl,
-                    block.vertices.as_slice(),
+                    block.vertex_coordinates.as_slice(),
                     block.normals.as_slice(),
                     block.typs.as_slice(),
                     block.ids.as_slice(),

@@ -32,6 +32,31 @@ pub enum TerrainType {
 
 pub type BlockPosition = Pnt3<int>;
 
+pub struct TerrainBlock {
+  // vertex coordinates flattened into separate GLfloats (x, y, z order)
+  pub vertex_coordinates: Vec<GLfloat>,
+  // per-triangle normal vectors flattened into separate GLfloats (x, y, z order)
+  pub normals: Vec<GLfloat>,
+  // per-triangle terrain types
+  pub typs: Vec<GLuint>,
+  // per-triangle entity IDs
+  pub ids: Vec<EntityId>,
+  // per-triangle bounding boxes
+  pub bounds: HashMap<EntityId, AABB3<GLfloat>>,
+}
+
+impl TerrainBlock {
+  pub fn new() -> TerrainBlock {
+    TerrainBlock {
+      vertex_coordinates: Vec::new(),
+      normals: Vec::new(),
+      typs: Vec::new(),
+      ids: Vec::new(),
+      bounds: HashMap::new(),
+    }
+  }
+}
+
 /// This struct contains and lazily generates the world's terrain.
 pub struct Terrain<'a> {
   // this is used for generating new blocks.
@@ -85,18 +110,18 @@ impl<'a> Terrain<'a> {
     )
   }
 
-  // Once a reference is returned from `load`, is should be valid forever.
+  /// N.B. The references returned from this function may not be valid once this object is touched again.
   // TODO: Figure out a way to specify that the reference can only be valid
   // until this object is touched again (or deleted).
   #[inline]
-  pub fn load(
+  pub unsafe fn load(
     &'a mut self,
     timers: &TimerSet,
     id_allocator: &mut IdAllocator<EntityId>,
     position: &BlockPosition,
   ) -> &'a TerrainBlock {
     match self.all_blocks.entry(*position) {
-      Entry::Occupied(entry) => unsafe {
+      Entry::Occupied(entry) => {
         // Escape lifetime bounds.
         mem::transmute(entry.get())
       },
@@ -206,7 +231,7 @@ impl<'a> Terrain<'a> {
           }
 
           let id = id_allocator.allocate();
-          block.vertices.push_all(&[
+          block.vertex_coordinates.push_all(&[
             v1.x, v1.y, v1.z,
             v2.x, v2.y, v2.z,
             center.x, center.y, center.z,
@@ -227,26 +252,6 @@ impl<'a> Terrain<'a> {
         place_terrain(&v3, &v4, center.x, center.z, v3.x, v3.z);
         place_terrain(&v4, &v1, v1.x, v1.z, v4.x, center.z);
       })
-    }
-  }
-}
-
-pub struct TerrainBlock {
-  pub vertices: Vec<GLfloat>,
-  pub normals: Vec<GLfloat>,
-  pub typs: Vec<GLuint>,
-  pub ids: Vec<EntityId>,
-  pub bounds: HashMap<EntityId, AABB3<GLfloat>>,
-}
-
-impl TerrainBlock {
-  pub fn new() -> TerrainBlock {
-    TerrainBlock {
-      vertices: Vec::new(),
-      normals: Vec::new(),
-      typs: Vec::new(),
-      ids: Vec::new(),
-      bounds: HashMap::new(),
     }
   }
 }
