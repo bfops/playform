@@ -8,7 +8,7 @@ use test::Bencher;
 
 #[inline]
 /// Generate the set of points corresponding to the surface of a cube made of voxels.
-pub fn cube_shell(center: Pnt3<int>, radius: int) -> Vec<Pnt3<int>> {
+pub fn cube_shell(center: &Pnt3<int>, radius: int) -> Vec<Pnt3<int>> {
   let mut shell = Vec::new();
  
   macro_rules! add_square(

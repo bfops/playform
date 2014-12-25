@@ -79,38 +79,11 @@ impl<'a> SurroundingsLoader<'a> {
     if Some(block_position) != self.last_position {
       self.last_position = Some(block_position);
 
-      let mut want_loaded = Vec::new();
-      let mut want_loaded_set = HashSet::new();
-
-      timers.time("update.update_queues.want_loaded", || {
-        want_loaded.push(block_position);
-        want_loaded_set.insert(block_position);
-
-        for radius in range_inclusive(1, LOAD_DISTANCE) {
-          let blocks_at_radius = cube_shell(block_position, radius);
-          want_loaded.push_all(blocks_at_radius.as_slice());
-          for block_position in blocks_at_radius.into_iter() {
-            want_loaded_set.insert(block_position);
-          }
-        }
-      });
-
-      self.load_queue.clear();
-
-      timers.time("update.update_queues.unload_queue", || {
-        for block_position in self.want_loaded.iter() {
-          let is_loaded = self.loaded.contains(block_position);
-          if is_loaded {
-            let is_needed = want_loaded_set.contains(block_position);
-            if !is_needed {
-              self.unload_queue.push_back(*block_position);
-            }
-          }
-        }
-      });
+      let (want_loaded_vec, want_loaded_set) = SurroundingsLoader::wanted_blocks(timers, &block_position);
 
       timers.time("update.update_queues.load_queue", || {
-        for block_position in want_loaded.iter() {
+        self.load_queue.clear();
+        for block_position in want_loaded_vec.iter() {
           let is_loaded = self.loaded.contains(block_position);
           if !is_loaded {
             self.load_queue.push_back(*block_position);
@@ -118,8 +91,38 @@ impl<'a> SurroundingsLoader<'a> {
         }
       });
 
-      self.want_loaded = want_loaded_set;
+      timers.time("update.update_queues.unload_queue", || {
+        self.unload_queue.clear();
+        for block_position in self.loaded.iter() {
+          let is_needed = want_loaded_set.contains(block_position);
+          if !is_needed {
+            self.unload_queue.push_back(*block_position);
+          }
+        }
+      });
     }
+  }
+
+  #[inline]
+  // Get the set of all blocks we want loaded around a given position.
+  fn wanted_blocks(timers: &TimerSet, position: &BlockPosition) -> (Vec<BlockPosition>, HashSet<BlockPosition>) {
+    timers.time("update.update_queues.want_loaded", || {
+      let mut want_loaded_vec = Vec::new();
+      let mut want_loaded_set = HashSet::new();
+
+      want_loaded_vec.push(position.clone());
+      want_loaded_set.insert(position.clone());
+
+      for radius in range_inclusive(1, LOAD_DISTANCE) {
+        let blocks_at_radius = cube_shell(position, radius);
+        for position in blocks_at_radius.into_iter() {
+          want_loaded_vec.push(position);
+          want_loaded_set.insert(position);
+        }
+      }
+
+      (want_loaded_vec, want_loaded_set)
+    })
   }
 
   #[inline]
