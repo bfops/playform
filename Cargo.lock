@@ -5,7 +5,7 @@ dependencies = [
  "gl 0.0.2 (git+https://github.com/bjz/gl-rs)",
  "log 0.1.3 (git+https://github.com/rust-lang/log)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide 0.2.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide 0.2.0 (git+https://github.com/sebcrozet/ncollide)",
  "noise 0.0.3 (git+https://github.com/bjz/noise-rs)",
  "sdl2 0.0.13 (git+https://github.com/AngryLawyer/rust-sdl2)",
  "time 0.1.4 (git+https://github.com/rust-lang/time)",
@@ -69,7 +69,7 @@ source = "git+https://github.com/sebcrozet/nalgebra#bcd425e12a06423b3158a8bce58c
 [[package]]
 name = "ncollide"
 version = "0.2.0"
-source = "git+https://github.com/bfops/ncollide#c5c2c09baf18a36ff2ae46032db76f5d24d1d988"
+source = "git+https://github.com/sebcrozet/ncollide#1a0dee7648476eca60e5df52da01811d7263bd2c"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
 ]
