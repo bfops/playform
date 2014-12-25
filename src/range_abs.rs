@@ -1,35 +1,40 @@
+use std::num::Int;
 use std::uint;
 
 /// Generate an iterator like [0, 1, -1, 2, -2, n, -n].
-pub struct RangeAbs {
-  n: int,
-  max: int,
+pub struct RangeAbs<T> {
+  n: T,
+  max: T,
 }
 
-pub fn range_abs(inclusive_max: int) -> RangeAbs {
-  assert!(inclusive_max >= 0);
+pub fn range_abs<T>(inclusive_max: T) -> RangeAbs<T> 
+  where T: Int
+{
+  assert!(inclusive_max >= Int::zero());
   RangeAbs {
-    n: 0,
+    n: Int::zero(),
     max: inclusive_max,
   }
 }
 
-impl Iterator<int> for RangeAbs {
-  fn next(&mut self) -> Option<int> {
-    if self.n == 0 {
-      self.n = 1;
-      Some(0)
+impl<T> Iterator<T> for RangeAbs<T> 
+  where T: Int + Neg<T>
+{
+  fn next(&mut self) -> Option<T> {
+    if self.n == Int::zero() {
+      self.n = Int::one();
+      Some(Int::zero())
     } else {
       let r = self.n;
-      if r > 0 {
-        if r == self.max + 1 {
+      if r > Int::zero() {
+        if r == self.max + Int::one() {
           None
         } else {
           self.n = -self.n;
           Some(r)
         }
       } else {
-        self.n = -self.n + 1;
+        self.n = -self.n + Int::one();
         Some(r)
       }
     }

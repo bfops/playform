@@ -23,7 +23,7 @@ use std::cmp::max;
 #[cfg(test)]
 use std::num::SignedInt;
 
-pub const LOAD_DISTANCE: int = 10;
+pub const LOAD_DISTANCE: i32 = 10;
 
 // values are approximately in microseconds, but they don't have to be.
 pub const BLOCK_UPDATE_BUDGET: int = 5000;
@@ -101,7 +101,7 @@ impl SurroundingsLoader {
           let is_loaded = self.loaded.contains(block_position);
           if !is_loaded {
             self.in_progress_terrain.insert(id_allocator, physics, block_position);
-            self.load_queue.push_back(block_position.clone());
+            self.load_queue.push_back(*block_position);
           }
         }
       });
@@ -126,8 +126,8 @@ impl SurroundingsLoader {
       let mut want_loaded_vec = Vec::new();
       let mut want_loaded_set = HashSet::new();
 
-      want_loaded_vec.push(position.clone());
-      want_loaded_set.insert(position.clone());
+      want_loaded_vec.push(*position);
+      want_loaded_set.insert(*position);
 
       for radius in range_inclusive(1, LOAD_DISTANCE) {
         let blocks_at_radius = cube_shell(position, radius);

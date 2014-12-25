@@ -1,5 +1,5 @@
-use nalgebra::Pnt3;
 use range_abs::range_abs;
+use terrain_block::BlockPosition;
 
 #[cfg(test)]
 use std::collections::HashSet;
@@ -8,7 +8,7 @@ use test::Bencher;
 
 #[inline]
 /// Generate the set of points corresponding to the surface of a cube made of voxels.
-pub fn cube_shell(center: &Pnt3<int>, radius: int) -> Vec<Pnt3<int>> {
+pub fn cube_shell(center: &BlockPosition, radius: i32) -> Vec<BlockPosition> {
   let mut shell = Vec::new();
  
   macro_rules! add_square(
@@ -16,10 +16,10 @@ pub fn cube_shell(center: &Pnt3<int>, radius: int) -> Vec<Pnt3<int>> {
       for dx in $dxs {
         for dy in $dys {
           for dz in $dzs {
-            shell.push(Pnt3::new(
-              center.x + dx,
-              center.y + dy,
-              center.z + dz,
+            shell.push(BlockPosition::new(
+              center.as_pnt3().x + dx,
+              center.as_pnt3().y + dy,
+              center.as_pnt3().z + dz,
             ));
           }
         }
@@ -48,7 +48,7 @@ pub fn cube_shell(center: &Pnt3<int>, radius: int) -> Vec<Pnt3<int>> {
 
 #[cfg(test)]
 /// the number of elements in a cube shell
-pub fn cube_shell_area(radius: int) -> uint {
+pub fn cube_shell_area(radius: i32) -> u32 {
   assert!(radius >= 0);
   if radius == 0 {
     return 1;

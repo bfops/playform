@@ -5,7 +5,7 @@ use mob;
 use nalgebra::Vec3;
 use physics::Physics;
 use state::App;
-use terrain_block::TerrainBlock;
+use terrain_block::BlockPosition;
 use yaglw::gl_context::GLContext;
 
 macro_rules! translate_mob(
@@ -22,7 +22,7 @@ macro_rules! translate_mob(
 
 pub fn update<'a>(app: &mut App) {
   app.timers.time("update", || {
-    let player_block_position = TerrainBlock::to_block_position(&app.player.camera.position);
+    let player_block_position = BlockPosition::from_world_position(&app.player.camera.position);
 
     app.timers.time("update.load.terrain", || {
       app.surroundings_loader.update(

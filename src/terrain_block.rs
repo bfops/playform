@@ -12,12 +12,56 @@ use std::num::Float;
 use stopwatch::TimerSet;
 use terrain::{AMPLITUDE, TerrainType};
 
-pub const BLOCK_WIDTH: int = 4;
+pub const BLOCK_WIDTH: i32 = 4;
 // Number of samples in a single dimension per block.
 pub const SAMPLES_PER_BLOCK: int = 16;
 pub const SAMPLE_WIDTH: f32 = BLOCK_WIDTH as f32 / SAMPLES_PER_BLOCK as f32;
 
-pub type BlockPosition = Pnt3<int>;
+#[deriving(PartialEq, Eq, Hash, Copy, Clone)]
+pub struct BlockPosition(Pnt3<i32>);
+
+impl BlockPosition {
+  #[inline(always)]
+  pub fn new(x: i32, y: i32, z: i32) -> BlockPosition {
+    BlockPosition(Pnt3::new(x, y, z))
+  }
+
+  #[inline(always)]
+  pub fn as_pnt3<'a>(&'a self) -> &'a Pnt3<i32> {
+    let BlockPosition(ref pnt) = *self;
+    pnt
+  }
+
+  pub fn from_world_position(world_position: &Pnt3<f32>) -> BlockPosition {
+    macro_rules! convert_coordinate(
+      ($x: expr) => ({
+        let x = $x.floor() as i32;
+        let x =
+          if x < 0 {
+            x - (BLOCK_WIDTH - 1)
+          } else {
+            x
+          };
+        x / BLOCK_WIDTH
+      });
+    );
+    BlockPosition(
+      Pnt3::new(
+        convert_coordinate!(world_position.x),
+        convert_coordinate!(world_position.y),
+        convert_coordinate!(world_position.z),
+      )
+    )
+  }
+
+  pub fn to_world_position(&self) -> Pnt3<f32> {
+    Pnt3::new(
+      (self.as_pnt3().x * BLOCK_WIDTH) as f32,
+      (self.as_pnt3().y * BLOCK_WIDTH) as f32,
+      (self.as_pnt3().z * BLOCK_WIDTH) as f32,
+    )
+  }
+}
 
 pub struct TerrainBlock {
   // vertex coordinates flattened into separate GLfloats (x, y, z order)
@@ -44,37 +88,6 @@ impl TerrainBlock {
     }
   }
 
-  #[inline]
-  pub fn to_block_position(world_position: &Pnt3<f32>) -> BlockPosition {
-    macro_rules! convert_coordinate(
-      ($x: expr) => ({
-        let x = $x.floor() as int;
-        let x =
-          if x < 0 {
-            x - (BLOCK_WIDTH - 1)
-          } else {
-            x
-          };
-        x / BLOCK_WIDTH
-      });
-    );
-    let position =
-      Pnt3::new(
-        convert_coordinate!(world_position.x),
-        convert_coordinate!(world_position.y),
-        convert_coordinate!(world_position.z),
-      );
-    position
-  }
-
-  pub fn to_world_position(block_position: &Pnt3<int>) -> Pnt3<f32> {
-    Pnt3::new(
-      (block_position.x * BLOCK_WIDTH) as f32,
-      (block_position.y * BLOCK_WIDTH) as f32,
-      (block_position.z * BLOCK_WIDTH) as f32,
-    )
-  }
-
   pub fn generate(
     timers: &TimerSet,
     id_allocator: &mut IdAllocator<EntityId>,
@@ -85,9 +98,9 @@ impl TerrainBlock {
       let mut block = TerrainBlock::empty();
 
       let heightmap = Plane::new(heightmap);
-      let x = (position.x * BLOCK_WIDTH) as f32;
-      let y = (position.y * BLOCK_WIDTH) as f32;
-      let z = (position.z * BLOCK_WIDTH) as f32;
+      let x = (position.as_pnt3().x * BLOCK_WIDTH) as f32;
+      let y = (position.as_pnt3().y * BLOCK_WIDTH) as f32;
+      let z = (position.as_pnt3().z * BLOCK_WIDTH) as f32;
       for dx in range(0, SAMPLES_PER_BLOCK) {
         let x = x + dx as f32 * SAMPLE_WIDTH;
         for dz in range(0, SAMPLES_PER_BLOCK) {
