@@ -17,6 +17,8 @@ use cube_shell::cube_shell_area;
 #[cfg(test)]
 use nalgebra::Pnt3;
 #[cfg(test)]
+use ncollide::bounding_volume::AABB;
+#[cfg(test)]
 use std::cmp::max;
 #[cfg(test)]
 use std::num::SignedInt;
@@ -211,8 +213,10 @@ fn shell_ordering() {
 
   let mut loader = SurroundingsLoader::new();
   let timers = TimerSet::new();
+  let mut id_allocator = IdAllocator::new();
+  let mut physics = Physics::new(AABB::new(Pnt3::new(-128.0, -128.0, -128.0), Pnt3::new(128.0, 128.0, 128.0)));
   let position = Pnt3::new(1, -4, 7);
-  loader.update_queues(&timers, position);
+  loader.update_queues(&timers, &mut id_allocator, &mut physics, position);
   let mut loader = loader.load_queue.into_iter();
 
   // The load queue should contain cube shells in increasing order of radius, up to LOAD_DISTANCE radius.

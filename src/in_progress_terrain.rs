@@ -38,7 +38,7 @@ impl InProgressTerrain {
     }
   }
 
-  /// Unmark an in-progress block, either because leoading is done, or the block was unloaded.
+  /// Unmark an in-progress block, either because loading is done, or the block was unloaded.
   pub fn remove(
     &mut self,
     physics: &mut Physics,
