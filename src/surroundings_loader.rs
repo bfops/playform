@@ -1,9 +1,9 @@
 use cube_shell::cube_shell;
 use id_allocator::IdAllocator;
 use in_progress_terrain::InProgressTerrain;
-use terrain_vram_buffers::TerrainVRAMBuffers;
-use terrain::BlockPosition;
 use terrain::Terrain;
+use terrain_block::BlockPosition;
+use terrain_vram_buffers::TerrainVRAMBuffers;
 use physics::Physics;
 use state::EntityId;
 use std::collections::HashSet;

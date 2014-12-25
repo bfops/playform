@@ -4,7 +4,7 @@ use ncollide::bounding_volume::AABB;
 use physics::Physics;
 use state::EntityId;
 use std::collections::hash_map::{HashMap, Entry};
-use terrain::{BlockPosition, Terrain, BLOCK_WIDTH};
+use terrain_block::{TerrainBlock, BlockPosition, BLOCK_WIDTH};
 
 pub struct InProgressTerrain {
   pub blocks: HashMap<BlockPosition, EntityId>,
@@ -30,7 +30,7 @@ impl InProgressTerrain {
         let id = id_allocator.allocate();
         entry.set(id);
 
-        let low_corner = Terrain::to_world_position(block_position);
+        let low_corner = TerrainBlock::to_world_position(block_position);
         let block_span = Vec3::new(BLOCK_WIDTH as f32, BLOCK_WIDTH as f32, BLOCK_WIDTH as f32);
         let bounds = AABB::new(low_corner, low_corner + block_span);
         physics.insert_misc(id, &bounds);
