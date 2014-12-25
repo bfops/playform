@@ -72,7 +72,7 @@ fn test_surface_area() {
   for center in centers.iter() {
     for radius in range(1, 5) {
       assert_eq!(
-        cube_shell(center.clone(), radius as int).len(),
+        cube_shell(center, radius as int).len(),
         cube_shell_area(radius)
       );
     }
@@ -116,10 +116,10 @@ fn test_simple_shell() {
     .map(|p| p.clone() + center.to_vec())
     .collect();
 
-  assert_eq!(expected, cube_shell(center, radius).into_iter().collect());
+  assert_eq!(expected, cube_shell(&center, radius).into_iter().collect());
 }
 
 #[bench]
 fn simple_bench(_: &mut Bencher) {
-  let _ = cube_shell(Pnt3::new(0, 0, 0), 100);
+  let _ = cube_shell(&Pnt3::new(0, 0, 0), 100);
 }
