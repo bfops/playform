@@ -36,35 +36,30 @@ pub fn update<'a>(app: &mut App) {
     });
 
     app.timers.time("update.player", || {
-      if app.surroundings_loader.loaded.contains(&player_block_position) {
-        app.player.update(&mut app.physics);
-      }
+      app.player.update(&mut app.physics);
     });
 
     app.timers.time("update.mobs", || {
       for (_, mob) in app.mobs.iter() {
         let mut mob_cell = mob.deref().borrow_mut();
         let mob = mob_cell.deref_mut();
-        let block_position = Terrain::to_block_position(&mob.position);
 
-        if app.surroundings_loader.loaded.contains(&block_position) {
-          {
-            let behavior = mob.behavior;
-            (behavior)(app, mob);
-          }
+        {
+          let behavior = mob.behavior;
+          (behavior)(app, mob);
+        }
 
-          mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
+        mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
 
-          let delta_p = mob.speed;
-          if delta_p.x != 0.0 {
-            translate_mob!(app, mob, Vec3::new(delta_p.x, 0.0, 0.0));
-          }
-          if delta_p.y != 0.0 {
-            translate_mob!(app, mob, Vec3::new(0.0, delta_p.y, 0.0));
-          }
-          if delta_p.z != 0.0 {
-            translate_mob!(app, mob, Vec3::new(0.0, 0.0, delta_p.z));
-          }
+        let delta_p = mob.speed;
+        if delta_p.x != 0.0 {
+          translate_mob!(app, mob, Vec3::new(delta_p.x, 0.0, 0.0));
+        }
+        if delta_p.y != 0.0 {
+          translate_mob!(app, mob, Vec3::new(0.0, delta_p.y, 0.0));
+        }
+        if delta_p.z != 0.0 {
+          translate_mob!(app, mob, Vec3::new(0.0, 0.0, delta_p.z));
         }
       }
     });

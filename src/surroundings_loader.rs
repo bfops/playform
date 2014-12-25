@@ -1,5 +1,6 @@
 use cube_shell::cube_shell;
 use id_allocator::IdAllocator;
+use in_progress_terrain::InProgressTerrain;
 use terrain_vram_buffers::TerrainVRAMBuffers;
 use terrain::BlockPosition;
 use terrain::Terrain;
@@ -30,6 +31,7 @@ pub const BLOCK_UNLOAD_COST: int = 300;
 /// Keep surroundings loaded around a given world position.
 pub struct SurroundingsLoader<'a> {
   pub terrain: Terrain<'a>,
+  pub in_progress_terrain: InProgressTerrain,
 
   pub load_queue: RingBuf<BlockPosition>,
   pub unload_queue: RingBuf<BlockPosition>,
@@ -46,6 +48,7 @@ impl<'a> SurroundingsLoader<'a> {
   pub fn new() -> SurroundingsLoader<'a> {
     SurroundingsLoader {
       terrain: Terrain::new(),
+      in_progress_terrain: InProgressTerrain::new(),
 
       load_queue: RingBuf::new(),
       unload_queue: RingBuf::new(),
@@ -67,7 +70,7 @@ impl<'a> SurroundingsLoader<'a> {
     position: BlockPosition,
   ) {
     timers.time("update.update_queues", || {
-      self.update_queues(timers, position);
+      self.update_queues(timers, id_allocator, physics, position);
     });
     timers.time("update.load_some", || {
       self.load_some(timers, gl, terrain_buffers, id_allocator, physics);
@@ -75,18 +78,28 @@ impl<'a> SurroundingsLoader<'a> {
   }
 
   #[inline]
-  fn update_queues(&mut self, timers: &TimerSet, block_position: BlockPosition) {
+  fn update_queues(
+    &mut self,
+    timers: &TimerSet,
+    id_allocator: &mut IdAllocator<EntityId>,
+    physics: &mut Physics,
+    block_position: BlockPosition,
+  ) {
     if Some(block_position) != self.last_position {
       self.last_position = Some(block_position);
 
       let (want_loaded_vec, want_loaded_set) = SurroundingsLoader::wanted_blocks(timers, &block_position);
 
       timers.time("update.update_queues.load_queue", || {
+        for block_position in self.load_queue.iter() {
+          self.in_progress_terrain.remove(physics, block_position);
+        }
         self.load_queue.clear();
         for block_position in want_loaded_vec.iter() {
           let is_loaded = self.loaded.contains(block_position);
           if !is_loaded {
-            self.load_queue.push_back(*block_position);
+            self.in_progress_terrain.insert(id_allocator, physics, block_position);
+            self.load_queue.push_back(block_position.clone());
           }
         }
       });
@@ -105,6 +118,7 @@ impl<'a> SurroundingsLoader<'a> {
 
   #[inline]
   // Get the set of all blocks we want loaded around a given position.
+  // Produces a Vec because order is important, and a HashSet for quick membership tests.
   fn wanted_blocks(timers: &TimerSet, position: &BlockPosition) -> (Vec<BlockPosition>, HashSet<BlockPosition>) {
     timers.time("update.update_queues.want_loaded", || {
       let mut want_loaded_vec = Vec::new();
@@ -115,8 +129,8 @@ impl<'a> SurroundingsLoader<'a> {
 
       for radius in range_inclusive(1, LOAD_DISTANCE) {
         let blocks_at_radius = cube_shell(position, radius);
+        want_loaded_vec.push_all(blocks_at_radius.as_slice());
         for position in blocks_at_radius.into_iter() {
-          want_loaded_vec.push(position);
           want_loaded_set.insert(position);
         }
       }
@@ -125,6 +139,7 @@ impl<'a> SurroundingsLoader<'a> {
     })
   }
 
+  // Load some blocks. Prioritizes unloading unneeded ones over loading new ones.
   #[inline]
   fn load_some(
     &mut self,
@@ -163,6 +178,7 @@ impl<'a> SurroundingsLoader<'a> {
                 });
               });
 
+              self.in_progress_terrain.remove(physics, &block_position);
               self.loaded.insert(block_position);
               budget -= BLOCK_LOAD_COST;
             },

@@ -77,6 +77,14 @@ impl<'a> Terrain<'a> {
     position
   }
 
+  pub fn to_world_position(block_position: &Pnt3<int>) -> Pnt3<f32> {
+    Pnt3::new(
+      (block_position.x * BLOCK_WIDTH) as f32,
+      (block_position.y * BLOCK_WIDTH) as f32,
+      (block_position.z * BLOCK_WIDTH) as f32,
+    )
+  }
+
   // Once a reference is returned from `load`, is should be valid forever.
   // TODO: Figure out a way to specify that the reference can only be valid
   // until this object is touched again (or deleted).

@@ -25,6 +25,7 @@ mod common;
 mod cube_shell;
 mod fontloader;
 mod id_allocator;
+mod in_progress_terrain;
 mod interval_timer;
 mod player;
 mod process_event;

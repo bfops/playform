@@ -38,6 +38,15 @@ impl Physics {
     }
   }
 
+  pub fn remove_misc(&mut self, id: EntityId) {
+    match self.bounds.get(&id) {
+      None => {},
+      Some(bounds) => {
+        self.misc_octree.remove(bounds, id);
+      },
+    }
+  }
+
   pub fn get_bounds(&self, id: EntityId) -> Option<&AABB3<f32>> {
     self.bounds.get(&id)
   }
