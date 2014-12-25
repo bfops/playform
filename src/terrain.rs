@@ -58,15 +58,15 @@ impl TerrainBlock {
 }
 
 /// This struct contains and lazily generates the world's terrain.
-pub struct Terrain<'a> {
+pub struct Terrain {
   // this is used for generating new blocks.
   pub heightmap: Perlin,
   // all the blocks that have ever been created.
   pub all_blocks: HashMap<BlockPosition, TerrainBlock>,
 }
 
-impl<'a> Terrain<'a> {
-  pub fn new() -> Terrain<'a> {
+impl Terrain {
+  pub fn new() -> Terrain {
     Terrain {
       heightmap:
         Perlin::new()
@@ -115,11 +115,11 @@ impl<'a> Terrain<'a> {
   // until this object is touched again (or deleted).
   #[inline]
   pub unsafe fn load(
-    &'a mut self,
+    &mut self,
     timers: &TimerSet,
     id_allocator: &mut IdAllocator<EntityId>,
     position: &BlockPosition,
-  ) -> &'a TerrainBlock {
+  ) -> &TerrainBlock {
     match self.all_blocks.entry(*position) {
       Entry::Occupied(entry) => {
         // Escape lifetime bounds.
@@ -174,7 +174,7 @@ impl<'a> Terrain<'a> {
   }
 
   #[inline]
-  fn add_square(
+  fn add_square<'a>(
     timers: &TimerSet,
     heightmap: &Plane<'a, Perlin>,
     id_allocator: &mut IdAllocator<EntityId>,

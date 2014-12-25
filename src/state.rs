@@ -136,7 +136,7 @@ pub struct App<'a> {
   pub mobs: HashMap<EntityId, Rc<RefCell<mob::Mob>>>,
 
   pub id_allocator: IdAllocator<EntityId>,
-  pub surroundings_loader: SurroundingsLoader<'a>,
+  pub surroundings_loader: SurroundingsLoader,
 
   // OpenGL buffers
   pub terrain_buffers: TerrainVRAMBuffers<'a>,

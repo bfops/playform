@@ -31,8 +31,8 @@ pub const BLOCK_LOAD_COST: int = 500;
 pub const BLOCK_UNLOAD_COST: int = 300;
 
 /// Keep surroundings loaded around a given world position.
-pub struct SurroundingsLoader<'a> {
-  pub terrain: Terrain<'a>,
+pub struct SurroundingsLoader {
+  pub terrain: Terrain,
   pub in_progress_terrain: InProgressTerrain,
 
   pub load_queue: RingBuf<BlockPosition>,
@@ -46,8 +46,8 @@ pub struct SurroundingsLoader<'a> {
   pub last_position: Option<BlockPosition>,
 }
 
-impl<'a> SurroundingsLoader<'a> {
-  pub fn new() -> SurroundingsLoader<'a> {
+impl SurroundingsLoader {
+  pub fn new() -> SurroundingsLoader {
     SurroundingsLoader {
       terrain: Terrain::new(),
       in_progress_terrain: InProgressTerrain::new(),
@@ -66,7 +66,7 @@ impl<'a> SurroundingsLoader<'a> {
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
-    terrain_buffers: &mut TerrainVRAMBuffers<'a>,
+    terrain_buffers: &mut TerrainVRAMBuffers,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     position: BlockPosition,
@@ -147,7 +147,7 @@ impl<'a> SurroundingsLoader<'a> {
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
-    terrain_buffers: &mut TerrainVRAMBuffers<'a>,
+    terrain_buffers: &mut TerrainVRAMBuffers,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
   ) {
