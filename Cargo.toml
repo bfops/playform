@@ -13,11 +13,9 @@ authors = [
 name = "playform"
 path = "./src/playform.rs"
 
-[dependencies.time]
-git = "https://github.com/rust-lang/time"
-
-[dependencies.log]
-git = "https://github.com/rust-lang/log"
+[dependencies]
+time = "*"
+log = "*"
 
 [dependencies.gl]
 git = "https://github.com/bjz/gl-rs"
