@@ -56,14 +56,18 @@ dependencies = [
 [[package]]
 name = "nalgebra"
 version = "0.1.0"
-source = "git+https://github.com/sebcrozet/nalgebra#bcd425e12a06423b3158a8bce58c836730b5e9a6"
+source = "git+https://github.com/sebcrozet/nalgebra#ec44d197b24baa53fb365d361d845e12c753b8ac"
+dependencies = [
+ "rustc-serialize 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "ncollide"
 version = "0.2.0"
-source = "git+https://github.com/sebcrozet/ncollide#1a0dee7648476eca60e5df52da01811d7263bd2c"
+source = "git+https://github.com/sebcrozet/ncollide#ed75e78a31ea9374c85200ca6b68c65c7ebe8ed9"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
+ "rustc-serialize 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -74,6 +78,11 @@ source = "git+https://github.com/bjz/noise-rs#c08828ea536aabc8733307a248e2a44e09
 [[package]]
 name = "regex"
 version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "rustc-serialize"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
