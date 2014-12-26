@@ -17,9 +17,9 @@ pub fn cube_shell(center: &BlockPosition, radius: i32) -> Vec<BlockPosition> {
         for dy in $dys {
           for dz in $dzs {
             shell.push(BlockPosition::new(
-              center.as_pnt3().x + dx,
-              center.as_pnt3().y + dy,
-              center.as_pnt3().z + dz,
+              center.as_pnt().x + dx,
+              center.as_pnt().y + dy,
+              center.as_pnt().z + dz,
             ));
           }
         }
@@ -59,20 +59,20 @@ pub fn cube_shell_area(radius: i32) -> u32 {
   let outer = width * width * width;
   // volume of the cube of radius r - 1.
   let inner = (width - 2) * (width - 2) * (width - 2);
-  (outer - inner) as uint
+  (outer - inner) as u32
 }
 
 #[test]
 // Check that the surface area is correct for a few different shells.
 fn test_surface_area() {
   let centers = [
-    Pnt3::new(0, 0, 0),
-    Pnt3::new(2, 1, -4),
+    BlockPosition::new(0, 0, 0),
+    BlockPosition::new(2, 1, -4),
   ];
   for center in centers.iter() {
     for radius in range(1, 5) {
       assert_eq!(
-        cube_shell(center, radius as int).len(),
+        cube_shell(center, radius as i32).len() as u32,
         cube_shell_area(radius)
       );
     }
@@ -81,39 +81,39 @@ fn test_surface_area() {
 
 #[test]
 fn test_simple_shell() {
-  let center = Pnt3::new(2, 0, -3);
+  let center = BlockPosition::new(2, 0, -3);
   let radius = 1;
 
-  let expected: HashSet<Pnt3<int>> = [
-      Pnt3::new( 0,  0,  1),
-      Pnt3::new( 0,  0, -1),
-      Pnt3::new( 0,  1,  0),
-      Pnt3::new( 0,  1,  1),
-      Pnt3::new( 0,  1, -1),
-      Pnt3::new( 0, -1,  0),
-      Pnt3::new( 0, -1,  1),
-      Pnt3::new( 0, -1, -1),
-      Pnt3::new( 1,  0,  0),
-      Pnt3::new( 1,  0,  1),
-      Pnt3::new( 1,  0, -1),
-      Pnt3::new( 1,  1,  0),
-      Pnt3::new( 1,  1,  1),
-      Pnt3::new( 1,  1, -1),
-      Pnt3::new( 1, -1,  0),
-      Pnt3::new( 1, -1,  1),
-      Pnt3::new( 1, -1, -1),
-      Pnt3::new(-1,  0,  0),
-      Pnt3::new(-1,  0,  1),
-      Pnt3::new(-1,  0, -1),
-      Pnt3::new(-1,  1,  0),
-      Pnt3::new(-1,  1,  1),
-      Pnt3::new(-1,  1, -1),
-      Pnt3::new(-1, -1,  0),
-      Pnt3::new(-1, -1,  1),
-      Pnt3::new(-1, -1, -1),
+  let expected: HashSet<BlockPosition> = [
+      BlockPosition::new( 0,  0,  1),
+      BlockPosition::new( 0,  0, -1),
+      BlockPosition::new( 0,  1,  0),
+      BlockPosition::new( 0,  1,  1),
+      BlockPosition::new( 0,  1, -1),
+      BlockPosition::new( 0, -1,  0),
+      BlockPosition::new( 0, -1,  1),
+      BlockPosition::new( 0, -1, -1),
+      BlockPosition::new( 1,  0,  0),
+      BlockPosition::new( 1,  0,  1),
+      BlockPosition::new( 1,  0, -1),
+      BlockPosition::new( 1,  1,  0),
+      BlockPosition::new( 1,  1,  1),
+      BlockPosition::new( 1,  1, -1),
+      BlockPosition::new( 1, -1,  0),
+      BlockPosition::new( 1, -1,  1),
+      BlockPosition::new( 1, -1, -1),
+      BlockPosition::new(-1,  0,  0),
+      BlockPosition::new(-1,  0,  1),
+      BlockPosition::new(-1,  0, -1),
+      BlockPosition::new(-1,  1,  0),
+      BlockPosition::new(-1,  1,  1),
+      BlockPosition::new(-1,  1, -1),
+      BlockPosition::new(-1, -1,  0),
+      BlockPosition::new(-1, -1,  1),
+      BlockPosition::new(-1, -1, -1),
     ]
     .iter()
-    .map(|p| p.clone() + center.to_vec())
+    .map(|p| p.clone() + center.as_pnt().to_vec())
     .collect();
 
   assert_eq!(expected, cube_shell(&center, radius).into_iter().collect());
@@ -121,5 +121,5 @@ fn test_simple_shell() {
 
 #[bench]
 fn simple_bench(_: &mut Bencher) {
-  let _ = cube_shell(&Pnt3::new(0, 0, 0), 100);
+  let _ = cube_shell(&BlockPosition::new(0, 0, 0), 100);
 }

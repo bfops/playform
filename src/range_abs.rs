@@ -47,7 +47,7 @@ impl<T> Iterator<T> for RangeAbs<T>
 
 #[test]
 fn basic_test() {
-  let mut range = range_abs(2);
+  let mut range = range_abs(2 as i32);
   assert_eq!(range.next(), Some(0));
   assert_eq!(range.next(), Some(1));
   assert_eq!(range.next(), Some(-1));
@@ -58,7 +58,7 @@ fn basic_test() {
 
 #[test]
 fn test_range_abs_0() {
-  let mut range = range_abs(0);
+  let mut range = range_abs(0 as i32);
   assert_eq!(range.next(), Some(0));
   assert_eq!(range.next(), None);
 }

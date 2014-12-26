@@ -206,10 +206,10 @@ impl SurroundingsLoader {
 
 #[test]
 fn shell_ordering() {
-  fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> int {
-    let dx = (p1.x - p2.x).abs();
-    let dy = (p1.y - p2.y).abs();;
-    let dz = (p1.z - p2.z).abs();;
+  fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
+    let dx = (p1.as_pnt().x - p2.as_pnt().x).abs();
+    let dy = (p1.as_pnt().y - p2.as_pnt().y).abs();
+    let dz = (p1.as_pnt().z - p2.as_pnt().z).abs();
     max(max(dx, dy), dz)
   }
 
@@ -217,7 +217,7 @@ fn shell_ordering() {
   let timers = TimerSet::new();
   let mut id_allocator = IdAllocator::new();
   let mut physics = Physics::new(AABB::new(Pnt3::new(-128.0, -128.0, -128.0), Pnt3::new(128.0, 128.0, 128.0)));
-  let position = Pnt3::new(1, -4, 7);
+  let position = BlockPosition::new(1, -4, 7);
   loader.update_queues(&timers, &mut id_allocator, &mut physics, position);
   let mut loader = loader.load_queue.into_iter();
 

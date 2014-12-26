@@ -17,7 +17,7 @@ pub const BLOCK_WIDTH: i32 = 4;
 pub const SAMPLES_PER_BLOCK: int = 16;
 pub const SAMPLE_WIDTH: f32 = BLOCK_WIDTH as f32 / SAMPLES_PER_BLOCK as f32;
 
-#[deriving(PartialEq, Eq, Hash, Copy, Clone)]
+#[deriving(Show, PartialEq, Eq, Hash, Copy, Clone)]
 pub struct BlockPosition(Pnt3<i32>);
 
 impl BlockPosition {
@@ -27,8 +27,14 @@ impl BlockPosition {
   }
 
   #[inline(always)]
-  pub fn as_pnt3<'a>(&'a self) -> &'a Pnt3<i32> {
+  pub fn as_pnt<'a>(&'a self) -> &'a Pnt3<i32> {
     let BlockPosition(ref pnt) = *self;
+    pnt
+  }
+
+  #[inline(always)]
+  pub fn as_mut_pnt3<'a>(&'a mut self) -> &'a mut Pnt3<i32> {
+    let BlockPosition(ref mut pnt) = *self;
     pnt
   }
 
@@ -56,10 +62,19 @@ impl BlockPosition {
 
   pub fn to_world_position(&self) -> Pnt3<f32> {
     Pnt3::new(
-      (self.as_pnt3().x * BLOCK_WIDTH) as f32,
-      (self.as_pnt3().y * BLOCK_WIDTH) as f32,
-      (self.as_pnt3().z * BLOCK_WIDTH) as f32,
+      (self.as_pnt().x * BLOCK_WIDTH) as f32,
+      (self.as_pnt().y * BLOCK_WIDTH) as f32,
+      (self.as_pnt().z * BLOCK_WIDTH) as f32,
     )
+  }
+}
+
+impl Add<Vec3<i32>, BlockPosition> for BlockPosition {
+  fn add(mut self, rhs: Vec3<i32>) -> Self {
+    self.as_mut_pnt3().x += rhs.x;
+    self.as_mut_pnt3().y += rhs.y;
+    self.as_mut_pnt3().z += rhs.z;
+    self
   }
 }
 
@@ -98,9 +113,9 @@ impl TerrainBlock {
       let mut block = TerrainBlock::empty();
 
       let heightmap = Plane::new(heightmap);
-      let x = (position.as_pnt3().x * BLOCK_WIDTH) as f32;
-      let y = (position.as_pnt3().y * BLOCK_WIDTH) as f32;
-      let z = (position.as_pnt3().z * BLOCK_WIDTH) as f32;
+      let x = (position.as_pnt().x * BLOCK_WIDTH) as f32;
+      let y = (position.as_pnt().y * BLOCK_WIDTH) as f32;
+      let z = (position.as_pnt().z * BLOCK_WIDTH) as f32;
       for dx in range(0, SAMPLES_PER_BLOCK) {
         let x = x + dx as f32 * SAMPLE_WIDTH;
         for dz in range(0, SAMPLES_PER_BLOCK) {
