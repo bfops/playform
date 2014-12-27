@@ -41,7 +41,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
       // There are 3 R32F components per vertex.
       vertex_positions: BufferTexture::new(gl, gl_context, gl::R32F, 3 * VERTICES_PER_TRIANGLE * MAX_WORLD_SIZE),
       // There are 3 R32F components per normal.
-      normals: BufferTexture::new(gl, gl_context, gl::R32F, 3 * MAX_WORLD_SIZE),
+      normals: BufferTexture::new(gl, gl_context, gl::R32F, 3 * VERTICES_PER_TRIANGLE * MAX_WORLD_SIZE),
       types: BufferTexture::new(gl, gl_context, gl::R32UI, MAX_WORLD_SIZE),
     }
   }
@@ -80,11 +80,11 @@ impl<'a> TerrainVRAMBuffers<'a> {
     types: &[GLuint],
     ids: &[EntityId],
   ) {
-    assert_eq!(vertices.len(), 9 * ids.len());
+    assert_eq!(vertices.len(), 3 * VERTICES_PER_TRIANGLE * ids.len());
     assert_eq!(types.len(), ids.len());
 
     if USE_LIGHTING {
-      assert_eq!(normals.len(), 3 * ids.len());
+      assert_eq!(normals.len(), vertices.len());
     }
 
     for &id in ids.iter() {
@@ -121,7 +121,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
     self.types.buffer.swap_remove(gl, idx, 1);
     if USE_LIGHTING {
       self.normals.buffer.byte_buffer.bind(gl);
-      self.normals.buffer.swap_remove(gl, 3 * idx, 3);
+      self.normals.buffer.swap_remove(gl, 3 * idx * VERTICES_PER_TRIANGLE, 3 * VERTICES_PER_TRIANGLE);
     }
   }
 

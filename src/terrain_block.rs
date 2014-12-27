@@ -14,7 +14,7 @@ use terrain::{AMPLITUDE, TerrainType};
 
 pub const BLOCK_WIDTH: i32 = 4;
 // Number of samples in a single dimension per block.
-pub const SAMPLES_PER_BLOCK: int = 16;
+pub const SAMPLES_PER_BLOCK: uint = 16;
 pub const SAMPLE_WIDTH: f32 = BLOCK_WIDTH as f32 / SAMPLES_PER_BLOCK as f32;
 
 #[deriving(Show, PartialEq, Eq, Hash, Copy, Clone)]
@@ -79,9 +79,11 @@ impl Add<Vec3<i32>, BlockPosition> for BlockPosition {
 }
 
 pub struct TerrainBlock {
+  // These Vecs must all be ordered the same way.
+
   // vertex coordinates flattened into separate GLfloats (x, y, z order)
   pub vertex_coordinates: Vec<GLfloat>,
-  // per-triangle normal vectors flattened into separate GLfloats (x, y, z order)
+  // per-vertex normal vectors flattened into separate GLfloats (x, y, z order)
   pub normals: Vec<GLfloat>,
   // per-triangle terrain types
   pub typs: Vec<GLuint>,
@@ -111,6 +113,7 @@ impl TerrainBlock {
   ) -> TerrainBlock {
     timers.time("update.generate_block", || {
       let mut block = TerrainBlock::empty();
+      let mut face_normals = [[None, ..SAMPLES_PER_BLOCK], ..SAMPLES_PER_BLOCK];
 
       let heightmap = Plane::new(heightmap);
       let x = (position.as_pnt().x * BLOCK_WIDTH) as f32;
@@ -126,8 +129,31 @@ impl TerrainBlock {
             &heightmap,
             id_allocator,
             &mut block,
-            &position
+            &mut face_normals[dx][dz],
+            &position,
           );
+        }
+      }
+
+      if USE_LIGHTING {
+        // This is all super mesh-specific.
+        for x_square in range(0, SAMPLES_PER_BLOCK) {
+          for z_square in range(0, SAMPLES_PER_BLOCK) {
+            match face_normals[x_square][z_square] {
+              None => {},
+              Some(square_normals) => {
+                let triangle_faces = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3];
+
+                for &triangle_face in triangle_faces.iter() {
+                  block.normals.push_all(&[
+                    square_normals[triangle_face].x,
+                    square_normals[triangle_face].y,
+                    square_normals[triangle_face].z,
+                  ]);
+                }
+              },
+            }
+          }
         }
       }
 
@@ -141,6 +167,7 @@ impl TerrainBlock {
     heightmap: &Plane<'a, Perlin>,
     id_allocator: &mut IdAllocator<EntityId>,
     block: &mut TerrainBlock,
+    face_normals: &mut Option<[Vec3<f32>, ..4]>,
     position: &Pnt3<f32>,
   ) {
     macro_rules! at(
@@ -155,6 +182,8 @@ impl TerrainBlock {
 
     if position.y < center.y && center.y <= position.y + BLOCK_WIDTH as f32 {
       timers.time("update.generate_block.add_square", || {
+        let mut new_face_normals = [Vec3::new(0.0, 0.0, 0.0), ..4];
+
         let x2 = position.x + SAMPLE_WIDTH;
         let z2 = position.z + SAMPLE_WIDTH;
         let v1 = at!(position.x, position.z);
@@ -174,45 +203,47 @@ impl TerrainBlock {
             TerrainType::Grass
           };
 
-        let place_terrain = |v1: &Pnt3<GLfloat>, v2: &Pnt3<GLfloat>, minx, minz, maxx, maxz| {
-          let mut maxy = v1.y;
-          if v2.y > v1.y {
-            maxy = v2.y;
-          }
-          if center.y > maxy {
-            maxy = center.y;
-          }
+        macro_rules! place_terrain(
+          ($normal_idx: expr, $v1: expr, $v2: expr, $minx: expr, $minz: expr, $maxx: expr, $maxz: expr) => ({
+            let mut maxy = $v1.y;
+            if $v2.y > $v1.y {
+              maxy = $v2.y;
+            }
+            if center.y > maxy {
+              maxy = center.y;
+            }
 
-          if USE_LIGHTING {
-            let side1: Vec3<GLfloat> = center - *v1;
-            let side2: Vec3<GLfloat> = v2.to_vec() - v1.to_vec();
-            let normal: Vec3<GLfloat> = normalize(&cross(&side1, &side2));
-            block.normals.push_all(&[
-              normal.x, normal.y, normal.z,
+            if USE_LIGHTING {
+              let side1: Vec3<GLfloat> = center - *$v1;
+              let side2: Vec3<GLfloat> = $v2.to_vec() - $v1.to_vec();
+              let normal: Vec3<GLfloat> = normalize(&cross(&side1, &side2));
+              new_face_normals[$normal_idx] = normal;
+            }
+
+            let id = id_allocator.allocate();
+            block.vertex_coordinates.push_all(&[
+              $v1.x, $v1.y, $v1.z,
+              $v2.x, $v2.y, $v2.z,
+              center.x, center.y, center.z,
             ]);
-          }
+            block.typs.push(terrain_type as GLuint);
+            block.ids.push(id);
+            block.bounds.insert(
+              id,
+              AABB::new(
+                Pnt3::new($minx, $v1.y, $minz),
+                Pnt3::new($maxx, maxy, $maxz),
+              ),
+            );
+          });
+        );
 
-          let id = id_allocator.allocate();
-          block.vertex_coordinates.push_all(&[
-            v1.x, v1.y, v1.z,
-            v2.x, v2.y, v2.z,
-            center.x, center.y, center.z,
-          ]);
-          block.typs.push(terrain_type as GLuint);
-          block.ids.push(id);
-          block.bounds.insert(
-            id,
-            AABB::new(
-              Pnt3::new(minx, v1.y, minz),
-              Pnt3::new(maxx, maxy, maxz),
-            ),
-          );
-        };
+        place_terrain!(0, &v1, &v2, v1.x, v1.z, center.x, v2.z);
+        place_terrain!(1, &v2, &v3, v2.x, center.z, v3.x, v3.z);
+        place_terrain!(2, &v3, &v4, center.x, center.z, v3.x, v3.z);
+        place_terrain!(3, &v4, &v1, v1.x, v1.z, v4.x, center.z);
 
-        place_terrain(&v1, &v2, v1.x, v1.z, center.x, v2.z);
-        place_terrain(&v2, &v3, v2.x, center.z, v3.x, v3.z);
-        place_terrain(&v3, &v4, center.x, center.z, v3.x, v3.z);
-        place_terrain(&v4, &v1, v1.x, v1.z, v4.x, center.z);
+        *face_normals = Some(new_face_normals);
       })
     }
   }

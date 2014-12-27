@@ -8,10 +8,10 @@ uniform struct Light {
 uniform vec3 ambient_light;
 
 uniform samplerBuffer positions;
-uniform samplerBuffer normals;
 uniform isamplerBuffer terrain_types;
 
 flat in int vertex_id;
+in vec3 normal;
 
 out vec4 frag_color;
 
@@ -21,16 +21,12 @@ void main() {
   uint terrain_type = uint(texelFetch(terrain_types, face_id).r);
 
   #if $lighting$
+    // Mutiply by 3 because there are 3 components for each position vector.
     int position_id = vertex_id * 3;
     vec3 world_position;
     world_position.x = texelFetch(positions, position_id).r;
     world_position.y = texelFetch(positions, position_id + 1).r;
     world_position.z = texelFetch(positions, position_id + 2).r;
-    int normal_id = face_id * 3;
-    vec3 normal;
-    normal.x = texelFetch(normals, normal_id).r;
-    normal.y = texelFetch(normals, normal_id + 1).r;
-    normal.z = texelFetch(normals, normal_id + 2).r;
 
     // vector from this position to the light
     vec3 light_path = light.position - world_position;
