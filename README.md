@@ -14,7 +14,7 @@ Help is appreciated! You can hop over to the [issues page](https://github.com/bf
 
 Have a `rustc` and `cargo` built no earlier than December 23rd, 2014.
 Install `libpng`, `SDL2` and `SDL2_ttf`.
-Run `cargo run`! Consider setting `RUST_BACKTRACE=1` and `RUST_LOG=info` when you run playform.
+Run `cargo run --release`! Consider setting `RUST_BACKTRACE=1` and `RUST_LOG=info` when you run playform.
 
 ## How to play
 
@@ -25,6 +25,7 @@ Run `cargo run`! Consider setting `RUST_BACKTRACE=1` and `RUST_LOG=info` when yo
   * Save line-of-sight: M
 
 One mob spawns that will play "tag" with you: tag it and it will chase you until it tags you back.
+Watch out though, if you move too far away, it'll fall off the world.
 
 ## If things don't work
 
