@@ -20,30 +20,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "gl"
 version = "0.0.2"
-source = "git+https://github.com/bjz/gl-rs#d00d8e7790e10b22b38536d43ba507407aa6ab87"
+source = "git+https://github.com/bjz/gl-rs#32668cf156c9c65d1ae01786cb2820c2250ed21b"
 dependencies = [
+ "gl_common 0.0.3 (git+https://github.com/bjz/gl-rs)",
  "gl_generator 0.0.4 (git+https://github.com/bjz/gl-rs)",
 ]
 
 [[package]]
 name = "gl_common"
 version = "0.0.3"
-source = "git+https://github.com/bjz/gl-rs#d00d8e7790e10b22b38536d43ba507407aa6ab87"
+source = "git+https://github.com/bjz/gl-rs#32668cf156c9c65d1ae01786cb2820c2250ed21b"
 
 [[package]]
 name = "gl_generator"
 version = "0.0.4"
-source = "git+https://github.com/bjz/gl-rs#d00d8e7790e10b22b38536d43ba507407aa6ab87"
+source = "git+https://github.com/bjz/gl-rs#32668cf156c9c65d1ae01786cb2820c2250ed21b"
 dependencies = [
  "gl_common 0.0.3 (git+https://github.com/bjz/gl-rs)",
  "khronos_api 0.0.3 (git+https://github.com/bjz/gl-rs)",
+ "log 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "xml-rs 0.1.4 (git+https://github.com/netvl/xml-rs)",
 ]
 
 [[package]]
 name = "khronos_api"
 version = "0.0.3"
-source = "git+https://github.com/bjz/gl-rs#d00d8e7790e10b22b38536d43ba507407aa6ab87"
+source = "git+https://github.com/bjz/gl-rs#32668cf156c9c65d1ae01786cb2820c2250ed21b"
 
 [[package]]
 name = "log"
@@ -56,7 +58,7 @@ dependencies = [
 [[package]]
 name = "nalgebra"
 version = "0.1.0"
-source = "git+https://github.com/sebcrozet/nalgebra#ec44d197b24baa53fb365d361d845e12c753b8ac"
+source = "git+https://github.com/sebcrozet/nalgebra#73c49884c3073deedeef1c48851bb3590ba14bb7"
 dependencies = [
  "rustc-serialize 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
