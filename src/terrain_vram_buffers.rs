@@ -11,12 +11,15 @@ use yaglw::shader::Shader;
 use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
 
+pub const BYTE_BUDGET: uint = 60_800_000;
+
 pub struct TerrainVRAMBuffers<'a> {
   id_to_index: HashMap<EntityId, uint>,
   index_to_id: Vec<EntityId>,
 
   empty_array: GLuint,
   length: uint,
+
   // Each position is buffered as 3 separate floats due to image format restrictions.
   vertex_positions: BufferTexture<'a, GLfloat>,
   // Each normal component is buffered separately floats due to image format restrictions.
@@ -29,6 +32,8 @@ impl<'a> TerrainVRAMBuffers<'a> {
     gl: &'a GLContextExistence,
     gl_context: &mut GLContext,
   ) -> TerrainVRAMBuffers<'a> {
+    let polygon_budget: uint = BYTE_BUDGET / if USE_LIGHTING {76} else {40};
+
     TerrainVRAMBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
@@ -39,10 +44,10 @@ impl<'a> TerrainVRAMBuffers<'a> {
       },
       length: 0,
       // There are 3 R32F components per vertex.
-      vertex_positions: BufferTexture::new(gl, gl_context, gl::R32F, 3 * VERTICES_PER_TRIANGLE * MAX_WORLD_SIZE),
+      vertex_positions: BufferTexture::new(gl, gl_context, gl::R32F, 3 * VERTICES_PER_TRIANGLE * polygon_budget),
       // There are 3 R32F components per normal.
-      normals: BufferTexture::new(gl, gl_context, gl::R32F, 3 * VERTICES_PER_TRIANGLE * MAX_WORLD_SIZE),
-      types: BufferTexture::new(gl, gl_context, gl::R32UI, MAX_WORLD_SIZE),
+      normals: BufferTexture::new(gl, gl_context, gl::R32F, 3 * VERTICES_PER_TRIANGLE * polygon_budget),
+      types: BufferTexture::new(gl, gl_context, gl::R32UI, polygon_budget),
     }
   }
 
