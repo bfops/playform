@@ -8,6 +8,8 @@ use std::hash::Hash;
 use std::num::NumCast;
 use std::ptr::RawPtr;
 
+pub const MIN_CELL_WIDTH: f32 = 0.1;
+
 fn aabb_overlap(aabb1: &AABB3<f32>, aabb2: &AABB3<f32>) -> bool {
   partial_lt(aabb1.mins(), aabb2.maxs()) &&
   partial_lt(aabb2.mins(), aabb1.maxs())
@@ -104,7 +106,10 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
             |x, &(ref bounds, _)| x + length(bounds, d)
           ) / NumCast::from(vs.len()).unwrap();
 
-        if avg_length < length(&self.bounds, self.dimension) / 2.0 {
+        let l = length(&self.bounds, self.dimension);
+        let should_bisect_cell =
+          l > MIN_CELL_WIDTH && avg_length < length(&self.bounds, self.dimension) / 2.0;
+        if should_bisect_cell {
           let (low, high) =
             Octree::bisect(
               self,
