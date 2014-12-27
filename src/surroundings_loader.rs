@@ -232,23 +232,25 @@ fn shell_ordering() {
     max(max(dx, dy), dz)
   }
 
-  let mut loader = SurroundingsLoader::new();
+  let mut loader = SurroundingsLoader::new(1);
   let timers = TimerSet::new();
   let mut id_allocator = IdAllocator::new();
   let mut physics = Physics::new(AABB::new(Pnt3::new(-128.0, -128.0, -128.0), Pnt3::new(128.0, 128.0, 128.0)));
   let position = BlockPosition::new(1, -4, 7);
   loader.update_queues(&timers, &mut id_allocator, &mut physics, position);
-  let mut loader = loader.load_queue.into_iter();
+  let mut load_positions = loader.load_queue.into_iter();
 
   // The load queue should contain cube shells in increasing order of radius.
-  for radius in range_inclusive(0, 10) {
+  for radius in range_inclusive(0, loader.load_distance) {
     for _ in range(0, cube_shell_area(radius)) {
-      let load_position = loader.next();
+      let load_position = load_positions.next();
+      println!("radius {}", radius);
+      println!("load_position {}", load_position);
       // The next load position should be in the cube shell of the given radius, relative to the center position.
       assert_eq!(radius_between(&position, &load_position.unwrap()), radius);
     }
   }
 
   // The load queue should be exactly the shells specified above, and nothing else.
-  assert!(loader.next().is_none());
+  assert!(load_positions.next().is_none());
 }
