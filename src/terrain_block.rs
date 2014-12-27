@@ -49,7 +49,7 @@ impl BlockPosition {
             x
           };
         x / BLOCK_WIDTH
-      });
+      })
     );
     BlockPosition(
       Pnt3::new(
@@ -124,7 +124,7 @@ impl TerrainBlock {
         for dz in range(0, SAMPLES_PER_BLOCK) {
           let z = z + dz as f32 * SAMPLE_WIDTH;
           let position = Pnt3::new(x, y, z);
-          TerrainBlock::add_square(
+          TerrainBlock::add_tile(
             timers,
             &heightmap,
             id_allocator,
@@ -136,49 +136,108 @@ impl TerrainBlock {
       }
 
       // This is all super mesh-specific.
-      for x_square in range(0, SAMPLES_PER_BLOCK) {
-        for z_square in range(0, SAMPLES_PER_BLOCK) {
-          match face_normals[x_square][z_square] {
-            None => {},
-            Some(square_normals) => {
-              let mut mesh_vertex_normals = [Vec3::new(0.0, 0.0, 0.0), ..5];
 
-              for n in square_normals.iter() {
-                mesh_vertex_normals[0] = mesh_vertex_normals[0] + *n;
+      // Get the sum of the normal vectors for a given index on a given tile.
+      macro_rules! tile_normal_sum(
+        ($x_tile: expr, $z_tile: expr, $mesh_vertex: expr) => ({
+          let mesh_vertex: uint = $mesh_vertex;
+          face_normals[$x_tile][$z_tile].map(
+            |square_normals|
+              match mesh_vertex {
+                1 => (square_normals[3] + square_normals[0]),
+                2 => (square_normals[0] + square_normals[1]),
+                3 => (square_normals[1] + square_normals[2]),
+                4 => (square_normals[2] + square_normals[3]),
+                _ => unimplemented!(),
               }
-              mesh_vertex_normals[0] = mesh_vertex_normals[0] / 4.0;
+            )
+        })
+      );
 
-              {
-                let mut square_normal = 3;
+      macro_rules! vertex_normal_average(
+        ($x_tile: expr, $z_tile: expr) => ({
+          let mut sum = Vec3::new(0.0, 0.0, 0.0);
+          let mut n = 0.0;
 
-                for mesh_vertex in range(1, 5 as uint) {
-                  mesh_vertex_normals[mesh_vertex] = mesh_vertex_normals[mesh_vertex] + square_normals[square_normal];
+          if $x_tile < SAMPLES_PER_BLOCK && $z_tile < SAMPLES_PER_BLOCK {
+            tile_normal_sum!($x_tile, $z_tile, 1).map(
+              |s| {
+                sum = sum + s;
+                n += 2.0;
+              });
+          }
+          if $x_tile > 0 && $z_tile < SAMPLES_PER_BLOCK {
+            tile_normal_sum!($x_tile - 1, $z_tile, 4).map(
+              |s| {
+                sum = sum + s;
+                n += 2.0;
+              });
+          }
+          if $x_tile < SAMPLES_PER_BLOCK && $z_tile > 0 {
+            tile_normal_sum!($x_tile, $z_tile - 1, 2).map(
+              |s| {
+                sum = sum + s;
+                n += 2.0;
+              });
+          }
+          if $x_tile > 0 && $z_tile > 0 {
+            tile_normal_sum!($x_tile - 1, $z_tile - 1, 3).map(
+              |s| {
+                sum = sum + s;
+                n += 2.0;
+              });
+          }
 
-                  // square_normal == 4 when mesh_vertex == 1.
-                  if mesh_vertex == 1 {
-                    square_normal = 0;
-                  } else {
-                    square_normal += 1;
-                  }
+          sum / n
+        })
+      );
 
-                  mesh_vertex_normals[mesh_vertex] = mesh_vertex_normals[mesh_vertex] + square_normals[square_normal];
-                  mesh_vertex_normals[mesh_vertex] = mesh_vertex_normals[mesh_vertex] / 2.0;
-                }
-              }
+      const MESH_WIDTH: uint = SAMPLES_PER_BLOCK + 1;
 
-              const N_INDICES: uint = 12;
-              assert_eq!(N_INDICES, VERTICES_PER_TRIANGLE * square_normals.len());
+      let mut mesh_vertex_normals =
+        [Vec3::new(0.0, 0.0, 0.0), ..MESH_WIDTH * MESH_WIDTH];
 
-              {
-                let mesh_vertex_indices: [uint, ..N_INDICES] = [1,2,0,2,3,0,3,4,0,4,1,0];
-                for &mesh_vertex_index in mesh_vertex_indices.iter() {
-                  block.normals.push(mesh_vertex_normals[mesh_vertex_index].x);
-                  block.normals.push(mesh_vertex_normals[mesh_vertex_index].y);
-                  block.normals.push(mesh_vertex_normals[mesh_vertex_index].z);
-                }
-              }
+      let mut mesh_index = 0;
+      for z_tile in range(0, MESH_WIDTH) {
+        for x_tile in range(0, MESH_WIDTH) {
+          mesh_vertex_normals[mesh_index] = vertex_normal_average!(x_tile, z_tile);
+          mesh_index += 1;
+        }
+      }
 
+      for x_tile in range(0, SAMPLES_PER_BLOCK) {
+        for z_tile in range(0, SAMPLES_PER_BLOCK) {
+          let mut tile_mesh = [Vec3::new(0.0, 0.0, 0.0), ..5];
+
+          const N_INDICES: uint = 12;
+
+          match face_normals[x_tile][z_tile] {
+            None => {
+              // This tile isn't part of this block's mesh.
+              continue;
             },
+            Some(square_normals) => {
+              for n in square_normals.iter() {
+                tile_mesh[0] = tile_mesh[0] + *n;
+              }
+              tile_mesh[0] = tile_mesh[0] / 4.0;
+
+              assert_eq!(N_INDICES, VERTICES_PER_TRIANGLE * square_normals.len());
+            },
+          }
+
+          let mesh_index = z_tile * MESH_WIDTH + x_tile;
+
+          tile_mesh[1] = mesh_vertex_normals[mesh_index];
+          tile_mesh[2] = mesh_vertex_normals[mesh_index + MESH_WIDTH];
+          tile_mesh[3] = mesh_vertex_normals[mesh_index + MESH_WIDTH + 1];
+          tile_mesh[4] = mesh_vertex_normals[mesh_index + 1];
+
+          let triangle_indices: [uint, ..N_INDICES] = [1,2,0,2,3,0,3,4,0,4,1,0];
+          for &idx in triangle_indices.iter() {
+            block.normals.push(tile_mesh[idx].x);
+            block.normals.push(tile_mesh[idx].y);
+            block.normals.push(tile_mesh[idx].z);
           }
         }
       }
@@ -188,7 +247,7 @@ impl TerrainBlock {
   }
 
   #[inline]
-  fn add_square<'a>(
+  fn add_tile<'a>(
     timers: &TimerSet,
     heightmap: &Plane<'a, Perlin>,
     id_allocator: &mut IdAllocator<EntityId>,
@@ -207,7 +266,7 @@ impl TerrainBlock {
     let center = at!(position.x + half_width, position.z + half_width);
 
     if position.y < center.y && center.y <= position.y + BLOCK_WIDTH as f32 {
-      timers.time("update.generate_block.add_square", || {
+      timers.time("update.generate_block.add_tile", || {
         let mut new_face_normals = [Vec3::new(0.0, 0.0, 0.0), ..4];
 
         let x2 = position.x + SAMPLE_WIDTH;
