@@ -27,9 +27,9 @@ use std::cmp::max;
 use std::num::SignedInt;
 
 // values are approximately in microseconds, but they don't have to be.
-pub const BLOCK_UPDATE_BUDGET: int = 30000;
-pub const BLOCK_LOAD_COST: int = 200;
-pub const BLOCK_UNLOAD_COST: int = 100;
+pub const BLOCK_UPDATE_BUDGET: int = 8000;
+pub const BLOCK_LOAD_COST: int = 400;
+pub const BLOCK_UNLOAD_COST: int = 200;
 
 pub const POLYGONS_PER_BLOCK: i32 = SAMPLES_PER_BLOCK as i32 * SAMPLES_PER_BLOCK as i32 * 4;
 

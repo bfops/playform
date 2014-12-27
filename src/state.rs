@@ -21,6 +21,7 @@ use std::default::Default;
 use std::f32::consts::PI;
 use std::rc::Rc;
 use surroundings_loader::SurroundingsLoader;
+use terrain;
 use terrain_vram_buffers::TerrainVRAMBuffers;
 use vertex::{ColoredVertex, TextureVertex};
 use yaglw::vertex_buffer::*;
@@ -298,11 +299,12 @@ impl<'a> App<'a> {
     let (text_textures, text_triangles) =
       make_text(gl, gl_context, hud_texture_shader.clone());
 
+    let world_width = (1 as u32 << 11) as f32;
     let mut physics =
       Physics::new(
         AABB::new(
-          Pnt3 { x: -512.0, y: -32.0, z: -512.0 },
-          Pnt3 { x: 512.0, y: 512.0, z: 512.0 },
+          Pnt3 { x: -world_width, y: -64.0, z: -world_width },
+          Pnt3 { x: world_width, y: 4.0 * terrain::AMPLITUDE - 64.0, z: world_width },
         )
       );
 
