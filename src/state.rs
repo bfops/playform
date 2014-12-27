@@ -365,7 +365,7 @@ impl<'a> App<'a> {
       line_of_sight: line_of_sight,
       physics: physics,
       id_allocator: id_allocator,
-      surroundings_loader: SurroundingsLoader::new(),
+      surroundings_loader: SurroundingsLoader::new(1),
       mob_buffers: mob_buffers,
       terrain_buffers: terrain_buffers,
       player: player,
