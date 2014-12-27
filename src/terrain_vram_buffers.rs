@@ -11,7 +11,11 @@ use yaglw::shader::Shader;
 use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
 
+// VRAM bytes
 pub const BYTE_BUDGET: uint = 60_800_000;
+pub const POLYGON_COST: uint = 76;
+// This assumes there exists only one set of TerrainVRAMBuffers.
+pub const POLYGON_BUDGET: uint = BYTE_BUDGET / POLYGON_COST;
 
 pub struct TerrainVRAMBuffers<'a> {
   id_to_index: HashMap<EntityId, uint>,
@@ -32,8 +36,6 @@ impl<'a> TerrainVRAMBuffers<'a> {
     gl: &'a GLContextExistence,
     gl_context: &mut GLContext,
   ) -> TerrainVRAMBuffers<'a> {
-    let polygon_budget: uint = BYTE_BUDGET / if USE_LIGHTING {76} else {40};
-
     TerrainVRAMBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
@@ -44,10 +46,10 @@ impl<'a> TerrainVRAMBuffers<'a> {
       },
       length: 0,
       // There are 3 R32F components per vertex.
-      vertex_positions: BufferTexture::new(gl, gl_context, gl::R32F, 3 * VERTICES_PER_TRIANGLE * polygon_budget),
+      vertex_positions: BufferTexture::new(gl, gl_context, gl::R32F, 3 * VERTICES_PER_TRIANGLE * POLYGON_BUDGET),
       // There are 3 R32F components per normal.
-      normals: BufferTexture::new(gl, gl_context, gl::R32F, 3 * VERTICES_PER_TRIANGLE * polygon_budget),
-      types: BufferTexture::new(gl, gl_context, gl::R32UI, polygon_budget),
+      normals: BufferTexture::new(gl, gl_context, gl::R32F, 3 * VERTICES_PER_TRIANGLE * POLYGON_BUDGET),
+      types: BufferTexture::new(gl, gl_context, gl::R32UI, POLYGON_BUDGET),
     }
   }
 
@@ -71,9 +73,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
     };
 
     bind("positions", self.vertex_positions.handle.gl_id);
-    if USE_LIGHTING {
-      bind("normals", self.normals.handle.gl_id);
-    }
+    bind("normals", self.normals.handle.gl_id);
     bind("terrain_types", self.types.handle.gl_id);
   }
 
@@ -86,11 +86,8 @@ impl<'a> TerrainVRAMBuffers<'a> {
     ids: &[EntityId],
   ) {
     assert_eq!(vertices.len(), 3 * VERTICES_PER_TRIANGLE * ids.len());
+    assert_eq!(normals.len(), vertices.len());
     assert_eq!(types.len(), ids.len());
-
-    if USE_LIGHTING {
-      assert_eq!(normals.len(), vertices.len());
-    }
 
     for &id in ids.iter() {
       self.id_to_index.insert(id, self.index_to_id.len());
@@ -100,12 +97,10 @@ impl<'a> TerrainVRAMBuffers<'a> {
     self.length += 3 * ids.len();
     self.vertex_positions.buffer.byte_buffer.bind(gl);
     self.vertex_positions.buffer.push(gl, vertices);
+    self.normals.buffer.byte_buffer.bind(gl);
+    self.normals.buffer.push(gl, normals);
     self.types.buffer.byte_buffer.bind(gl);
     self.types.buffer.push(gl, types);
-    if USE_LIGHTING {
-      self.normals.buffer.byte_buffer.bind(gl);
-      self.normals.buffer.push(gl, normals);
-    }
   }
 
   // Note: `id` must be present in the buffers.
@@ -122,12 +117,10 @@ impl<'a> TerrainVRAMBuffers<'a> {
     self.length -= 3;
     self.vertex_positions.buffer.byte_buffer.bind(gl);
     self.vertex_positions.buffer.swap_remove(gl, idx * 3 * VERTICES_PER_TRIANGLE, 3 * VERTICES_PER_TRIANGLE);
+    self.normals.buffer.byte_buffer.bind(gl);
+    self.normals.buffer.swap_remove(gl, 3 * idx * VERTICES_PER_TRIANGLE, 3 * VERTICES_PER_TRIANGLE);
     self.types.buffer.byte_buffer.bind(gl);
     self.types.buffer.swap_remove(gl, idx, 1);
-    if USE_LIGHTING {
-      self.normals.buffer.byte_buffer.bind(gl);
-      self.normals.buffer.swap_remove(gl, 3 * idx * VERTICES_PER_TRIANGLE, 3 * VERTICES_PER_TRIANGLE);
-    }
   }
 
   pub fn draw(&self, _gl: &mut GLContext) {

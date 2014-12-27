@@ -135,52 +135,50 @@ impl TerrainBlock {
         }
       }
 
-      if USE_LIGHTING {
-        // This is all super mesh-specific.
-        for x_square in range(0, SAMPLES_PER_BLOCK) {
-          for z_square in range(0, SAMPLES_PER_BLOCK) {
-            match face_normals[x_square][z_square] {
-              None => {},
-              Some(square_normals) => {
-                let mut mesh_vertex_normals = [Vec3::new(0.0, 0.0, 0.0), ..5];
+      // This is all super mesh-specific.
+      for x_square in range(0, SAMPLES_PER_BLOCK) {
+        for z_square in range(0, SAMPLES_PER_BLOCK) {
+          match face_normals[x_square][z_square] {
+            None => {},
+            Some(square_normals) => {
+              let mut mesh_vertex_normals = [Vec3::new(0.0, 0.0, 0.0), ..5];
 
-                for n in square_normals.iter() {
-                  mesh_vertex_normals[0] = mesh_vertex_normals[0] + *n;
-                }
-                mesh_vertex_normals[0] = mesh_vertex_normals[0] / 4.0;
+              for n in square_normals.iter() {
+                mesh_vertex_normals[0] = mesh_vertex_normals[0] + *n;
+              }
+              mesh_vertex_normals[0] = mesh_vertex_normals[0] / 4.0;
 
-                {
-                  let mut square_normal = 3;
+              {
+                let mut square_normal = 3;
 
-                  for mesh_vertex in range(1, 5 as uint) {
-                    mesh_vertex_normals[mesh_vertex] = mesh_vertex_normals[mesh_vertex] + square_normals[square_normal];
+                for mesh_vertex in range(1, 5 as uint) {
+                  mesh_vertex_normals[mesh_vertex] = mesh_vertex_normals[mesh_vertex] + square_normals[square_normal];
 
-                    // square_normal == 4 when mesh_vertex == 1.
-                    if mesh_vertex == 1 {
-                      square_normal = 0;
-                    } else {
-                      square_normal += 1;
-                    }
-
-                    mesh_vertex_normals[mesh_vertex] = mesh_vertex_normals[mesh_vertex] + square_normals[square_normal];
-                    mesh_vertex_normals[mesh_vertex] = mesh_vertex_normals[mesh_vertex] / 2.0;
+                  // square_normal == 4 when mesh_vertex == 1.
+                  if mesh_vertex == 1 {
+                    square_normal = 0;
+                  } else {
+                    square_normal += 1;
                   }
+
+                  mesh_vertex_normals[mesh_vertex] = mesh_vertex_normals[mesh_vertex] + square_normals[square_normal];
+                  mesh_vertex_normals[mesh_vertex] = mesh_vertex_normals[mesh_vertex] / 2.0;
                 }
+              }
 
-                const N_INDICES: uint = 12;
-                assert_eq!(N_INDICES, VERTICES_PER_TRIANGLE * square_normals.len());
+              const N_INDICES: uint = 12;
+              assert_eq!(N_INDICES, VERTICES_PER_TRIANGLE * square_normals.len());
 
-                {
-                  let mesh_vertex_indices: [uint, ..N_INDICES] = [1,2,0,2,3,0,3,4,0,4,1,0];
-                  for &mesh_vertex_index in mesh_vertex_indices.iter() {
-                    block.normals.push(mesh_vertex_normals[mesh_vertex_index].x);
-                    block.normals.push(mesh_vertex_normals[mesh_vertex_index].y);
-                    block.normals.push(mesh_vertex_normals[mesh_vertex_index].z);
-                  }
+              {
+                let mesh_vertex_indices: [uint, ..N_INDICES] = [1,2,0,2,3,0,3,4,0,4,1,0];
+                for &mesh_vertex_index in mesh_vertex_indices.iter() {
+                  block.normals.push(mesh_vertex_normals[mesh_vertex_index].x);
+                  block.normals.push(mesh_vertex_normals[mesh_vertex_index].y);
+                  block.normals.push(mesh_vertex_normals[mesh_vertex_index].z);
                 }
+              }
 
-              },
-            }
+            },
           }
         }
       }
@@ -241,7 +239,7 @@ impl TerrainBlock {
               maxy = center.y;
             }
 
-            if USE_LIGHTING {
+            {
               let side1: Vec3<GLfloat> = center - *$v1;
               let side2: Vec3<GLfloat> = $v2.to_vec() - $v1.to_vec();
               let normal: Vec3<GLfloat> = normalize(&cross(&side1, &side2));

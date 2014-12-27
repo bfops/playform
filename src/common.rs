@@ -13,8 +13,6 @@ pub const TRIANGLES_PER_BOX: uint = 12;
 pub const VERTICES_PER_TRIANGLE: uint = 3;
 pub const TRIANGLE_VERTICES_PER_BOX: uint = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
 
-pub const USE_LIGHTING: bool = true;
-
 pub fn partial_min_by<A: Copy, T: Iterator<A>, B: PartialOrd>(t: T, f: |A| -> B) -> Vec<A> {
   let mut t = t;
   let mut min_a = Vec::new();

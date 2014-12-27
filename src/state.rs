@@ -188,24 +188,22 @@ impl<'a> App<'a> {
           String::from_str("shaders/world_texture"),
           [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
           &FromIterator::from_iter(
-            [(String::from_str("lighting"), (USE_LIGHTING as uint).to_string())].to_vec().into_iter(),
+            [(String::from_str("lighting"), (true as uint).to_string())].to_vec().into_iter(),
           ),
         )));
-      if USE_LIGHTING {
-        set_point_light(
-          texture_shader.borrow_mut().deref_mut(),
-          gl_context,
-          &Light {
-            position: Vec3::new(0.0, 16.0, 0.0),
-            intensity: Vec3::new(0.6, 0.6, 0.6),
-          }
-        );
-        set_ambient_light(
-          texture_shader.borrow_mut().deref_mut(),
-          gl_context,
-          Vec3::new(0.4, 0.4, 0.4),
-        );
-      }
+      set_point_light(
+        texture_shader.borrow_mut().deref_mut(),
+        gl_context,
+        &Light {
+          position: Vec3::new(0.0, 16.0, 0.0),
+          intensity: Vec3::new(0.6, 0.6, 0.6),
+        }
+      );
+      set_ambient_light(
+        texture_shader.borrow_mut().deref_mut(),
+        gl_context,
+        Vec3::new(0.4, 0.4, 0.4),
+      );
       texture_shader
     };
     let color_shader =
