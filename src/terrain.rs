@@ -41,19 +41,16 @@ impl Terrain {
     }
   }
 
-  /// N.B. The references returned from this function may not be valid once this object is touched again.
-  // TODO: Figure out a way to specify that the reference can only be valid
-  // until this object is touched again (or deleted).
   #[inline]
-  pub unsafe fn load(
-    &mut self,
+  pub unsafe fn load<'a>(
+    &'a mut self,
     timers: &TimerSet,
     id_allocator: &mut IdAllocator<EntityId>,
     position: &BlockPosition,
-  ) -> &TerrainBlock {
+  ) -> &'a TerrainBlock {
     match self.all_blocks.entry(*position) {
       Entry::Occupied(entry) => {
-        // Escape lifetime bounds.
+        // Fudge the lifetime bounds
         mem::transmute(entry.get())
       },
       Entry::Vacant(entry) => {
