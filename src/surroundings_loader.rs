@@ -152,7 +152,7 @@ impl SurroundingsLoader {
 
       for radius in range_inclusive(1, load_distance) {
         let blocks_at_radius = cube_shell(position, radius);
-        want_loaded_vec.push_all(blocks_at_radius.as_slice());
+        want_loaded_vec.push_all(blocks_at_radius[]);
         for position in blocks_at_radius.into_iter() {
           want_loaded_set.insert(position);
         }

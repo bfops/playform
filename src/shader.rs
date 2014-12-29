@@ -42,7 +42,7 @@ fn preprocess(shader: String, vars: &HashMap<String, String>) -> Option<String> 
             return None;
           },
           Some(val) => {
-            processed.push_str(val.as_slice());
+            processed.push_str(val[]);
           },
         }
       },
