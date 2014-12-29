@@ -10,7 +10,7 @@ use test::Bencher;
 /// Generate the set of points corresponding to the surface of a cube made of voxels.
 pub fn cube_shell(center: &BlockPosition, radius: i32) -> Vec<BlockPosition> {
   let mut shell = Vec::new();
- 
+
   macro_rules! add_square(
     ($dxs: expr, $dys: expr, $dzs: expr) => (
       for dx in $dxs {
@@ -26,23 +26,23 @@ pub fn cube_shell(center: &BlockPosition, radius: i32) -> Vec<BlockPosition> {
       }
     );
   );
- 
+
   add_square!(
-    [-radius, radius].iter().map(|&dx| dx),
+    [-radius, radius].iter().cloned(),
     range_abs(radius),
     range_abs(radius)
   );
   add_square!(
     range_abs(radius - 1),
-    [-radius, radius].iter().map(|&dy| dy),
+    [-radius, radius].iter().cloned(),
     range_abs(radius)
   );
   add_square!(
     range_abs(radius - 1),
     range_abs(radius - 1),
-    [-radius, radius].iter().map(|&dz| dz)
+    [-radius, radius].iter().cloned()
   );
- 
+
   shell
 }
 

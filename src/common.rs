@@ -13,11 +13,11 @@ pub const TRIANGLES_PER_BOX: uint = 12;
 pub const VERTICES_PER_TRIANGLE: uint = 3;
 pub const TRIANGLE_VERTICES_PER_BOX: uint = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
 
-pub fn partial_min_by<A: Copy, T: Iterator<A>, B: PartialOrd>(t: T, f: |A| -> B) -> Vec<A> {
-  let mut t = t;
+pub fn partial_min_by<A, I, B, F>(mut iter: I, f: F) -> Vec<A>
+    where A: Copy, I: Iterator<A>, B: PartialOrd, F: Fn(A) -> B {
   let mut min_a = Vec::new();
   let mut min_b = {
-    match t.next() {
+    match iter.next() {
       None => return min_a,
       Some(a) => {
         min_a.push(a);
@@ -25,10 +25,10 @@ pub fn partial_min_by<A: Copy, T: Iterator<A>, B: PartialOrd>(t: T, f: |A| -> B)
       }
     }
   };
-  for a in t {
+  for a in iter {
     let b = f(a);
     if b < min_b {
-      min_a = Vec::new();
+      min_a.truncate(0);
       min_a.push(a);
       min_b = b;
     } else if b == min_b {
@@ -43,7 +43,7 @@ pub fn to_triangles(bounds: &AABB3<GLfloat>, c: &Color4<GLfloat>) -> [ColoredVer
   let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
   let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
 
-  let vtx = |x, y, z| {
+  let vtx = |&:x, y, z| {
     ColoredVertex {
       position: Pnt3::new(x, y, z),
       color: c.clone(),
