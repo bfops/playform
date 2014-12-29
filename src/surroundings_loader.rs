@@ -61,7 +61,7 @@ impl SurroundingsLoader {
     let load_width = (block_budget as f32).sqrt() as i32;
     let load_distance = (load_width - 1) / 2;
 
-    info!("load_distance {}", lost_distance);
+    info!("load_distance {}", load_distance);
 
     SurroundingsLoader {
       terrain: Terrain::new(),
