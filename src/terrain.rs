@@ -6,11 +6,11 @@ use std::mem;
 use stopwatch::TimerSet;
 use terrain_block::{TerrainBlock, BlockPosition};
 
-pub const AMPLITUDE: f32 = 64.0;
-pub const FREQUENCY: f64 = 1.0 / 32.0;
+pub const AMPLITUDE: f32 = 256.0;
+pub const FREQUENCY: f64 = 1.0 / 64.0;
 pub const PERSISTENCE: f64 = 1.0 / 8.0;
 pub const LACUNARITY: f64 = 8.0;
-pub const OCTAVES: uint = 6;
+pub const OCTAVES: uint = 8;
 
 #[deriving(Show, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TerrainType {
