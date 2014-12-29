@@ -195,10 +195,10 @@ impl SurroundingsLoader {
                 timers.time("update.load_some.load.vram", || {
                   terrain_buffers.push(
                     gl,
-                    block.vertex_coordinates.as_slice(),
-                    block.normals.as_slice(),
-                    block.typs.as_slice(),
-                    block.ids.as_slice(),
+                    block.vertex_coordinates[],
+                    block.normals[],
+                    block.typs[],
+                    block.ids[]
                   );
                 });
               });

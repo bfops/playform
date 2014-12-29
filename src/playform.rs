@@ -6,6 +6,7 @@
 #![feature(macro_rules)]
 #![feature(unsafe_destructor)]
 #![feature(phase)]
+#![feature(slicing_syntax)]
 
 extern crate gl;
 extern crate libc;
