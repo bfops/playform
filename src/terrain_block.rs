@@ -6,6 +6,7 @@ use ncollide::bounding_volume::{AABB, AABB3};
 use noise::source::Perlin;
 use noise::model::Plane;
 use state::EntityId;
+use std::cmp::partial_max;
 use std::collections::hash_map::HashMap;
 use std::num::Float;
 use stopwatch::TimerSet;
@@ -209,13 +210,9 @@ impl TerrainBlock {
            $maxx: expr,
            $maxz: expr
           ) => ({
-            let mut maxy = $v1.y;
-            if $v2.y > $v1.y {
-              maxy = $v2.y;
-            }
-            if center.y > maxy {
-              maxy = center.y;
-            }
+            let maxy = partial_max($v1.y, $v2.y);
+            let maxy = maxy.and_then(|m| partial_max(m, center.y));
+            let maxy = maxy.unwrap();
 
             let id = id_allocator.allocate();
             block.vertex_coordinates.push_all(&[
