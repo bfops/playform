@@ -188,7 +188,7 @@ impl SurroundingsLoader {
 
                 timers.time("update.load_some.load.physics", || {
                   for (&id, bounds) in block.bounds.iter() {
-                    physics.insert_terrain(id, bounds);
+                    physics.insert_terrain(id, bounds.clone());
                   }
                 });
 

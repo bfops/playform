@@ -32,8 +32,7 @@ impl InProgressTerrain {
 
         let low_corner = block_position.to_world_position();
         let block_span = Vec3::new(BLOCK_WIDTH as f32, BLOCK_WIDTH as f32, BLOCK_WIDTH as f32);
-        let bounds = AABB::new(low_corner, low_corner + block_span);
-        physics.insert_misc(id, &bounds);
+        physics.insert_misc(id, AABB::new(low_corner, low_corner + block_span));
       }
     }
   }
@@ -44,11 +43,6 @@ impl InProgressTerrain {
     physics: &mut Physics,
     block_position: &BlockPosition,
   ) {
-    match self.blocks.remove(block_position) {
-      None => {},
-      Some(id) => {
-        physics.remove_misc(id);
-      },
-    }
+    self.blocks.remove(block_position).map(|id| physics.remove_misc(id));
   }
 }
