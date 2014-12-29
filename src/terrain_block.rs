@@ -137,56 +137,51 @@ impl TerrainBlock {
     })
   }
 
-  #[inline]
   fn add_tile<'a>(
     timers: &TimerSet,
-    heightmap: &Plane<'a, Perlin>,
+    hm: &Plane<'a, Perlin>,
     id_allocator: &mut IdAllocator<EntityId>,
     block: &mut TerrainBlock,
     position: &Pnt3<f32>,
   ) {
-    macro_rules! at(
-      ($x: expr, $z: expr) => ({
-        let y = AMPLITUDE * (heightmap.get::<GLfloat>($x, $z) + 1.0) / 2.0;
-        Pnt3::new($x, y, $z)
-      });
-    );
+    fn at(hm: &Plane<Perlin>, x: f32, z: f32) -> Pnt3<f32> {
+      let y = AMPLITUDE * (hm.get(x, z) + 1.0) / 2.0;
+      Pnt3::new(x, y, z)
+    }
 
-    macro_rules! normal_at(
-      ($x: expr, $z: expr) => ({
-        const DELTA: f32 = 0.2;
-        let dx = at!($x + DELTA, $z).to_vec() - at!($x - DELTA, $z).to_vec();
-        let dz = at!($x, $z + DELTA).to_vec() - at!($x, $z - DELTA).to_vec();
-        normalize(&cross(&dx, &dz))
-      });
-    );
+    fn normal_at(hm: &Plane<Perlin>, x: f32, z: f32) -> Vec3<f32> {
+      const DELTA: f32 = 0.2;
+      let dx = at(hm, x + DELTA, z).to_vec() - at(hm, x - DELTA, z).to_vec();
+      let dz = at(hm, x, z + DELTA).to_vec() - at(hm, x, z - DELTA).to_vec();
+      normalize(&cross(&dx, &dz))
+    }
 
     let half_width = SAMPLE_WIDTH / 2.0;
-    let center = at!(position.x + half_width, position.z + half_width);
+    let center = at(hm, position.x + half_width, position.z + half_width);
 
     if position.y < center.y && center.y <= position.y + BLOCK_WIDTH as f32 {
       timers.time("update.generate_block.add_tile", || {
-        let center_normal = normal_at!(position.x + half_width, position.z + half_width);
+        let center_normal = normal_at(hm, position.x + half_width, position.z + half_width);
 
         let x2 = position.x + SAMPLE_WIDTH;
         let z2 = position.z + SAMPLE_WIDTH;
 
-        let v1 = at!(position.x, position.z);
-        let v2 = at!(position.x, z2);
-        let v3 = at!(x2, z2);
-        let v4 = at!(x2, position.z);
+        let vs: [Pnt3<f32>, ..4] =
+          [ at(hm, position.x, position.z)
+          , at(hm, position.x, z2)
+          , at(hm, x2, z2)
+          , at(hm, x2, position.z)
+          ];
 
-        let n1 = normal_at!(position.x, position.z);
-        let n2 = normal_at!(position.x, z2);
-        let n3 = normal_at!(x2, z2);
-        let n4 = normal_at!(x2, position.z);
+        let ns: [Vec3<f32>, ..4] =
+          [ normal_at(hm, position.x, position.z)
+          , normal_at(hm, position.x, x2)
+          , normal_at(hm, x2, z2)
+          , normal_at(hm, x2, position.z)
+          ];
 
-        let mut center_lower_than: int = 0;
-        for v in [v1, v2, v3, v4].iter() {
-          if center.y < v.y {
-            center_lower_than += 1;
-          }
-        }
+        let center_lower_than = vs.iter().filter(|v| center.y < v.y).count();
+
         let terrain_type =
           if center_lower_than >= 3 {
             TerrainType::Dirt
@@ -235,12 +230,12 @@ impl TerrainBlock {
           });
         );
 
-        place_terrain!(&v1, &v2, &n1, &n2, v1.x, v1.z, center.x, v2.z);
-        place_terrain!(&v2, &v3, &n2, &n3, v2.x, center.z, v3.x, v3.z);
-        place_terrain!(&v3, &v4, &n3, &n4, center.x, center.z, v3.x, v3.z);
-        place_terrain!(&v4, &v1, &n4, &n1, v1.x, v1.z, v4.x, center.z);
+        let centr = center; // makes alignment nice
+        place_terrain!(&vs[0], &vs[1], &ns[0], &ns[1], vs[0].x, vs[0].z, centr.x, vs[1].z);
+        place_terrain!(&vs[1], &vs[2], &ns[1], &ns[2], vs[1].x, centr.z, vs[2].x, vs[2].z);
+        place_terrain!(&vs[2], &vs[3], &ns[2], &ns[3], centr.x, centr.z, vs[2].x, vs[2].z);
+        place_terrain!(&vs[3], &vs[0], &ns[3], &ns[0], vs[0].x, vs[0].z, vs[3].x, centr.z);
       })
     }
   }
 }
-
