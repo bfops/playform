@@ -170,79 +170,88 @@ impl TerrainBlock {
     let half_width = SAMPLE_WIDTH / 2.0;
     let center = hm.point_at(position.x + half_width, position.z + half_width);
 
-    if position.y < center.y && center.y <= position.y + BLOCK_WIDTH as f32 {
-      timers.time("update.generate_block.add_tile", || {
-        let center_normal = hm.normal_at(position.x + half_width, position.z + half_width);
-
-        let x2 = position.x + SAMPLE_WIDTH;
-        let z2 = position.z + SAMPLE_WIDTH;
-
-        let ps: [Pnt3<f32>, ..4] =
-          [ hm.point_at(position.x, position.z)
-          , hm.point_at(position.x, z2)
-          , hm.point_at(x2, z2)
-          , hm.point_at(x2, position.z)
-          ];
-
-        let ns: [Vec3<f32>, ..4] =
-          [ hm.normal_at(position.x, position.z)
-          , hm.normal_at(position.x, x2)
-          , hm.normal_at(x2, z2)
-          , hm.normal_at(x2, position.z)
-          ];
-
-        let center_lower_than = ps.iter().filter(|v| center.y < v.y).count();
-
-        let terrain_type =
-          if center_lower_than >= 3 {
-            TerrainType::Dirt
-          } else {
-            TerrainType::Grass
-          };
-
-        macro_rules! place_terrain(
-          ($v1: expr,
-           $v2: expr,
-           $n1: expr,
-           $n2: expr,
-           $minx: expr,
-           $minz: expr,
-           $maxx: expr,
-           $maxz: expr
-          ) => ({
-            let maxy = partial_max($v1.y, $v2.y);
-            let maxy = maxy.and_then(|m| partial_max(m, center.y));
-            let maxy = maxy.unwrap();
-
-            let id = id_allocator.allocate();
-            block.vertex_coordinates.push_all(&[
-              $v1.x, $v1.y, $v1.z,
-              $v2.x, $v2.y, $v2.z,
-              center.x, center.y, center.z,
-            ]);
-            block.normals.push_all(&[
-              $n1.x, $n1.y, $n1.z,
-              $n2.x, $n2.y, $n2.z,
-              center_normal.x, center_normal.y, center_normal.z,
-            ]);
-            block.typs.push(terrain_type as GLuint);
-            block.ids.push(id);
-            block.bounds.insert(
-              id,
-              AABB::new(
-                Pnt3::new($minx, $v1.y, $minz),
-                Pnt3::new($maxx, maxy, $maxz),
-              ),
-            );
-          });
-        );
-
-        let centr = center; // makes alignment nice
-        place_terrain!(&ps[0], &ps[1], &ns[0], &ns[1], ps[0].x, ps[0].z, centr.x, ps[1].z);
-        place_terrain!(&ps[1], &ps[2], &ns[1], &ns[2], ps[1].x, centr.z, ps[2].x, ps[2].z);
-        place_terrain!(&ps[2], &ps[3], &ns[2], &ns[3], centr.x, centr.z, ps[2].x, ps[2].z);
-        place_terrain!(&ps[3], &ps[0], &ns[3], &ns[0], ps[0].x, ps[0].z, ps[3].x, centr.z);
-      })
+    if position.y >= center.y || center.y > position.y + BLOCK_WIDTH as f32 {
+      return;
     }
+
+    timers.time("update.generate_block.add_tile", || {
+      let center_normal = hm.normal_at(position.x + half_width, position.z + half_width);
+
+      let x2 = position.x + SAMPLE_WIDTH;
+      let z2 = position.z + SAMPLE_WIDTH;
+
+      let ps: [Pnt3<f32>, ..4] =
+        [ hm.point_at(position.x, position.z)
+        , hm.point_at(position.x, z2)
+        , hm.point_at(x2, z2)
+        , hm.point_at(x2, position.z)
+        ];
+
+      let ns: [Vec3<f32>, ..4] =
+        [ hm.normal_at(position.x, position.z)
+        , hm.normal_at(position.x, x2)
+        , hm.normal_at(x2, z2)
+        , hm.normal_at(x2, position.z)
+        ];
+
+      let center_lower_than = ps.iter().filter(|v| center.y < v.y).count();
+
+      let terrain_type =
+        if center_lower_than >= 3 {
+          TerrainType::Dirt
+        } else {
+          TerrainType::Grass
+        };
+
+      macro_rules! place_terrain(
+        ($v1: expr,
+         $v2: expr,
+         $n1: expr,
+         $n2: expr,
+         $minx: expr,
+         $minz: expr,
+         $maxx: expr,
+         $maxz: expr
+        ) => ({
+          let maxy = partial_max($v1.y, $v2.y);
+          let maxy = maxy.and_then(|m| partial_max(m, center.y));
+          let maxy = maxy.unwrap();
+
+          let id = id_allocator.allocate();
+          block.vertex_coordinates.push_all(&[
+            $v1.x, $v1.y, $v1.z,
+            $v2.x, $v2.y, $v2.z,
+            center.x, center.y, center.z,
+          ]);
+          block.normals.push_all(&[
+            $n1.x, $n1.y, $n1.z,
+            $n2.x, $n2.y, $n2.z,
+            center_normal.x, center_normal.y, center_normal.z,
+          ]);
+          block.typs.push(terrain_type as GLuint);
+          block.ids.push(id);
+          block.bounds.insert(
+            id,
+            AABB::new(
+              Pnt3::new($minx, $v1.y, $minz),
+              Pnt3::new($maxx, maxy, $maxz),
+            ),
+          );
+        });
+      );
+
+      let placements = 4;
+      block.vertex_coordinates.reserve(placements*9);
+      block.normals.reserve(placements*9);
+      block.typs.reserve(placements);
+      block.ids.reserve(placements);
+      block.bounds.reserve(placements);
+
+      let centr = center; // makes alignment nice
+      place_terrain!(&ps[0], &ps[1], &ns[0], &ns[1], ps[0].x, ps[0].z, centr.x, ps[1].z);
+      place_terrain!(&ps[1], &ps[2], &ns[1], &ns[2], ps[1].x, centr.z, ps[2].x, ps[2].z);
+      place_terrain!(&ps[2], &ps[3], &ns[2], &ns[3], centr.x, centr.z, ps[2].x, ps[2].z);
+      place_terrain!(&ps[3], &ps[0], &ns[3], &ns[0], ps[0].x, ps[0].z, ps[3].x, centr.z);
+    })
   }
 }
