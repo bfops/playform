@@ -19,10 +19,13 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::default::Default;
 use std::f32::consts::PI;
+use std::num::Float;
 use std::rc::Rc;
 use surroundings_loader::SurroundingsLoader;
 use terrain;
-use terrain_vram_buffers::TerrainVRAMBuffers;
+use terrain_block;
+use terrain_game_loader::TerrainGameLoader;
+use terrain_vram_buffers;
 use vertex::{ColoredVertex, TextureVertex};
 use yaglw::vertex_buffer::*;
 use yaglw::gl_context::{GLContext, GLContextExistence};
@@ -138,9 +141,9 @@ pub struct App<'a> {
 
   pub id_allocator: IdAllocator<EntityId>,
   pub surroundings_loader: SurroundingsLoader,
+  pub terrain_game_loader: TerrainGameLoader<'a>,
 
   // OpenGL buffers
-  pub terrain_buffers: TerrainVRAMBuffers<'a>,
   pub mob_buffers: mob::MobBuffers<'a>,
   pub line_of_sight: GLArray<'a, ColoredVertex>,
   pub hud_triangles: GLArray<'a, ColoredVertex>,
@@ -290,11 +293,8 @@ impl<'a> App<'a> {
     let hud_triangles = make_hud(gl, gl_context, hud_color_shader.clone());
 
     let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
-    let terrain_buffers = {
-      let terrain_buffers = TerrainVRAMBuffers::new(gl, gl_context);
-      terrain_buffers.bind_glsl_uniforms(gl_context, &mut texture_unit_alloc, texture_shader.clone());
-      terrain_buffers
-    };
+    let terrain_game_loader =
+      TerrainGameLoader::new(gl, gl_context, texture_shader.clone(), &mut texture_unit_alloc);
 
     let (text_textures, text_triangles) =
       make_text(gl, gl_context, hud_texture_shader.clone());
@@ -358,6 +358,18 @@ impl<'a> App<'a> {
       gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
     }
 
+    let surroundings_loader = {
+      let block_budget =
+        terrain_vram_buffers::POLYGON_BUDGET as i32 / terrain_block::POLYGONS_PER_BLOCK;
+      // We'll have at most load_width^2 full blocks loaded.
+      // This is because we generate flat terrain! If that changes, this changes!
+      let load_width = (block_budget as f32).sqrt() as i32;
+      let load_distance = (load_width - 1) / 2;
+
+      info!("load_distance {}", load_distance);
+      SurroundingsLoader::new(load_distance)
+    };
+
     match gl_context.get_error() {
       gl::NO_ERROR => {},
       err => warn!("OpenGL error 0x{:x} in load()", err),
@@ -367,9 +379,9 @@ impl<'a> App<'a> {
       line_of_sight: line_of_sight,
       physics: physics,
       id_allocator: id_allocator,
-      surroundings_loader: SurroundingsLoader::new(1),
+      surroundings_loader: surroundings_loader,
+      terrain_game_loader: terrain_game_loader,
       mob_buffers: mob_buffers,
-      terrain_buffers: terrain_buffers,
       player: player,
       mobs: mobs,
       hud_triangles: hud_triangles,

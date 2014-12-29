@@ -43,6 +43,7 @@ mod stopwatch;
 mod surroundings_loader;
 mod terrain;
 mod terrain_block;
+mod terrain_game_loader;
 mod terrain_vram_buffers;
 mod ttf;
 mod update;

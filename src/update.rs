@@ -28,7 +28,7 @@ pub fn update<'a>(app: &mut App) {
       app.surroundings_loader.update(
         app.timers,
         app.gl_context,
-        &mut app.terrain_buffers,
+        &mut app.terrain_game_loader,
         &mut app.id_allocator,
         &mut app.physics,
         player_block_position,

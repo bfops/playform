@@ -1,18 +1,13 @@
 use cube_shell::cube_shell;
 use id_allocator::IdAllocator;
-use in_progress_terrain::InProgressTerrain;
-use terrain::Terrain;
 use terrain_block::BlockPosition;
-use terrain_vram_buffers;
-use terrain_vram_buffers::TerrainVRAMBuffers;
+use terrain_game_loader::TerrainGameLoader;
 use physics::Physics;
 use state::EntityId;
 use std::collections::HashSet;
 use std::collections::RingBuf;
 use std::iter::range_inclusive;
-use std::num::Float;
 use stopwatch::TimerSet;
-use terrain_block::SAMPLES_PER_BLOCK;
 use yaglw::gl_context::GLContext;
 
 #[cfg(test)]
@@ -31,74 +26,52 @@ pub const BLOCK_UPDATE_BUDGET: int = 8000;
 pub const BLOCK_LOAD_COST: int = 600;
 pub const BLOCK_UNLOAD_COST: int = 300;
 
-pub const POLYGONS_PER_BLOCK: i32 = SAMPLES_PER_BLOCK as i32 * SAMPLES_PER_BLOCK as i32 * 4;
-
 /// Keep surroundings loaded around a given world position.
 pub struct SurroundingsLoader {
-  pub terrain: Terrain,
-  pub in_progress_terrain: InProgressTerrain,
-
   pub load_queue: RingBuf<BlockPosition>,
   pub unload_queue: RingBuf<BlockPosition>,
 
   pub load_distance: i32,
 
-  // the set of blocks that are currently loaded
-  pub loaded: HashSet<BlockPosition>,
-
   pub last_position: Option<BlockPosition>,
 }
 
 impl SurroundingsLoader {
-  pub fn new(portion_of_polygon_budget: i32) -> SurroundingsLoader {
-    assert!(portion_of_polygon_budget > 0);
-
-    let block_budget =
-      terrain_vram_buffers::POLYGON_BUDGET as i32
-      / (portion_of_polygon_budget * POLYGONS_PER_BLOCK);
-    // We'll have at most load_width^2 full blocks loaded.
-    // This is because we generate flat terrain! If that changes, this changes!
-    let load_width = (block_budget as f32).sqrt() as i32;
-    let load_distance = (load_width - 1) / 2;
-
-    info!("load_distance {}", load_distance);
+  pub fn new(load_distance: i32) -> SurroundingsLoader {
+    assert!(load_distance >= 0);
 
     SurroundingsLoader {
-      terrain: Terrain::new(),
-      in_progress_terrain: InProgressTerrain::new(),
-
       load_queue: RingBuf::new(),
       unload_queue: RingBuf::new(),
 
       load_distance: load_distance,
 
-      loaded: HashSet::new(),
-
       last_position: None,
     }
   }
 
-  pub fn update(
+  pub fn update<'a>(
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
-    terrain_buffers: &mut TerrainVRAMBuffers,
+    terrain_game_loader: &mut TerrainGameLoader<'a>,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     position: BlockPosition,
   ) {
     timers.time("update.update_queues", || {
-      self.update_queues(timers, id_allocator, physics, position);
+      self.update_queues(timers, terrain_game_loader, id_allocator, physics, position);
     });
     timers.time("update.load_some", || {
-      self.load_some(timers, gl, terrain_buffers, id_allocator, physics);
+      self.load_some(timers, gl, terrain_game_loader, id_allocator, physics);
     });
   }
 
   #[inline]
-  fn update_queues(
+  fn update_queues<'a>(
     &mut self,
     timers: &TimerSet,
+    terrain_game_loader: &mut TerrainGameLoader<'a>,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: BlockPosition,
@@ -111,13 +84,11 @@ impl SurroundingsLoader {
 
       timers.time("update.update_queues.load_queue", || {
         for block_position in self.load_queue.iter() {
-          self.in_progress_terrain.remove(physics, block_position);
+          terrain_game_loader.unmark_wanted(physics, block_position);
         }
         self.load_queue.clear();
         for block_position in want_loaded_vec.iter() {
-          let is_loaded = self.loaded.contains(block_position);
-          if !is_loaded {
-            self.in_progress_terrain.insert(id_allocator, physics, block_position);
+          if terrain_game_loader.mark_wanted(id_allocator, physics, block_position) {
             self.load_queue.push_back(*block_position);
           }
         }
@@ -125,7 +96,7 @@ impl SurroundingsLoader {
 
       timers.time("update.update_queues.unload_queue", || {
         self.unload_queue.clear();
-        for block_position in self.loaded.iter() {
+        for block_position in terrain_game_loader.loaded.iter() {
           let is_needed = want_loaded_set.contains(block_position);
           if !is_needed {
             self.unload_queue.push_back(*block_position);
@@ -164,11 +135,11 @@ impl SurroundingsLoader {
 
   // Load some blocks. Prioritizes unloading unneeded ones over loading new ones.
   #[inline]
-  fn load_some(
+  fn load_some<'a>(
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
-    terrain_buffers: &mut TerrainVRAMBuffers,
+    terrain_game_loader: &mut TerrainGameLoader<'a>,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
   ) {
@@ -181,43 +152,22 @@ impl SurroundingsLoader {
               break;
             },
             Some(block_position) => {
-              timers.time("update.load_some.load", || {
-                let block = unsafe {
-                  self.terrain.load(timers, id_allocator, &block_position)
-                };
-
-                timers.time("update.load_some.load.physics", || {
-                  for (&id, bounds) in block.bounds.iter() {
-                    physics.insert_terrain(id, bounds);
-                  }
-                });
-
-                timers.time("update.load_some.load.vram", || {
-                  terrain_buffers.push(
-                    gl,
-                    block.vertex_coordinates.as_slice(),
-                    block.normals.as_slice(),
-                    block.typs.as_slice(),
-                    block.ids.as_slice(),
-                  );
-                });
-              });
-
-              self.in_progress_terrain.remove(physics, &block_position);
-              self.loaded.insert(block_position);
-              budget -= BLOCK_LOAD_COST;
+              if terrain_game_loader.load(
+                timers,
+                gl,
+                id_allocator,
+                physics,
+                &block_position,
+              ) {
+                budget -= BLOCK_LOAD_COST;
+              }
             },
           },
         Some(block_position) => {
           timers.time("update.load_some.unload", || {
-            let block = self.terrain.all_blocks.get(&block_position).unwrap();
-            for id in block.ids.iter() {
-              physics.remove_terrain(*id);
-              terrain_buffers.swap_remove(gl, *id);
+            if terrain_game_loader.unload(timers, gl, physics, &block_position) {
+              budget -= BLOCK_UNLOAD_COST;
             }
-
-            self.loaded.remove(&block_position);
-            budget -= BLOCK_UNLOAD_COST;
           })
         }
       }
@@ -246,8 +196,6 @@ fn shell_ordering() {
   for radius in range_inclusive(0, loader.load_distance) {
     for _ in range(0, cube_shell_area(radius)) {
       let load_position = load_positions.next();
-      println!("radius {}", radius);
-      println!("load_position {}", load_position);
       // The next load position should be in the cube shell of the given radius, relative to the center position.
       assert_eq!(radius_between(&position, &load_position.unwrap()), radius);
     }

@@ -25,7 +25,7 @@ pub fn render<'a>(app: &mut App<'a>) {
       }
 
       app.texture_shader.borrow().use_shader(app.gl_context);
-      app.terrain_buffers.draw(app.gl_context);
+      app.terrain_game_loader.terrain_vram_buffers.draw(app.gl_context);
       app.color_shader.borrow().use_shader(app.gl_context);
       app.mob_buffers.draw(app.gl_context);
 
@@ -35,7 +35,7 @@ pub fn render<'a>(app: &mut App<'a>) {
       }
     } else {
       app.texture_shader.borrow().use_shader(app.gl_context);
-      app.terrain_buffers.draw(app.gl_context);
+      app.terrain_game_loader.terrain_vram_buffers.draw(app.gl_context);
       app.color_shader.borrow().use_shader(app.gl_context);
       app.mob_buffers.draw(app.gl_context);
     }

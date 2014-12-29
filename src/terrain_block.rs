@@ -16,6 +16,8 @@ pub const BLOCK_WIDTH: i32 = 4;
 pub const SAMPLES_PER_BLOCK: uint = 16;
 pub const SAMPLE_WIDTH: f32 = BLOCK_WIDTH as f32 / SAMPLES_PER_BLOCK as f32;
 
+pub const POLYGONS_PER_BLOCK: i32 = SAMPLES_PER_BLOCK as i32 * SAMPLES_PER_BLOCK as i32 * 4;
+
 #[deriving(Show, PartialEq, Eq, Hash, Copy, Clone)]
 pub struct BlockPosition(Pnt3<i32>);
 
