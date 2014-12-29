@@ -303,8 +303,8 @@ impl<'a> App<'a> {
     let mut physics =
       Physics::new(
         AABB::new(
-          Pnt3 { x: -world_width, y: -64.0, z: -world_width },
-          Pnt3 { x: world_width, y: 4.0 * terrain::AMPLITUDE - 64.0, z: world_width },
+          Pnt3 { x: -world_width, y: -2.0 * terrain::AMPLITUDE, z: -world_width },
+          Pnt3 { x: world_width, y: 2.0 * terrain::AMPLITUDE, z: world_width },
         )
       );
 
@@ -334,7 +334,7 @@ impl<'a> App<'a> {
         vertical_rotation: 0.0,
       };
 
-      let min = Pnt3::new(0.0, 64.0, 4.0);
+      let min = Pnt3::new(0.0, terrain::AMPLITUDE * 0.8, 4.0);
       let max = min + Vec3::new(1.0, 2.0, 1.0);
       let bounds = AABB::new(min, max);
       physics.insert_misc(player.id, &bounds);
@@ -469,7 +469,7 @@ fn make_mobs<'a>(
     &mut mobs,
     &mut mob_buffers,
     id_allocator,
-    Pnt3::new(0.0, 64.0, -1.0),
+    Pnt3::new(0.0, terrain::AMPLITUDE * 0.8, -1.0),
     mob_behavior
   );
 
