@@ -3,11 +3,11 @@ name = "playform"
 version = "0.0.0"
 dependencies = [
  "gl 0.0.2 (git+https://github.com/bjz/gl-rs)",
- "log 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide 0.2.0 (git+https://github.com/sebcrozet/ncollide)",
  "noise 0.0.3 (git+https://github.com/bjz/noise-rs)",
- "sdl2 0.0.13 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "sdl2 0.0.13 (git+https://github.com/jameson-ernst/rust-sdl2)",
  "time 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "yaglw 0.0.0 (git+https://github.com/bfops/yaglw)",
 ]
@@ -38,7 +38,7 @@ source = "git+https://github.com/bjz/gl-rs#32668cf156c9c65d1ae01786cb2820c2250ed
 dependencies = [
  "gl_common 0.0.3 (git+https://github.com/bjz/gl-rs)",
  "khronos_api 0.0.3 (git+https://github.com/bjz/gl-rs)",
- "log 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "xml-rs 0.1.4 (git+https://github.com/netvl/xml-rs)",
 ]
 
@@ -49,7 +49,7 @@ source = "git+https://github.com/bjz/gl-rs#32668cf156c9c65d1ae01786cb2820c2250ed
 
 [[package]]
 name = "log"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "regex 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -90,7 +90,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "sdl2"
 version = "0.0.13"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#00f58349b9f7739faa48d1660a5eb01c070f386b"
+source = "git+https://github.com/jameson-ernst/rust-sdl2#5a27746bf9a3eb00b7829e171ba0bbc91f90e846"
 
 [[package]]
 name = "time"
@@ -103,7 +103,7 @@ dependencies = [
 [[package]]
 name = "xml-rs"
 version = "0.1.4"
-source = "git+https://github.com/netvl/xml-rs#8821a34acb9bdbd0e51282b91e34d9369be527a4"
+source = "git+https://github.com/netvl/xml-rs#055e786375560fc2f174521069651d6e08c3d15d"
 
 [[package]]
 name = "yaglw"
@@ -111,6 +111,6 @@ version = "0.0.0"
 source = "git+https://github.com/bfops/yaglw#c64d18b655ffa4f57e50804e3227b25d064644bc"
 dependencies = [
  "gl 0.0.2 (git+https://github.com/bjz/gl-rs)",
- "log 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
