@@ -191,7 +191,7 @@ impl TerrainBlock {
 
       let ns: [Vec3<f32>, ..4] =
         [ hm.normal_at(position.x, position.z)
-        , hm.normal_at(position.x, x2)
+        , hm.normal_at(position.x, z2)
         , hm.normal_at(x2, z2)
         , hm.normal_at(x2, position.z)
         ];
