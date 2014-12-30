@@ -37,12 +37,10 @@ fn key_press<'a>(app: &mut App<'a>, key: KeyCode) {
       KeyCode::D => {
         app.player.walk(Vec3::new(1.0, 0.0, 0.0));
       },
-      KeyCode::Space => {
-        if !app.player.is_jumping {
-          app.player.is_jumping = true;
-          // this 0.3 is duplicated in a few places
-          app.player.accel.y = app.player.accel.y + 0.3;
-        }
+      KeyCode::Space if !app.player.is_jumping => {
+        app.player.is_jumping = true;
+        // this 0.3 is duplicated in a few places
+        app.player.accel.y = app.player.accel.y + 0.3;
       },
       KeyCode::W => {
         app.player.walk(Vec3::new(0.0, 0.0, -1.0));
@@ -89,12 +87,10 @@ fn key_release<'a>(app: &mut App<'a>, key: KeyCode) {
       KeyCode::D => {
         app.player.walk(Vec3::new(-1.0, 0.0, 0.0));
       },
-      KeyCode::Space => {
-        if app.player.is_jumping {
-          app.player.is_jumping = false;
-          // this 0.3 is duplicated in a few places
-          app.player.accel.y = app.player.accel.y - 0.3;
-        }
+      KeyCode::Space if app.player.is_jumping => {
+        app.player.is_jumping = false;
+        // this 0.3 is duplicated in a few places
+        app.player.accel.y = app.player.accel.y - 0.3;
       },
       KeyCode::W => {
         app.player.walk(Vec3::new(0.0, 0.0, 1.0));
@@ -102,7 +98,7 @@ fn key_release<'a>(app: &mut App<'a>, key: KeyCode) {
       KeyCode::S => {
         app.player.walk(Vec3::new(0.0, 0.0, -1.0));
       },
-      _ => { }
+      _ => {}
     }
   })
 }

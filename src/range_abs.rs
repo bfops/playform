@@ -1,5 +1,4 @@
-use std::num::Int;
-use std::uint;
+use std::num::{Int, SignedInt, ToPrimitive};
 
 /// Generate an iterator like [0, 1, -1, 2, -2, n, -n].
 pub struct RangeAbs<T> {
@@ -7,41 +6,34 @@ pub struct RangeAbs<T> {
   max: T,
 }
 
-pub fn range_abs<T>(inclusive_max: T) -> RangeAbs<T> 
-  where T: Int
+pub fn range_abs<T>(inclusive_max: T) -> RangeAbs<T>
+  where T: Int + Neg<T> + SignedInt + ToPrimitive
 {
-  assert!(inclusive_max >= Int::zero());
+  assert!(!inclusive_max.is_negative());
+  let exclusive_max = inclusive_max + Int::one();
   RangeAbs {
     n: Int::zero(),
-    max: inclusive_max,
+    max: exclusive_max,
   }
 }
 
-impl<T> Iterator<T> for RangeAbs<T> 
-  where T: Int + Neg<T>
+impl<T> Iterator<T> for RangeAbs<T>
+  where T: Int + Neg<T> + SignedInt + ToPrimitive
 {
   fn next(&mut self) -> Option<T> {
-    if self.n == Int::zero() {
-      self.n = Int::one();
-      Some(Int::zero())
+    let n = self.n;
+    if n == self.max { return None }
+    if !n.is_positive() {
+      self.n = -n + Int::one();
     } else {
-      let r = self.n;
-      if r > Int::zero() {
-        if r == self.max + Int::one() {
-          None
-        } else {
-          self.n = -self.n;
-          Some(r)
-        }
-      } else {
-        self.n = -self.n + Int::one();
-        Some(r)
-      }
+      self.n = -self.n;
     }
+    Some(n)
   }
 
   fn size_hint(&self) -> (uint, Option<uint>) {
-    (uint::MAX, None)
+    let sz = 2*(self.max - self.n.abs()).to_uint().unwrap();
+    (sz, Some(sz))
   }
 }
 

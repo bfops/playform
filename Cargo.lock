@@ -8,7 +8,7 @@ dependencies = [
  "ncollide 0.2.0 (git+https://github.com/sebcrozet/ncollide)",
  "noise 0.0.3 (git+https://github.com/bjz/noise-rs)",
  "sdl2 0.0.13 (git+https://github.com/AngryLawyer/rust-sdl2)",
- "time 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "yaglw 0.0.0 (git+https://github.com/bfops/yaglw)",
 ]
 
@@ -94,7 +94,7 @@ source = "git+https://github.com/AngryLawyer/rust-sdl2#00f58349b9f7739faa48d1660
 
 [[package]]
 name = "time"
-version = "0.1.3"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gcc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",

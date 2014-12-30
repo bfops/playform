@@ -19,14 +19,14 @@ impl Physics {
     }
   }
 
-  pub fn insert_terrain(&mut self, id: EntityId, bounds: &AABB3<f32>) {
+  pub fn insert_terrain(&mut self, id: EntityId, bounds: AABB3<f32>) {
     self.terrain_octree.insert(bounds.clone(), id);
-    self.bounds.insert(id, bounds.clone());
+    self.bounds.insert(id, bounds);
   }
 
-  pub fn insert_misc(&mut self, id: EntityId, bounds: &AABB3<f32>) {
+  pub fn insert_misc(&mut self, id: EntityId, bounds: AABB3<f32>) {
     self.misc_octree.insert(bounds.clone(), id);
-    self.bounds.insert(id, bounds.clone());
+    self.bounds.insert(id, bounds);
   }
 
   pub fn remove_terrain(&mut self, id: EntityId) {

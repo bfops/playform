@@ -97,7 +97,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
 
       timers.time("terrain_game_loader.load.physics", || {
         for (&id, bounds) in block.bounds.iter() {
-          physics.insert_terrain(id, bounds);
+          physics.insert_terrain(id, bounds.clone());
         }
       });
 

@@ -337,7 +337,7 @@ impl<'a> App<'a> {
       let min = Pnt3::new(0.0, terrain::AMPLITUDE * 0.8, 4.0);
       let max = min + Vec3::new(1.0, 2.0, 1.0);
       let bounds = AABB::new(min, max);
-      physics.insert_misc(player.id, &bounds);
+      physics.insert_misc(player.id, bounds.clone());
 
       // initialize the projection matrix
       player.camera.translate(center(&bounds).to_vec());
@@ -430,7 +430,7 @@ fn add_mob(
 
   mob_buffers.push(gl, id, &to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
 
-  physics.insert_misc(id, &bounds);
+  physics.insert_misc(id, bounds);
   mobs.insert(id, mob);
 }
 

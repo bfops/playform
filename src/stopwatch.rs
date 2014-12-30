@@ -87,7 +87,7 @@ impl TimerSet {
     let mut timer_vec : Vec<(&str, Ref<Stopwatch>)> =
       timers
         .iter()
-        .map(|(name, sw)| (name.as_slice(), sw.borrow()))
+        .map(|(name, sw)| (name[], sw.borrow()))
         .collect();
 
     timer_vec.sort_by(|&(k1, _), &(k2, _)| k1.cmp(k2));
