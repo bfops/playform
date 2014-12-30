@@ -7,7 +7,7 @@ dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide 0.2.0 (git+https://github.com/sebcrozet/ncollide)",
  "noise 0.0.3 (git+https://github.com/bjz/noise-rs)",
- "sdl2 0.0.13 (git+https://github.com/jameson-ernst/rust-sdl2)",
+ "sdl2 0.0.13 (git+https://github.com/AngryLawyer/rust-sdl2)",
  "time 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "yaglw 0.0.0 (git+https://github.com/bfops/yaglw)",
 ]
@@ -90,7 +90,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "sdl2"
 version = "0.0.13"
-source = "git+https://github.com/jameson-ernst/rust-sdl2#5a27746bf9a3eb00b7829e171ba0bbc91f90e846"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#f8a13ec41125f261188fa09de20db4070ec29ce0"
 
 [[package]]
 name = "time"
