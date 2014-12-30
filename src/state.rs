@@ -24,7 +24,7 @@ use std::rc::Rc;
 use surroundings_loader::SurroundingsLoader;
 use terrain;
 use terrain_block;
-use terrain_game_loader::TerrainGameLoader;
+use terrain_game_loader;
 use terrain_vram_buffers;
 use vertex::{ColoredVertex, TextureVertex};
 use yaglw::vertex_buffer::*;
@@ -141,7 +141,7 @@ pub struct App<'a> {
 
   pub id_allocator: IdAllocator<EntityId>,
   pub surroundings_loader: SurroundingsLoader,
-  pub terrain_game_loader: TerrainGameLoader<'a>,
+  pub terrain_game_loader: terrain_game_loader::Default<'a>,
 
   // OpenGL buffers
   pub mob_buffers: mob::MobBuffers<'a>,
@@ -294,7 +294,7 @@ impl<'a> App<'a> {
 
     let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
     let terrain_game_loader =
-      TerrainGameLoader::new(gl, gl_context, texture_shader.clone(), &mut texture_unit_alloc);
+      terrain_game_loader::Default::new(gl, gl_context, texture_shader.clone(), &mut texture_unit_alloc);
 
     let (text_textures, text_triangles) =
       make_text(gl, gl_context, hud_texture_shader.clone());

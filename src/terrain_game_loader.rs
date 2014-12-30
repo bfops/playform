@@ -14,7 +14,43 @@ use yaglw::shader::Shader;
 use yaglw::texture::TextureUnit;
 
 /// Load and unload TerrainBlocks from the game.
-pub struct TerrainGameLoader<'a> {
+pub trait TerrainGameLoader {
+  /// Ensure a `TerrainBlock` is loaded.
+  fn load(
+    &mut self,
+    timers: &TimerSet,
+    gl: &mut GLContext,
+    id_allocator: &mut IdAllocator<EntityId>,
+    physics: &mut Physics,
+    block_position: &BlockPosition,
+  ) -> bool;
+
+  /// Revoke a request for a `TerrainBlock`.
+  fn unload(
+    &mut self,
+    timers: &TimerSet,
+    gl: &mut GLContext,
+    physics: &mut Physics,
+    block_position: &BlockPosition,
+  ) -> bool;
+
+  /// Note that we want a specific `TerrainBlock`. Returns true if the block is not already loaded.
+  fn mark_wanted(
+    &mut self,
+    id_allocator: &mut IdAllocator<EntityId>,
+    physics: &mut Physics,
+    block_position: &BlockPosition,
+  ) -> bool;
+
+  /// Revoke a desire for a `TerrainBlock`.
+  fn unmark_wanted(
+    &mut self,
+    physics: &mut Physics,
+    block_position: &BlockPosition,
+  );
+}
+
+pub struct Default<'a> {
   pub terrain: Terrain,
   pub terrain_vram_buffers: TerrainVRAMBuffers<'a>,
   pub in_progress_terrain: InProgressTerrain,
@@ -22,25 +58,27 @@ pub struct TerrainGameLoader<'a> {
   pub loaded: HashSet<BlockPosition>,
 }
 
-impl<'a> TerrainGameLoader<'a> {
+impl<'a> Default<'a> {
   pub fn new(
     gl: &'a GLContextExistence,
     gl_context: &mut GLContext,
     shader: Rc<RefCell<Shader>>,
     texture_unit_alloc: &mut IdAllocator<TextureUnit>,
-  ) -> TerrainGameLoader<'a> {
+  ) -> Default<'a> {
     let terrain_vram_buffers = TerrainVRAMBuffers::new(gl, gl_context);
     terrain_vram_buffers.bind_glsl_uniforms(gl_context, texture_unit_alloc, shader.clone());
 
-    TerrainGameLoader {
+    Default {
       terrain: Terrain::new(),
       terrain_vram_buffers: terrain_vram_buffers,
       in_progress_terrain: InProgressTerrain::new(),
       loaded: HashSet::new(),
     }
   }
+}
 
-  pub fn load(
+impl<'a> TerrainGameLoader for Default<'a> {
+  fn load(
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
@@ -80,7 +118,7 @@ impl<'a> TerrainGameLoader<'a> {
     true
   }
 
-  pub fn unload(
+  fn unload(
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
@@ -103,7 +141,7 @@ impl<'a> TerrainGameLoader<'a> {
   }
 
   /// Note that we want a specific `TerrainBlock`. Returns true if the block is not already loaded.
-  pub fn mark_wanted(
+  fn mark_wanted(
     &mut self,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
@@ -117,7 +155,7 @@ impl<'a> TerrainGameLoader<'a> {
     r
   }
 
-  pub fn unmark_wanted(
+  fn unmark_wanted(
     &mut self,
     physics: &mut Physics,
     block_position: &BlockPosition,

@@ -32,6 +32,7 @@ pub struct SurroundingsLoader {
   pub unload_queue: RingBuf<BlockPosition>,
 
   pub load_distance: i32,
+  pub want_loaded_vec: Vec<BlockPosition>,
 
   pub last_position: Option<BlockPosition>,
 }
@@ -45,16 +46,17 @@ impl SurroundingsLoader {
       unload_queue: RingBuf::new(),
 
       load_distance: load_distance,
+      want_loaded_vec: Vec::new(),
 
       last_position: None,
     }
   }
 
-  pub fn update<'a>(
+  pub fn update(
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
-    terrain_game_loader: &mut TerrainGameLoader<'a>,
+    terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     position: BlockPosition,
@@ -68,10 +70,10 @@ impl SurroundingsLoader {
   }
 
   #[inline]
-  fn update_queues<'a>(
+  fn update_queues(
     &mut self,
     timers: &TimerSet,
-    terrain_game_loader: &mut TerrainGameLoader<'a>,
+    terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: BlockPosition,
@@ -96,13 +98,15 @@ impl SurroundingsLoader {
 
       timers.time("update.update_queues.unload_queue", || {
         self.unload_queue.clear();
-        for block_position in terrain_game_loader.loaded.iter() {
+        for block_position in self.want_loaded_vec.iter() {
           let is_needed = want_loaded_set.contains(block_position);
           if !is_needed {
             self.unload_queue.push_back(*block_position);
           }
         }
       });
+
+      self.want_loaded_vec = want_loaded_vec;
     }
   }
 
@@ -135,11 +139,11 @@ impl SurroundingsLoader {
 
   // Load some blocks. Prioritizes unloading unneeded ones over loading new ones.
   #[inline]
-  fn load_some<'a>(
+  fn load_some(
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
-    terrain_game_loader: &mut TerrainGameLoader<'a>,
+    terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
   ) {
@@ -184,12 +188,64 @@ fn shell_ordering() {
     max(max(dx, dy), dz)
   }
 
+  struct DummyTerrainLoader {
+    loaded: HashSet<BlockPosition>,
+  }
+
+  impl DummyTerrainLoader {
+    fn new() -> DummyTerrainLoader {
+      DummyTerrainLoader {
+        loaded: HashSet::new(),
+      }
+    }
+  }
+
+  impl TerrainGameLoader for DummyTerrainLoader {
+    fn load(
+      &mut self,
+      _timers: &TimerSet,
+      _gl: &mut GLContext,
+      _id_allocator: &mut IdAllocator<EntityId>,
+      _physics: &mut Physics,
+      block_position: &BlockPosition,
+    ) -> bool {
+      self.loaded.insert(*block_position)
+    }
+
+    fn unload(
+      &mut self,
+      _timers: &TimerSet,
+      _gl: &mut GLContext,
+      _physics: &mut Physics,
+      block_position: &BlockPosition,
+    ) -> bool {
+      !self.loaded.remove(block_position)
+    }
+
+    fn mark_wanted(
+      &mut self,
+      _id_allocator: &mut IdAllocator<EntityId>,
+      _physics: &mut Physics,
+      block_position: &BlockPosition,
+    ) -> bool {
+      !self.loaded.contains(block_position)
+    }
+
+    fn unmark_wanted(
+      &mut self,
+      _physics: &mut Physics,
+      _block_position: &BlockPosition,
+    ) {
+    }
+  }
+
   let mut loader = SurroundingsLoader::new(1);
   let timers = TimerSet::new();
   let mut id_allocator = IdAllocator::new();
   let mut physics = Physics::new(AABB::new(Pnt3::new(-128.0, -128.0, -128.0), Pnt3::new(128.0, 128.0, 128.0)));
   let position = BlockPosition::new(1, -4, 7);
-  loader.update_queues(&timers, &mut id_allocator, &mut physics, position);
+  let mut terrain_game_loader = DummyTerrainLoader::new();
+  loader.update_queues(&timers, &mut terrain_game_loader, &mut id_allocator, &mut physics, position);
   let mut load_positions = loader.load_queue.into_iter();
 
   // The load queue should contain cube shells in increasing order of radius.
