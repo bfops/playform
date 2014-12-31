@@ -181,7 +181,7 @@ impl<'a> App<'a> {
     }
     gl_context.enable_alpha_blending();
     gl_context.enable_smooth_lines();
-    gl_context.enable_depth_buffer(100.0);
+    gl_context.enable_depth_buffer(1.0);
     gl_context.set_background_color(SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a);
     mouse::show_cursor(false);
 
@@ -341,7 +341,7 @@ impl<'a> App<'a> {
 
       // initialize the projection matrix
       player.camera.translate(center(&bounds).to_vec());
-      player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 100.0);
+      player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 256.0);
       player.rotate_lateral(PI / 2.0);
 
       player
