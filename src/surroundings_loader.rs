@@ -12,7 +12,7 @@ use stopwatch::TimerSet;
 use yaglw::gl_context::GLContext;
 
 // values are approximately in microseconds, but they don't have to be.
-pub const BLOCK_UPDATE_BUDGET: int = 8000;
+pub const BLOCK_UPDATE_BUDGET: int = 20000;
 pub const BLOCK_LOAD_COST: int = 600;
 pub const BLOCK_UNLOAD_COST: int = 300;
 
@@ -52,7 +52,8 @@ impl SurroundingsLoader {
       next_unload_index: 0,
 
       solid_boundary: {
-        let mut b = cube_shell(&BlockPosition::new(0, 0, 0), 0);
+        let mut b = Vec::new();
+        b.push_all(cube_shell(&BlockPosition::new(0, 0, 0), 0).as_slice());
         b.push_all(cube_shell(&BlockPosition::new(0, 0, 0), 1).as_slice());
         b.push_all(cube_shell(&BlockPosition::new(0, 0, 0), 2).as_slice());
         b.push_all(cube_shell(&BlockPosition::new(0, 0, 0), 3).as_slice());
@@ -75,10 +76,11 @@ impl SurroundingsLoader {
         |last_position|
           for solid_block in
             self.solid_boundary.iter().map(|&dp| last_position + dp.as_pnt().to_vec()) {
-            terrain_game_loader.unmark_wanted(physics, &solid_block);
-          }
+              terrain_game_loader.unload(timers, gl, physics, &solid_block);
+            }
         );
 
+      // There will be some redundant unloads above. Fix?
       for solid_block in self.solid_boundary.iter().map(|&dp| position + dp.as_pnt().to_vec()) {
         terrain_game_loader.mark_wanted(id_allocator, physics, &solid_block);
       }
@@ -105,11 +107,11 @@ impl SurroundingsLoader {
           self.next_unload_index += 1;
         }
       } else {
-        if self.next_load_distance > self.max_load_distance {
-          break;
-        }
-
-        let block_position = self.load_queue.pop_front().unwrap();
+        let block_position =
+          match self.load_queue.pop_front() {
+            None => break,
+            Some(block_position) => block_position,
+          };
 
         if terrain_game_loader.load(
           timers,
@@ -118,13 +120,16 @@ impl SurroundingsLoader {
           physics,
           &block_position,
         ) {
-          self.loaded_vec.push(block_position);
           budget -= BLOCK_LOAD_COST;
         }
 
+        self.loaded_vec.push(block_position);
+
         if self.load_queue.is_empty() {
           self.next_load_distance += 1;
-          self.load_queue.extend(cube_shell(&position, self.next_load_distance).into_iter());
+          if self.next_load_distance <= self.max_load_distance {
+            self.load_queue.extend(cube_shell(&position, self.next_load_distance).into_iter());
+          }
         }
       }
     }

@@ -3,7 +3,8 @@ use in_progress_terrain::InProgressTerrain;
 use physics::Physics;
 use state::EntityId;
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::rc::Rc;
 use stopwatch::TimerSet;
 use terrain::Terrain;
@@ -16,6 +17,7 @@ use yaglw::texture::TextureUnit;
 /// Load and unload TerrainBlocks from the game.
 pub trait TerrainGameLoader {
   /// Ensure a `TerrainBlock` is loaded.
+  /// `mark_wanted` should be called first.
   fn load(
     &mut self,
     timers: &TimerSet,
@@ -25,7 +27,7 @@ pub trait TerrainGameLoader {
     block_position: &BlockPosition,
   ) -> bool;
 
-  /// Revoke a request for a `TerrainBlock`.
+  /// Release a request for a `TerrainBlock`.
   fn unload(
     &mut self,
     timers: &TimerSet,
@@ -34,28 +36,22 @@ pub trait TerrainGameLoader {
     block_position: &BlockPosition,
   ) -> bool;
 
-  /// Note that we want a specific `TerrainBlock`. Returns true if the block is not already loaded.
+  /// Increment a `TerrainBlock` refcount. If the block is not already loaded,
+  /// insert a solid block as a placeholder. Returns true if the block is not already loaded.
   fn mark_wanted(
     &mut self,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
   ) -> bool;
-
-  /// Revoke a desire for a `TerrainBlock`.
-  fn unmark_wanted(
-    &mut self,
-    physics: &mut Physics,
-    block_position: &BlockPosition,
-  );
 }
 
 pub struct Default<'a> {
   pub terrain: Terrain,
   pub terrain_vram_buffers: TerrainVRAMBuffers<'a>,
   pub in_progress_terrain: InProgressTerrain,
-  // the set of blocks that are currently loaded
-  pub loaded: HashSet<BlockPosition>,
+  // The blocks that are currently loaded, and their refcounts.
+  pub loaded: HashMap<BlockPosition, (u32, bool)>,
 }
 
 impl<'a> Default<'a> {
@@ -72,7 +68,7 @@ impl<'a> Default<'a> {
       terrain: Terrain::new(),
       terrain_vram_buffers: terrain_vram_buffers,
       in_progress_terrain: InProgressTerrain::new(),
-      loaded: HashSet::new(),
+      loaded: HashMap::new(),
     }
   }
 }
@@ -86,8 +82,17 @@ impl<'a> TerrainGameLoader for Default<'a> {
     physics: &mut Physics,
     block_position: &BlockPosition,
   ) -> bool {
-    if !self.loaded.insert(*block_position) {
-      return false;
+    match self.loaded.entry(*block_position) {
+      Entry::Occupied(mut entry) => {
+        let (val, is_loaded) = *entry.get();
+        entry.set((val + 1, true));
+        if is_loaded {
+          return false;
+        }
+      },
+      Entry::Vacant(entry) => {
+        entry.set((1, true));
+      },
     }
 
     timers.time("terrain_game_loader.load", || {
@@ -125,41 +130,56 @@ impl<'a> TerrainGameLoader for Default<'a> {
     physics: &mut Physics,
     block_position: &BlockPosition,
   ) -> bool {
-    if !self.loaded.remove(block_position) {
-      return false;
-    }
+    let is_fully_loaded;
+    match self.loaded.entry(*block_position) {
+      Entry::Occupied(mut entry) => {
+        let (val, is_loaded) = *entry.get();
+        is_fully_loaded = is_loaded;
+        if val == 1 {
+          entry.take();
+        } else {
+          entry.set((val - 1, is_loaded));
+          return false;
+        }
+      },
+      Entry::Vacant(_) => {
+        return false;
+      },
+    };
 
-    timers.time("terrain_game_loader.unload", || {
-      let block = self.terrain.all_blocks.get(block_position).unwrap();
-      for id in block.ids.iter() {
-        physics.remove_terrain(*id);
-        self.terrain_vram_buffers.swap_remove(gl, *id);
-      }
-    });
+    if is_fully_loaded {
+      timers.time("terrain_game_loader.unload", || {
+        let block = self.terrain.all_blocks.get(block_position).unwrap();
+        for id in block.ids.iter() {
+          physics.remove_terrain(*id);
+          self.terrain_vram_buffers.swap_remove(gl, *id);
+        }
+      })
+    } else {
+      assert!(self.in_progress_terrain.remove(physics, block_position));
+    }
 
     true
   }
 
-  /// Note that we want a specific `TerrainBlock`. Returns true if the block is not already loaded.
+  /// Note that we want a specific `TerrainBlock`.
   fn mark_wanted(
     &mut self,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
   ) -> bool {
-    let r = !self.loaded.contains(block_position);
-    if r {
-      self.in_progress_terrain.insert(id_allocator, physics, block_position);
+    match self.loaded.entry(*block_position) {
+      Entry::Occupied(mut entry) => {
+        let (val, is_loaded) = *entry.get();
+        entry.set((val + 1, is_loaded));
+        false
+      },
+      Entry::Vacant(entry) => {
+        entry.set((1, false));
+        assert!(self.in_progress_terrain.insert(id_allocator, physics, block_position));
+        true
+      },
     }
-
-    r
-  }
-
-  fn unmark_wanted(
-    &mut self,
-    physics: &mut Physics,
-    block_position: &BlockPosition,
-  ) {
-    self.in_progress_terrain.remove(physics, block_position);
   }
 }

@@ -17,15 +17,15 @@ impl InProgressTerrain {
     }
   }
 
-  /// Mark a block as in progress.
+  /// Mark a block as in-progress by making it solid.
   pub fn insert(
     &mut self,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
-  ) {
+  ) -> bool {
     match self.blocks.entry(*block_position) {
-      Entry::Occupied(_) => {},
+      Entry::Occupied(_) => false,
       Entry::Vacant(entry) => {
         let id = id_allocator.allocate();
         entry.set(id);
@@ -33,6 +33,7 @@ impl InProgressTerrain {
         let low_corner = block_position.to_world_position();
         let block_span = Vec3::new(BLOCK_WIDTH as f32, BLOCK_WIDTH as f32, BLOCK_WIDTH as f32);
         physics.insert_misc(id, AABB::new(low_corner, low_corner + block_span));
+        true
       }
     }
   }
@@ -42,7 +43,7 @@ impl InProgressTerrain {
     &mut self,
     physics: &mut Physics,
     block_position: &BlockPosition,
-  ) {
-    self.blocks.remove(block_position).map(|id| physics.remove_misc(id));
+  ) -> bool {
+    self.blocks.remove(block_position).map(|id| physics.remove_misc(id)).is_some()
   }
 }
