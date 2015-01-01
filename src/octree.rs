@@ -6,7 +6,7 @@ use ncollide::bounding_volume::BoundingVolume;
 use ncollide::ray::{Ray3, LocalRayCast};
 use std::hash::Hash;
 use std::num::NumCast;
-use std::ptr::RawPtr;
+use std::ptr;
 
 pub const MIN_CELL_WIDTH: f32 = 0.1;
 
@@ -86,7 +86,7 @@ pub struct Octree<V> {
 impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   pub fn new(bounds: &AABB3<f32>) -> Octree<V> {
     Octree {
-      parent: RawPtr::null(),
+      parent: ptr::null_mut(),
       dimension: Dimension::X,
       bounds: bounds.clone(),
       contents: OctreeContents::Leaf(Vec::new()),
@@ -178,7 +178,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       f(self)
     } else {
       unsafe {
-        assert!(self.parent.is_not_null());
+        assert!(!self.parent.is_null());
         (*self.parent).on_ancestor(bounds, f)
       }
     }
@@ -189,7 +189,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       f(self)
     } else {
       unsafe {
-        assert!(self.parent.is_not_null());
+        assert!(!self.parent.is_null());
         (*self.parent).on_mut_ancestor(bounds, f)
       }
     }

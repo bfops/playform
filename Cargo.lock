@@ -2,12 +2,12 @@
 name = "playform"
 version = "0.0.0"
 dependencies = [
- "gl 0.0.2 (git+https://github.com/bjz/gl-rs)",
+ "gl 0.0.3 (git+https://github.com/bjz/gl-rs)",
  "log 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide 0.2.0 (git+https://github.com/sebcrozet/ncollide)",
+ "ncollide 0.2.0 (git+https://github.com/bfops/ncollide)",
  "noise 0.0.3 (git+https://github.com/bjz/noise-rs)",
- "sdl2 0.0.13 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "sdl2 0.0.13 (git+https://github.com/bvssvni/rust-sdl2)",
  "time 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "yaglw 0.0.0 (git+https://github.com/bfops/yaglw)",
 ]
@@ -19,40 +19,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "gl"
-version = "0.0.2"
-source = "git+https://github.com/bjz/gl-rs#32668cf156c9c65d1ae01786cb2820c2250ed21b"
+version = "0.0.3"
+source = "git+https://github.com/bjz/gl-rs#04f8d05a75852a9a1ac45a8b7df7b8ec664764a7"
 dependencies = [
  "gl_common 0.0.3 (git+https://github.com/bjz/gl-rs)",
- "gl_generator 0.0.4 (git+https://github.com/bjz/gl-rs)",
+ "gl_generator 0.0.5 (git+https://github.com/bjz/gl-rs)",
 ]
 
 [[package]]
 name = "gl_common"
 version = "0.0.3"
-source = "git+https://github.com/bjz/gl-rs#32668cf156c9c65d1ae01786cb2820c2250ed21b"
+source = "git+https://github.com/bjz/gl-rs#04f8d05a75852a9a1ac45a8b7df7b8ec664764a7"
 
 [[package]]
 name = "gl_generator"
-version = "0.0.4"
-source = "git+https://github.com/bjz/gl-rs#32668cf156c9c65d1ae01786cb2820c2250ed21b"
+version = "0.0.5"
+source = "git+https://github.com/bjz/gl-rs#04f8d05a75852a9a1ac45a8b7df7b8ec664764a7"
 dependencies = [
  "gl_common 0.0.3 (git+https://github.com/bjz/gl-rs)",
- "khronos_api 0.0.3 (git+https://github.com/bjz/gl-rs)",
+ "khronos_api 0.0.4 (git+https://github.com/bjz/gl-rs)",
  "log 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "xml-rs 0.1.4 (git+https://github.com/netvl/xml-rs)",
+ "xml-rs 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "khronos_api"
-version = "0.0.3"
-source = "git+https://github.com/bjz/gl-rs#32668cf156c9c65d1ae01786cb2820c2250ed21b"
+version = "0.0.4"
+source = "git+https://github.com/bjz/gl-rs#04f8d05a75852a9a1ac45a8b7df7b8ec664764a7"
 
 [[package]]
 name = "log"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "regex 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -66,7 +66,7 @@ dependencies = [
 [[package]]
 name = "ncollide"
 version = "0.2.0"
-source = "git+https://github.com/sebcrozet/ncollide#ed75e78a31ea9374c85200ca6b68c65c7ebe8ed9"
+source = "git+https://github.com/bfops/ncollide#f6216a29b2e3ca71583576dc9d5a4c567c1f1e1d"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
  "rustc-serialize 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -79,7 +79,7 @@ source = "git+https://github.com/bjz/noise-rs#c08828ea536aabc8733307a248e2a44e09
 
 [[package]]
 name = "regex"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -90,7 +90,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "sdl2"
 version = "0.0.13"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#f8a13ec41125f261188fa09de20db4070ec29ce0"
+source = "git+https://github.com/bvssvni/rust-sdl2#3e91ba109a7466ab9af2c98745027371bcc0b190"
 
 [[package]]
 name = "time"
@@ -102,15 +102,15 @@ dependencies = [
 
 [[package]]
 name = "xml-rs"
-version = "0.1.4"
-source = "git+https://github.com/netvl/xml-rs#055e786375560fc2f174521069651d6e08c3d15d"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "yaglw"
 version = "0.0.0"
 source = "git+https://github.com/bfops/yaglw#c64d18b655ffa4f57e50804e3227b25d064644bc"
 dependencies = [
- "gl 0.0.2 (git+https://github.com/bjz/gl-rs)",
+ "gl 0.0.3 (git+https://github.com/bjz/gl-rs)",
  "log 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

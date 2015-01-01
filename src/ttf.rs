@@ -87,7 +87,7 @@ impl Font {
     let c_path = font.to_c_str();
     let p = unsafe { ffi::TTF_OpenFont(c_path.as_ptr(), point_size as ffi::c_int) };
 
-    assert!(p.is_not_null());
+    assert!(!p.is_null());
 
     Font { p: p }
   }

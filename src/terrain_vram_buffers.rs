@@ -107,7 +107,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
   pub fn swap_remove(&mut self, gl: &mut GLContext, id: EntityId) {
     let idx = *self.id_to_index.get(&id).unwrap();
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
-    self.index_to_id.swap_remove(idx).unwrap();
+    self.index_to_id.swap_remove(idx);
     self.id_to_index.remove(&id);
 
     if id != swapped_id {
