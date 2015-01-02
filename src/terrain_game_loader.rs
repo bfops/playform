@@ -100,6 +100,28 @@ impl<'a> Default<'a> {
       loaded: HashMap::new(),
     }
   }
+
+  fn unload_internal(
+    &mut self,
+    timers: &TimerSet,
+    gl: &mut GLContext,
+    physics: &mut Physics,
+    block_position: &BlockPosition,
+    loaded_lod: uint,
+  ) {
+    timers.time("terrain_game_loader.unload", || {
+      let lods =
+        self.terrain.all_blocks.get(block_position)
+        .unwrap()
+        .lods
+        .as_slice();
+      let block = lods[loaded_lod].as_ref().unwrap();
+      for id in block.ids.iter() {
+        physics.remove_terrain(*id);
+        self.terrain_vram_buffers.swap_remove(gl, *id);
+      }
+    });
+  }
 }
 
 impl<'a> TerrainGameLoader for Default<'a> {
@@ -113,14 +135,21 @@ impl<'a> TerrainGameLoader for Default<'a> {
     lod: uint,
     owner: OwnerId,
   ) {
+    let mut loaded_lod = None;
     match self.loaded.entry(*block_position) {
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
-        let already_loaded = block_load_state.loaded_lod.is_some();
         block_load_state.owners.insert(owner);
-        if already_loaded {
-          return;
+        match block_load_state.loaded_lod {
+          None => {},
+          Some(loaded_lod) => {
+            if loaded_lod == lod {
+              // Already loaded at the right LOD.
+              return;
+            }
+          }
         }
+        loaded_lod = block_load_state.loaded_lod;
         block_load_state.loaded_lod = Some(lod);
       },
       Entry::Vacant(entry) => {
@@ -132,6 +161,12 @@ impl<'a> TerrainGameLoader for Default<'a> {
         });
       },
     }
+
+    // It's loaded, but at the wrong LOD.
+    loaded_lod.map(
+      |loaded_lod|
+        self.unload_internal(timers, gl, physics, block_position, loaded_lod)
+    );
 
     timers.time("terrain_game_loader.load", || {
       let block = unsafe {
@@ -190,18 +225,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
       },
     };
 
-    timers.time("terrain_game_loader.unload", || {
-      let lods =
-        self.terrain.all_blocks.get(block_position)
-        .unwrap()
-        .lods
-        .as_slice();
-      let block = lods[loaded_lod].as_ref().unwrap();
-      for id in block.ids.iter() {
-        physics.remove_terrain(*id);
-        self.terrain_vram_buffers.swap_remove(gl, *id);
-      }
-    });
+    self.unload_internal(timers, gl, physics, block_position, loaded_lod);
   }
 
   /// Note that we want a specific `TerrainBlock`.
