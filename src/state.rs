@@ -330,7 +330,7 @@ impl<'a> App<'a> {
         surroundings_loader::LOD_THRESHOLDS.iter()
           .zip(terrain::LOD_QUALITY.iter()) {
         let polygons_per_block = (quality * quality * 4) as i32;
-        for i in range_inclusive(prev_threshold + 1, threshold) {
+        for i in range_inclusive(prev_threshold, threshold) {
           let i = 2 * i + 1;
           let square = i * i;
           let polygons_in_layer = (square - prev_square) * polygons_per_block;
@@ -341,8 +341,26 @@ impl<'a> App<'a> {
 
           load_distance += 1;
           prev_square = square;
-          prev_threshold = threshold;
         }
+        prev_threshold = threshold + 1;
+      }
+
+      let mut width = 2 * prev_threshold + 1;
+      loop {
+        let square = width * width;
+        // The "to infinity and beyond" quality.
+        let quality = terrain::LOD_QUALITY[surroundings_loader::LOD_THRESHOLDS.len()];
+        let polygons_per_block = (quality * quality * 4) as i32;
+        let polygons_in_layer = (square - prev_square) * polygons_per_block;
+        polygon_budget -= polygons_in_layer;
+
+        if polygon_budget < 0 {
+          break;
+        }
+
+        width += 2;
+        load_distance += 1;
+        prev_square = square;
       }
 
       info!("load_distance {}", load_distance);
