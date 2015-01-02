@@ -15,7 +15,7 @@ use yaglw::gl_context::GLContext;
 // Rough budget (in microseconds) for how long block updating can take PER SurroundingsLoader.
 pub const BLOCK_UPDATE_BUDGET: u64 = 20000;
 
-pub const LOD_THRESHOLDS: [i32, ..3] = [1, 8, 16];
+pub const LOD_THRESHOLDS: [i32, ..4] = [1, 8, 16, 24];
 
 fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
   let dx = (p1.as_pnt().x - p2.as_pnt().x).abs();

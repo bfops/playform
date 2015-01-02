@@ -12,7 +12,7 @@ pub const PERSISTENCE: f64 = 1.0 / 8.0;
 pub const LACUNARITY: f64 = 8.0;
 pub const OCTAVES: uint = 8;
 
-pub const LOD_QUALITY: [uint, ..4] = [48, 16, 4, 2];
+pub const LOD_QUALITY: [uint, ..5] = [48, 16, 4, 2, 1];
 
 #[deriving(Show, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TerrainType {
