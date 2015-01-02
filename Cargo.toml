@@ -45,7 +45,7 @@ log = "*"
 git = "https://github.com/bjz/gl-rs"
 
 [dependencies.sdl2]
-git = "https://github.com/bfops/rust-sdl2"
+git = "https://github.com/AngryLawyer/rust-sdl2"
 
 [dependencies.yaglw]
 git = "https://github.com/bfops/yaglw"

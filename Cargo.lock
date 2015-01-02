@@ -7,7 +7,7 @@ dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide 0.2.0 (git+https://github.com/sebcrozet/ncollide)",
  "noise 0.0.3 (git+https://github.com/bjz/noise-rs)",
- "sdl2 0.0.13 (git+https://github.com/bfops/rust-sdl2)",
+ "sdl2 0.0.13 (git+https://github.com/AngryLawyer/rust-sdl2)",
  "time 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "yaglw 0.0.0 (git+https://github.com/bfops/yaglw)",
 ]
@@ -78,6 +78,11 @@ version = "0.0.3"
 source = "git+https://github.com/bjz/noise-rs#c08828ea536aabc8733307a248e2a44e09d5df8a"
 
 [[package]]
+name = "pkg-config"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "regex"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -90,7 +95,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "sdl2"
 version = "0.0.13"
-source = "git+https://github.com/bfops/rust-sdl2#30d554e4f4ee5d307c8b8fcec11227803f8b7209"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#f48663cd38a8ab08322714fcaeb7df6e0f6982d9"
+dependencies = [
+ "sdl2-sys 0.0.0 (git+https://github.com/AngryLawyer/rust-sdl2)",
+]
+
+[[package]]
+name = "sdl2-sys"
+version = "0.0.0"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#f48663cd38a8ab08322714fcaeb7df6e0f6982d9"
+dependencies = [
+ "pkg-config 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "time"
