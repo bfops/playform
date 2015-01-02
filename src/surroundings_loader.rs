@@ -112,15 +112,15 @@ impl SurroundingsLoader {
             Some(block_position) => block_position,
           };
 
-        let lod = {
-          let mut lod = 0;
+        let lod_index = {
+          let mut lod_index = 0;
           for &threshold in LOD_THRESHOLDS.iter() {
             if self.next_load_distance <= threshold {
               break;
             }
-            lod += 1;
+            lod_index += 1;
           }
-          lod
+          lod_index
         };
 
         terrain_game_loader.load(
@@ -129,7 +129,7 @@ impl SurroundingsLoader {
           id_allocator,
           physics,
           &block_position,
-          lod,
+          lod_index,
           self.id,
         );
 

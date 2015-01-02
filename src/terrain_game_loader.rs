@@ -35,7 +35,7 @@ pub trait TerrainGameLoader {
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
-    lod: uint,
+    lod_index: uint,
     owner: OwnerId,
   );
 
@@ -132,7 +132,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
-    lod: uint,
+    lod_index: uint,
     owner: OwnerId,
   ) {
     let mut loaded_lod = None;
@@ -143,21 +143,21 @@ impl<'a> TerrainGameLoader for Default<'a> {
         match block_load_state.loaded_lod {
           None => {},
           Some(loaded_lod) => {
-            if loaded_lod == lod {
+            if loaded_lod == lod_index {
               // Already loaded at the right LOD.
               return;
             }
           }
         }
         loaded_lod = block_load_state.loaded_lod;
-        block_load_state.loaded_lod = Some(lod);
+        block_load_state.loaded_lod = Some(lod_index);
       },
       Entry::Vacant(entry) => {
         let mut owners = HashSet::new();
         owners.insert(owner);
         entry.set(BlockLoadState {
           owners: owners,
-          loaded_lod: Some(lod),
+          loaded_lod: Some(lod_index),
         });
       },
     }
@@ -170,7 +170,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
 
     timers.time("terrain_game_loader.load", || {
       let block = unsafe {
-        self.terrain.load(timers, id_allocator, block_position, lod)
+        self.terrain.load(timers, id_allocator, block_position, lod_index)
       };
 
       timers.time("terrain_game_loader.load.physics", || {

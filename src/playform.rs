@@ -1,12 +1,12 @@
 //! The entry point.
 #![crate_type = "bin"]
-#![deny(warnings)]
 #![deny(missing_docs)]
+#![deny(warnings)]
 #![feature(globs)]
 #![feature(macro_rules)]
-#![feature(unsafe_destructor)]
 #![feature(phase)]
 #![feature(slicing_syntax)]
+#![feature(unsafe_destructor)]
 
 extern crate gl;
 extern crate libc;
@@ -28,14 +28,14 @@ mod fontloader;
 mod id_allocator;
 mod in_progress_terrain;
 mod interval_timer;
-mod player;
-mod process_event;
 mod light;
 mod loader;
 mod main;
 mod mob;
 mod octree;
 mod physics;
+mod player;
+mod process_event;
 mod range_abs;
 mod render;
 mod shader;

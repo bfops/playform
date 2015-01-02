@@ -53,7 +53,7 @@ impl Terrain {
     timers: &TimerSet,
     id_allocator: &mut IdAllocator<EntityId>,
     position: &BlockPosition,
-    lod: uint,
+    lod_index: uint,
   ) -> &'a TerrainBlock {
     let mip_mesh =
       match self.all_blocks.entry(*position) {
@@ -70,18 +70,18 @@ impl Terrain {
         },
       };
 
-    if mip_mesh.lods[lod].is_none() {
-      *mip_mesh.lods.get_mut(lod).unwrap() = Some(
+    if mip_mesh.lods[lod_index].is_none() {
+      *mip_mesh.lods.get_mut(lod_index).unwrap() = Some(
         TerrainBlock::generate(
           timers,
           id_allocator,
           &self.heightmap,
           position,
-          LOD_QUALITY[lod],
+          LOD_QUALITY[lod_index],
         )
       );
     }
 
-    mip_mesh.lods[lod].as_ref().unwrap()
+    mip_mesh.lods[lod_index].as_ref().unwrap()
   }
 }
