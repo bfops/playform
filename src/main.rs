@@ -66,6 +66,8 @@ pub fn main() {
       update_timer = IntervalTimer::new(nanoseconds_per_second / UPDATES_PER_SECOND, now);
     }
 
+    let mut has_focus = true;
+
     loop {
       let updates = update_timer.update(time::precise_time_ns());
       if updates > 0 {
@@ -90,8 +92,25 @@ pub fn main() {
           Event::AppTerminating(_) => {
             return;
           }
+          Event::Window(_, _, event_id, _, _) => {
+            // Manage has_focus so that we don't capture the cursor when the
+            // window is in the background
+            match event_id {
+              sdl2::event::WindowEventId::FocusGained => {
+                has_focus = true;
+                sdl2::mouse::show_cursor(false);
+              }
+              sdl2::event::WindowEventId::FocusLost => {
+                has_focus = false;
+                sdl2::mouse::show_cursor(true);
+              }
+              _ => {}
+            }
+          }
           event => {
-            process_event(&mut app, &mut window, event);
+            if has_focus {
+              process_event(&mut app, &mut window, event);
+            }
           },
         }
       }

@@ -12,7 +12,6 @@ use nalgebra;
 use ncollide::bounding_volume::{AABB, AABB3};
 use physics::Physics;
 use player::Player;
-use sdl2::mouse;
 use shader;
 use stopwatch::TimerSet;
 use std::cell::RefCell;
@@ -183,7 +182,6 @@ impl<'a> App<'a> {
     gl_context.enable_smooth_lines();
     gl_context.enable_depth_buffer(1.0);
     gl_context.set_background_color(SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a);
-    mouse::show_cursor(false);
 
     let texture_shader = {
       let texture_shader =
