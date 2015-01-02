@@ -37,7 +37,7 @@ pub trait TerrainGameLoader {
     block_position: &BlockPosition,
     lod: uint,
     owner: OwnerId,
-  ) -> bool;
+  );
 
   /// Release a request for a `TerrainBlock`.
   fn unload(
@@ -47,7 +47,7 @@ pub trait TerrainGameLoader {
     physics: &mut Physics,
     block_position: &BlockPosition,
     owner: OwnerId,
-  ) -> bool;
+  );
 
   /// If the block is not already loaded, insert a solid block as a placeholder.
   /// Returns true if the block is not already loaded.
@@ -57,7 +57,7 @@ pub trait TerrainGameLoader {
     physics: &mut Physics,
     block_position: &BlockPosition,
     owner: OwnerId,
-  ) -> bool;
+  );
 
   /// Remove a placeholder that was inserted by insert_placeholder.
   /// Returns true if a placeholder was removed.
@@ -66,7 +66,7 @@ pub trait TerrainGameLoader {
     physics: &mut Physics,
     block_position: &BlockPosition,
     owner: OwnerId,
-  ) -> bool;
+  );
 }
 
 struct BlockLoadState {
@@ -112,14 +112,14 @@ impl<'a> TerrainGameLoader for Default<'a> {
     block_position: &BlockPosition,
     lod: uint,
     owner: OwnerId,
-  ) -> bool {
+  ) {
     match self.loaded.entry(*block_position) {
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
         let already_loaded = block_load_state.loaded_lod.is_some();
         block_load_state.owners.insert(owner);
         if already_loaded {
-          return false;
+          return;
         }
         block_load_state.loaded_lod = Some(lod);
       },
@@ -157,8 +157,6 @@ impl<'a> TerrainGameLoader for Default<'a> {
 
       self.in_progress_terrain.remove(physics, block_position);
     });
-
-    true
   }
 
   fn unload(
@@ -168,27 +166,27 @@ impl<'a> TerrainGameLoader for Default<'a> {
     physics: &mut Physics,
     block_position: &BlockPosition,
     owner: OwnerId,
-  ) -> bool {
+  ) {
     let loaded_lod;
     match self.loaded.entry(*block_position) {
       Entry::Occupied(mut entry) => {
         {
           let block_load_state = entry.get_mut();
           match block_load_state.loaded_lod {
-            None => return false,
+            None => return,
             Some(lod) => loaded_lod = lod,
           };
           let should_unload =
             block_load_state.owners.remove(&owner)
             && block_load_state.owners.is_empty();
           if !should_unload {
-            return false;
+            return;
           }
         }
         entry.take();
       },
       Entry::Vacant(_) => {
-        return false;
+        return;
       },
     };
 
@@ -204,8 +202,6 @@ impl<'a> TerrainGameLoader for Default<'a> {
         self.terrain_vram_buffers.swap_remove(gl, *id);
       }
     });
-
-    true
   }
 
   /// Note that we want a specific `TerrainBlock`.
@@ -215,12 +211,11 @@ impl<'a> TerrainGameLoader for Default<'a> {
     physics: &mut Physics,
     block_position: &BlockPosition,
     owner: OwnerId,
-  ) -> bool {
+  ) {
     match self.loaded.entry(*block_position) {
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
         block_load_state.owners.insert(owner);
-        false
       },
       Entry::Vacant(entry) => {
         let mut owners = HashSet::new();
@@ -230,7 +225,6 @@ impl<'a> TerrainGameLoader for Default<'a> {
           loaded_lod: None,
         });
         assert!(self.in_progress_terrain.insert(id_allocator, physics, block_position));
-        true
       },
     }
   }
@@ -240,7 +234,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
     physics: &mut Physics,
     block_position: &BlockPosition,
     owner: OwnerId,
-  ) -> bool {
+  ) {
     match self.loaded.entry(*block_position) {
       Entry::Occupied(mut entry) => {
         {
@@ -250,18 +244,16 @@ impl<'a> TerrainGameLoader for Default<'a> {
             && block_load_state.owners.remove(&owner)
             && block_load_state.owners.is_empty();
           if !should_unload {
-            return false;
+            return;
           }
         }
         entry.take();
       },
       Entry::Vacant(_) => {
-        return false;
+        return;
       },
     };
 
     assert!(self.in_progress_terrain.remove(physics, block_position));
-
-    true
   }
 }
