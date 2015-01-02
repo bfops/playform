@@ -8,13 +8,12 @@ use std::cmp::max;
 use std::collections::RingBuf;
 use std::num::Float;
 use std::num::SignedInt;
+use time;
 use stopwatch::TimerSet;
 use yaglw::gl_context::GLContext;
 
-// values are approximately in microseconds, but they don't have to be.
-pub const BLOCK_UPDATE_BUDGET: int = 20000;
-pub const BLOCK_LOAD_COST: int = 800;
-pub const BLOCK_UNLOAD_COST: int = 200;
+// Rough budget (in microseconds) for how long block updating can take PER SurroundingsLoader.
+pub const BLOCK_UPDATE_BUDGET: u64 = 20000;
 
 pub const LOD_THRESHOLDS: [i32, ..3] = [1, 8, 16];
 
@@ -96,15 +95,12 @@ impl SurroundingsLoader {
       self.last_position = Some(position);
     }
 
-    let mut budget = BLOCK_UPDATE_BUDGET;
-    while budget > 0 {
+    let target_time = time::precise_time_ns() + BLOCK_UPDATE_BUDGET * 1000;
+    while time::precise_time_ns() < target_time {
       if self.next_unload_index < self.loaded_vec.len() {
         let block_position = self.loaded_vec[self.next_unload_index];
         if radius_between(&position, &block_position) > self.max_load_distance {
-          if terrain_game_loader.unload(timers, gl, physics, &block_position, self.id) {
-            budget -= BLOCK_UNLOAD_COST;
-          }
-
+          terrain_game_loader.unload(timers, gl, physics, &block_position, self.id);
           self.loaded_vec.swap_remove(self.next_unload_index);
         } else {
           self.next_unload_index += 1;
@@ -127,7 +123,7 @@ impl SurroundingsLoader {
           lod
         };
 
-        if terrain_game_loader.load(
+        terrain_game_loader.load(
           timers,
           gl,
           id_allocator,
@@ -135,9 +131,7 @@ impl SurroundingsLoader {
           &block_position,
           lod,
           self.id,
-        ) {
-          budget -= BLOCK_LOAD_COST;
-        }
+        );
 
         self.loaded_vec.push(block_position);
 
