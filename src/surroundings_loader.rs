@@ -128,9 +128,12 @@ impl SurroundingsLoader {
         self.loaded_vec.push(block_position);
 
         if self.load_queue.is_empty() {
+          debug!("Done loading surroundings at distance {}", self.next_load_distance);
           self.next_load_distance += 1;
           if self.next_load_distance <= self.max_load_distance {
             self.load_queue.extend(cube_shell(&position, self.next_load_distance).into_iter());
+          } else {
+            debug!("Done loading surroundings");
           }
         }
       }
