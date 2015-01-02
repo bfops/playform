@@ -10,8 +10,6 @@ Help is great! PRs and [issues](https://github.com/bfops/playform/issues) are ap
 ## Making it work
 
 Have a `rustc` and `cargo` built no earlier than December 31st, 2014.
-Download a local copy of [https://github.com/bfops/nalgebra](https://github.com/bfops/nalgebra)
-and point to it in your `.cargo/config`.
 Install `libpng`, `SDL2` and `SDL2_ttf`.
 Run `cargo run`! Consider setting `RUST_BACKTRACE=1` and `RUST_LOG=info` when you run playform.
 
