@@ -15,7 +15,7 @@ pub fn render<'a>(app: &mut App<'a>) {
     app.line_of_sight.bind(app.gl_context);
     app.line_of_sight.draw(app.gl_context);
 
-    set_camera(app.texture_shader.borrow_mut().deref_mut(), app.gl_context, &app.player.camera);
+    set_camera(app.terrain_shader.borrow_mut().deref_mut(), app.gl_context, &app.player.camera);
 
     // draw the world
     if app.render_outlines {
@@ -24,7 +24,7 @@ pub fn render<'a>(app: &mut App<'a>) {
         gl::Disable(gl::CULL_FACE);
       }
 
-      app.texture_shader.borrow().use_shader(app.gl_context);
+      app.terrain_shader.borrow().use_shader(app.gl_context);
       app.terrain_game_loader.terrain_vram_buffers.draw(app.gl_context);
       app.color_shader.borrow().use_shader(app.gl_context);
       app.mob_buffers.draw(app.gl_context);
@@ -34,7 +34,7 @@ pub fn render<'a>(app: &mut App<'a>) {
         gl::Enable(gl::CULL_FACE);
       }
     } else {
-      app.texture_shader.borrow().use_shader(app.gl_context);
+      app.terrain_shader.borrow().use_shader(app.gl_context);
       app.terrain_game_loader.terrain_vram_buffers.draw(app.gl_context);
       app.color_shader.borrow().use_shader(app.gl_context);
       app.mob_buffers.draw(app.gl_context);

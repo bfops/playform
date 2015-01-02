@@ -153,7 +153,7 @@ pub struct App<'a> {
 
   // OpenGL shader "program" ids
   pub color_shader: Rc<RefCell<Shader<'a>>>,
-  pub texture_shader: Rc<RefCell<Shader<'a>>>,
+  pub terrain_shader: Rc<RefCell<Shader<'a>>>,
   pub hud_texture_shader: Rc<RefCell<Shader<'a>>>,
   pub hud_color_shader: Rc<RefCell<Shader<'a>>>,
 
@@ -183,18 +183,18 @@ impl<'a> App<'a> {
     gl_context.enable_depth_buffer(1.0);
     gl_context.set_background_color(SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a);
 
-    let texture_shader = {
-      let texture_shader =
+    let terrain_shader = {
+      let terrain_shader =
         Rc::new(RefCell::new(shader::from_file_prefix(
           gl,
-          String::from_str("shaders/world_texture"),
+          String::from_str("shaders/terrain"),
           [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
           &FromIterator::from_iter(
             [(String::from_str("lighting"), (true as uint).to_string())].to_vec().into_iter(),
           ),
         )));
       set_point_light(
-        texture_shader.borrow_mut().deref_mut(),
+        terrain_shader.borrow_mut().deref_mut(),
         gl_context,
         &Light {
           position: Vec3::new(0.0, 16.0, 0.0),
@@ -202,11 +202,11 @@ impl<'a> App<'a> {
         }
       );
       set_ambient_light(
-        texture_shader.borrow_mut().deref_mut(),
+        terrain_shader.borrow_mut().deref_mut(),
         gl_context,
         Vec3::new(0.4, 0.4, 0.4),
       );
-      texture_shader
+      terrain_shader
     };
     let color_shader =
       Rc::new(RefCell::new(shader::from_file_prefix(
@@ -292,7 +292,7 @@ impl<'a> App<'a> {
 
     let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
     let terrain_game_loader =
-      terrain_game_loader::Default::new(gl, gl_context, texture_shader.clone(), &mut texture_unit_alloc);
+      terrain_game_loader::Default::new(gl, gl_context, terrain_shader.clone(), &mut texture_unit_alloc);
 
     let (text_textures, text_triangles) =
       make_text(gl, gl_context, hud_texture_shader.clone());
@@ -386,7 +386,7 @@ impl<'a> App<'a> {
       text_triangles: text_triangles,
       misc_texture_unit: misc_texture_unit,
       color_shader: color_shader,
-      texture_shader: texture_shader,
+      terrain_shader: terrain_shader,
       hud_color_shader: hud_color_shader,
       hud_texture_shader: hud_texture_shader,
       render_outlines: false,
