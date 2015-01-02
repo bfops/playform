@@ -193,7 +193,12 @@ impl<'a> TerrainGameLoader for Default<'a> {
     };
 
     timers.time("terrain_game_loader.unload", || {
-      let block = &self.terrain.all_blocks.get(block_position).unwrap().lods[loaded_lod];
+      let lods =
+        self.terrain.all_blocks.get(block_position)
+        .unwrap()
+        .lods
+        .as_slice();
+      let block = lods[loaded_lod].as_ref().unwrap();
       for id in block.ids.iter() {
         physics.remove_terrain(*id);
         self.terrain_vram_buffers.swap_remove(gl, *id);

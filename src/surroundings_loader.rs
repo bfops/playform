@@ -13,8 +13,8 @@ use yaglw::gl_context::GLContext;
 
 // values are approximately in microseconds, but they don't have to be.
 pub const BLOCK_UPDATE_BUDGET: int = 20000;
-pub const BLOCK_LOAD_COST: int = 8000;
-pub const BLOCK_UNLOAD_COST: int = 400;
+pub const BLOCK_LOAD_COST: int = 800;
+pub const BLOCK_UNLOAD_COST: int = 200;
 
 pub const LOD_THRESHOLDS: [i32, ..3] = [1, 8, 16];
 

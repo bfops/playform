@@ -22,7 +22,7 @@ pub enum TerrainType {
 }
 
 pub struct TerrainMipMesh {
-  pub lods: [TerrainBlock, ..4],
+  pub lods: Vec<Option<TerrainBlock>>,
 }
 
 /// This struct contains and lazily generates the world's terrain.
@@ -57,29 +57,31 @@ impl Terrain {
   ) -> &'a TerrainBlock {
     let mip_mesh =
       match self.all_blocks.entry(*position) {
-        Entry::Occupied(entry) => {
+        Entry::Occupied(mut entry) => {
           // Fudge the lifetime bounds
-          mem::transmute(entry.get())
+          mem::transmute(entry.get_mut())
         },
         Entry::Vacant(entry) => {
-          let heightmap = &self.heightmap;
-          let generate = |lod| {
-            TerrainBlock::generate(
-              timers,
-              id_allocator,
-              heightmap,
-              position,
-              LOD_QUALITY[lod],
-            )
-          };
-          let mip_mesh =
+          entry.set(
             TerrainMipMesh {
-              lods: [generate(0), generate(1), generate(2), generate(3)],
-            };
-          let mip_mesh: &TerrainMipMesh = entry.set(mip_mesh);
-          mip_mesh
+              lods: range(0, LOD_QUALITY.len()).map(|_| None).collect(),
+            }
+          )
         },
       };
-    &mip_mesh.lods[lod]
+
+    if mip_mesh.lods[lod].is_none() {
+      *mip_mesh.lods.get_mut(lod).unwrap() = Some(
+        TerrainBlock::generate(
+          timers,
+          id_allocator,
+          &self.heightmap,
+          position,
+          LOD_QUALITY[lod],
+        )
+      );
+    }
+
+    mip_mesh.lods[lod].as_ref().unwrap()
   }
 }
