@@ -12,7 +12,7 @@ use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
 
 // VRAM bytes
-pub const BYTE_BUDGET: uint = 64_000_000;
+pub const BYTE_BUDGET: uint = 78_000_000;
 pub const POLYGON_COST: uint = 76;
 // This assumes there exists only one set of TerrainVRAMBuffers.
 pub const POLYGON_BUDGET: uint = BYTE_BUDGET / POLYGON_COST;

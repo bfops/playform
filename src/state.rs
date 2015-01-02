@@ -322,7 +322,10 @@ impl<'a> App<'a> {
       });
 
     let player = {
-      let mut polygon_budget = terrain_vram_buffers::POLYGON_BUDGET as i32;
+      let polygon_budget = terrain_vram_buffers::POLYGON_BUDGET as i32;
+      // artificially decrease the polygon budget so that we can handle high-detail spurts
+      // (e.g. when the player moves around).
+      let mut polygon_budget = polygon_budget / 2;
       let mut load_distance = 0;
       let mut prev_threshold = 0;
       let mut prev_square = 0;
