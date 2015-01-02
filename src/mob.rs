@@ -5,6 +5,7 @@ use state::EntityId;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use surroundings_loader::SurroundingsLoader;
 use vertex::ColoredVertex;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, VertexAttribData};
 use yaglw::vertex_buffer::{DrawMode, GLType};
@@ -18,6 +19,7 @@ pub struct Mob {
   pub speed: Vec3<f32>,
   pub behavior: Behavior,
   pub id: EntityId,
+  pub surroundings_loader: SurroundingsLoader,
 }
 
 pub struct MobBuffers<'a> {

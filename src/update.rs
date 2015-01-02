@@ -22,20 +22,20 @@ macro_rules! translate_mob(
 
 pub fn update<'a>(app: &mut App) {
   app.timers.time("update", || {
-    let player_block_position = BlockPosition::from_world_position(&app.player.camera.position);
-
-    app.timers.time("update.load.terrain", || {
-      app.surroundings_loader.update(
-        app.timers,
-        app.gl_context,
-        &mut app.terrain_game_loader,
-        &mut app.id_allocator,
-        &mut app.physics,
-        player_block_position,
-      );
-    });
-
     app.timers.time("update.player", || {
+      app.timers.time("update.player.surroundings", || {
+        let block_position = BlockPosition::from_world_position(&app.player.camera.position);
+
+        app.player.surroundings_loader.update(
+          app.timers,
+          app.gl_context,
+          &mut app.terrain_game_loader,
+          &mut app.id_allocator,
+          &mut app.physics,
+          block_position,
+        );
+      });
+
       app.player.update(&mut app.physics);
     });
 
@@ -43,6 +43,17 @@ pub fn update<'a>(app: &mut App) {
       for (_, mob) in app.mobs.iter() {
         let mut mob_cell = mob.deref().borrow_mut();
         let mob = mob_cell.deref_mut();
+
+        let block_position = BlockPosition::from_world_position(&mob.position);
+
+        mob.surroundings_loader.update(
+          app.timers,
+          app.gl_context,
+          &mut app.terrain_game_loader,
+          &mut app.id_allocator,
+          &mut app.physics,
+          block_position,
+        );
 
         {
           let behavior = mob.behavior;
@@ -77,6 +88,7 @@ fn translate_mob(
     mob.speed = mob.speed - delta_p;
   } else {
     let bounds = physics.get_bounds(mob.id).unwrap();
+    mob.position = mob.position + delta_p;
     mob_buffers.update(
       gl,
       mob.id,

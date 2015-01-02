@@ -6,6 +6,7 @@ use ncollide::ray::{Ray, Ray3};
 use physics::Physics;
 use state::EntityId;
 use std::f32::consts::PI;
+use surroundings_loader::SurroundingsLoader;
 
 static MAX_JUMP_FUEL: uint = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;
@@ -28,6 +29,8 @@ pub struct Player {
   pub lateral_rotation: f32,
   // "pitch", in radians
   pub vertical_rotation: f32,
+
+  pub surroundings_loader: SurroundingsLoader,
 }
 
 impl Player {

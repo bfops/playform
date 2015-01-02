@@ -1,7 +1,7 @@
 use cube_shell::cube_shell;
 use id_allocator::IdAllocator;
 use terrain_block::BlockPosition;
-use terrain_game_loader::TerrainGameLoader;
+use terrain_game_loader::{TerrainGameLoader, OwnerId};
 use physics::Physics;
 use state::EntityId;
 use std::cmp::max;
@@ -25,6 +25,7 @@ fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
 
 /// Keep surroundings loaded around a given world position.
 pub struct SurroundingsLoader {
+  pub id: OwnerId,
   pub last_position: Option<BlockPosition>,
 
   pub max_load_distance: i32,
@@ -38,10 +39,11 @@ pub struct SurroundingsLoader {
 }
 
 impl SurroundingsLoader {
-  pub fn new(max_load_distance: i32) -> SurroundingsLoader {
+  pub fn new(id: OwnerId, max_load_distance: i32) -> SurroundingsLoader {
     assert!(max_load_distance >= 0);
 
     SurroundingsLoader {
+      id: id,
       last_position: None,
 
       max_load_distance: max_load_distance,
@@ -56,7 +58,6 @@ impl SurroundingsLoader {
         b.push_all(cube_shell(&BlockPosition::new(0, 0, 0), 0).as_slice());
         b.push_all(cube_shell(&BlockPosition::new(0, 0, 0), 1).as_slice());
         b.push_all(cube_shell(&BlockPosition::new(0, 0, 0), 2).as_slice());
-        b.push_all(cube_shell(&BlockPosition::new(0, 0, 0), 3).as_slice());
         b
       },
     }
@@ -76,13 +77,13 @@ impl SurroundingsLoader {
         |last_position|
           for solid_block in
             self.solid_boundary.iter().map(|&dp| last_position + dp.as_pnt().to_vec()) {
-              terrain_game_loader.unload(timers, gl, physics, &solid_block);
+              terrain_game_loader.remove_placeholder(physics, &solid_block, self.id);
             }
         );
 
-      // There will be some redundant unloads above. Fix?
+      // There will make some of the remove_placeholders redundant. Fix?
       for solid_block in self.solid_boundary.iter().map(|&dp| position + dp.as_pnt().to_vec()) {
-        terrain_game_loader.mark_wanted(id_allocator, physics, &solid_block);
+        terrain_game_loader.insert_placeholder(id_allocator, physics, &solid_block, self.id);
       }
 
       self.load_queue.clear();
@@ -98,7 +99,7 @@ impl SurroundingsLoader {
       if self.next_unload_index < self.loaded_vec.len() {
         let block_position = self.loaded_vec[self.next_unload_index];
         if radius_between(&position, &block_position) > self.max_load_distance {
-          if terrain_game_loader.unload(timers, gl, physics, &block_position) {
+          if terrain_game_loader.unload(timers, gl, physics, &block_position, self.id) {
             budget -= BLOCK_UNLOAD_COST;
           }
 
@@ -119,6 +120,7 @@ impl SurroundingsLoader {
           id_allocator,
           physics,
           &block_position,
+          self.id,
         ) {
           budget -= BLOCK_LOAD_COST;
         }

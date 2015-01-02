@@ -25,6 +25,7 @@ use surroundings_loader::SurroundingsLoader;
 use terrain;
 use terrain_block;
 use terrain_game_loader;
+use terrain_game_loader::OwnerId;
 use terrain_vram_buffers;
 use vertex::{ColoredVertex, TextureVertex};
 use yaglw::vertex_buffer::*;
@@ -140,7 +141,6 @@ pub struct App<'a> {
   pub mobs: HashMap<EntityId, Rc<RefCell<mob::Mob>>>,
 
   pub id_allocator: IdAllocator<EntityId>,
-  pub surroundings_loader: SurroundingsLoader,
   pub terrain_game_loader: terrain_game_loader::Default<'a>,
 
   // OpenGL buffers
@@ -309,6 +309,7 @@ impl<'a> App<'a> {
       );
 
     let mut id_allocator = IdAllocator::new();
+    let mut owner_allocator = IdAllocator::new();
 
     let (mobs, mob_buffers) =
       timers.time("make_mobs", || {
@@ -317,11 +318,21 @@ impl<'a> App<'a> {
           gl_context,
           &mut physics,
           &mut id_allocator,
+          &mut owner_allocator,
           color_shader.clone(),
         )
       });
 
     let player = {
+      let block_budget =
+        terrain_vram_buffers::POLYGON_BUDGET as i32 / terrain_block::POLYGONS_PER_BLOCK;
+      // We'll have at most load_width^2 full blocks loaded.
+      // This is because we generate flat terrain! If that changes, this changes!
+      let load_width = (block_budget as f32).sqrt() as i32;
+      let load_distance = (load_width - 1) / 2;
+
+      info!("load_distance {}", load_distance);
+
       let mut player = Player {
         camera: camera::Camera::unit(),
         speed: Vec3::new(0.0, 0.0, 0.0),
@@ -332,6 +343,7 @@ impl<'a> App<'a> {
         id: id_allocator.allocate(),
         lateral_rotation: 0.0,
         vertical_rotation: 0.0,
+        surroundings_loader: SurroundingsLoader::new(owner_allocator.allocate(), load_distance),
       };
 
       let min = Pnt3::new(0.0, terrain::AMPLITUDE * 0.6, 4.0);
@@ -358,18 +370,6 @@ impl<'a> App<'a> {
       gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
     }
 
-    let surroundings_loader = {
-      let block_budget =
-        terrain_vram_buffers::POLYGON_BUDGET as i32 / terrain_block::POLYGONS_PER_BLOCK;
-      // We'll have at most load_width^2 full blocks loaded.
-      // This is because we generate flat terrain! If that changes, this changes!
-      let load_width = (block_budget as f32).sqrt() as i32;
-      let load_distance = (load_width - 1) / 2;
-
-      info!("load_distance {}", load_distance);
-      SurroundingsLoader::new(load_distance)
-    };
-
     match gl_context.get_error() {
       gl::NO_ERROR => {},
       err => warn!("OpenGL error 0x{:x} in load()", err),
@@ -379,7 +379,6 @@ impl<'a> App<'a> {
       line_of_sight: line_of_sight,
       physics: physics,
       id_allocator: id_allocator,
-      surroundings_loader: surroundings_loader,
       terrain_game_loader: terrain_game_loader,
       mob_buffers: mob_buffers,
       player: player,
@@ -411,6 +410,7 @@ fn add_mob(
   mobs: &mut HashMap<EntityId, Rc<RefCell<mob::Mob>>>,
   mob_buffers: &mut mob::MobBuffers,
   id_allocator: &mut IdAllocator<EntityId>,
+  owner_allocator: &mut IdAllocator<OwnerId>,
   low_corner: Pnt3<GLfloat>,
   behavior: mob::Behavior,
 ) {
@@ -425,6 +425,7 @@ fn add_mob(
       speed: Vec3::new(0.0, 0.0, 0.0),
       behavior: behavior,
       id: id,
+      surroundings_loader: SurroundingsLoader::new(owner_allocator.allocate(), 2),
     };
   let mob = Rc::new(RefCell::new(mob));
 
@@ -439,6 +440,7 @@ fn make_mobs<'a>(
   gl_context: & mut GLContext,
   physics: &mut Physics,
   id_allocator: &mut IdAllocator<EntityId>,
+  owner_allocator: &mut IdAllocator<OwnerId>,
   shader: Rc<RefCell<Shader>>,
 ) -> (HashMap<EntityId, Rc<RefCell<mob::Mob>>>, mob::MobBuffers<'a>) {
   let mut mobs = HashMap::new();
@@ -481,7 +483,8 @@ fn make_mobs<'a>(
     &mut mobs,
     &mut mob_buffers,
     id_allocator,
-    Pnt3::new(0.0, terrain::AMPLITUDE * 0.8, -1.0),
+    owner_allocator,
+    Pnt3::new(0.0, terrain::AMPLITUDE * 0.6, -1.0),
     mob_behavior
   );
 
