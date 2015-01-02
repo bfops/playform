@@ -353,7 +353,7 @@ impl<'a> App<'a> {
 
       // initialize the projection matrix
       player.camera.translate(center(&bounds).to_vec());
-      player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 256.0);
+      player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 512.0);
       player.rotate_lateral(PI / 2.0);
 
       player
