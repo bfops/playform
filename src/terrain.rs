@@ -12,6 +12,8 @@ pub const PERSISTENCE: f64 = 1.0 / 8.0;
 pub const LACUNARITY: f64 = 8.0;
 pub const OCTAVES: uint = 8;
 
+pub const LOD_QUALITY: [uint, ..4] = [48, 16, 4, 2];
+
 #[deriving(Show, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TerrainType {
   Grass,
@@ -19,12 +21,16 @@ pub enum TerrainType {
   Stone,
 }
 
+pub struct TerrainMipMesh {
+  pub lods: [TerrainBlock, ..4],
+}
+
 /// This struct contains and lazily generates the world's terrain.
 pub struct Terrain {
   // this is used for generating new blocks.
   pub heightmap: Perlin,
   // all the blocks that have ever been created.
-  pub all_blocks: HashMap<BlockPosition, TerrainBlock>,
+  pub all_blocks: HashMap<BlockPosition, TerrainMipMesh>,
 }
 
 impl Terrain {
@@ -47,24 +53,33 @@ impl Terrain {
     timers: &TimerSet,
     id_allocator: &mut IdAllocator<EntityId>,
     position: &BlockPosition,
+    lod: uint,
   ) -> &'a TerrainBlock {
-    match self.all_blocks.entry(*position) {
-      Entry::Occupied(entry) => {
-        // Fudge the lifetime bounds
-        mem::transmute(entry.get())
-      },
-      Entry::Vacant(entry) => {
-        let heightmap = &self.heightmap;
-        let block =
-          TerrainBlock::generate(
-            timers,
-            id_allocator,
-            heightmap,
-            position,
-          );
-        let block: &TerrainBlock = entry.set(block);
-        block
-      },
-    }
+    let mip_mesh =
+      match self.all_blocks.entry(*position) {
+        Entry::Occupied(entry) => {
+          // Fudge the lifetime bounds
+          mem::transmute(entry.get())
+        },
+        Entry::Vacant(entry) => {
+          let heightmap = &self.heightmap;
+          let generate = |lod| {
+            TerrainBlock::generate(
+              timers,
+              id_allocator,
+              heightmap,
+              position,
+              LOD_QUALITY[lod],
+            )
+          };
+          let mip_mesh =
+            TerrainMipMesh {
+              lods: [generate(0), generate(1), generate(2), generate(3)],
+            };
+          let mip_mesh: &TerrainMipMesh = entry.set(mip_mesh);
+          mip_mesh
+        },
+      };
+    &mip_mesh.lods[lod]
   }
 }

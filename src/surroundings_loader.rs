@@ -13,8 +13,10 @@ use yaglw::gl_context::GLContext;
 
 // values are approximately in microseconds, but they don't have to be.
 pub const BLOCK_UPDATE_BUDGET: int = 20000;
-pub const BLOCK_LOAD_COST: int = 600;
-pub const BLOCK_UNLOAD_COST: int = 300;
+pub const BLOCK_LOAD_COST: int = 8000;
+pub const BLOCK_UNLOAD_COST: int = 400;
+
+pub const LOD_THRESHOLDS: [i32, ..3] = [1, 8, 16];
 
 fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
   let dx = (p1.as_pnt().x - p2.as_pnt().x).abs();
@@ -114,12 +116,24 @@ impl SurroundingsLoader {
             Some(block_position) => block_position,
           };
 
+        let lod = {
+          let mut lod = 0;
+          for &threshold in LOD_THRESHOLDS.iter() {
+            if self.next_load_distance <= threshold {
+              break;
+            }
+            lod += 1;
+          }
+          lod
+        };
+
         if terrain_game_loader.load(
           timers,
           gl,
           id_allocator,
           physics,
           &block_position,
+          lod,
           self.id,
         ) {
           budget -= BLOCK_LOAD_COST;

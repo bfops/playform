@@ -35,6 +35,7 @@ pub trait TerrainGameLoader {
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
+    lod: uint,
     owner: OwnerId,
   ) -> bool;
 
@@ -69,8 +70,9 @@ pub trait TerrainGameLoader {
 }
 
 struct BlockLoadState {
-  pub is_loaded: bool,
   pub owners: HashSet<OwnerId>,
+  /// If this is None, only a placeholder is loaded.
+  pub loaded_lod: Option<uint>,
 }
 
 pub struct Default<'a> {
@@ -108,31 +110,32 @@ impl<'a> TerrainGameLoader for Default<'a> {
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
+    lod: uint,
     owner: OwnerId,
   ) -> bool {
     match self.loaded.entry(*block_position) {
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
-        let already_loaded = block_load_state.is_loaded;
-        block_load_state.is_loaded = true;
+        let already_loaded = block_load_state.loaded_lod.is_some();
         block_load_state.owners.insert(owner);
         if already_loaded {
           return false;
         }
+        block_load_state.loaded_lod = Some(lod);
       },
       Entry::Vacant(entry) => {
         let mut owners = HashSet::new();
         owners.insert(owner);
         entry.set(BlockLoadState {
           owners: owners,
-          is_loaded: true,
+          loaded_lod: Some(lod),
         });
       },
     }
 
     timers.time("terrain_game_loader.load", || {
       let block = unsafe {
-        self.terrain.load(timers, id_allocator, block_position)
+        self.terrain.load(timers, id_allocator, block_position, lod)
       };
 
       timers.time("terrain_game_loader.load.physics", || {
@@ -166,13 +169,17 @@ impl<'a> TerrainGameLoader for Default<'a> {
     block_position: &BlockPosition,
     owner: OwnerId,
   ) -> bool {
+    let loaded_lod;
     match self.loaded.entry(*block_position) {
       Entry::Occupied(mut entry) => {
         {
           let block_load_state = entry.get_mut();
+          match block_load_state.loaded_lod {
+            None => return false,
+            Some(lod) => loaded_lod = lod,
+          };
           let should_unload =
-            block_load_state.is_loaded
-            && block_load_state.owners.remove(&owner)
+            block_load_state.owners.remove(&owner)
             && block_load_state.owners.is_empty();
           if !should_unload {
             return false;
@@ -186,7 +193,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
     };
 
     timers.time("terrain_game_loader.unload", || {
-      let block = self.terrain.all_blocks.get(block_position).unwrap();
+      let block = &self.terrain.all_blocks.get(block_position).unwrap().lods[loaded_lod];
       for id in block.ids.iter() {
         physics.remove_terrain(*id);
         self.terrain_vram_buffers.swap_remove(gl, *id);
@@ -215,7 +222,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
         owners.insert(owner);
         entry.set(BlockLoadState {
           owners: owners,
-          is_loaded: false,
+          loaded_lod: None,
         });
         assert!(self.in_progress_terrain.insert(id_allocator, physics, block_position));
         true
@@ -234,7 +241,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
         {
           let block_load_state = entry.get_mut();
           let should_unload =
-            !block_load_state.is_loaded
+            block_load_state.loaded_lod.is_none()
             && block_load_state.owners.remove(&owner)
             && block_load_state.owners.is_empty();
           if !should_unload {

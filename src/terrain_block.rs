@@ -13,11 +13,6 @@ use stopwatch::TimerSet;
 use terrain::{AMPLITUDE, TerrainType};
 
 pub const BLOCK_WIDTH: i32 = 4;
-// Number of samples in a single dimension per block.
-pub const SAMPLES_PER_BLOCK: uint = 16;
-pub const SAMPLE_WIDTH: f32 = BLOCK_WIDTH as f32 / SAMPLES_PER_BLOCK as f32;
-
-pub const POLYGONS_PER_BLOCK: i32 = SAMPLES_PER_BLOCK as i32 * SAMPLES_PER_BLOCK as i32 * 4;
 
 #[deriving(Show, PartialEq, Eq, Hash, Copy, Clone)]
 pub struct BlockPosition(Pnt3<i32>);
@@ -134,6 +129,7 @@ impl TerrainBlock {
     id_allocator: &mut IdAllocator<EntityId>,
     heightmap: &Perlin,
     position: &BlockPosition,
+    lateral_samples: uint,
   ) -> TerrainBlock {
     timers.time("update.generate_block", || {
       let mut block = TerrainBlock::empty();
@@ -143,16 +139,19 @@ impl TerrainBlock {
       let y = (position.as_pnt().y * BLOCK_WIDTH) as f32;
       let z = (position.as_pnt().z * BLOCK_WIDTH) as f32;
 
-      for dx in range(0, SAMPLES_PER_BLOCK) {
-        let x = x + dx as f32 * SAMPLE_WIDTH;
-        for dz in range(0, SAMPLES_PER_BLOCK) {
-          let z = z + dz as f32 * SAMPLE_WIDTH;
+      let sample_width = BLOCK_WIDTH as f32 / lateral_samples as f32;
+
+      for dx in range(0, lateral_samples) {
+        let x = x + dx as f32 * sample_width;
+        for dz in range(0, lateral_samples) {
+          let z = z + dz as f32 * sample_width;
           let position = Pnt3::new(x, y, z);
           TerrainBlock::add_tile(
             timers,
             &heightmap,
             id_allocator,
             &mut block,
+            sample_width,
             &position,
           );
         }
@@ -167,9 +166,10 @@ impl TerrainBlock {
     hm: &Plane<'a, Perlin>,
     id_allocator: &mut IdAllocator<EntityId>,
     block: &mut TerrainBlock,
+    sample_width: f32,
     position: &Pnt3<f32>,
   ) {
-    let half_width = SAMPLE_WIDTH / 2.0;
+    let half_width = sample_width / 2.0;
     let center = hm.point_at(position.x + half_width, position.z + half_width);
 
     if position.y >= center.y || center.y > position.y + BLOCK_WIDTH as f32 {
@@ -179,8 +179,8 @@ impl TerrainBlock {
     timers.time("update.generate_block.add_tile", || {
       let center_normal = hm.normal_at(position.x + half_width, position.z + half_width);
 
-      let x2 = position.x + SAMPLE_WIDTH;
-      let z2 = position.z + SAMPLE_WIDTH;
+      let x2 = position.x + sample_width;
+      let z2 = position.z + sample_width;
 
       let ps: [Pnt3<f32>, ..4] =
         [ hm.point_at(position.x, position.z)

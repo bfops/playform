@@ -18,11 +18,11 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::default::Default;
 use std::f32::consts::PI;
-use std::num::Float;
+use std::iter::range_inclusive;
 use std::rc::Rc;
+use surroundings_loader;
 use surroundings_loader::SurroundingsLoader;
 use terrain;
-use terrain_block;
 use terrain_game_loader;
 use terrain_game_loader::OwnerId;
 use terrain_vram_buffers;
@@ -322,12 +322,28 @@ impl<'a> App<'a> {
       });
 
     let player = {
-      let block_budget =
-        terrain_vram_buffers::POLYGON_BUDGET as i32 / terrain_block::POLYGONS_PER_BLOCK;
-      // We'll have at most load_width^2 full blocks loaded.
-      // This is because we generate flat terrain! If that changes, this changes!
-      let load_width = (block_budget as f32).sqrt() as i32;
-      let load_distance = (load_width - 1) / 2;
+      let mut polygon_budget = terrain_vram_buffers::POLYGON_BUDGET as i32;
+      let mut load_distance = 0;
+      let mut prev_threshold = 0;
+      let mut prev_square = 0;
+      for (&threshold, &quality) in
+        surroundings_loader::LOD_THRESHOLDS.iter()
+          .zip(terrain::LOD_QUALITY.iter()) {
+        let polygons_per_block = (quality * quality * 4) as i32;
+        for i in range_inclusive(prev_threshold + 1, threshold) {
+          let i = 2 * i + 1;
+          let square = i * i;
+          let polygons_in_layer = (square - prev_square) * polygons_per_block;
+          polygon_budget -= polygons_in_layer;
+          if polygon_budget < 0 {
+            break;
+          }
+
+          load_distance += 1;
+          prev_square = square;
+          prev_threshold = threshold;
+        }
+      }
 
       info!("load_distance {}", load_distance);
 
