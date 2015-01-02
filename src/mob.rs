@@ -14,12 +14,12 @@ use yaglw::shader::Shader;
 
 pub type Behavior = fn(&App, &mut Mob);
 
-pub struct Mob {
+pub struct Mob<'a> {
   pub position: Pnt3<f32>,
   pub speed: Vec3<f32>,
   pub behavior: Behavior,
   pub id: EntityId,
-  pub surroundings_loader: SurroundingsLoader,
+  pub surroundings_loader: SurroundingsLoader<'a>,
 }
 
 pub struct MobBuffers<'a> {

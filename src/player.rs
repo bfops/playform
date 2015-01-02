@@ -6,12 +6,16 @@ use ncollide::ray::{Ray, Ray3};
 use physics::Physics;
 use state::EntityId;
 use std::f32::consts::PI;
+use std::iter::range_inclusive;
+use terrain;
 use surroundings_loader::SurroundingsLoader;
 
-static MAX_JUMP_FUEL: uint = 4;
+const LOD_THRESHOLDS: [i32, ..4] = [1, 8, 16, 24];
+
+const MAX_JUMP_FUEL: uint = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;
 
-pub struct Player {
+pub struct Player<'a> {
   pub camera: camera::Camera,
   // speed; units are world coordinates
   pub speed: Vec3<GLfloat>,
@@ -30,10 +34,10 @@ pub struct Player {
   // "pitch", in radians
   pub vertical_rotation: f32,
 
-  pub surroundings_loader: SurroundingsLoader,
+  pub surroundings_loader: SurroundingsLoader<'a>,
 }
 
-impl Player {
+impl<'a> Player<'a> {
   /// Translates the player/camera by a vector.
   /// If the player collides with something with a small height jump, the player will shift upward.
   pub fn translate(&mut self, physics: &mut Physics, v: Vec3<GLfloat>) {
@@ -170,5 +174,61 @@ impl Player {
   #[allow(dead_code)]
   pub fn forward_ray(&self) -> Ray3<f32> {
     Ray::new(self.camera.position, self.forward())
+  }
+
+  pub fn lod_index(distance: i32) -> uint {
+    assert!(distance >= 0);
+    let mut lod = 0;
+    while
+      lod < LOD_THRESHOLDS.len()
+      && LOD_THRESHOLDS[lod] < distance
+    {
+      lod += 1;
+    }
+    lod
+  }
+
+  pub fn load_distance(mut polygon_budget: i32) -> i32 {
+    let mut load_distance = 0;
+    let mut prev_threshold = 0;
+    let mut prev_square = 0;
+    for (&threshold, &quality) in
+      LOD_THRESHOLDS.iter()
+        .zip(terrain::LOD_QUALITY.iter()) {
+      let polygons_per_block = (quality * quality * 4) as i32;
+      for i in range_inclusive(prev_threshold, threshold) {
+        let i = 2 * i + 1;
+        let square = i * i;
+        let polygons_in_layer = (square - prev_square) * polygons_per_block;
+        polygon_budget -= polygons_in_layer;
+        if polygon_budget < 0 {
+          break;
+        }
+
+        load_distance += 1;
+        prev_square = square;
+      }
+      prev_threshold = threshold + 1;
+    }
+
+    let mut width = 2 * prev_threshold + 1;
+    loop {
+      let square = width * width;
+      // The "to infinity and beyond" quality.
+      let quality = terrain::LOD_QUALITY[LOD_THRESHOLDS.len()];
+      let polygons_per_block = (quality * quality * 4) as i32;
+      let polygons_in_layer = (square - prev_square) * polygons_per_block;
+      polygon_budget -= polygons_in_layer;
+
+      if polygon_budget < 0 {
+        break;
+      }
+
+      width += 2;
+      load_distance += 1;
+      prev_square = square;
+    }
+
+    load_distance
   }
 }

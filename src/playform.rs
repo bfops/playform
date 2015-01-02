@@ -6,6 +6,7 @@
 #![feature(macro_rules)]
 #![feature(phase)]
 #![feature(slicing_syntax)]
+#![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 
 extern crate gl;

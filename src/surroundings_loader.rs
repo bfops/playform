@@ -15,8 +15,6 @@ use yaglw::gl_context::GLContext;
 // Rough budget (in microseconds) for how long block updating can take PER SurroundingsLoader.
 pub const BLOCK_UPDATE_BUDGET: u64 = 20000;
 
-pub const LOD_THRESHOLDS: [i32, ..4] = [1, 8, 16, 24];
-
 fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
   let dx = (p1.as_pnt().x - p2.as_pnt().x).abs();
   let dy = (p1.as_pnt().y - p2.as_pnt().y).abs();
@@ -25,9 +23,10 @@ fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
 }
 
 /// Keep surroundings loaded around a given world position.
-pub struct SurroundingsLoader {
+pub struct SurroundingsLoader<'a> {
   pub id: OwnerId,
   pub last_position: Option<BlockPosition>,
+  pub lod_index: |i32|:'a -> uint,
 
   pub max_load_distance: i32,
   pub next_load_distance: i32,
@@ -39,13 +38,14 @@ pub struct SurroundingsLoader {
   pub solid_boundary: Vec<BlockPosition>,
 }
 
-impl SurroundingsLoader {
-  pub fn new(id: OwnerId, max_load_distance: i32) -> SurroundingsLoader {
+impl<'a> SurroundingsLoader<'a> {
+  pub fn new(id: OwnerId, max_load_distance: i32, lod_index: |i32|:'a -> uint) -> SurroundingsLoader {
     assert!(max_load_distance >= 0);
 
     SurroundingsLoader {
       id: id,
       last_position: None,
+      lod_index: lod_index,
 
       max_load_distance: max_load_distance,
       next_load_distance: 0,
@@ -112,16 +112,7 @@ impl SurroundingsLoader {
             Some(block_position) => block_position,
           };
 
-        let lod_index = {
-          let mut lod_index = 0;
-          for &threshold in LOD_THRESHOLDS.iter() {
-            if self.next_load_distance <= threshold {
-              break;
-            }
-            lod_index += 1;
-          }
-          lod_index
-        };
+        let lod_index = (self.lod_index)(self.next_load_distance);
 
         terrain_game_loader.load(
           timers,

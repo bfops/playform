@@ -18,9 +18,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::default::Default;
 use std::f32::consts::PI;
-use std::iter::range_inclusive;
 use std::rc::Rc;
-use surroundings_loader;
 use surroundings_loader::SurroundingsLoader;
 use terrain;
 use terrain_game_loader;
@@ -136,8 +134,8 @@ fn make_hud<'a>(
 /// The whole application. Wrapped up in a nice frameworky struct for piston.
 pub struct App<'a> {
   pub physics: Physics,
-  pub player: Player,
-  pub mobs: HashMap<EntityId, Rc<RefCell<mob::Mob>>>,
+  pub player: Player<'a>,
+  pub mobs: HashMap<EntityId, Rc<RefCell<mob::Mob<'a>>>>,
 
   pub id_allocator: IdAllocator<EntityId>,
   pub terrain_game_loader: terrain_game_loader::Default<'a>,
@@ -322,49 +320,9 @@ impl<'a> App<'a> {
       });
 
     let player = {
-      let polygon_budget = terrain_vram_buffers::POLYGON_BUDGET as i32;
       // artificially decrease the polygon budget so that we can handle high-detail spurts
       // (e.g. when the player moves around).
-      let mut polygon_budget = polygon_budget / 2;
-      let mut load_distance = 0;
-      let mut prev_threshold = 0;
-      let mut prev_square = 0;
-      for (&threshold, &quality) in
-        surroundings_loader::LOD_THRESHOLDS.iter()
-          .zip(terrain::LOD_QUALITY.iter()) {
-        let polygons_per_block = (quality * quality * 4) as i32;
-        for i in range_inclusive(prev_threshold, threshold) {
-          let i = 2 * i + 1;
-          let square = i * i;
-          let polygons_in_layer = (square - prev_square) * polygons_per_block;
-          polygon_budget -= polygons_in_layer;
-          if polygon_budget < 0 {
-            break;
-          }
-
-          load_distance += 1;
-          prev_square = square;
-        }
-        prev_threshold = threshold + 1;
-      }
-
-      let mut width = 2 * prev_threshold + 1;
-      loop {
-        let square = width * width;
-        // The "to infinity and beyond" quality.
-        let quality = terrain::LOD_QUALITY[surroundings_loader::LOD_THRESHOLDS.len()];
-        let polygons_per_block = (quality * quality * 4) as i32;
-        let polygons_in_layer = (square - prev_square) * polygons_per_block;
-        polygon_budget -= polygons_in_layer;
-
-        if polygon_budget < 0 {
-          break;
-        }
-
-        width += 2;
-        load_distance += 1;
-        prev_square = square;
-      }
+      let load_distance = Player::load_distance(terrain_vram_buffers::POLYGON_BUDGET as i32 / 2);
 
       info!("load_distance {}", load_distance);
 
@@ -378,7 +336,8 @@ impl<'a> App<'a> {
         id: id_allocator.allocate(),
         lateral_rotation: 0.0,
         vertical_rotation: 0.0,
-        surroundings_loader: SurroundingsLoader::new(owner_allocator.allocate(), load_distance),
+        surroundings_loader:
+          SurroundingsLoader::new(owner_allocator.allocate(), load_distance, |d| Player::lod_index(d)),
       };
 
       let min = Pnt3::new(0.0, terrain::AMPLITUDE * 0.6, 4.0);
@@ -460,7 +419,7 @@ fn add_mob(
       speed: Vec3::new(0.0, 0.0, 0.0),
       behavior: behavior,
       id: id,
-      surroundings_loader: SurroundingsLoader::new(owner_allocator.allocate(), 2),
+      surroundings_loader: SurroundingsLoader::new(owner_allocator.allocate(), 2, |_| 4),
     };
   let mob = Rc::new(RefCell::new(mob));
 
@@ -477,7 +436,7 @@ fn make_mobs<'a>(
   id_allocator: &mut IdAllocator<EntityId>,
   owner_allocator: &mut IdAllocator<OwnerId>,
   shader: Rc<RefCell<Shader>>,
-) -> (HashMap<EntityId, Rc<RefCell<mob::Mob>>>, mob::MobBuffers<'a>) {
+) -> (HashMap<EntityId, Rc<RefCell<mob::Mob<'a>>>>, mob::MobBuffers<'a>) {
   let mut mobs = HashMap::new();
   let mut mob_buffers = mob::MobBuffers::new(gl, gl_context, shader);
 
