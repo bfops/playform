@@ -1,4 +1,5 @@
 use std::default::Default;
+use std::ops::Add;
 
 // Produce unique `Id`s
 pub struct IdAllocator<Id> {
@@ -6,7 +7,7 @@ pub struct IdAllocator<Id> {
 }
 
 impl<Id> IdAllocator<Id> where
-  Id : Clone + Default + Add<u32, Id>,
+  Id : Clone + Default + Add<u32, Output=Id>,
 {
   pub fn new() -> IdAllocator<Id> {
     IdAllocator {

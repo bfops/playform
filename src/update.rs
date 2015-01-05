@@ -5,6 +5,7 @@ use mob;
 use nalgebra::Vec3;
 use physics::Physics;
 use state::App;
+use std::ops::{Deref, DerefMut};
 use terrain_block::BlockPosition;
 use yaglw::gl_context::GLContext;
 

@@ -68,9 +68,9 @@ impl TimerSet {
   /// dynamically.
   pub fn time<T, F: FnOnce() -> T>(&self, name: &str, f: F) -> T {
     let timer : Rc<RefCell<Stopwatch>> =
-      match self.timers.borrow_mut().entry(String::from_str(name)) {
+      match self.timers.borrow_mut().entry(name) {
         Entry::Occupied(entry) => entry.get().clone(),
-        Entry::Vacant(entry) => entry.set(Rc::new(RefCell::new(Stopwatch::new()))).clone(),
+        Entry::Vacant(entry) => entry.insert(Rc::new(RefCell::new(Stopwatch::new()))).clone(),
       };
 
     match timer.try_borrow_mut() {

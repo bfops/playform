@@ -1,10 +1,12 @@
 use id_allocator::IdAllocator;
 use in_progress_terrain::InProgressTerrain;
+use noise::Seed;
 use physics::Physics;
 use state::EntityId;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
+use std::ops::Add;
 use std::rc::Rc;
 use stopwatch::TimerSet;
 use terrain::Terrain;
@@ -15,10 +17,12 @@ use yaglw::shader::Shader;
 use yaglw::texture::TextureUnit;
 
 /// These are used to identify the owners of terrain load operations.
-#[deriving(Copy, Clone, Show, PartialEq, Eq, Hash, Default)]
+#[derive(Copy, Clone, Show, PartialEq, Eq, Hash, Default)]
 pub struct OwnerId(u32);
 
-impl Add<u32, OwnerId> for OwnerId {
+impl Add<u32> for OwnerId {
+  type Output = OwnerId;
+
   fn add(self, rhs: u32) -> OwnerId {
     let OwnerId(id) = self;
     OwnerId(id + rhs)
@@ -94,7 +98,7 @@ impl<'a> Default<'a> {
     terrain_vram_buffers.bind_glsl_uniforms(gl_context, texture_unit_alloc, shader.clone());
 
     Default {
-      terrain: Terrain::new(),
+      terrain: Terrain::new(Seed::new(0)),
       terrain_vram_buffers: terrain_vram_buffers,
       in_progress_terrain: InProgressTerrain::new(),
       loaded: HashMap::new(),
@@ -136,7 +140,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
     owner: OwnerId,
   ) {
     let mut loaded_lod = None;
-    match self.loaded.entry(*block_position) {
+    match self.loaded.entry(block_position) {
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
         block_load_state.owners.insert(owner);
@@ -155,7 +159,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
       Entry::Vacant(entry) => {
         let mut owners = HashSet::new();
         owners.insert(owner);
-        entry.set(BlockLoadState {
+        entry.insert(BlockLoadState {
           owners: owners,
           loaded_lod: Some(lod_index),
         });
@@ -203,7 +207,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
     owner: OwnerId,
   ) {
     let loaded_lod;
-    match self.loaded.entry(*block_position) {
+    match self.loaded.entry(block_position) {
       Entry::Occupied(mut entry) => {
         {
           let block_load_state = entry.get_mut();
@@ -218,7 +222,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
             return;
           }
         }
-        entry.take();
+        entry.remove();
       },
       Entry::Vacant(_) => {
         return;
@@ -236,7 +240,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
     block_position: &BlockPosition,
     owner: OwnerId,
   ) {
-    match self.loaded.entry(*block_position) {
+    match self.loaded.entry(block_position) {
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
         block_load_state.owners.insert(owner);
@@ -244,7 +248,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
       Entry::Vacant(entry) => {
         let mut owners = HashSet::new();
         owners.insert(owner);
-        entry.set(BlockLoadState {
+        entry.insert(BlockLoadState {
           owners: owners,
           loaded_lod: None,
         });
@@ -259,7 +263,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
     block_position: &BlockPosition,
     owner: OwnerId,
   ) {
-    match self.loaded.entry(*block_position) {
+    match self.loaded.entry(block_position) {
       Entry::Occupied(mut entry) => {
         {
           let block_load_state = entry.get_mut();
@@ -271,7 +275,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
             return;
           }
         }
-        entry.take();
+        entry.remove();
       },
       Entry::Vacant(_) => {
         return;

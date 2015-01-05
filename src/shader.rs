@@ -5,6 +5,9 @@ use std::io::fs::File;
 use yaglw::gl_context::GLContextExistence;
 use yaglw::shader::Shader;
 
+#[cfg(test)]
+use std::iter::FromIterator;
+
 // Turn a shader definition into a vanilla GLSL shader definition.
 // See the README in the shaders folder for details.
 fn preprocess(shader: String, vars: &HashMap<String, String>) -> Option<String> {
@@ -144,7 +147,7 @@ baz
   );
 }
 
-pub fn from_files<'a, T: Iterator<(String, GLenum)>>(
+pub fn from_files<'a, T: Iterator<Item=(String, GLenum)>>(
   gl: &'a GLContextExistence,
   component_paths: T,
   vars: &HashMap<String, String>,
@@ -172,7 +175,7 @@ pub fn from_files<'a, T: Iterator<(String, GLenum)>>(
   }))
 }
 
-pub fn from_file_prefix<'a, T: Iterator<GLenum>>(
+pub fn from_file_prefix<'a, T: Iterator<Item=GLenum>>(
   gl: &'a GLContextExistence,
   prefix: String,
   components: T,

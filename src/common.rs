@@ -14,7 +14,7 @@ pub const VERTICES_PER_TRIANGLE: uint = 3;
 pub const TRIANGLE_VERTICES_PER_BOX: uint = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
 
 pub fn partial_min_by<A, I, B, F>(mut iter: I, f: F) -> Vec<A>
-    where A: Copy, I: Iterator<A>, B: PartialOrd, F: Fn(A) -> B {
+    where A: Copy, I: Iterator<Item=A>, B: PartialOrd, F: Fn(A) -> B {
   let mut min_a = Vec::new();
   let mut min_b = {
     match iter.next() {
@@ -39,7 +39,7 @@ pub fn partial_min_by<A, I, B, F>(mut iter: I, f: F) -> Vec<A>
   min_a
 }
 
-pub fn to_triangles(bounds: &AABB3<GLfloat>, c: &Color4<GLfloat>) -> [ColoredVertex, ..VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
+pub fn to_triangles(bounds: &AABB3<GLfloat>, c: &Color4<GLfloat>) -> [ColoredVertex; VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
   let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
   let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
 

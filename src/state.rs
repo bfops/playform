@@ -18,6 +18,9 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::default::Default;
 use std::f32::consts::PI;
+use std::iter::FromIterator;
+use std::ops::Add;
+use std::ops::DerefMut;
 use std::rc::Rc;
 use surroundings_loader::SurroundingsLoader;
 use terrain;
@@ -32,7 +35,7 @@ use yaglw::texture::{Texture2D, TextureUnit};
 
 static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 
-#[deriving(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
 pub struct EntityId(u32);
 
 impl Default for EntityId {
@@ -41,7 +44,9 @@ impl Default for EntityId {
   }
 }
 
-impl Add<u32, EntityId> for EntityId {
+impl Add<u32> for EntityId {
+  type Output = EntityId;
+
   fn add(self, rhs: u32) -> EntityId {
     let EntityId(i) = self;
     EntityId(i + rhs)
@@ -295,12 +300,13 @@ impl<'a> App<'a> {
     let (text_textures, text_triangles) =
       make_text(gl, gl_context, hud_texture_shader.clone());
 
-    let world_width = (1 as u32 << 11) as f32;
+    let world_width: u32 = 1 << 11;
+    let world_width = world_width as f32;
     let mut physics =
       Physics::new(
         AABB::new(
-          Pnt3 { x: -world_width, y: -2.0 * terrain::AMPLITUDE, z: -world_width },
-          Pnt3 { x: world_width, y: 2.0 * terrain::AMPLITUDE, z: world_width },
+          Pnt3 { x: -world_width, y: -2.0 * terrain::AMPLITUDE as f32, z: -world_width },
+          Pnt3 { x: world_width, y: 2.0 * terrain::AMPLITUDE as f32, z: world_width },
         )
       );
 
@@ -340,7 +346,7 @@ impl<'a> App<'a> {
           SurroundingsLoader::new(owner_allocator.allocate(), load_distance, |d| Player::lod_index(d)),
       };
 
-      let min = Pnt3::new(0.0, terrain::AMPLITUDE * 0.6, 4.0);
+      let min = Pnt3::new(0.0, terrain::AMPLITUDE as f32 * 0.6, 4.0);
       let max = min + Vec3::new(1.0, 2.0, 1.0);
       let bounds = AABB::new(min, max);
       physics.insert_misc(player.id, bounds.clone());
@@ -478,7 +484,7 @@ fn make_mobs<'a>(
     &mut mob_buffers,
     id_allocator,
     owner_allocator,
-    Pnt3::new(0.0, terrain::AMPLITUDE * 0.6, -1.0),
+    Pnt3::new(0.0, terrain::AMPLITUDE as f32 * 0.6, -1.0),
     mob_behavior
   );
 

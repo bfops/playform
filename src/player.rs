@@ -10,7 +10,7 @@ use std::iter::range_inclusive;
 use terrain;
 use surroundings_loader::SurroundingsLoader;
 
-const LOD_THRESHOLDS: [i32, ..4] = [1, 8, 16, 24];
+const LOD_THRESHOLDS: [i32; 4] = [1, 8, 16, 24];
 
 const MAX_JUMP_FUEL: uint = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;

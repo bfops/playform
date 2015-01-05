@@ -3,18 +3,18 @@ use id_allocator::IdAllocator;
 use nalgebra::{normalize, cross};
 use nalgebra::{Pnt3, Vec3};
 use ncollide::bounding_volume::{AABB, AABB3};
-use noise::source::Perlin;
-use noise::model::Plane;
+use noise::{Seed, Brownian2, Point2};
 use state::EntityId;
 use std::cmp::partial_max;
 use std::collections::hash_map::HashMap;
 use std::num::Float;
+use std::ops::Add;
 use stopwatch::TimerSet;
 use terrain::{AMPLITUDE, TerrainType};
 
 pub const BLOCK_WIDTH: i32 = 4;
 
-#[deriving(Show, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Show, PartialEq, Eq, Hash, Copy, Clone)]
 pub struct BlockPosition(Pnt3<i32>);
 
 impl BlockPosition {
@@ -66,7 +66,9 @@ impl BlockPosition {
   }
 }
 
-impl Add<Vec3<i32>, BlockPosition> for BlockPosition {
+impl Add<Vec3<i32>> for BlockPosition {
+  type Output = BlockPosition;
+
   fn add(mut self, rhs: Vec3<i32>) -> Self {
     self.as_mut_pnt3().x += rhs.x;
     self.as_mut_pnt3().y += rhs.y;
@@ -78,21 +80,25 @@ impl Add<Vec3<i32>, BlockPosition> for BlockPosition {
 /// Ductyped heightmap methods.
 trait HeightMapExt {
   /// The coordinate of the tile at a given x/z.
-  fn point_at(&self, x: f32, z: f32) -> Pnt3<f32>;
+  fn point_at(&self, seed: &Seed, x: f32, z: f32) -> Pnt3<f32>;
   /// The lighting normal of the tile at a given x/z.
-  fn normal_at(&self, x: f32, z: f32) -> Vec3<f32>;
+  fn normal_at(&self, seed: &Seed, x: f32, z: f32) -> Vec3<f32>;
 }
 
-impl<'a> HeightMapExt for Plane<'a, Perlin> {
-  fn point_at(&self, x: f32, z: f32) -> Pnt3<f32> {
-    let y = AMPLITUDE * (self.get(x, z) + 1.0) / 2.0;
-    Pnt3::new(x, y, z)
+impl HeightMapExt for Brownian2<f64, fn (&Seed, &Point2<f64>) -> f64> {
+  fn point_at(&self, seed: &Seed, x: f32, z: f32) -> Pnt3<f32> {
+    let y = AMPLITUDE * (self.call((seed, &[x as f64, z as f64])) + 1.0) / 2.0;
+    Pnt3::new(x as f32, y as f32, z as f32)
   }
 
-  fn normal_at(&self, x: f32, z: f32) -> Vec3<f32> {
+  fn normal_at(&self, seed: &Seed, x: f32, z: f32) -> Vec3<f32> {
     const DELTA: f32 = 0.2;
-    let dx = self.point_at(x + DELTA, z).to_vec() - self.point_at(x - DELTA, z).to_vec();
-    let dz = self.point_at(x, z + DELTA).to_vec() - self.point_at(x, z - DELTA).to_vec();
+    let dx =
+      self.point_at(seed, x + DELTA, z).to_vec()
+      - self.point_at(seed, x - DELTA, z).to_vec();
+    let dz =
+      self.point_at(seed, x, z + DELTA).to_vec()
+      - self.point_at(seed, x, z - DELTA).to_vec();
     normalize(&cross(&dx, &dz))
   }
 }
@@ -124,16 +130,16 @@ impl TerrainBlock {
     }
   }
 
-  pub fn generate(
+  pub fn generate<HeightMap: HeightMapExt>(
     timers: &TimerSet,
     id_allocator: &mut IdAllocator<EntityId>,
-    heightmap: &Perlin,
+    heightmap: &HeightMap,
     position: &BlockPosition,
     lateral_samples: uint,
+    seed: &Seed,
   ) -> TerrainBlock {
     timers.time("update.generate_block", || {
       let mut block = TerrainBlock::empty();
-      let heightmap = Plane::new(heightmap);
 
       let x = (position.as_pnt().x * BLOCK_WIDTH) as f32;
       let y = (position.as_pnt().y * BLOCK_WIDTH) as f32;
@@ -148,11 +154,12 @@ impl TerrainBlock {
           let position = Pnt3::new(x, y, z);
           TerrainBlock::add_tile(
             timers,
-            &heightmap,
+            heightmap,
             id_allocator,
             &mut block,
             sample_width,
             &position,
+            seed,
           );
         }
       }
@@ -161,39 +168,40 @@ impl TerrainBlock {
     })
   }
 
-  fn add_tile<'a>(
+  fn add_tile<'a, HeightMap: HeightMapExt>(
     timers: &TimerSet,
-    hm: &Plane<'a, Perlin>,
+    hm: &HeightMap,
     id_allocator: &mut IdAllocator<EntityId>,
     block: &mut TerrainBlock,
     sample_width: f32,
     position: &Pnt3<f32>,
+    seed: &Seed,
   ) {
     let half_width = sample_width / 2.0;
-    let center = hm.point_at(position.x + half_width, position.z + half_width);
+    let center = hm.point_at(seed, position.x + half_width, position.z + half_width);
 
     if position.y >= center.y || center.y > position.y + BLOCK_WIDTH as f32 {
       return;
     }
 
     timers.time("update.generate_block.add_tile", || {
-      let center_normal = hm.normal_at(position.x + half_width, position.z + half_width);
+      let center_normal = hm.normal_at(seed, position.x + half_width, position.z + half_width);
 
       let x2 = position.x + sample_width;
       let z2 = position.z + sample_width;
 
-      let ps: [Pnt3<f32>, ..4] =
-        [ hm.point_at(position.x, position.z)
-        , hm.point_at(position.x, z2)
-        , hm.point_at(x2, z2)
-        , hm.point_at(x2, position.z)
+      let ps: [Pnt3<f32>; 4] =
+        [ hm.point_at(seed, position.x, position.z)
+        , hm.point_at(seed, position.x, z2)
+        , hm.point_at(seed, x2, z2)
+        , hm.point_at(seed, x2, position.z)
         ];
 
-      let ns: [Vec3<f32>, ..4] =
-        [ hm.normal_at(position.x, position.z)
-        , hm.normal_at(position.x, z2)
-        , hm.normal_at(x2, z2)
-        , hm.normal_at(x2, position.z)
+      let ns: [Vec3<f32>; 4] =
+        [ hm.normal_at(seed, position.x, position.z)
+        , hm.normal_at(seed, position.x, z2)
+        , hm.normal_at(seed, x2, z2)
+        , hm.normal_at(seed, x2, position.z)
         ];
 
       let center_lower_than = ps.iter().filter(|v| center.y < v.y).count();

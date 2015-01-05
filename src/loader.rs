@@ -1,6 +1,6 @@
 use std::collections::RingBuf;
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub enum Operation<L, U> {
   Load(L),
   Unload(U),

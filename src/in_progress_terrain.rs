@@ -24,11 +24,11 @@ impl InProgressTerrain {
     physics: &mut Physics,
     block_position: &BlockPosition,
   ) -> bool {
-    match self.blocks.entry(*block_position) {
+    match self.blocks.entry(block_position) {
       Entry::Occupied(_) => false,
       Entry::Vacant(entry) => {
         let id = id_allocator.allocate();
-        entry.set(id);
+        entry.insert(id);
 
         let low_corner = block_position.to_world_position();
         let block_span = Vec3::new(BLOCK_WIDTH as f32, BLOCK_WIDTH as f32, BLOCK_WIDTH as f32);

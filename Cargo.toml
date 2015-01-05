@@ -54,7 +54,6 @@ git = "https://github.com/bfops/yaglw"
 git = "https://github.com/sebcrozet/nalgebra"
 
 [dependencies.ncollide]
-features = ["3df32"]
 git = "https://github.com/sebcrozet/ncollide"
 
 [dependencies.noise]

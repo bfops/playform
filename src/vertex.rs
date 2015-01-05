@@ -5,7 +5,7 @@ use nalgebra::{Pnt2,Pnt3,Vec2,Vec3};
 #[cfg(test)]
 use std::mem;
 
-#[deriving(Show, Clone, Copy, PartialEq)]
+#[derive(Show, Clone, Copy, PartialEq)]
 /// An untextured rendering vertex, with position and color.
 pub struct ColoredVertex {
   /// The 3-d position of this vertex in world space.
@@ -23,7 +23,7 @@ fn check_vertex_size() {
 impl ColoredVertex {
   /// Generates two colored triangles, representing a square, at z=0.
   /// The bounds of the square is represented by `b`.
-  pub fn square(min: Pnt2<GLfloat>, max: Pnt2<GLfloat>, color: Color4<GLfloat>) -> [ColoredVertex, ..6] {
+  pub fn square(min: Pnt2<GLfloat>, max: Pnt2<GLfloat>, color: Color4<GLfloat>) -> [ColoredVertex; 6] {
     let vtx = |x, y| {
         ColoredVertex { position: Pnt3::new(x, y, 0.0), color: color }
       };
@@ -35,7 +35,7 @@ impl ColoredVertex {
   }
 }
 
-#[deriving(Show, Clone, Copy, PartialEq)]
+#[derive(Show, Clone, Copy, PartialEq)]
 /// A point in the world with corresponding texture data.
 ///
 /// The texture position is [0, 1].
@@ -55,7 +55,7 @@ impl TextureVertex {
   ///
   /// The coordinates on the texture will implicitly be the "whole thing".
   /// i.e. [(0, 0), (1, 1)].
-  pub fn square(min: Vec2<GLfloat>, max: Vec2<GLfloat>) -> [TextureVertex, ..6] {
+  pub fn square(min: Vec2<GLfloat>, max: Vec2<GLfloat>) -> [TextureVertex; 6] {
     let vtx = |x, y, tx, ty| {
         TextureVertex {
           world_position:  Vec3::new(x, y, 0.0),
@@ -75,7 +75,7 @@ impl TextureVertex {
   }
 }
 
-#[deriving(Show, Clone, Copy, PartialEq)]
+#[derive(Show, Clone, Copy, PartialEq)]
 /// A point in the world with corresponding texture and normal data.
 ///
 /// The texture position is [0, 1].

@@ -4,6 +4,7 @@ use nalgebra::partial_lt;
 use ncollide::bounding_volume::{AABB, AABB3};
 use ncollide::bounding_volume::BoundingVolume;
 use ncollide::ray::{Ray3, LocalRayCast};
+use std::cmp::Ordering::{Greater, Less, Equal};
 use std::hash::Hash;
 use std::num::NumCast;
 use std::ptr;
@@ -58,7 +59,7 @@ fn split(mid: f32, d: Dimension, bounds: AABB3<f32>) -> (Option<AABB3<f32>>, Opt
   }
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Dimension { X, Y, Z }
 
 struct Branches<V> {

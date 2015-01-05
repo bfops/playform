@@ -1,4 +1,5 @@
 use std::num::{Int, SignedInt, ToPrimitive};
+use std::ops::Neg;
 
 /// Generate an iterator like [0, 1, -1, 2, -2, n, -n].
 pub struct RangeAbs<T> {
@@ -7,7 +8,7 @@ pub struct RangeAbs<T> {
 }
 
 pub fn range_abs<T>(inclusive_max: T) -> RangeAbs<T>
-  where T: Int + Neg<T> + SignedInt + ToPrimitive
+  where T: Int + Neg<Output=T> + SignedInt + ToPrimitive
 {
   assert!(!inclusive_max.is_negative());
   let exclusive_max = inclusive_max + Int::one();
@@ -17,9 +18,11 @@ pub fn range_abs<T>(inclusive_max: T) -> RangeAbs<T>
   }
 }
 
-impl<T> Iterator<T> for RangeAbs<T>
-  where T: Int + Neg<T> + SignedInt + ToPrimitive
+impl<T> Iterator for RangeAbs<T>
+  where T: Int + Neg<Output=T> + SignedInt + ToPrimitive
 {
+  type Item = T;
+
   fn next(&mut self) -> Option<T> {
     let n = self.n;
     if n == self.max { return None }

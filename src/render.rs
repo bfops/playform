@@ -1,6 +1,7 @@
 use camera::set_camera;
 use gl;
 use state::App;
+use std::ops::DerefMut;
 
 // TODO: make this parameter non-mut
 pub fn render<'a>(app: &mut App<'a>) {
