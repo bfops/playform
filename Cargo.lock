@@ -5,7 +5,7 @@ dependencies = [
  "gl 0.0.5 (git+https://github.com/bjz/gl-rs)",
  "log 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide 0.3.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide 0.3.0 (git+https://github.com/sebcrozet/ncollide)",
  "noise 0.0.3 (git+https://github.com/bjz/noise-rs)",
  "sdl2 0.0.14 (git+https://github.com/AngryLawyer/rust-sdl2)",
  "time 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -58,7 +58,7 @@ dependencies = [
 [[package]]
 name = "nalgebra"
 version = "0.1.0"
-source = "git+https://github.com/sebcrozet/nalgebra#e94061ed101f7d6fbcd3ab2cab7afbfbfac3ec50"
+source = "git+https://github.com/sebcrozet/nalgebra#bbd1136c291f74ab93f5f8d8017c1e8593ae1e76"
 dependencies = [
  "rustc-serialize 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -66,26 +66,26 @@ dependencies = [
 [[package]]
 name = "ncollide"
 version = "0.3.0"
-source = "git+https://github.com/bfops/ncollide#933c875ffb4f25c6a8b248ea672151b6e76f723c"
+source = "git+https://github.com/sebcrozet/ncollide#f9f8d25f111b5307db107658579745516756b830"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide_pipeline 0.1.0 (git+https://github.com/bfops/ncollide)",
- "ncollide_transformation 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_pipeline 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
+ "ncollide_transformation 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
  "rustc-serialize 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "ncollide_entities"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#933c875ffb4f25c6a8b248ea672151b6e76f723c"
+source = "git+https://github.com/sebcrozet/ncollide#f9f8d25f111b5307db107658579745516756b830"
 dependencies = [
- "ncollide_utils 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_utils 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
 ]
 
 [[package]]
 name = "ncollide_math"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#933c875ffb4f25c6a8b248ea672151b6e76f723c"
+source = "git+https://github.com/sebcrozet/ncollide#f9f8d25f111b5307db107658579745516756b830"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
 ]
@@ -93,49 +93,49 @@ dependencies = [
 [[package]]
 name = "ncollide_pipeline"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#933c875ffb4f25c6a8b248ea672151b6e76f723c"
+source = "git+https://github.com/sebcrozet/ncollide#f9f8d25f111b5307db107658579745516756b830"
 dependencies = [
- "ncollide_queries 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_queries 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
 ]
 
 [[package]]
 name = "ncollide_procedural"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#933c875ffb4f25c6a8b248ea672151b6e76f723c"
+source = "git+https://github.com/sebcrozet/ncollide#f9f8d25f111b5307db107658579745516756b830"
 dependencies = [
- "ncollide_utils 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_utils 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
 ]
 
 [[package]]
 name = "ncollide_queries"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#933c875ffb4f25c6a8b248ea672151b6e76f723c"
+source = "git+https://github.com/sebcrozet/ncollide#f9f8d25f111b5307db107658579745516756b830"
 dependencies = [
- "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
- "ncollide_procedural 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_entities 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
+ "ncollide_procedural 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
 ]
 
 [[package]]
 name = "ncollide_transformation"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#933c875ffb4f25c6a8b248ea672151b6e76f723c"
+source = "git+https://github.com/sebcrozet/ncollide#f9f8d25f111b5307db107658579745516756b830"
 dependencies = [
- "ncollide_procedural 0.1.0 (git+https://github.com/bfops/ncollide)",
- "ncollide_queries 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_procedural 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
+ "ncollide_queries 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
 ]
 
 [[package]]
 name = "ncollide_utils"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#933c875ffb4f25c6a8b248ea672151b6e76f723c"
+source = "git+https://github.com/sebcrozet/ncollide#f9f8d25f111b5307db107658579745516756b830"
 dependencies = [
- "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_math 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
 ]
 
 [[package]]
 name = "noise"
 version = "0.0.3"
-source = "git+https://github.com/bjz/noise-rs#8ea40539915cf4ce2d16efeb296e2c0636684337"
+source = "git+https://github.com/bjz/noise-rs#d5d3f9ff0c6c5b63623186c12ed143d289fc4a1e"
 
 [[package]]
 name = "pkg-config"
