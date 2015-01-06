@@ -4,7 +4,8 @@ use noise::Seed;
 use physics::Physics;
 use state::EntityId;
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::ops::Add;
 use std::rc::Rc;
@@ -29,6 +30,38 @@ impl Add<u32> for OwnerId {
   }
 }
 
+#[derive(Show, Clone, Copy, PartialEq, Eq)]
+pub enum LOD {
+  LodIndex(uint),
+  // An invisible solid block
+  Placeholder,
+}
+
+impl PartialOrd for LOD {
+  #[inline(always)]
+  fn partial_cmp(&self, other: &LOD) -> Option<Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl Ord for LOD {
+  #[inline(always)]
+  fn cmp(&self, other: &LOD) -> Ordering {
+    match (*self, *other) {
+      (LOD::Placeholder, LOD::Placeholder) => Ordering::Equal,
+      (LOD::Placeholder, LOD::LodIndex(_)) => Ordering::Less,
+      (LOD::LodIndex(_), LOD::Placeholder) => Ordering::Greater,
+      (LOD::LodIndex(idx1), LOD::LodIndex(idx2)) =>
+        // A greater level of detail is a lower index, so invert the result of the index comparison.
+        match idx1.cmp(&idx2) {
+          Ordering::Less => Ordering::Greater,
+          Ordering::Greater => Ordering::Less,
+          ord => ord,
+        }
+    }
+  }
+}
+
 /// Load and unload TerrainBlocks from the game.
 pub trait TerrainGameLoader {
   /// Ensure a `TerrainBlock` is loaded.
@@ -39,7 +72,7 @@ pub trait TerrainGameLoader {
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
-    lod_index: uint,
+    lod_index: LOD,
     owner: OwnerId,
   );
 
@@ -48,6 +81,7 @@ pub trait TerrainGameLoader {
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
+    id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
     owner: OwnerId,
@@ -74,9 +108,9 @@ pub trait TerrainGameLoader {
 }
 
 struct BlockLoadState {
-  pub owners: HashSet<OwnerId>,
-  /// If this is None, only a placeholder is loaded.
-  pub loaded_lod: Option<uint>,
+  /// The LOD indexes requested by each owner of this block.
+  pub owner_lods: HashMap<OwnerId, LOD>,
+  pub loaded_lod: LOD,
 }
 
 pub struct Default<'a> {
@@ -105,26 +139,71 @@ impl<'a> Default<'a> {
     }
   }
 
-  fn unload_internal(
+  fn re_lod_block(
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
+    id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
-    loaded_lod: uint,
+    loaded_lod: Option<LOD>,
+    new_lod: Option<LOD>,
   ) {
-    timers.time("terrain_game_loader.unload", || {
-      let lods =
-        self.terrain.all_blocks.get(block_position)
-        .unwrap()
-        .lods
-        .as_slice();
-      let block = lods[loaded_lod].as_ref().unwrap();
-      for id in block.ids.iter() {
-        physics.remove_terrain(*id);
-        self.terrain_vram_buffers.swap_remove(gl, *id);
+    // Unload whatever's there.
+    match loaded_lod {
+      None => {},
+      Some(LOD::Placeholder) => {
+        self.in_progress_terrain.remove(physics, block_position);
       }
-    });
+      Some(LOD::LodIndex(loaded_lod)) => {
+        timers.time("terrain_game_loader.unload", || {
+          let lods =
+            self.terrain.all_blocks.get(block_position)
+            .unwrap()
+            .lods
+            .as_slice();
+          let block = lods[loaded_lod].as_ref().unwrap();
+          for id in block.ids.iter() {
+            physics.remove_terrain(*id);
+            self.terrain_vram_buffers.swap_remove(gl, *id);
+          }
+        });
+      },
+    }
+
+    // TODO: Avoid the double-lookup when loaded_lod and new_lod are both LodIndexes.
+
+    // Load whatever we should be loading.
+    match new_lod {
+      None => {},
+      Some(LOD::Placeholder) => {
+        self.in_progress_terrain.insert(id_allocator, physics, block_position);
+      },
+      Some(LOD::LodIndex(new_lod)) => {
+        timers.time("terrain_game_loader.load", || {
+          let block = unsafe {
+            self.terrain.load(timers, id_allocator, block_position, new_lod)
+          };
+    
+          timers.time("terrain_game_loader.load.physics", || {
+            for (&id, bounds) in block.bounds.iter() {
+              physics.insert_terrain(id, bounds.clone());
+            }
+          });
+    
+          let terrain_vram_buffers = &mut self.terrain_vram_buffers;
+          timers.time("terrain_game_loader.load.gpu", || {
+            terrain_vram_buffers.push(
+              gl,
+              block.vertex_coordinates.as_slice(),
+              block.normals.as_slice(),
+              block.typs.as_slice(),
+              block.ids.as_slice(),
+            );
+          });
+        });
+      },
+    };
   }
 }
 
@@ -136,90 +215,77 @@ impl<'a> TerrainGameLoader for Default<'a> {
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
-    lod_index: uint,
+    requested_lod: LOD,
     owner: OwnerId,
   ) {
-    let mut loaded_lod = None;
+    let loaded_lod;
+    let new_lod;
     match self.loaded.entry(block_position) {
+      Entry::Vacant(entry) => {
+        let mut owner_lods = HashMap::new();
+        owner_lods.insert(owner, requested_lod);
+        entry.insert(BlockLoadState {
+          owner_lods: owner_lods,
+          loaded_lod: requested_lod,
+        });
+
+        loaded_lod = None;
+        new_lod = requested_lod;
+      },
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
-        block_load_state.owners.insert(owner);
-        match block_load_state.loaded_lod {
-          None => {},
-          Some(loaded_lod) => {
-            if loaded_lod == lod_index {
-              // Already loaded at the right LOD.
-              return;
-            }
-          }
+
+        block_load_state.owner_lods.insert(owner, requested_lod);
+        new_lod = *block_load_state.owner_lods.values().max_by(|x| *x).unwrap();
+
+        if block_load_state.loaded_lod == new_lod {
+          // Already loaded at the right LOD.
+          return;
         }
-        loaded_lod = block_load_state.loaded_lod;
-        block_load_state.loaded_lod = Some(lod_index);
-      },
-      Entry::Vacant(entry) => {
-        let mut owners = HashSet::new();
-        owners.insert(owner);
-        entry.insert(BlockLoadState {
-          owners: owners,
-          loaded_lod: Some(lod_index),
-        });
+
+        loaded_lod = Some(block_load_state.loaded_lod);
+        block_load_state.loaded_lod = new_lod;
       },
     }
 
-    // It's loaded, but at the wrong LOD.
-    loaded_lod.map(
-      |loaded_lod|
-        self.unload_internal(timers, gl, physics, block_position, loaded_lod)
-    );
-
-    timers.time("terrain_game_loader.load", || {
-      let block = unsafe {
-        self.terrain.load(timers, id_allocator, block_position, lod_index)
-      };
-
-      timers.time("terrain_game_loader.load.physics", || {
-        for (&id, bounds) in block.bounds.iter() {
-          physics.insert_terrain(id, bounds.clone());
-        }
-      });
-
-      let terrain_vram_buffers = &mut self.terrain_vram_buffers;
-      timers.time("terrain_game_loader.load.gpu", || {
-        terrain_vram_buffers.push(
-          gl,
-          block.vertex_coordinates.as_slice(),
-          block.normals.as_slice(),
-          block.typs.as_slice(),
-          block.ids.as_slice(),
-        );
-      });
-
-      self.in_progress_terrain.remove(physics, block_position);
-    });
+    self.re_lod_block(timers, gl, id_allocator, physics, block_position, loaded_lod, Some(new_lod));
   }
 
   fn unload(
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
+    id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
     owner: OwnerId,
   ) {
     let loaded_lod;
+    let new_lod;
     match self.loaded.entry(block_position) {
       Entry::Occupied(mut entry) => {
         {
           let block_load_state = entry.get_mut();
           match block_load_state.loaded_lod {
-            None => return,
-            Some(lod) => loaded_lod = lod,
+            LOD::Placeholder => return,
+            lod => loaded_lod = lod,
           };
-          let should_unload =
-            block_load_state.owners.remove(&owner)
-            && block_load_state.owners.is_empty();
-          if !should_unload {
+
+          if block_load_state.owner_lods.remove(&owner).is_none() {
             return;
+          }
+
+          match block_load_state.owner_lods.values().max_by(|&x| x) {
+            None => {
+              new_lod = None;
+            },
+            Some(&lod) => {
+              if lod == loaded_lod {
+                return;
+              }
+
+              new_lod = Some(lod);
+            }
           }
         }
         entry.remove();
@@ -229,7 +295,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
       },
     };
 
-    self.unload_internal(timers, gl, physics, block_position, loaded_lod);
+    self.re_lod_block(timers, gl, id_allocator, physics, block_position, Some(loaded_lod), new_lod);
   }
 
   /// Note that we want a specific `TerrainBlock`.
@@ -243,14 +309,17 @@ impl<'a> TerrainGameLoader for Default<'a> {
     match self.loaded.entry(block_position) {
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
-        block_load_state.owners.insert(owner);
+        match block_load_state.owner_lods.entry(&owner) {
+          Entry::Vacant(entry) => { entry.insert(LOD::Placeholder); },
+          Entry::Occupied(_) => {},
+        }
       },
       Entry::Vacant(entry) => {
-        let mut owners = HashSet::new();
-        owners.insert(owner);
+        let mut owner_lods = HashMap::new();
+        owner_lods.insert(owner, LOD::Placeholder);
         entry.insert(BlockLoadState {
-          owners: owners,
-          loaded_lod: None,
+          owner_lods: owner_lods,
+          loaded_lod: LOD::Placeholder,
         });
         assert!(self.in_progress_terrain.insert(id_allocator, physics, block_position));
       },
@@ -268,9 +337,9 @@ impl<'a> TerrainGameLoader for Default<'a> {
         {
           let block_load_state = entry.get_mut();
           let should_unload =
-            block_load_state.loaded_lod.is_none()
-            && block_load_state.owners.remove(&owner)
-            && block_load_state.owners.is_empty();
+            block_load_state.loaded_lod == LOD::Placeholder
+            && block_load_state.owner_lods.remove(&owner).is_some()
+            && block_load_state.owner_lods.is_empty();
           if !should_unload {
             return;
           }

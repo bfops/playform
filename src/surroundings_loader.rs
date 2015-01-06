@@ -1,7 +1,7 @@
 use cube_shell::cube_shell;
 use id_allocator::IdAllocator;
 use terrain_block::BlockPosition;
-use terrain_game_loader::{TerrainGameLoader, OwnerId};
+use terrain_game_loader::{TerrainGameLoader, LOD, OwnerId};
 use physics::Physics;
 use state::EntityId;
 use std::cmp::max;
@@ -100,7 +100,7 @@ impl<'a> SurroundingsLoader<'a> {
       if self.next_unload_index < self.loaded_vec.len() {
         let block_position = self.loaded_vec[self.next_unload_index];
         if radius_between(&position, &block_position) > self.max_load_distance {
-          terrain_game_loader.unload(timers, gl, physics, &block_position, self.id);
+          terrain_game_loader.unload(timers, gl, id_allocator, physics, &block_position, self.id);
           self.loaded_vec.swap_remove(self.next_unload_index);
         } else {
           self.next_unload_index += 1;
@@ -120,7 +120,7 @@ impl<'a> SurroundingsLoader<'a> {
           id_allocator,
           physics,
           &block_position,
-          lod_index,
+          LOD::LodIndex(lod_index),
           self.id,
         );
 
