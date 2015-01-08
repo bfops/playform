@@ -343,7 +343,11 @@ impl<'a> App<'a> {
         lateral_rotation: 0.0,
         vertical_rotation: 0.0,
         surroundings_loader:
-          SurroundingsLoader::new(owner_allocator.allocate(), load_distance, |d| Player::lod_index(d)),
+          SurroundingsLoader::new(
+            owner_allocator.allocate(),
+            load_distance,
+            box |&mut: d| Player::lod_index(d),
+          ),
       };
 
       let min = Pnt3::new(0.0, terrain::AMPLITUDE as f32 * 0.6, 4.0);
@@ -425,7 +429,7 @@ fn add_mob(
       speed: Vec3::new(0.0, 0.0, 0.0),
       behavior: behavior,
       id: id,
-      surroundings_loader: SurroundingsLoader::new(owner_allocator.allocate(), 2, |_| 4),
+      surroundings_loader: SurroundingsLoader::new(owner_allocator.allocate(), 2, box |&: _| 4),
     };
   let mob = Rc::new(RefCell::new(mob));
 

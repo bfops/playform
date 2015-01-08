@@ -3,7 +3,7 @@ use gl::types::*;
 use nalgebra::{Mat3, Mat4, Vec3, Pnt3};
 use nalgebra;
 use std::mem;
-use std::num::FloatMath;
+use std::num::Float;
 use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 

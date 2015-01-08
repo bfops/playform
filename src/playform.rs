@@ -2,19 +2,14 @@
 #![crate_type = "bin"]
 #![deny(missing_docs)]
 #![deny(warnings)]
-#![feature(associated_types)]
-#![feature(default_type_params)]
-#![feature(globs)]
-#![feature(macro_rules)]
 #![feature(old_orphan_check)]
-#![feature(phase)]
 #![feature(slicing_syntax)]
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 
 extern crate gl;
 extern crate libc;
-#[phase(plugin, link)]
+#[macro_use]
 extern crate log;
 extern crate nalgebra;
 extern crate ncollide;

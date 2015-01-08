@@ -1,5 +1,3 @@
-#![macro_escape]
-
 use std::cell::{RefCell, Ref};
 use std::rc::Rc;
 use std::collections::HashMap;

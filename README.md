@@ -13,6 +13,9 @@ Have a `rustc` and `cargo` built no earlier than January 5th, 2015.
 Install `libpng`, `SDL2` and `SDL2_ttf`.
 Run `cargo run`! Consider setting `RUST_BACKTRACE=1` and `RUST_LOG=info` when you run playform.
 
+**Some dependencies may not build**. Look for forks that are updated for your `rustc`,
+and then point your `~/.cargo/config` at them.
+
 ## How to play
 
   * Move: WASD

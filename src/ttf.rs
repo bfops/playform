@@ -4,11 +4,10 @@ use color::Color4;
 use sdl2::pixels::ll::{SDL_Color,SDL_PIXELFORMAT_ARGB8888};
 use sdl2::surface::ll::SDL_Surface;
 use sdl2::surface;
-use std::c_str::ToCStr;
+use std::ffi::CString;
+use std::path::{BytesContainer, Path};
 use yaglw::gl_context::GLContextExistence;
 use yaglw::texture::Texture2D;
-
-use std::path::Path;
 
 #[allow(non_camel_case_types)]
 #[allow(dead_code)]
@@ -85,8 +84,9 @@ impl Font {
   pub fn new(font: &Path, point_size: uint) -> Font {
     ensure_init();
 
-    let c_path = font.to_c_str();
-    let p = unsafe { ffi::TTF_OpenFont(c_path.as_ptr(), point_size as ffi::c_int) };
+    let c_path = CString::from_slice(font.container_as_bytes());
+    let ptr = c_path.as_ptr() as *const i8;
+    let p = unsafe { ffi::TTF_OpenFont(ptr, point_size as ffi::c_int) };
 
     assert!(!p.is_null());
 
@@ -107,12 +107,13 @@ impl Font {
       a: color.a
     };
 
-    let surface_ptr =
-      txt.with_c_str(|c_txt| {
-        unsafe {
-          ffi::TTF_RenderUTF8_Blended(self.p as *const ffi::c_void, c_txt, sdl_color)
-        }
-      });
+    let surface_ptr = {
+      let c_str = CString::from_slice(txt.as_bytes());
+      let ptr = c_str.as_ptr() as *const i8;
+      unsafe {
+        ffi::TTF_RenderUTF8_Blended(self.p as *const ffi::c_void, ptr, sdl_color)
+      }
+    };
 
     let tex = unsafe {
       surface_ptr.as_ref().expect("Cannot render text.")

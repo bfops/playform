@@ -174,7 +174,9 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
   }
 
   #[allow(dead_code)]
-  fn on_ancestor<T>(&self, bounds: &AABB3<f32>, f: |&Octree<V>| -> T) -> T {
+  fn on_ancestor<T, F>(&self, bounds: &AABB3<f32>, mut f: F) -> T
+    where F: FnMut(&Octree<V>) -> T
+  {
     if self.bounds.contains(bounds) {
       f(self)
     } else {
@@ -185,7 +187,9 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
     }
   }
 
-  fn on_mut_ancestor<T>(&mut self, bounds: &AABB3<f32>, f: |&mut Octree<V>| -> T) -> T {
+  fn on_mut_ancestor<T, F>(&mut self, bounds: &AABB3<f32>, mut f: F) -> T
+    where F: FnMut(&mut Octree<V>) -> T
+  {
     if self.bounds.contains(bounds) {
       f(self)
     } else {
@@ -209,7 +213,7 @@ impl<V: Copy + Eq + PartialOrd + Hash> Octree<V> {
       OctreeContents::Branch(ref b) => {
         let mid = middle(&self.bounds, self.dimension);
         let (low_bounds, high_bounds) = split(mid, self.dimension, bounds.clone());
-        let high = |high_bounds| {
+        let high = |&: high_bounds| {
           match high_bounds {
             None => None,
             Some(bs) => b.high_tree.intersect(&bs, self_v),

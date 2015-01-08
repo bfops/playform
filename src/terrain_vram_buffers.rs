@@ -60,7 +60,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
     shader: Rc<RefCell<Shader>>,
   ) {
     shader.borrow().use_shader(gl);
-    let bind = |name, id| {
+    let mut bind = |&mut: name, id| {
       let unit = texture_unit_alloc.allocate();
       unsafe {
         gl::ActiveTexture(unit.gl_id());

@@ -1,5 +1,3 @@
-#![macro_escape]
-
 use gl::types::*;
 use color::Color4;
 use nalgebra::Pnt3;
