@@ -5,9 +5,9 @@ use terrain_game_loader::{TerrainGameLoader, LOD, OwnerId};
 use physics::Physics;
 use state::EntityId;
 use std::cmp::max;
-use std::collections::RingBuf;
 use std::num::Float;
 use std::num::SignedInt;
+use surroundings_iter::SurroundingsIter;
 use time;
 use stopwatch::TimerSet;
 use yaglw::gl_context::GLContext;
@@ -28,9 +28,8 @@ pub struct SurroundingsLoader<'a> {
   pub last_position: Option<BlockPosition>,
   pub lod_index: Box<FnMut(i32) -> uint + 'a>,
 
+  pub to_load: Option<SurroundingsIter>,
   pub max_load_distance: i32,
-  pub next_load_distance: i32,
-  pub load_queue: RingBuf<BlockPosition>,
 
   pub loaded_vec: Vec<BlockPosition>,
   pub next_unload_index: uint,
@@ -38,8 +37,7 @@ pub struct SurroundingsLoader<'a> {
   pub solid_boundary: Vec<BlockPosition>,
 }
 
-impl<'a> SurroundingsLoader<'a>
-{
+impl<'a> SurroundingsLoader<'a> {
   pub fn new(
     id: OwnerId,
     max_load_distance: i32,
@@ -52,9 +50,8 @@ impl<'a> SurroundingsLoader<'a>
       last_position: None,
       lod_index: lod_index,
 
+      to_load: None,
       max_load_distance: max_load_distance,
-      next_load_distance: 0,
-      load_queue: RingBuf::new(),
 
       loaded_vec: Vec::new(),
       next_unload_index: 0,
@@ -80,23 +77,23 @@ impl<'a> SurroundingsLoader<'a>
   ) {
     if Some(position) != self.last_position {
       self.last_position.map(
-        |last_position|
-          for solid_block in
-            self.solid_boundary.iter().map(|&dp| last_position + dp.as_pnt().to_vec()) {
-              terrain_game_loader.remove_placeholder(physics, &solid_block, self.id);
-            }
-        );
+        |last_position| {
+          let mut iter =
+            self.solid_boundary
+              .iter()
+              .map(|&dp| last_position + dp.as_pnt().to_vec());
+          for solid_block in iter {
+            terrain_game_loader.remove_placeholder(physics, &solid_block, self.id);
+          }
+        });
 
-      // There will make some of the remove_placeholders redundant. Fix?
+      // This will make some of the remove_placeholders calls redundant. Fix?
       for solid_block in self.solid_boundary.iter().map(|&dp| position + dp.as_pnt().to_vec()) {
         terrain_game_loader.insert_placeholder(id_allocator, physics, &solid_block, self.id);
       }
 
-      self.load_queue.clear();
-      self.load_queue.push_back(position);
-
+      self.to_load = Some(SurroundingsIter::new(position, self.max_load_distance));
       self.next_unload_index = 0;
-      self.next_load_distance = 0;
       self.last_position = Some(position);
     }
 
@@ -112,12 +109,12 @@ impl<'a> SurroundingsLoader<'a>
         }
       } else {
         let block_position =
-          match self.load_queue.pop_front() {
+          match self.to_load.as_mut().unwrap().next() {
             None => break,
-            Some(block_position) => block_position,
+            Some(p) => p,
           };
 
-        let lod_index = (self.lod_index)(self.next_load_distance);
+        let lod_index = (self.lod_index)(self.to_load.as_ref().unwrap().next_distance);
 
         terrain_game_loader.load(
           timers,
@@ -130,16 +127,6 @@ impl<'a> SurroundingsLoader<'a>
         );
 
         self.loaded_vec.push(block_position);
-
-        if self.load_queue.is_empty() {
-          debug!("Done loading surroundings at distance {}", self.next_load_distance);
-          self.next_load_distance += 1;
-          if self.next_load_distance <= self.max_load_distance {
-            self.load_queue.extend(cube_shell(&position, self.next_load_distance).into_iter());
-          } else {
-            debug!("Done loading surroundings");
-          }
-        }
       }
     }
   }

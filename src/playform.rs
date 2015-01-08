@@ -40,6 +40,7 @@ mod render;
 mod shader;
 mod state;
 mod stopwatch;
+mod surroundings_iter;
 mod surroundings_loader;
 mod terrain;
 mod terrain_block;
