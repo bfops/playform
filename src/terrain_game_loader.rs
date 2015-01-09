@@ -76,6 +76,18 @@ pub trait TerrainGameLoader {
     owner: OwnerId,
   );
 
+  /// Like `load`, but only runs if the requested LOD is lower than the current one.
+  fn decrease_lod(
+    &mut self,
+    timers: &TimerSet,
+    gl: &mut GLContext,
+    id_allocator: &mut IdAllocator<EntityId>,
+    physics: &mut Physics,
+    block_position: &BlockPosition,
+    requested_lod: LOD,
+    owner: OwnerId,
+  );
+
   /// Release a request for a `TerrainBlock`.
   fn unload(
     &mut self,
@@ -113,6 +125,9 @@ struct BlockLoadState {
   pub loaded_lod: LOD,
 }
 
+/// Load and unload TerrainBlocks from the game.
+/// Each TerrainBlock can be owned by a set of owners, each of which can independently request LODs.
+/// The maximum LOD requested is the one that is actually loaded.
 pub struct Default<'a> {
   pub terrain: Terrain,
   pub terrain_vram_buffers: TerrainVRAMBuffers<'a>,
@@ -234,6 +249,49 @@ impl<'a> TerrainGameLoader for Default<'a> {
       },
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
+
+        block_load_state.owner_lods.insert(owner, requested_lod);
+        new_lod = *block_load_state.owner_lods.values().max_by(|x| *x).unwrap();
+
+        if block_load_state.loaded_lod == new_lod {
+          // Already loaded at the right LOD.
+          return;
+        }
+
+        loaded_lod = Some(block_load_state.loaded_lod);
+        block_load_state.loaded_lod = new_lod;
+      },
+    }
+
+    self.re_lod_block(timers, gl, id_allocator, physics, block_position, loaded_lod, Some(new_lod));
+  }
+
+  fn decrease_lod(
+    &mut self,
+    timers: &TimerSet,
+    gl: &mut GLContext,
+    id_allocator: &mut IdAllocator<EntityId>,
+    physics: &mut Physics,
+    block_position: &BlockPosition,
+    requested_lod: LOD,
+    owner: OwnerId,
+  ) {
+    let loaded_lod;
+    let new_lod;
+    match self.loaded.entry(block_position) {
+      Entry::Vacant(_) => return,
+      Entry::Occupied(mut entry) => {
+        let block_load_state = entry.get_mut();
+
+        match block_load_state.owner_lods.entry(&owner) {
+          Entry::Occupied(entry) => {
+            let &current_lod = entry.get();
+            if current_lod <= requested_lod {
+              return;
+            }
+          },
+          Entry::Vacant(_) => return,
+        }
 
         block_load_state.owner_lods.insert(owner, requested_lod);
         new_lod = *block_load_state.owner_lods.values().max_by(|x| *x).unwrap();

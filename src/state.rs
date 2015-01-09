@@ -326,10 +326,7 @@ impl<'a> App<'a> {
       });
 
     let player = {
-      // artificially decrease the polygon budget so that we can handle high-detail spurts
-      // (e.g. when the player moves around).
-      let load_distance = Player::load_distance(terrain_vram_buffers::POLYGON_BUDGET as i32 / 2);
-
+      let load_distance = Player::load_distance(terrain_vram_buffers::POLYGON_BUDGET as i32);
       info!("load_distance {}", load_distance);
 
       let mut player = Player {

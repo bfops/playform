@@ -28,8 +28,8 @@ pub struct SurroundingsLoader<'a> {
   pub last_position: Option<BlockPosition>,
   pub lod_index: Box<FnMut(i32) -> uint + 'a>,
 
-  pub to_load: Option<SurroundingsIter>,
   pub max_load_distance: i32,
+  pub to_load: Option<SurroundingsIter>,
 
   pub loaded_vec: Vec<BlockPosition>,
   pub next_unload_index: uint,
@@ -75,7 +75,8 @@ impl<'a> SurroundingsLoader<'a> {
     physics: &mut Physics,
     position: BlockPosition,
   ) {
-    if Some(position) != self.last_position {
+    let position_changed = Some(position) != self.last_position;
+    if position_changed {
       self.last_position.map(
         |last_position| {
           let mut iter =
@@ -101,10 +102,22 @@ impl<'a> SurroundingsLoader<'a> {
     while time::precise_time_ns() < target_time {
       if self.next_unload_index < self.loaded_vec.len() {
         let block_position = self.loaded_vec[self.next_unload_index];
-        if radius_between(&position, &block_position) > self.max_load_distance {
+        let distance = radius_between(&position, &block_position);
+        if distance > self.max_load_distance {
           terrain_game_loader.unload(timers, gl, id_allocator, physics, &block_position, self.id);
           self.loaded_vec.swap_remove(self.next_unload_index);
         } else {
+          let lod_index = (self.lod_index)(distance);
+          terrain_game_loader.decrease_lod(
+            timers,
+            gl,
+            id_allocator,
+            physics,
+            &block_position,
+            LOD::LodIndex(lod_index),
+            self.id,
+          );
+
           self.next_unload_index += 1;
         }
       } else {
