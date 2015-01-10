@@ -343,7 +343,7 @@ impl<'a> App<'a> {
           SurroundingsLoader::new(
             owner_allocator.allocate(),
             load_distance,
-            box |&mut: d| Player::lod_index(d),
+            Box::new(|&mut: d| Player::lod_index(d)),
           ),
       };
 
@@ -426,7 +426,7 @@ fn add_mob(
       speed: Vec3::new(0.0, 0.0, 0.0),
       behavior: behavior,
       id: id,
-      surroundings_loader: SurroundingsLoader::new(owner_allocator.allocate(), 2, box |&: _| 4),
+      surroundings_loader: SurroundingsLoader::new(owner_allocator.allocate(), 2, Box::new(|&: _| 4)),
     };
   let mob = Rc::new(RefCell::new(mob));
 

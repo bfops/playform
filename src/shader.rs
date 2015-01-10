@@ -45,7 +45,7 @@ fn preprocess(shader: String, vars: &HashMap<String, String>) -> Option<String> 
             return None;
           },
           Some(val) => {
-            processed.push_str(val[]);
+            processed.push_str(val.as_slice());
           },
         }
       },
@@ -73,7 +73,7 @@ baz
   let actual = preprocess(input, &HashMap::new());
   assert!(
     actual == expected,
-    "{} != {}",
+    "{:?} != {:?}",
     actual,
     expected
   );
@@ -105,7 +105,7 @@ baz
     );
   assert!(
     actual == expected,
-    "{} != {}",
+    "{:?} != {:?}",
     actual,
     expected
   );
@@ -123,7 +123,7 @@ baz
   let actual = preprocess(input, &HashMap::new());
   assert!(
     actual == expected,
-    "{} != {}",
+    "{:?} != {:?}",
     actual,
     expected
   );
@@ -141,7 +141,7 @@ baz
   let actual = preprocess(input, &HashMap::new());
   assert!(
     actual == expected,
-    "{} != {}",
+    "{:?} != {:?}",
     actual,
     expected
   );

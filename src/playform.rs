@@ -1,7 +1,10 @@
 //! The entry point.
 #![crate_type = "bin"]
+#![allow(unstable)]
 #![deny(missing_docs)]
 #![deny(warnings)]
+#![feature(old_impl_check)]
+#![feature(old_orphan_check)]
 #![feature(old_orphan_check)]
 #![feature(slicing_syntax)]
 #![feature(unboxed_closures)]

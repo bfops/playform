@@ -24,7 +24,7 @@ impl InProgressTerrain {
     physics: &mut Physics,
     block_position: &BlockPosition,
   ) -> bool {
-    match self.blocks.entry(block_position) {
+    match self.blocks.entry(*block_position) {
       Entry::Occupied(_) => false,
       Entry::Vacant(entry) => {
         let id = id_allocator.allocate();

@@ -235,7 +235,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
   ) {
     let loaded_lod;
     let new_lod;
-    match self.loaded.entry(block_position) {
+    match self.loaded.entry(*block_position) {
       Entry::Vacant(entry) => {
         let mut owner_lods = HashMap::new();
         owner_lods.insert(owner, requested_lod);
@@ -278,12 +278,12 @@ impl<'a> TerrainGameLoader for Default<'a> {
   ) {
     let loaded_lod;
     let new_lod;
-    match self.loaded.entry(block_position) {
+    match self.loaded.entry(*block_position) {
       Entry::Vacant(_) => return,
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
 
-        match block_load_state.owner_lods.entry(&owner) {
+        match block_load_state.owner_lods.entry(owner) {
           Entry::Occupied(entry) => {
             let &current_lod = entry.get();
             if current_lod <= requested_lod {
@@ -320,7 +320,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
   ) {
     let loaded_lod;
     let new_lod;
-    match self.loaded.entry(block_position) {
+    match self.loaded.entry(*block_position) {
       Entry::Occupied(mut entry) => {
         {
           let block_load_state = entry.get_mut();
@@ -364,10 +364,10 @@ impl<'a> TerrainGameLoader for Default<'a> {
     block_position: &BlockPosition,
     owner: OwnerId,
   ) {
-    match self.loaded.entry(block_position) {
+    match self.loaded.entry(*block_position) {
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
-        match block_load_state.owner_lods.entry(&owner) {
+        match block_load_state.owner_lods.entry(owner) {
           Entry::Vacant(entry) => { entry.insert(LOD::Placeholder); },
           Entry::Occupied(_) => {},
         }
@@ -390,7 +390,7 @@ impl<'a> TerrainGameLoader for Default<'a> {
     block_position: &BlockPosition,
     owner: OwnerId,
   ) {
-    match self.loaded.entry(block_position) {
+    match self.loaded.entry(*block_position) {
       Entry::Occupied(mut entry) => {
         {
           let block_load_state = entry.get_mut();

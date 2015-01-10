@@ -66,7 +66,7 @@ impl TimerSet {
   /// dynamically.
   pub fn time<T, F: FnOnce() -> T>(&self, name: &str, f: F) -> T {
     let timer : Rc<RefCell<Stopwatch>> =
-      match self.timers.borrow_mut().entry(name) {
+      match self.timers.borrow_mut().entry(String::from_str(name)) {
         Entry::Occupied(entry) => entry.get().clone(),
         Entry::Vacant(entry) => entry.insert(Rc::new(RefCell::new(Stopwatch::new()))).clone(),
       };
@@ -84,7 +84,7 @@ impl TimerSet {
     let mut timer_vec : Vec<(&str, Ref<Stopwatch>)> =
       timers
         .iter()
-        .map(|(name, sw)| (name[], sw.borrow()))
+        .map(|(name, sw)| (name.as_slice(), sw.borrow()))
         .collect();
 
     timer_vec.sort_by(|&(k1, _), &(k2, _)| k1.cmp(k2));

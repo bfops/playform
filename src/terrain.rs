@@ -56,7 +56,7 @@ impl Terrain {
     lod_index: uint,
   ) -> &'a TerrainBlock {
     let mip_mesh =
-      match self.all_blocks.entry(position) {
+      match self.all_blocks.entry(*position) {
         Entry::Occupied(mut entry) => {
           // Fudge the lifetime bounds
           mem::transmute(entry.get_mut())
