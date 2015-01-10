@@ -135,7 +135,7 @@ impl TerrainBlock {
     id_allocator: &mut IdAllocator<EntityId>,
     heightmap: &HeightMap,
     position: &BlockPosition,
-    lateral_samples: uint,
+    lateral_samples: u32,
     seed: &Seed,
   ) -> TerrainBlock {
     timers.time("update.generate_block", || {

@@ -26,13 +26,13 @@ fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
 pub struct SurroundingsLoader<'a> {
   pub id: OwnerId,
   pub last_position: Option<BlockPosition>,
-  pub lod_index: Box<FnMut(i32) -> uint + 'a>,
+  pub lod_index: Box<FnMut(i32) -> u32 + 'a>,
 
   pub max_load_distance: i32,
   pub to_load: Option<SurroundingsIter>,
 
   pub loaded_vec: Vec<BlockPosition>,
-  pub next_unload_index: uint,
+  pub next_unload_index: usize,
 
   pub solid_boundary: Vec<BlockPosition>,
 }
@@ -41,7 +41,7 @@ impl<'a> SurroundingsLoader<'a> {
   pub fn new(
     id: OwnerId,
     max_load_distance: i32,
-    lod_index: Box<FnMut(i32) -> uint + 'a>,
+    lod_index: Box<FnMut(i32) -> u32 + 'a>,
   ) -> SurroundingsLoader<'a> {
     assert!(max_load_distance >= 0);
 

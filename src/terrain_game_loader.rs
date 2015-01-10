@@ -32,7 +32,7 @@ impl Add<u32> for OwnerId {
 
 #[derive(Show, Clone, Copy, PartialEq, Eq)]
 pub enum LOD {
-  LodIndex(uint),
+  LodIndex(u32),
   // An invisible solid block
   Placeholder,
 }
@@ -177,7 +177,7 @@ impl<'a> Default<'a> {
             .unwrap()
             .lods
             .as_slice();
-          let block = lods[loaded_lod].as_ref().unwrap();
+          let block = lods[loaded_lod as usize].as_ref().unwrap();
           for id in block.ids.iter() {
             physics.remove_terrain(*id);
             self.terrain_vram_buffers.swap_remove(gl, *id);

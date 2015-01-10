@@ -10,9 +10,10 @@ pub const AMPLITUDE: f64 = 128.0;
 pub const FREQUENCY: f64 = 1.0 / 64.0;
 pub const PERSISTENCE: f64 = 1.0 / 8.0;
 pub const LACUNARITY: f64 = 8.0;
-pub const OCTAVES: uint = 8;
+pub const OCTAVES: usize = 8;
 
-pub const LOD_QUALITY: [uint; 5] = [48, 16, 4, 2, 1];
+// Quality is the number of times the noise function is sampled along each axis.
+pub const LOD_QUALITY: [u32; 5] = [48, 16, 4, 2, 1];
 
 #[derive(Show, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TerrainType {
@@ -53,7 +54,7 @@ impl Terrain {
     timers: &TimerSet,
     id_allocator: &mut IdAllocator<EntityId>,
     position: &'a BlockPosition,
-    lod_index: uint,
+    lod_index: u32,
   ) -> &'a TerrainBlock {
     let mip_mesh =
       match self.all_blocks.entry(*position) {
@@ -70,7 +71,7 @@ impl Terrain {
         },
       };
 
-    let mesh = mip_mesh.lods.get_mut(lod_index).unwrap();
+    let mesh = mip_mesh.lods.get_mut(lod_index as usize).unwrap();
     if mesh.is_none() {
       *mesh = Some(
         TerrainBlock::generate(
@@ -78,7 +79,7 @@ impl Terrain {
           id_allocator,
           &self.heightmap,
           position,
-          LOD_QUALITY[lod_index],
+          LOD_QUALITY[lod_index as usize],
           &self.seed,
         )
       );

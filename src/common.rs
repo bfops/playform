@@ -4,12 +4,12 @@ use nalgebra::Pnt3;
 use ncollide::bounding_volume::AABB3;
 use vertex::ColoredVertex;
 
-pub const WINDOW_WIDTH:  uint = 800;
-pub const WINDOW_HEIGHT: uint = 600;
+pub const WINDOW_WIDTH:  u32 = 800;
+pub const WINDOW_HEIGHT: u32 = 600;
 
-pub const TRIANGLES_PER_BOX: uint = 12;
-pub const VERTICES_PER_TRIANGLE: uint = 3;
-pub const TRIANGLE_VERTICES_PER_BOX: uint = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
+pub const TRIANGLES_PER_BOX: u32 = 12;
+pub const VERTICES_PER_TRIANGLE: u32 = 3;
+pub const TRIANGLE_VERTICES_PER_BOX: u32 = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
 
 pub fn partial_min_by<A, I, B, F>(mut iter: I, f: F) -> Vec<A>
     where A: Copy, I: Iterator<Item=A>, B: PartialOrd, F: Fn(A) -> B {
@@ -37,7 +37,10 @@ pub fn partial_min_by<A, I, B, F>(mut iter: I, f: F) -> Vec<A>
   min_a
 }
 
-pub fn to_triangles(bounds: &AABB3<GLfloat>, c: &Color4<GLfloat>) -> [ColoredVertex; VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX] {
+pub fn to_triangles(
+  bounds: &AABB3<GLfloat>,
+  c: &Color4<GLfloat>,
+) -> [ColoredVertex; (VERTICES_PER_TRIANGLE * TRIANGLES_PER_BOX) as usize] {
   let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
   let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
 

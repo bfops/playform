@@ -7,12 +7,13 @@ use physics::Physics;
 use state::EntityId;
 use std::f32::consts::PI;
 use std::iter::range_inclusive;
+use std::num;
 use terrain;
 use surroundings_loader::SurroundingsLoader;
 
 const LOD_THRESHOLDS: [i32; 4] = [1, 8, 16, 24];
 
-const MAX_JUMP_FUEL: uint = 4;
+const MAX_JUMP_FUEL: u32 = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;
 
 pub struct Player<'a> {
@@ -24,7 +25,7 @@ pub struct Player<'a> {
   // acceleration; x/z units are relative to player facing
   pub walk_accel: Vec3<GLfloat>,
   // this is depleted as we jump and replenished as we stand.
-  pub jump_fuel: uint,
+  pub jump_fuel: u32,
   // are we currently trying to jump? (e.g. holding the key).
   pub is_jumping: bool,
   pub id: EntityId,
@@ -176,7 +177,7 @@ impl<'a> Player<'a> {
     Ray::new(self.camera.position, self.forward())
   }
 
-  pub fn lod_index(distance: i32) -> uint {
+  pub fn lod_index(distance: i32) -> u32 {
     assert!(distance >= 0);
     let mut lod = 0;
     while
@@ -185,7 +186,7 @@ impl<'a> Player<'a> {
     {
       lod += 1;
     }
-    lod
+    num::cast(lod).unwrap()
   }
 
   pub fn load_distance(mut polygon_budget: i32) -> i32 {

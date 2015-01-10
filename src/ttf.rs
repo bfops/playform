@@ -81,7 +81,7 @@ fn ensure_init() {
 }
 
 impl Font {
-  pub fn new(font: &Path, point_size: uint) -> Font {
+  pub fn new(font: &Path, point_size: u32) -> Font {
     ensure_init();
 
     let c_path = CString::from_slice(font.container_as_bytes());

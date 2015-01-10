@@ -23,7 +23,7 @@ pub struct Mob<'a> {
 }
 
 pub struct MobBuffers<'a> {
-  id_to_index: HashMap<EntityId, uint>,
+  id_to_index: HashMap<EntityId, usize>,
   index_to_id: Vec<EntityId>,
 
   triangles: GLArray<'a, ColoredVertex>,
@@ -35,7 +35,7 @@ impl<'a> MobBuffers<'a> {
     gl_context: &mut GLContext,
     color_shader: Rc<RefCell<Shader>>,
   ) -> MobBuffers<'a> {
-    let buffer = GLBuffer::new(gl, gl_context, 32 * TRIANGLE_VERTICES_PER_BOX);
+    let buffer = GLBuffer::new(gl, gl_context, 32 * TRIANGLE_VERTICES_PER_BOX as usize);
     MobBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),

@@ -103,9 +103,9 @@ fn key_release<'a>(app: &mut App<'a>, key: KeyCode) {
   })
 }
 
-fn mouse_move<'a>(app: &mut App<'a>, window: &mut video::Window, x: int, y: int) {
+fn mouse_move<'a>(app: &mut App<'a>, window: &mut video::Window, x: isize, y: isize) {
   app.timers.time("event.mouse_move", || {
-    let (cx, cy) = (WINDOW_WIDTH as int / 2, WINDOW_HEIGHT as int / 2);
+    let (cx, cy) = (WINDOW_WIDTH as isize / 2, WINDOW_HEIGHT as isize / 2);
     // y is measured from the top of the window.
     let (dx, dy) = (x - cx, cy - y);
     // magic numbers. Oh god why?

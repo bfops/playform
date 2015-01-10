@@ -12,17 +12,18 @@ use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
 
 // VRAM bytes
-pub const BYTE_BUDGET: uint = 38_000_000;
-pub const POLYGON_COST: uint = 76;
+pub const BYTE_BUDGET: usize = 38_000_000;
+pub const POLYGON_COST: usize = 76;
 // This assumes there exists only one set of TerrainVRAMBuffers.
-pub const POLYGON_BUDGET: uint = BYTE_BUDGET / POLYGON_COST;
+pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
 
 pub struct TerrainVRAMBuffers<'a> {
-  id_to_index: HashMap<EntityId, uint>,
+  id_to_index: HashMap<EntityId, usize>,
   index_to_id: Vec<EntityId>,
 
+  // TODO: Use yaglw's ArrayHandle.
   empty_array: GLuint,
-  length: uint,
+  length: usize,
 
   // Each position is buffered as 3 separate floats due to image format restrictions.
   vertex_positions: BufferTexture<'a, GLfloat>,
@@ -46,9 +47,21 @@ impl<'a> TerrainVRAMBuffers<'a> {
       },
       length: 0,
       // There are 3 R32F components per vertex.
-      vertex_positions: BufferTexture::new(gl, gl_context, gl::R32F, 3 * VERTICES_PER_TRIANGLE * POLYGON_BUDGET),
+      vertex_positions:
+        BufferTexture::new(
+          gl,
+          gl_context,
+          gl::R32F,
+          3 * VERTICES_PER_TRIANGLE as usize * POLYGON_BUDGET,
+        ),
       // There are 3 R32F components per normal.
-      normals: BufferTexture::new(gl, gl_context, gl::R32F, 3 * VERTICES_PER_TRIANGLE * POLYGON_BUDGET),
+      normals:
+        BufferTexture::new(
+          gl,
+          gl_context,
+          gl::R32F,
+          3 * VERTICES_PER_TRIANGLE as usize * POLYGON_BUDGET,
+        ),
       types: BufferTexture::new(gl, gl_context, gl::R32UI, POLYGON_BUDGET),
     }
   }
@@ -85,7 +98,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
     types: &[GLuint],
     ids: &[EntityId],
   ) {
-    assert_eq!(vertices.len(), 3 * VERTICES_PER_TRIANGLE * ids.len());
+    assert_eq!(vertices.len(), 3 * VERTICES_PER_TRIANGLE as usize * ids.len());
     assert_eq!(normals.len(), vertices.len());
     assert_eq!(types.len(), ids.len());
 
@@ -116,9 +129,17 @@ impl<'a> TerrainVRAMBuffers<'a> {
 
     self.length -= 3;
     self.vertex_positions.buffer.byte_buffer.bind(gl);
-    self.vertex_positions.buffer.swap_remove(gl, idx * 3 * VERTICES_PER_TRIANGLE, 3 * VERTICES_PER_TRIANGLE);
+    self.vertex_positions.buffer.swap_remove(
+      gl,
+      idx * 3 * VERTICES_PER_TRIANGLE as usize,
+      3 * VERTICES_PER_TRIANGLE as usize,
+    );
     self.normals.buffer.byte_buffer.bind(gl);
-    self.normals.buffer.swap_remove(gl, 3 * idx * VERTICES_PER_TRIANGLE, 3 * VERTICES_PER_TRIANGLE);
+    self.normals.buffer.swap_remove(
+      gl,
+      3 * idx * VERTICES_PER_TRIANGLE as usize,
+      3 * VERTICES_PER_TRIANGLE as usize,
+    );
     self.types.buffer.byte_buffer.bind(gl);
     self.types.buffer.swap_remove(gl, idx, 1);
   }

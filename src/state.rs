@@ -64,7 +64,7 @@ fn make_text<'a>(
 ) -> (Vec<Texture2D<'a>>, GLArray<'a, TextureVertex>) {
   let fontloader = fontloader::FontLoader::new();
   let mut textures = Vec::new();
-  let buffer = GLBuffer::new(gl, gl_context, 8 * VERTICES_PER_TRIANGLE);
+  let buffer = GLBuffer::new(gl, gl_context, 8 * VERTICES_PER_TRIANGLE as usize);
   let mut triangles =
     GLArray::new(
       gl,
@@ -107,7 +107,7 @@ fn make_hud<'a>(
   gl_context: &mut GLContext,
   shader: Rc<RefCell<Shader<'a>>>,
 ) -> GLArray<'a ,ColoredVertex> {
-  let buffer = GLBuffer::new(gl, gl_context, 16 * VERTICES_PER_TRIANGLE);
+  let buffer = GLBuffer::new(gl, gl_context, 16 * VERTICES_PER_TRIANGLE as usize);
   let mut hud_triangles = {
     GLArray::new(
       gl,
@@ -193,7 +193,7 @@ impl<'a> App<'a> {
           String::from_str("shaders/terrain"),
           [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
           &FromIterator::from_iter(
-            [(String::from_str("lighting"), (true as uint).to_string())].to_vec().into_iter(),
+            [(String::from_str("lighting"), (true as GLuint).to_string())].to_vec().into_iter(),
           ),
         )));
       set_point_light(
