@@ -47,7 +47,7 @@ pub fn update<'a>(app: &mut App) {
 
         let block_position = BlockPosition::from_world_position(&mob.position);
 
-        mob.surroundings_loader.update(
+        mob.solid_boundary.update(
           app.timers,
           app.gl_context,
           &mut app.terrain_game_loader,

@@ -2,6 +2,13 @@ use cube_shell::cube_shell;
 use terrain_block::BlockPosition;
 use std::collections::RingBuf;
 
+#[cfg(test)]
+use std::iter::range_inclusive;
+#[cfg(test)]
+use cube_shell::cube_shell_area;
+#[cfg(test)]
+use surroundings_loader::radius_between;
+
 pub struct SurroundingsIter {
   pub center: BlockPosition,
   pub next_distance: i32,
@@ -42,4 +49,20 @@ impl Iterator for SurroundingsIter {
     }
     r
   }
+}
+
+#[test]
+fn shell_ordering() {
+  let center = BlockPosition::new(-1, 2, 3);
+  let max_distance = 4;
+  let mut iter = SurroundingsIter::new(center, max_distance);
+
+  for distance in range_inclusive(0, max_distance) {
+    for _ in range(0, cube_shell_area(distance)) {
+      let block_posn = iter.next().unwrap();
+      assert_eq!(radius_between(&center, &block_posn), distance);
+    }
+  }
+
+  assert!(iter.next().is_none());
 }

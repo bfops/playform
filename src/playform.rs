@@ -32,6 +32,7 @@ mod in_progress_terrain;
 mod interval_timer;
 mod light;
 mod loader;
+mod lod_map;
 mod main;
 mod mob;
 mod octree;

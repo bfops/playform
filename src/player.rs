@@ -36,6 +36,8 @@ pub struct Player<'a> {
   pub vertical_rotation: f32,
 
   pub surroundings_loader: SurroundingsLoader<'a>,
+  // Nearby blocks should be made solid if they aren't loaded yet.
+  pub solid_boundary: SurroundingsLoader<'a>,
 }
 
 impl<'a> Player<'a> {

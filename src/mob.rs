@@ -19,7 +19,9 @@ pub struct Mob<'a> {
   pub speed: Vec3<f32>,
   pub behavior: Behavior,
   pub id: EntityId,
-  pub surroundings_loader: SurroundingsLoader<'a>,
+
+  // Nearby blocks should be made solid if they aren't loaded yet.
+  pub solid_boundary: SurroundingsLoader<'a>,
 }
 
 pub struct MobBuffers<'a> {

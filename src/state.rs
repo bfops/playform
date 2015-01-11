@@ -6,6 +6,7 @@ use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
 use light::{Light, set_point_light, set_ambient_light};
+use lod_map::{LOD, OwnerId};
 use mob;
 use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
 use nalgebra;
@@ -24,8 +25,7 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 use surroundings_loader::SurroundingsLoader;
 use terrain;
-use terrain_game_loader;
-use terrain_game_loader::OwnerId;
+use terrain_game_loader::TerrainGameLoader;
 use terrain_vram_buffers;
 use vertex::{ColoredVertex, TextureVertex};
 use yaglw::vertex_buffer::*;
@@ -143,7 +143,7 @@ pub struct App<'a> {
   pub mobs: HashMap<EntityId, Rc<RefCell<mob::Mob<'a>>>>,
 
   pub id_allocator: IdAllocator<EntityId>,
-  pub terrain_game_loader: terrain_game_loader::Default<'a>,
+  pub terrain_game_loader: TerrainGameLoader<'a>,
 
   // OpenGL buffers
   pub mob_buffers: mob::MobBuffers<'a>,
@@ -295,7 +295,7 @@ impl<'a> App<'a> {
 
     let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
     let terrain_game_loader =
-      terrain_game_loader::Default::new(gl, gl_context, terrain_shader.clone(), &mut texture_unit_alloc);
+      TerrainGameLoader::new(gl, gl_context, terrain_shader.clone(), &mut texture_unit_alloc);
 
     let (text_textures, text_triangles) =
       make_text(gl, gl_context, hud_texture_shader.clone());
@@ -343,7 +343,13 @@ impl<'a> App<'a> {
           SurroundingsLoader::new(
             owner_allocator.allocate(),
             load_distance,
-            Box::new(|&mut: d| Player::lod_index(d)),
+            Box::new(|&mut: d| LOD::LodIndex(Player::lod_index(d))),
+          ),
+        solid_boundary:
+          SurroundingsLoader::new(
+            owner_allocator.allocate(),
+            1,
+            Box::new(|&mut: _| LOD::Placeholder),
           ),
       };
 
@@ -426,7 +432,8 @@ fn add_mob(
       speed: Vec3::new(0.0, 0.0, 0.0),
       behavior: behavior,
       id: id,
-      surroundings_loader: SurroundingsLoader::new(owner_allocator.allocate(), 2, Box::new(|&: _| 4)),
+      solid_boundary:
+        SurroundingsLoader::new(owner_allocator.allocate(), 1, Box::new(|&: _| LOD::Placeholder)),
     };
   let mob = Rc::new(RefCell::new(mob));
 
