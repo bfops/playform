@@ -82,7 +82,7 @@ trait HeightMapExt {
   /// The coordinate of the tile at a given x/z.
   fn point_at(&self, seed: &Seed, x: f32, z: f32) -> Pnt3<f32>;
   /// The lighting normal of the tile at a given x/z.
-  fn normal_at(&self, seed: &Seed, x: f32, z: f32) -> Vec3<f32>;
+  fn normal_at(&self, seed: &Seed, delta: f32, x: f32, z: f32) -> Vec3<f32>;
 }
 
 impl HeightMapExt for Brownian2<f64, fn (&Seed, &Point2<f64>) -> f64> {
@@ -91,14 +91,13 @@ impl HeightMapExt for Brownian2<f64, fn (&Seed, &Point2<f64>) -> f64> {
     Pnt3::new(x as f32, y as f32, z as f32)
   }
 
-  fn normal_at(&self, seed: &Seed, x: f32, z: f32) -> Vec3<f32> {
-    const DELTA: f32 = 0.2;
+  fn normal_at(&self, seed: &Seed, delta: f32, x: f32, z: f32) -> Vec3<f32> {
     let dx =
-      self.point_at(seed, x + DELTA, z).to_vec()
-      - self.point_at(seed, x - DELTA, z).to_vec();
+      self.point_at(seed, x + delta, z).to_vec()
+      - self.point_at(seed, x - delta, z).to_vec();
     let dz =
-      self.point_at(seed, x, z + DELTA).to_vec()
-      - self.point_at(seed, x, z - DELTA).to_vec();
+      self.point_at(seed, x, z + delta).to_vec()
+      - self.point_at(seed, x, z - delta).to_vec();
     normalize(&cross(&dx, &dz))
   }
 }
@@ -185,7 +184,9 @@ impl TerrainBlock {
     }
 
     timers.time("update.generate_block.add_tile", || {
-      let center_normal = hm.normal_at(seed, position.x + half_width, position.z + half_width);
+      let normal_delta = sample_width / 2.0;
+      let center_normal =
+        hm.normal_at(seed, normal_delta, position.x + half_width, position.z + half_width);
 
       let x2 = position.x + sample_width;
       let z2 = position.z + sample_width;
@@ -198,10 +199,10 @@ impl TerrainBlock {
         ];
 
       let ns: [Vec3<f32>; 4] =
-        [ hm.normal_at(seed, position.x, position.z)
-        , hm.normal_at(seed, position.x, z2)
-        , hm.normal_at(seed, x2, z2)
-        , hm.normal_at(seed, x2, position.z)
+        [ hm.normal_at(seed, normal_delta, position.x, position.z)
+        , hm.normal_at(seed, normal_delta, position.x, z2)
+        , hm.normal_at(seed, normal_delta, x2, z2)
+        , hm.normal_at(seed, normal_delta, x2, position.z)
         ];
 
       let center_lower_than = ps.iter().filter(|v| center.y < v.y).count();
