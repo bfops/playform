@@ -24,20 +24,13 @@ macro_rules! translate_mob(
 pub fn update<'a>(app: &mut App) {
   app.timers.time("update", || {
     app.timers.time("update.player", || {
-      app.timers.time("update.player.surroundings", || {
-        let block_position = BlockPosition::from_world_position(&app.player.camera.position);
-
-        app.player.surroundings_loader.update(
-          app.timers,
-          app.gl_context,
-          &mut app.terrain_game_loader,
-          &mut app.id_allocator,
-          &mut app.physics,
-          block_position,
-        );
-      });
-
-      app.player.update(&mut app.physics);
+      app.player.update(
+        app.timers,
+        app.gl_context,
+        &mut app.terrain_game_loader,
+        &mut app.id_allocator,
+        &mut app.physics,
+      );
     });
 
     app.timers.time("update.mobs", || {

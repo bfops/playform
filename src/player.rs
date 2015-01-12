@@ -1,5 +1,6 @@
 use camera;
 use gl::types::*;
+use id_allocator::IdAllocator;
 use nalgebra::Vec3;
 use ncollide::bounding_volume::AABB;
 use ncollide::ray::{Ray, Ray3};
@@ -8,8 +9,12 @@ use state::EntityId;
 use std::f32::consts::PI;
 use std::iter::range_inclusive;
 use std::num;
-use terrain;
+use stopwatch::TimerSet;
 use surroundings_loader::SurroundingsLoader;
+use terrain;
+use terrain_block::BlockPosition;
+use terrain_game_loader::TerrainGameLoader;
+use yaglw::gl_context::GLContext;
 
 const LOD_THRESHOLDS: [i32; 4] = [1, 8, 16, 24];
 
@@ -96,7 +101,36 @@ impl<'a> Player<'a> {
     }
   }
 
-  pub fn update(&mut self, physics: &mut Physics) {
+  pub fn update(
+    &mut self,
+    timers: &TimerSet,
+    gl_context: &mut GLContext,
+    terrain_game_loader: &mut TerrainGameLoader,
+    id_allocator: &mut IdAllocator<EntityId>,
+    physics: &mut Physics,
+  ) {
+    let block_position = BlockPosition::from_world_position(&self.camera.position);
+
+    timers.time("update.player.surroundings", || {
+      self.surroundings_loader.update(
+        timers,
+        gl_context,
+        terrain_game_loader,
+        id_allocator,
+        physics,
+        block_position,
+      );
+
+      self.solid_boundary.update(
+        timers,
+        gl_context,
+        terrain_game_loader,
+        id_allocator,
+        physics,
+        block_position,
+      );
+    });
+
     if self.is_jumping {
       if self.jump_fuel > 0 {
         self.jump_fuel -= 1;
