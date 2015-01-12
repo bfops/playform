@@ -16,7 +16,7 @@ use terrain_block::BlockPosition;
 use terrain_game_loader::TerrainGameLoader;
 use yaglw::gl_context::GLContext;
 
-const LOD_THRESHOLDS: [i32; 4] = [1, 8, 16, 24];
+const LOD_THRESHOLDS: [i32; 4] = [1, 8, 22, 26];
 
 const MAX_JUMP_FUEL: u32 = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;

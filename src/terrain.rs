@@ -13,7 +13,7 @@ pub const LACUNARITY: f64 = 8.0;
 pub const OCTAVES: usize = 8;
 
 // Quality is the number of times the noise function is sampled along each axis.
-pub const LOD_QUALITY: [u32; 5] = [48, 16, 4, 2, 1];
+pub const LOD_QUALITY: [u32; 5] = [32, 16, 4, 2, 1];
 
 #[derive(Show, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TerrainType {
