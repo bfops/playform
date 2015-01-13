@@ -200,7 +200,7 @@ impl<'a> App<'a> {
         terrain_shader.borrow_mut().deref_mut(),
         gl_context,
         &Light {
-          position: Vec3::new(0.0, 96.0, 0.0),
+          position: Vec3::new(0.0, 1024.0, 0.0),
           intensity: Vec3::new(0.6, 0.6, 0.2),
         }
       );
