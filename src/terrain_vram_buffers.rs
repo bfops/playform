@@ -13,7 +13,7 @@ use yaglw::texture::TextureUnit;
 
 // VRAM bytes
 pub const BYTE_BUDGET: usize = 38_000_000;
-pub const POLYGON_COST: usize = 76;
+pub const POLYGON_COST: usize = 84;
 // This assumes there exists only one set of TerrainVRAMBuffers.
 pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
 
@@ -27,9 +27,10 @@ pub struct TerrainVRAMBuffers<'a> {
 
   // Each position is buffered as 3 separate floats due to image format restrictions.
   vertex_positions: BufferTexture<'a, GLfloat>,
-  // Each normal component is buffered separately floats due to image format restrictions.
+  // Each position is buffered as 3 separate floats due to image format restrictions.
   normals: BufferTexture<'a, GLfloat>,
-  types: BufferTexture<'a, GLuint>,
+  // Each position is buffered as 3 separate floats due to image format restrictions.
+  colors: BufferTexture<'a, GLfloat>,
 }
 
 impl<'a> TerrainVRAMBuffers<'a> {
@@ -62,7 +63,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
           gl::R32F,
           3 * VERTICES_PER_TRIANGLE as usize * POLYGON_BUDGET,
         ),
-      types: BufferTexture::new(gl, gl_context, gl::R32UI, POLYGON_BUDGET),
+      colors: BufferTexture::new(gl, gl_context, gl::R32F, 3 * POLYGON_BUDGET),
     }
   }
 
@@ -87,7 +88,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
 
     bind("positions", self.vertex_positions.handle.gl_id);
     bind("normals", self.normals.handle.gl_id);
-    bind("terrain_types", self.types.handle.gl_id);
+    bind("colors", self.colors.handle.gl_id);
   }
 
   pub fn push(
@@ -95,12 +96,12 @@ impl<'a> TerrainVRAMBuffers<'a> {
     gl: &mut GLContext,
     vertices: &[GLfloat],
     normals: &[GLfloat],
-    types: &[GLuint],
+    colors: &[GLfloat],
     ids: &[EntityId],
   ) {
     assert_eq!(vertices.len(), 3 * VERTICES_PER_TRIANGLE as usize * ids.len());
     assert_eq!(normals.len(), vertices.len());
-    assert_eq!(types.len(), ids.len());
+    assert_eq!(colors.len(), 3 * ids.len());
 
     for &id in ids.iter() {
       self.id_to_index.insert(id, self.index_to_id.len());
@@ -112,8 +113,8 @@ impl<'a> TerrainVRAMBuffers<'a> {
     self.vertex_positions.buffer.push(gl, vertices);
     self.normals.buffer.byte_buffer.bind(gl);
     self.normals.buffer.push(gl, normals);
-    self.types.buffer.byte_buffer.bind(gl);
-    self.types.buffer.push(gl, types);
+    self.colors.buffer.byte_buffer.bind(gl);
+    self.colors.buffer.push(gl, colors);
   }
 
   // Note: `id` must be present in the buffers.
@@ -140,8 +141,8 @@ impl<'a> TerrainVRAMBuffers<'a> {
       3 * idx * VERTICES_PER_TRIANGLE as usize,
       3 * VERTICES_PER_TRIANGLE as usize,
     );
-    self.types.buffer.byte_buffer.bind(gl);
-    self.types.buffer.swap_remove(gl, idx, 1);
+    self.colors.buffer.byte_buffer.bind(gl);
+    self.colors.buffer.swap_remove(gl, 3 * idx, 3);
   }
 
   pub fn draw(&self, _gl: &mut GLContext) {

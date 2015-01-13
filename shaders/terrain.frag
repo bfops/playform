@@ -8,7 +8,7 @@ uniform struct Light {
 uniform vec3 ambient_light;
 
 uniform samplerBuffer positions;
-uniform isamplerBuffer terrain_types;
+uniform samplerBuffer colors;
 
 flat in int vertex_id;
 in vec3 normal;
@@ -17,8 +17,13 @@ out vec4 frag_color;
 
 void main() {
   int face_id = vertex_id / 3;
+  int color_id = face_id * 3;
 
-  uint terrain_type = uint(texelFetch(terrain_types, face_id).r);
+  vec4 base_color;
+  base_color.x = texelFetch(colors, color_id).r;
+  base_color.y = texelFetch(colors, color_id + 1).r;
+  base_color.z = texelFetch(colors, color_id + 2).r;
+  base_color.w = 1.0;
 
   #if $lighting$
     // Mutiply by 3 because there are 3 components for each position vector.
@@ -34,20 +39,7 @@ void main() {
     // length(normal) = 1 already.
     float brightness = dot(normal, light_path);
     brightness = clamp(brightness, 0, 1);
-  #endif
 
-  vec4 base_color;
-  if(terrain_type == uint(0)) {
-    base_color = vec4(0, 0.5, 0, 1);
-  } else if(terrain_type == uint(1)) {
-    base_color = vec4(0.5, 0.4, 0.2, 1);
-  } else if(terrain_type == uint(2)) {
-    base_color = vec4(0.5, 0.5, 0.5, 1);
-  } else {
-    base_color = vec4(float(terrain_type) / 65535, 0, 0, 1);
-  }
-
-  #if $lighting$
     vec3 lighting = brightness * light.intensity + ambient_light;
     frag_color = vec4(clamp(lighting, 0, 1), 1) * base_color;
   #else

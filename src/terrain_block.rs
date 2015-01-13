@@ -109,8 +109,8 @@ pub struct TerrainBlock {
   pub vertex_coordinates: Vec<GLfloat>,
   // per-vertex normal vectors flattened into separate GLfloats (x, y, z order)
   pub normals: Vec<GLfloat>,
-  // per-triangle terrain types
-  pub typs: Vec<GLuint>,
+  // per-triangle terrain colors flattened into separate GLfloats (x, y, z order)
+  pub colors: Vec<GLfloat>,
 
   // per-triangle entity IDs
   pub ids: Vec<EntityId>,
@@ -123,7 +123,7 @@ impl TerrainBlock {
     TerrainBlock {
       vertex_coordinates: Vec::new(),
       normals: Vec::new(),
-      typs: Vec::new(),
+      colors: Vec::new(),
       ids: Vec::new(),
       bounds: HashMap::new(),
     }
@@ -241,7 +241,8 @@ impl TerrainBlock {
             $n2.x, $n2.y, $n2.z,
             center_normal.x, center_normal.y, center_normal.z,
           ]);
-          block.typs.push(terrain_type as GLuint);
+          let color = terrain_type.color();
+          block.colors.push_all(&[color.r, color.g, color.b]);
           block.ids.push(id);
           block.bounds.insert(
             id,
@@ -256,7 +257,7 @@ impl TerrainBlock {
       let placements = 4;
       block.vertex_coordinates.reserve(placements*9);
       block.normals.reserve(placements*9);
-      block.typs.reserve(placements);
+      block.colors.reserve(placements*3);
       block.ids.reserve(placements);
       block.bounds.reserve(placements);
 

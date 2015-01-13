@@ -1,7 +1,25 @@
-//! RGBA color.
+//! Color structs
 
 #[derive(Show, Clone, Copy, PartialEq)]
-/// A color with red, green, blue, and alpha channels.
+/// A color with RGB channels.
+pub struct Color3<T> {
+  /// Red
+  pub r: T,
+  /// Green
+  pub g: T,
+  /// Blue
+  pub b: T,
+}
+
+impl<T: Copy> Color3<T> {
+  /// Constructs a new `Color4` out of its RGBA values.
+  pub fn of_rgb(r: T, g: T, b: T) -> Color3<T> {
+    Color3 { r: r, g: g, b: b }
+  }
+}
+
+#[derive(Show, Clone, Copy, PartialEq)]
+/// A color with RGBA channels.
 pub struct Color4<T> {
   /// Red
   pub r: T,

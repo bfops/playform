@@ -1,3 +1,4 @@
+use color::Color3;
 use id_allocator::IdAllocator;
 use noise::{Seed, Brownian2, perlin2, Point2};
 use state::EntityId;
@@ -20,6 +21,16 @@ pub enum TerrainType {
   Grass,
   Dirt,
   Stone,
+}
+
+impl TerrainType {
+  pub fn color(&self) -> Color3<f32> {
+    match *self {
+      TerrainType::Grass => Color3::of_rgb(0.0, 0.5, 0.0),
+      TerrainType::Dirt => Color3::of_rgb(0.5, 0.4, 0.2),
+      TerrainType::Stone => Color3::of_rgb(0.5, 0.5, 0.5),
+    }
+  }
 }
 
 pub struct TerrainMipMesh {

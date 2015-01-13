@@ -101,7 +101,7 @@ impl<'a> TerrainGameLoader<'a> {
               gl,
               block.vertex_coordinates.as_slice(),
               block.normals.as_slice(),
-              block.typs.as_slice(),
+              block.colors.as_slice(),
               block.ids.as_slice(),
             );
           });
