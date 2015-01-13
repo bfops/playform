@@ -10,7 +10,7 @@ pub const AMPLITUDE: f64 = 128.0;
 pub const FREQUENCY: f64 = 1.0 / 64.0;
 pub const PERSISTENCE: f64 = 1.0 / 8.0;
 pub const LACUNARITY: f64 = 8.0;
-pub const OCTAVES: usize = 8;
+pub const OCTAVES: usize = 4;
 
 // Quality is the number of times the noise function is sampled along each axis.
 pub const LOD_QUALITY: [u32; 5] = [32, 16, 4, 2, 1];
