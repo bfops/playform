@@ -1,11 +1,12 @@
 use color::Color3;
 use id_allocator::IdAllocator;
-use noise::{Seed, Brownian2, perlin2, Point2};
+use noise::Seed;
 use state::EntityId;
 use std::collections::hash_map::{HashMap, Entry};
 use std::mem;
 use stopwatch::TimerSet;
 use terrain_block::{TerrainBlock, BlockPosition};
+use terrain_heightmap::HeightMap;
 
 pub const AMPLITUDE: f64 = 256.0;
 pub const FREQUENCY: f64 = 1.0 / 64.0;
@@ -39,23 +40,16 @@ pub struct TerrainMipMesh {
 
 /// This struct contains and lazily generates the world's terrain.
 pub struct Terrain {
-  pub seed: Seed,
-  // this is used for generating new blocks.
-  pub heightmap: Brownian2<f64, fn (&Seed, &Point2<f64>) -> f64>,
+  pub heightmap: HeightMap,
   // all the blocks that have ever been created.
   pub all_blocks: HashMap<BlockPosition, TerrainMipMesh>,
 }
 
 impl Terrain {
-  pub fn new(seed: Seed) -> Terrain {
-    let perlin2: fn(&Seed, &Point2<f64>) -> f64 = perlin2;
+  pub fn new(terrain_seed: Seed) -> Terrain {
     Terrain {
-      seed: seed,
       heightmap:
-        Brownian2::new(perlin2, OCTAVES)
-        .frequency(FREQUENCY)
-        .persistence(PERSISTENCE)
-        .lacunarity(LACUNARITY),
+        HeightMap::new(terrain_seed, OCTAVES, FREQUENCY, PERSISTENCE, LACUNARITY, AMPLITUDE),
       all_blocks: HashMap::new(),
     }
   }
@@ -91,7 +85,6 @@ impl Terrain {
           &self.heightmap,
           position,
           LOD_QUALITY[lod_index as usize],
-          &self.seed,
         )
       );
     }
