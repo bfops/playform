@@ -28,10 +28,11 @@ void main() {
     world_position.y = texelFetch(positions, position_id + 1).r;
     world_position.z = texelFetch(positions, position_id + 2).r;
 
-    // vector from this position to the light
+    // vector from here to the light
     vec3 light_path = light.position - world_position;
-    // length(normal) = 1, so don't bother dividing.
-    float brightness = dot(normal, light_path) / length(light_path);
+    light_path = normalize(light_path);
+    // length(normal) = 1 already.
+    float brightness = dot(normal, light_path);
     brightness = clamp(brightness, 0, 1);
   #endif
 

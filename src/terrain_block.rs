@@ -98,7 +98,7 @@ impl HeightMapExt for Brownian2<f64, fn (&Seed, &Point2<f64>) -> f64> {
     let dz =
       self.point_at(seed, x, z + delta).to_vec()
       - self.point_at(seed, x, z - delta).to_vec();
-    normalize(&cross(&dx, &dz))
+    normalize(&cross(&dz, &dx))
   }
 }
 
