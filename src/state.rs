@@ -326,8 +326,16 @@ impl<'a> App<'a> {
       });
 
     let player = {
-      let load_distance = Player::load_distance(terrain_vram_buffers::POLYGON_BUDGET as i32);
-      info!("load_distance {}", load_distance);
+      let mut load_distance = Player::load_distance(terrain_vram_buffers::POLYGON_BUDGET as i32);
+
+      // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
+      let max_load_distance = 70;
+      if load_distance > max_load_distance {
+        info!("load_distance capped at {}", max_load_distance);
+        load_distance = max_load_distance;
+      } else {
+        info!("load_distance {}", load_distance);
+      }
 
       let mut player = Player {
         camera: camera::Camera::unit(),
