@@ -208,7 +208,9 @@ impl TerrainBlock {
       let center_lower_than = ps.iter().filter(|v| center.y < v.y).count();
 
       let terrain_type =
-        if center_lower_than >= 3 {
+        if center_lower_than == 4 {
+          TerrainType::Stone
+        } else if center_lower_than == 3 {
           TerrainType::Dirt
         } else {
           TerrainType::Grass
