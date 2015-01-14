@@ -83,7 +83,6 @@ pub struct Octree<V> {
 
 // TODO: fix shaky octree outline insertion/removal conditions.
 
-#[old_impl_check]
 impl<V: Copy + Eq + PartialOrd> Octree<V> {
   pub fn new(bounds: &AABB3<f32>) -> Octree<V> {
     Octree {
