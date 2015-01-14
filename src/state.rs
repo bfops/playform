@@ -331,7 +331,7 @@ impl<'a> App<'a> {
       // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
       let max_load_distance = 70;
       if load_distance > max_load_distance {
-        info!("load_distance capped at {}", max_load_distance);
+        info!("load_distance {} capped at {}", load_distance, max_load_distance);
         load_distance = max_load_distance;
       } else {
         info!("load_distance {}", load_distance);
