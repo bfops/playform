@@ -10,6 +10,7 @@ use std::ops::Add;
 use stopwatch::TimerSet;
 use terrain::TerrainType;
 use terrain_heightmap::HeightMap;
+use tree_placer::TreePlacer;
 
 pub const BLOCK_WIDTH: i32 = 4;
 
@@ -107,6 +108,7 @@ impl TerrainBlock {
     timers: &TimerSet,
     id_allocator: &mut IdAllocator<EntityId>,
     heightmap: &HeightMap,
+    treemap: &TreePlacer,
     position: &BlockPosition,
     lateral_samples: u32,
   ) -> TerrainBlock {
@@ -127,6 +129,7 @@ impl TerrainBlock {
           TerrainBlock::add_tile(
             timers,
             heightmap,
+            treemap,
             id_allocator,
             &mut block,
             sample_width,
@@ -142,6 +145,7 @@ impl TerrainBlock {
   fn add_tile<'a>(
     timers: &TimerSet,
     hm: &HeightMap,
+    treemap: &TreePlacer,
     id_allocator: &mut IdAllocator<EntityId>,
     block: &mut TerrainBlock,
     sample_width: f32,
@@ -237,6 +241,10 @@ impl TerrainBlock {
       place_terrain!(&ps[1], &ps[2], &ns[1], &ns[2], ps[1].x, centr.z, ps[2].x, ps[2].z);
       place_terrain!(&ps[2], &ps[3], &ns[2], &ns[3], centr.x, centr.z, ps[2].x, ps[2].z);
       place_terrain!(&ps[3], &ps[0], &ns[3], &ns[0], ps[0].x, ps[0].z, ps[3].x, centr.z);
+
+      if treemap.should_place_tree(&centr) {
+        treemap.place_tree(centr, id_allocator, block);
+      }
     })
   }
 }

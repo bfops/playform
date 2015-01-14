@@ -36,7 +36,7 @@ impl<'a> TerrainGameLoader<'a> {
     terrain_vram_buffers.bind_glsl_uniforms(gl_context, texture_unit_alloc, shader.clone());
 
     TerrainGameLoader {
-      terrain: Terrain::new(Seed::new(0)),
+      terrain: Terrain::new(Seed::new(0), Seed::new(0)),
       terrain_vram_buffers: terrain_vram_buffers,
       in_progress_terrain: InProgressTerrain::new(),
       lod_map: LODMap::new(),

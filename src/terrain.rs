@@ -7,6 +7,7 @@ use std::mem;
 use stopwatch::TimerSet;
 use terrain_block::{TerrainBlock, BlockPosition};
 use terrain_heightmap::HeightMap;
+use tree_placer::TreePlacer;
 
 pub const AMPLITUDE: f64 = 64.0;
 pub const FREQUENCY: f64 = 1.0 / 64.0;
@@ -41,15 +42,17 @@ pub struct TerrainMipMesh {
 /// This struct contains and lazily generates the world's terrain.
 pub struct Terrain {
   pub heightmap: HeightMap,
+  pub treemap: TreePlacer,
   // all the blocks that have ever been created.
   pub all_blocks: HashMap<BlockPosition, TerrainMipMesh>,
 }
 
 impl Terrain {
-  pub fn new(terrain_seed: Seed) -> Terrain {
+  pub fn new(terrain_seed: Seed, tree_seed: Seed) -> Terrain {
     Terrain {
       heightmap:
         HeightMap::new(terrain_seed, OCTAVES, FREQUENCY, PERSISTENCE, LACUNARITY, AMPLITUDE),
+      treemap: TreePlacer::new(tree_seed),
       all_blocks: HashMap::new(),
     }
   }
@@ -83,6 +86,7 @@ impl Terrain {
           timers,
           id_allocator,
           &self.heightmap,
+          &self.treemap,
           position,
           LOD_QUALITY[lod_index as usize],
         )

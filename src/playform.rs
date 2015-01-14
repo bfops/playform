@@ -51,6 +51,7 @@ mod terrain_block;
 mod terrain_game_loader;
 mod terrain_heightmap;
 mod terrain_vram_buffers;
+mod tree_placer;
 mod ttf;
 mod update;
 mod vertex;
