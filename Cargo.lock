@@ -5,7 +5,7 @@ dependencies = [
  "gl 0.0.5 (git+https://github.com/bjz/gl-rs)",
  "log 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide 0.3.0 (git+https://github.com/sebcrozet/ncollide)",
+ "ncollide 0.3.0 (git+https://github.com/bfops/ncollide)",
  "noise 0.0.3 (git+https://github.com/bjz/noise-rs)",
  "sdl2 0.0.17 (git+https://github.com/AngryLawyer/rust-sdl2)",
  "time 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -20,21 +20,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "gl"
 version = "0.0.5"
-source = "git+https://github.com/bjz/gl-rs#230e6c9ed611cddfcb6682dee9686471d54863d0"
+source = "git+https://github.com/bjz/gl-rs#581f422d49ec731a8e6e2ef9a763c8c35a530160"
 dependencies = [
  "gl_common 0.0.3 (git+https://github.com/bjz/gl-rs)",
  "gl_generator 0.0.12 (git+https://github.com/bjz/gl-rs)",
+ "khronos_api 0.0.5 (git+https://github.com/bjz/gl-rs)",
 ]
 
 [[package]]
 name = "gl_common"
 version = "0.0.3"
-source = "git+https://github.com/bjz/gl-rs#230e6c9ed611cddfcb6682dee9686471d54863d0"
+source = "git+https://github.com/bjz/gl-rs#581f422d49ec731a8e6e2ef9a763c8c35a530160"
 
 [[package]]
 name = "gl_generator"
 version = "0.0.12"
-source = "git+https://github.com/bjz/gl-rs#230e6c9ed611cddfcb6682dee9686471d54863d0"
+source = "git+https://github.com/bjz/gl-rs#581f422d49ec731a8e6e2ef9a763c8c35a530160"
 dependencies = [
  "gl_common 0.0.3 (git+https://github.com/bjz/gl-rs)",
  "khronos_api 0.0.5 (git+https://github.com/bjz/gl-rs)",
@@ -45,7 +46,7 @@ dependencies = [
 [[package]]
 name = "khronos_api"
 version = "0.0.5"
-source = "git+https://github.com/bjz/gl-rs#230e6c9ed611cddfcb6682dee9686471d54863d0"
+source = "git+https://github.com/bjz/gl-rs#581f422d49ec731a8e6e2ef9a763c8c35a530160"
 
 [[package]]
 name = "log"
@@ -60,38 +61,38 @@ name = "nalgebra"
 version = "0.1.0"
 source = "git+https://github.com/sebcrozet/nalgebra#7b07d4d847403e3ce64398ee9e968f6dfe672f67"
 dependencies = [
- "rustc-serialize 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "ncollide"
 version = "0.3.0"
-source = "git+https://github.com/sebcrozet/ncollide#a82f1035ab7be11aee3e8bc9f8e511917aabcc47"
+source = "git+https://github.com/bfops/ncollide#6e8c5736350936750be64775ce0e2696c1eece59"
 dependencies = [
- "ncollide_entities 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_math 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_pipeline 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_procedural 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_queries 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_transformation 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_utils 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
+ "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_pipeline 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_procedural 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_queries 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_transformation 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_utils 0.1.0 (git+https://github.com/bfops/ncollide)",
 ]
 
 [[package]]
 name = "ncollide_entities"
 version = "0.1.0"
-source = "git+https://github.com/sebcrozet/ncollide#a82f1035ab7be11aee3e8bc9f8e511917aabcc47"
+source = "git+https://github.com/bfops/ncollide#6e8c5736350936750be64775ce0e2696c1eece59"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide_math 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_utils 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "rustc-serialize 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_utils 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "rustc-serialize 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "ncollide_math"
 version = "0.1.0"
-source = "git+https://github.com/sebcrozet/ncollide#a82f1035ab7be11aee3e8bc9f8e511917aabcc47"
+source = "git+https://github.com/bfops/ncollide#6e8c5736350936750be64775ce0e2696c1eece59"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
 ]
@@ -99,63 +100,67 @@ dependencies = [
 [[package]]
 name = "ncollide_pipeline"
 version = "0.1.0"
-source = "git+https://github.com/sebcrozet/ncollide#a82f1035ab7be11aee3e8bc9f8e511917aabcc47"
+source = "git+https://github.com/bfops/ncollide#6e8c5736350936750be64775ce0e2696c1eece59"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide_entities 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_math 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_queries 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_utils 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "rustc-serialize 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_queries 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_utils 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "rustc-serialize 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "ncollide_procedural"
 version = "0.1.0"
-source = "git+https://github.com/sebcrozet/ncollide#a82f1035ab7be11aee3e8bc9f8e511917aabcc47"
+source = "git+https://github.com/bfops/ncollide#6e8c5736350936750be64775ce0e2696c1eece59"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide_math 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_utils 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "rustc-serialize 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_utils 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "rustc-serialize 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "ncollide_queries"
 version = "0.1.0"
-source = "git+https://github.com/sebcrozet/ncollide#a82f1035ab7be11aee3e8bc9f8e511917aabcc47"
+source = "git+https://github.com/bfops/ncollide#6e8c5736350936750be64775ce0e2696c1eece59"
 dependencies = [
- "ncollide_entities 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
+ "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
+ "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_utils 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "rustc-serialize 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "ncollide_transformation"
 version = "0.1.0"
-source = "git+https://github.com/sebcrozet/ncollide#a82f1035ab7be11aee3e8bc9f8e511917aabcc47"
+source = "git+https://github.com/bfops/ncollide#6e8c5736350936750be64775ce0e2696c1eece59"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide_entities 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_math 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_procedural 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_queries 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "ncollide_utils 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "rustc-serialize 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_procedural 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_queries 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_utils 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "rustc-serialize 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "ncollide_utils"
 version = "0.1.0"
-source = "git+https://github.com/sebcrozet/ncollide#a82f1035ab7be11aee3e8bc9f8e511917aabcc47"
+source = "git+https://github.com/bfops/ncollide#6e8c5736350936750be64775ce0e2696c1eece59"
 dependencies = [
  "nalgebra 0.1.0 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide_math 0.1.0 (git+https://github.com/sebcrozet/ncollide)",
- "rustc-serialize 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "rustc-serialize 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "noise"
 version = "0.0.3"
-source = "git+https://github.com/bjz/noise-rs#22660e60a7efd36eba10ec31a1293b5e143cf4a4"
+source = "git+https://github.com/bjz/noise-rs#d1cd03abdb75d442c8bca34f836c4dce499c4705"
 
 [[package]]
 name = "pkg-config"
@@ -169,13 +174,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustc-serialize"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "sdl2"
 version = "0.0.17"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#431c33729adc7412dedf4f6dea0c67448fab5741"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#32b5df94f0e29805b7087d7b49ef9699e85d5640"
 dependencies = [
  "sdl2-sys 0.0.16 (git+https://github.com/AngryLawyer/rust-sdl2)",
 ]
@@ -183,7 +188,7 @@ dependencies = [
 [[package]]
 name = "sdl2-sys"
 version = "0.0.16"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#431c33729adc7412dedf4f6dea0c67448fab5741"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#32b5df94f0e29805b7087d7b49ef9699e85d5640"
 dependencies = [
  "pkg-config 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -204,10 +209,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "yaglw"
 version = "0.0.0"
-source = "git+https://github.com/bfops/yaglw#61518171a0c853d66faac93d735cf16b70e4a92e"
+source = "git+https://github.com/bfops/yaglw#184920a58be29ed40441ed1f5748e26ca3ed72f9"
 dependencies = [
  "gl 0.0.5 (git+https://github.com/bjz/gl-rs)",
  "log 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "sdl2 0.0.17 (git+https://github.com/AngryLawyer/rust-sdl2)",
 ]
 
