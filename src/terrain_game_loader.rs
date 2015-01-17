@@ -4,8 +4,6 @@ use lod_map::{LOD, OwnerId, LODMap};
 use noise::Seed;
 use physics::Physics;
 use state::EntityId;
-use std::cell::RefCell;
-use std::rc::Rc;
 use stopwatch::TimerSet;
 use terrain::Terrain;
 use terrain_block::BlockPosition;
@@ -29,11 +27,11 @@ impl<'a> TerrainGameLoader<'a> {
   pub fn new(
     gl: &'a GLContextExistence,
     gl_context: &mut GLContext,
-    shader: Rc<RefCell<Shader>>,
+    shader: &mut Shader,
     texture_unit_alloc: &mut IdAllocator<TextureUnit>,
   ) -> TerrainGameLoader<'a> {
     let terrain_vram_buffers = TerrainVRAMBuffers::new(gl, gl_context);
-    terrain_vram_buffers.bind_glsl_uniforms(gl_context, texture_unit_alloc, shader.clone());
+    terrain_vram_buffers.bind_glsl_uniforms(gl_context, texture_unit_alloc, shader);
 
     TerrainGameLoader {
       terrain: Terrain::new(Seed::new(0), Seed::new(0)),

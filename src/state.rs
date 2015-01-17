@@ -21,7 +21,6 @@ use std::default::Default;
 use std::f32::consts::PI;
 use std::iter::FromIterator;
 use std::ops::Add;
-use std::ops::DerefMut;
 use std::rc::Rc;
 use surroundings_loader::SurroundingsLoader;
 use terrain;
@@ -60,7 +59,7 @@ fn center(bounds: &AABB3<f32>) -> Pnt3<GLfloat> {
 fn make_text<'a>(
   gl: &'a GLContextExistence,
   gl_context: &mut GLContext,
-  shader: Rc<RefCell<Shader<'a>>>,
+  shader: &Shader<'a>,
 ) -> (Vec<Texture2D<'a>>, GLArray<'a, TextureVertex>) {
   let fontloader = fontloader::FontLoader::new();
   let mut textures = Vec::new();
@@ -105,7 +104,7 @@ fn make_text<'a>(
 fn make_hud<'a>(
   gl: &'a GLContextExistence,
   gl_context: &mut GLContext,
-  shader: Rc<RefCell<Shader<'a>>>,
+  shader: &Shader<'a>,
 ) -> GLArray<'a ,ColoredVertex> {
   let buffer = GLBuffer::new(gl, gl_context, 16 * VERTICES_PER_TRIANGLE as usize);
   let mut hud_triangles = {
@@ -155,10 +154,10 @@ pub struct App<'a> {
   pub text_textures: Vec<Texture2D<'a>>,
 
   // OpenGL shader "program" ids
-  pub color_shader: Rc<RefCell<Shader<'a>>>,
-  pub terrain_shader: Rc<RefCell<Shader<'a>>>,
-  pub hud_texture_shader: Rc<RefCell<Shader<'a>>>,
-  pub hud_color_shader: Rc<RefCell<Shader<'a>>>,
+  pub color_shader: Shader<'a>,
+  pub terrain_shader: Shader<'a>,
+  pub hud_texture_shader: Shader<'a>,
+  pub hud_color_shader: Shader<'a>,
 
   pub render_outlines: bool,
 
@@ -186,18 +185,18 @@ impl<'a> App<'a> {
     gl_context.enable_depth_buffer(1.0);
     gl_context.set_background_color(SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a);
 
-    let terrain_shader = {
-      let terrain_shader =
-        Rc::new(RefCell::new(shader::from_file_prefix(
+    let mut terrain_shader = {
+      let mut terrain_shader =
+        shader::from_file_prefix(
           gl,
           String::from_str("shaders/terrain"),
           [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
           &FromIterator::from_iter(
             [(String::from_str("lighting"), (true as GLuint).to_string())].to_vec().into_iter(),
           ),
-        )));
+        );
       set_point_light(
-        terrain_shader.borrow_mut().deref_mut(),
+        &mut terrain_shader,
         gl_context,
         &Light {
           position: Vec3::new(0.0, 1024.0, 0.0),
@@ -205,33 +204,33 @@ impl<'a> App<'a> {
         }
       );
       set_ambient_light(
-        terrain_shader.borrow_mut().deref_mut(),
+        &mut terrain_shader,
         gl_context,
         Vec3::new(0.4, 0.4, 0.4),
       );
       terrain_shader
     };
     let color_shader =
-      Rc::new(RefCell::new(shader::from_file_prefix(
+      shader::from_file_prefix(
         gl,
         String::from_str("shaders/color"),
         [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
         &HashMap::new(),
-      )));
-    let hud_color_shader =
-      Rc::new(RefCell::new(shader::from_file_prefix(
+      );
+    let mut hud_color_shader =
+      shader::from_file_prefix(
         gl,
         String::from_str("shaders/color"),
         [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
         &HashMap::new(),
-      )));
-    let hud_texture_shader =
-      Rc::new(RefCell::new(shader::from_file_prefix(
+      );
+    let mut hud_texture_shader =
+      shader::from_file_prefix(
         gl,
         String::from_str("shaders/hud_texture"),
         [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
         &HashMap::new(),
-      )));
+      );
 
     {
       let hud_camera = {
@@ -242,12 +241,12 @@ impl<'a> App<'a> {
       };
 
       camera::set_camera(
-        hud_color_shader.borrow_mut().deref_mut(),
+        &mut hud_color_shader,
         gl_context,
         &hud_camera,
       );
       camera::set_camera(
-        hud_texture_shader.borrow_mut().deref_mut(),
+        &mut hud_texture_shader,
         gl_context,
         &hud_camera,
       );
@@ -264,7 +263,7 @@ impl<'a> App<'a> {
         GLArray::new(
           gl,
           gl_context,
-          color_shader.clone(),
+          &color_shader,
           &[
 	          VertexAttribData { name: "position", size: 3, unit: GLType::Float },
             VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },
@@ -291,14 +290,14 @@ impl<'a> App<'a> {
       line_of_sight
     };
 
-    let hud_triangles = make_hud(gl, gl_context, hud_color_shader.clone());
+    let hud_triangles = make_hud(gl, gl_context, &hud_color_shader);
 
     let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
     let terrain_game_loader =
-      TerrainGameLoader::new(gl, gl_context, terrain_shader.clone(), &mut texture_unit_alloc);
+      TerrainGameLoader::new(gl, gl_context, &mut terrain_shader, &mut texture_unit_alloc);
 
     let (text_textures, text_triangles) =
-      make_text(gl, gl_context, hud_texture_shader.clone());
+      make_text(gl, gl_context, &hud_texture_shader);
 
     let world_width: u32 = 1 << 11;
     let world_width = world_width as f32;
@@ -321,7 +320,7 @@ impl<'a> App<'a> {
           &mut physics,
           &mut id_allocator,
           &mut owner_allocator,
-          color_shader.clone(),
+          &color_shader,
         )
       });
 
@@ -379,8 +378,8 @@ impl<'a> App<'a> {
       gl::ActiveTexture(misc_texture_unit.gl_id());
     }
 
-    let texture_in = hud_texture_shader.borrow_mut().get_uniform_location("texture_in");
-    hud_texture_shader.borrow_mut().use_shader(gl_context);
+    let texture_in = hud_texture_shader.get_uniform_location("texture_in");
+    hud_texture_shader.use_shader(gl_context);
     unsafe {
       gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
     }
@@ -457,7 +456,7 @@ fn make_mobs<'a>(
   physics: &mut Physics,
   id_allocator: &mut IdAllocator<EntityId>,
   owner_allocator: &mut IdAllocator<OwnerId>,
-  shader: Rc<RefCell<Shader>>,
+  shader: &Shader<'a>,
 ) -> (HashMap<EntityId, Rc<RefCell<mob::Mob<'a>>>>, mob::MobBuffers<'a>) {
   let mut mobs = HashMap::new();
   let mut mob_buffers = mob::MobBuffers::new(gl, gl_context, shader);

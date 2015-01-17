@@ -2,9 +2,7 @@ use common::*;
 use nalgebra::{Pnt3, Vec3};
 use state::App;
 use state::EntityId;
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 use surroundings_loader::SurroundingsLoader;
 use vertex::ColoredVertex;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, VertexAttribData};
@@ -35,7 +33,7 @@ impl<'a> MobBuffers<'a> {
   pub fn new(
     gl: &'a GLContextExistence,
     gl_context: &mut GLContext,
-    color_shader: Rc<RefCell<Shader>>,
+    color_shader: &Shader<'a>,
   ) -> MobBuffers<'a> {
     let buffer = GLBuffer::new(gl, gl_context, 32 * TRIANGLE_VERTICES_PER_BOX as usize);
     MobBuffers {
@@ -45,7 +43,7 @@ impl<'a> MobBuffers<'a> {
       triangles: GLArray::new(
         gl,
         gl_context,
-        color_shader.clone(),
+        color_shader,
         &[
           VertexAttribData { name: "position", size: 3, unit: GLType::Float },
           VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },

@@ -204,9 +204,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "yaglw"
 version = "0.0.0"
-source = "git+https://github.com/bfops/yaglw#7e211ef8b2edb1e3d47442bf55ddbc79cde167dc"
+source = "git+https://github.com/bfops/yaglw#61518171a0c853d66faac93d735cf16b70e4a92e"
 dependencies = [
  "gl 0.0.5 (git+https://github.com/bjz/gl-rs)",
  "log 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sdl2 0.0.17 (git+https://github.com/AngryLawyer/rust-sdl2)",
 ]
 
