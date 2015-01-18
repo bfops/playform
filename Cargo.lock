@@ -160,7 +160,7 @@ dependencies = [
 [[package]]
 name = "noise"
 version = "0.0.3"
-source = "git+https://github.com/bjz/noise-rs#d1cd03abdb75d442c8bca34f836c4dce499c4705"
+source = "git+https://github.com/bjz/noise-rs#22660e60a7efd36eba10ec31a1293b5e143cf4a4"
 
 [[package]]
 name = "pkg-config"
