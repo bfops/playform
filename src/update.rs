@@ -1,11 +1,12 @@
 use color::Color4;
 use common::*;
 use gl::types::*;
-use light::{Light, set_point_light};
+use light::{Light, set_point_light, set_ambient_light};
 use mob;
 use nalgebra::Vec3;
 use physics::Physics;
 use state::App;
+use std::cmp::partial_min;
 use std::f32::consts::PI;
 use std::ops::{Deref, DerefMut};
 use std::num::Float;
@@ -80,19 +81,26 @@ pub fn update<'a>(app: &mut App) {
       let radius = 1024.0;
       // Convert the sun angle to radians.
       let sun_f = (app.sun as f32) * 2.0 * PI / 256.0;
-      // position relative to player
-      let sun_x = radius * sun_f.cos();
-      let sun_y = radius * sun_f.sin();
-      // "absolute" position
-      let sun_position = app.player.camera.position + Vec3::new(sun_x, sun_y, 0.0);
+      let (s, c) = sun_f.sin_cos();
+      let sun_position = app.player.camera.position + Vec3::new(c, s, 0.0) * radius;
+
+      let sun_color = Vec3::new(0.6, 0.6, 0.2);
 
       set_point_light(
         &mut app.terrain_shader,
         app.gl_context,
         &Light {
           position: sun_position,
-          intensity: Vec3::new(0.6, 0.6, 0.2),
+          intensity: sun_color,
         }
+      );
+
+      let ambient_light = partial_min(0.2, s / 2.0).unwrap();
+
+      set_ambient_light(
+        &mut app.terrain_shader,
+        app.gl_context,
+        sun_color * ambient_light,
       );
     });
   })
