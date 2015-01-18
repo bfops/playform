@@ -84,7 +84,10 @@ pub fn update<'a>(app: &mut App) {
       let (s, c) = sun_f.sin_cos();
       let sun_position = app.player.camera.position + Vec3::new(c, s, 0.0) * radius;
 
-      let sun_color = Color3::of_rgb(0.2, 0.5, 0.7);
+      let r = c.abs();
+      let g = (s + 1.0) / 2.0;
+      let b = (s * 0.75 + 0.25).abs();
+      let sun_color = Color3::of_rgb(r, g, b);
 
       set_point_light(
         &mut app.terrain_shader,
@@ -106,6 +109,8 @@ pub fn update<'a>(app: &mut App) {
           sun_color.b * ambient_light,
         ),
       );
+
+      app.gl_context.set_background_color(sun_color.r, sun_color.g, sun_color.b, 1.0);
     });
   })
 }

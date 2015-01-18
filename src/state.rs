@@ -34,7 +34,6 @@ use yaglw::gl_context::{GLContext, GLContextExistence};
 use yaglw::shader::Shader;
 use yaglw::texture::{Texture2D, TextureUnit};
 
-static SKY_COLOR: Color4<GLfloat> = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
 const SUN_TICK_NS: u64 = 100000000;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
@@ -189,7 +188,6 @@ impl<'a> App<'a> {
     gl_context.enable_alpha_blending();
     gl_context.enable_smooth_lines();
     gl_context.enable_depth_buffer(1.0);
-    gl_context.set_background_color(SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a);
 
     let mut terrain_shader = {
       let mut terrain_shader =
