@@ -1,11 +1,11 @@
 use gl;
 use gl::types::GLfloat;
-use nalgebra::Vec3;
+use nalgebra::{Pnt3, Vec3};
 use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 
 pub struct Light {
-  pub position: Vec3<GLfloat>,
+  pub position: Pnt3<GLfloat>,
   pub intensity: Vec3<GLfloat>,
 }
 

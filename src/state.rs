@@ -5,6 +5,7 @@ use fontloader;
 use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
+use interval_timer::IntervalTimer;
 use light::{Light, set_point_light, set_ambient_light};
 use lod_map::{LOD, OwnerId};
 use mob;
@@ -26,13 +27,15 @@ use surroundings_loader::SurroundingsLoader;
 use terrain;
 use terrain_game_loader::TerrainGameLoader;
 use terrain_vram_buffers;
+use time;
 use vertex::{ColoredVertex, TextureVertex};
 use yaglw::vertex_buffer::*;
 use yaglw::gl_context::{GLContext, GLContextExistence};
 use yaglw::shader::Shader;
 use yaglw::texture::{Texture2D, TextureUnit};
 
-static SKY_COLOR: Color4<GLfloat>  = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
+static SKY_COLOR: Color4<GLfloat> = Color4 {r: 0.2, g: 0.5, b: 0.7, a: 1.0 };
+const SUN_TICK_NS: u64 = 100000000;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
 pub struct EntityId(u32);
@@ -140,6 +143,9 @@ pub struct App<'a> {
   pub physics: Physics,
   pub player: Player<'a>,
   pub mobs: HashMap<EntityId, Rc<RefCell<mob::Mob<'a>>>>,
+  // The sun as portions of a 65536-degree circle.
+  pub sun: u16,
+  pub sun_timer: IntervalTimer,
 
   pub id_allocator: IdAllocator<EntityId>,
   pub terrain_game_loader: TerrainGameLoader<'a>,
@@ -199,7 +205,7 @@ impl<'a> App<'a> {
         &mut terrain_shader,
         gl_context,
         &Light {
-          position: Vec3::new(0.0, 1024.0, 0.0),
+          position: Pnt3::new(0.0, 0.0, 0.0),
           intensity: Vec3::new(0.6, 0.6, 0.2),
         }
       );
@@ -397,6 +403,8 @@ impl<'a> App<'a> {
       mob_buffers: mob_buffers,
       player: player,
       mobs: mobs,
+      sun: 0,
+      sun_timer: IntervalTimer::new(SUN_TICK_NS, time::precise_time_ns()),
       hud_triangles: hud_triangles,
       text_textures: text_textures,
       text_triangles: text_triangles,

@@ -1,12 +1,16 @@
 use color::Color4;
 use common::*;
 use gl::types::*;
+use light::{Light, set_point_light};
 use mob;
 use nalgebra::Vec3;
 use physics::Physics;
 use state::App;
+use std::f32::consts::PI;
 use std::ops::{Deref, DerefMut};
+use std::num::Float;
 use terrain_block::BlockPosition;
+use time;
 use yaglw::gl_context::GLContext;
 
 macro_rules! translate_mob(
@@ -67,6 +71,29 @@ pub fn update<'a>(app: &mut App) {
           translate_mob!(app, mob, Vec3::new(0.0, 0.0, delta_p.z));
         }
       }
+    });
+
+    app.timers.time("update.sun", || {
+      let ticks = app.sun_timer.update(time::precise_time_ns());
+      app.sun += ticks as u16;
+
+      let radius = 1024.0;
+      // Convert the sun angle to radians.
+      let sun_f = (app.sun as f32) * 2.0 * PI / 256.0;
+      // position relative to player
+      let sun_x = radius * sun_f.cos();
+      let sun_y = radius * sun_f.sin();
+      // "absolute" position
+      let sun_position = app.player.camera.position + Vec3::new(sun_x, sun_y, 0.0);
+
+      set_point_light(
+        &mut app.terrain_shader,
+        app.gl_context,
+        &Light {
+          position: sun_position,
+          intensity: Vec3::new(0.6, 0.6, 0.2),
+        }
+      );
     });
   })
 }
