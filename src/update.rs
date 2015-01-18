@@ -1,4 +1,4 @@
-use color::Color4;
+use color::{Color3, Color4};
 use common::*;
 use gl::types::*;
 use light::{Light, set_point_light, set_ambient_light};
@@ -84,7 +84,7 @@ pub fn update<'a>(app: &mut App) {
       let (s, c) = sun_f.sin_cos();
       let sun_position = app.player.camera.position + Vec3::new(c, s, 0.0) * radius;
 
-      let sun_color = Vec3::new(0.6, 0.6, 0.2);
+      let sun_color = Color3::of_rgb(0.2, 0.5, 0.7);
 
       set_point_light(
         &mut app.terrain_shader,
@@ -100,7 +100,11 @@ pub fn update<'a>(app: &mut App) {
       set_ambient_light(
         &mut app.terrain_shader,
         app.gl_context,
-        sun_color * ambient_light,
+        Color3::of_rgb(
+          sun_color.r * ambient_light,
+          sun_color.g * ambient_light,
+          sun_color.b * ambient_light,
+        ),
       );
     });
   })

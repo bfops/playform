@@ -1,5 +1,5 @@
 use camera;
-use color::Color4;
+use color::{Color3, Color4};
 use common::*;
 use fontloader;
 use gl;
@@ -206,13 +206,13 @@ impl<'a> App<'a> {
         gl_context,
         &Light {
           position: Pnt3::new(0.0, 0.0, 0.0),
-          intensity: Vec3::new(0.6, 0.6, 0.2),
+          intensity: Color3::of_rgb(0.0, 0.0, 0.0),
         }
       );
       set_ambient_light(
         &mut terrain_shader,
         gl_context,
-        Vec3::new(0.4, 0.4, 0.4),
+        Color3::of_rgb(0.4, 0.4, 0.4),
       );
       terrain_shader
     };
