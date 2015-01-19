@@ -6,7 +6,7 @@ use mob;
 use nalgebra::Vec3;
 use physics::Physics;
 use state::App;
-use std::cmp::partial_min;
+use std::cmp::partial_max;
 use std::f32::consts::PI;
 use std::ops::{Deref, DerefMut};
 use std::num::Float;
@@ -98,7 +98,7 @@ pub fn update<'a>(app: &mut App) {
         }
       );
 
-      let ambient_light = partial_min(0.2, s / 2.0).unwrap();
+      let ambient_light = partial_max(0.4, s / 2.0).unwrap();
 
       set_ambient_light(
         &mut app.terrain_shader.shader,
