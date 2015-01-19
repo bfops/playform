@@ -7,15 +7,15 @@ pub fn render<'a>(app: &mut App<'a>) {
   app.timers.time("render", || {
     app.gl_context.clear_buffer();
 
-    set_camera(&mut app.color_shader, app.gl_context, &app.player.camera);
+    set_camera(&mut app.mob_shader.shader, app.gl_context, &app.player.camera);
 
-    app.color_shader.use_shader(app.gl_context);
+    app.mob_shader.shader.use_shader(app.gl_context);
 
     // debug stuff
     app.line_of_sight.bind(app.gl_context);
     app.line_of_sight.draw(app.gl_context);
 
-    set_camera(&mut app.terrain_shader, app.gl_context, &app.player.camera);
+    set_camera(&mut app.terrain_shader.shader, app.gl_context, &app.player.camera);
 
     // draw the world
     if app.render_outlines {
@@ -24,9 +24,9 @@ pub fn render<'a>(app: &mut App<'a>) {
         gl::Disable(gl::CULL_FACE);
       }
 
-      app.terrain_shader.use_shader(app.gl_context);
+      app.terrain_shader.shader.use_shader(app.gl_context);
       app.terrain_game_loader.terrain_vram_buffers.draw(app.gl_context);
-      app.color_shader.use_shader(app.gl_context);
+      app.mob_shader.shader.use_shader(app.gl_context);
       app.mob_buffers.draw(app.gl_context);
 
       unsafe {
@@ -34,19 +34,19 @@ pub fn render<'a>(app: &mut App<'a>) {
         gl::Enable(gl::CULL_FACE);
       }
     } else {
-      app.terrain_shader.use_shader(app.gl_context);
+      app.terrain_shader.shader.use_shader(app.gl_context);
       app.terrain_game_loader.terrain_vram_buffers.draw(app.gl_context);
-      app.color_shader.use_shader(app.gl_context);
+      app.mob_shader.shader.use_shader(app.gl_context);
       app.mob_buffers.draw(app.gl_context);
     }
 
     // draw the hud
-    app.hud_color_shader.use_shader(app.gl_context);
+    app.hud_color_shader.shader.use_shader(app.gl_context);
     app.hud_triangles.bind(app.gl_context);
     app.hud_triangles.draw(app.gl_context);
 
     // draw hud textures
-    app.hud_texture_shader.use_shader(app.gl_context);
+    app.hud_texture_shader.shader.use_shader(app.gl_context);
     unsafe {
       gl::ActiveTexture(app.misc_texture_unit.gl_id());
     }

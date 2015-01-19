@@ -14,13 +14,12 @@ use nalgebra;
 use ncollide::bounding_volume::{AABB, AABB3};
 use physics::Physics;
 use player::Player;
-use shader;
+use shaders;
 use stopwatch::TimerSet;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::default::Default;
 use std::f32::consts::PI;
-use std::iter::FromIterator;
 use std::ops::Add;
 use std::rc::Rc;
 use surroundings_loader::SurroundingsLoader;
@@ -159,10 +158,10 @@ pub struct App<'a> {
   pub text_textures: Vec<Texture2D<'a>>,
 
   // OpenGL shader "program" ids
-  pub color_shader: Shader<'a>,
-  pub terrain_shader: Shader<'a>,
-  pub hud_texture_shader: Shader<'a>,
-  pub hud_color_shader: Shader<'a>,
+  pub mob_shader: shaders::color::ColorShader<'a>,
+  pub terrain_shader: shaders::terrain::TerrainShader<'a>,
+  pub hud_texture_shader: shaders::texture::TextureShader<'a>,
+  pub hud_color_shader: shaders::color::ColorShader<'a>,
 
   pub render_outlines: bool,
 
@@ -190,17 +189,9 @@ impl<'a> App<'a> {
     gl_context.enable_depth_buffer(1.0);
 
     let mut terrain_shader = {
-      let mut terrain_shader =
-        shader::from_file_prefix(
-          gl,
-          String::from_str("shaders/terrain"),
-          [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
-          &FromIterator::from_iter(
-            [(String::from_str("lighting"), (true as GLuint).to_string())].to_vec().into_iter(),
-          ),
-        );
+      let mut terrain_shader = shaders::terrain::TerrainShader::new(gl);
       set_point_light(
-        &mut terrain_shader,
+        &mut terrain_shader.shader,
         gl_context,
         &Light {
           position: Pnt3::new(0.0, 0.0, 0.0),
@@ -208,33 +199,15 @@ impl<'a> App<'a> {
         }
       );
       set_ambient_light(
-        &mut terrain_shader,
+        &mut terrain_shader.shader,
         gl_context,
         Color3::of_rgb(0.4, 0.4, 0.4),
       );
       terrain_shader
     };
-    let color_shader =
-      shader::from_file_prefix(
-        gl,
-        String::from_str("shaders/color"),
-        [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
-        &HashMap::new(),
-      );
-    let mut hud_color_shader =
-      shader::from_file_prefix(
-        gl,
-        String::from_str("shaders/color"),
-        [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
-        &HashMap::new(),
-      );
-    let mut hud_texture_shader =
-      shader::from_file_prefix(
-        gl,
-        String::from_str("shaders/hud_texture"),
-        [ gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, ].to_vec().into_iter(),
-        &HashMap::new(),
-      );
+    let mob_shader = shaders::color::ColorShader::new(gl);
+    let mut hud_color_shader = shaders::color::ColorShader::new(gl);
+    let mut hud_texture_shader = shaders::texture::TextureShader::new(gl);
 
     {
       let hud_camera = {
@@ -245,12 +218,12 @@ impl<'a> App<'a> {
       };
 
       camera::set_camera(
-        &mut hud_color_shader,
+        &mut hud_color_shader.shader,
         gl_context,
         &hud_camera,
       );
       camera::set_camera(
-        &mut hud_texture_shader,
+        &mut hud_texture_shader.shader,
         gl_context,
         &hud_camera,
       );
@@ -267,7 +240,7 @@ impl<'a> App<'a> {
         GLArray::new(
           gl,
           gl_context,
-          &color_shader,
+          &mob_shader.shader,
           &[
 	          VertexAttribData { name: "position", size: 3, unit: GLType::Float },
             VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },
@@ -294,14 +267,14 @@ impl<'a> App<'a> {
       line_of_sight
     };
 
-    let hud_triangles = make_hud(gl, gl_context, &hud_color_shader);
+    let hud_triangles = make_hud(gl, gl_context, &hud_color_shader.shader);
 
     let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
     let terrain_game_loader =
-      TerrainGameLoader::new(gl, gl_context, &mut terrain_shader, &mut texture_unit_alloc);
+      TerrainGameLoader::new(gl, gl_context, &mut terrain_shader.shader, &mut texture_unit_alloc);
 
     let (text_textures, text_triangles) =
-      make_text(gl, gl_context, &hud_texture_shader);
+      make_text(gl, gl_context, &hud_texture_shader.shader);
 
     let world_width: u32 = 1 << 11;
     let world_width = world_width as f32;
@@ -324,7 +297,7 @@ impl<'a> App<'a> {
           &mut physics,
           &mut id_allocator,
           &mut owner_allocator,
-          &color_shader,
+          &mob_shader.shader,
         )
       });
 
@@ -382,8 +355,8 @@ impl<'a> App<'a> {
       gl::ActiveTexture(misc_texture_unit.gl_id());
     }
 
-    let texture_in = hud_texture_shader.get_uniform_location("texture_in");
-    hud_texture_shader.use_shader(gl_context);
+    let texture_in = hud_texture_shader.shader.get_uniform_location("texture_in");
+    hud_texture_shader.shader.use_shader(gl_context);
     unsafe {
       gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
     }
@@ -407,7 +380,7 @@ impl<'a> App<'a> {
       text_textures: text_textures,
       text_triangles: text_triangles,
       misc_texture_unit: misc_texture_unit,
-      color_shader: color_shader,
+      mob_shader: mob_shader,
       terrain_shader: terrain_shader,
       hud_color_shader: hud_color_shader,
       hud_texture_shader: hud_texture_shader,

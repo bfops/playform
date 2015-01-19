@@ -38,7 +38,7 @@ mod player;
 mod process_event;
 mod range_abs;
 mod render;
-mod shader;
+mod shaders;
 mod state;
 mod stopwatch;
 mod surroundings_iter;

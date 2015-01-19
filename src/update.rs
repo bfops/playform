@@ -90,7 +90,7 @@ pub fn update<'a>(app: &mut App) {
       let sun_color = Color3::of_rgb(r, g, b);
 
       set_point_light(
-        &mut app.terrain_shader,
+        &mut app.terrain_shader.shader,
         app.gl_context,
         &Light {
           position: sun_position,
@@ -101,7 +101,7 @@ pub fn update<'a>(app: &mut App) {
       let ambient_light = partial_min(0.2, s / 2.0).unwrap();
 
       set_ambient_light(
-        &mut app.terrain_shader,
+        &mut app.terrain_shader.shader,
         app.gl_context,
         Color3::of_rgb(
           sun_color.r * ambient_light,
