@@ -147,12 +147,12 @@ baz
   );
 }
 
-pub fn from_files<'a, T: Iterator<Item=(String, GLenum)>>(
+pub fn from_files<'a, T: Iterator<Item=(GLenum, String)>>(
   gl: &'a GLContextExistence,
   component_paths: T,
   vars: &HashMap<String, String>,
 ) -> Shader<'a> {
-  Shader::new(gl, component_paths.map(|(path, component_type)| {
+  Shader::new(gl, component_paths.map(|(component_type, path)| {
     match File::open(&Path::new(path.as_slice())) {
       Ok(mut f) =>
         match f.read_to_string() {
@@ -161,7 +161,7 @@ pub fn from_files<'a, T: Iterator<Item=(String, GLenum)>>(
               None => {
                 panic!("Failed to preprocess shader \"{}\".", path);
               },
-              Some(s) => (s, component_type),
+              Some(s) => (component_type, s),
             }
           },
           Err(e) => {
@@ -190,9 +190,8 @@ pub fn from_file_prefix<'a, T: Iterator<Item=GLenum>>(
           gl::FRAGMENT_SHADER => "frag",
           gl::GEOMETRY_SHADER => "geom",
           _ => panic!("Unknown shader component type: {}", component),
-        }
-      ;
-      ((prefix.clone() + "." + suffix), component)
+        };
+      (component, (prefix.clone() + "." + suffix))
     }),
     vars,
   )
