@@ -5,6 +5,7 @@ use ncollide::bounding_volume::{AABB, AABB3};
 use ncollide::bounding_volume::BoundingVolume;
 use ncollide::ray::{Ray3, LocalRayCast};
 use std::cmp::Ordering::{Greater, Less, Equal};
+use std::fmt::Show;
 use std::num::NumCast;
 use std::ptr;
 
@@ -83,7 +84,7 @@ pub struct Octree<V> {
 
 // TODO: fix shaky octree outline insertion/removal conditions.
 
-impl<V: Copy + Eq + PartialOrd> Octree<V> {
+impl<V: Show + Copy + Eq + PartialOrd> Octree<V> {
   pub fn new(bounds: &AABB3<f32>) -> Octree<V> {
     Octree {
       parent: ptr::null_mut(),
@@ -243,8 +244,14 @@ impl<V: Copy + Eq + PartialOrd> Octree<V> {
     assert!(self.bounds.contains(bounds));
     let collapse_contents = match self.contents {
       OctreeContents::Leaf(ref mut vs) => {
-        let i = vs.iter().position(|&(_, ref x)| *x == v).unwrap();
-        vs.swap_remove(i);
+        match vs.iter().position(|&(_, ref x)| *x == v) {
+          None => {
+            warn!("{:?} was not found in the octree", v);
+          },
+          Some(i) => {
+            vs.swap_remove(i);
+          },
+        };
         false
       },
       OctreeContents::Branch(ref mut bs) => {
