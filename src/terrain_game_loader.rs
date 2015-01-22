@@ -19,7 +19,7 @@ pub struct TerrainGameLoader<'a> {
   pub terrain: Terrain,
   pub terrain_vram_buffers: TerrainVRAMBuffers<'a>,
   pub in_progress_terrain: InProgressTerrain,
-  // The blocks that are currently loaded, and their owners and 
+  // The LODs of the currently loaded blocks.
   pub lod_map: LODMap,
 }
 
@@ -83,26 +83,24 @@ impl<'a> TerrainGameLoader<'a> {
       },
       Some(LOD::LodIndex(new_lod)) => {
         timers.time("terrain_game_loader.load", || {
-          let block = unsafe {
-            self.terrain.load(timers, id_allocator, block_position, new_lod)
-          };
-    
-          timers.time("terrain_game_loader.load.physics", || {
-            for (&id, bounds) in block.bounds.iter() {
-              physics.insert_terrain(id, bounds.clone());
-            }
-          });
-    
           let terrain_vram_buffers = &mut self.terrain_vram_buffers;
-          timers.time("terrain_game_loader.load.gpu", || {
-            terrain_vram_buffers.push(
-              gl,
-              block.vertex_coordinates.as_slice(),
-              block.normals.as_slice(),
-              block.colors.as_slice(),
-              block.ids.as_slice(),
-            );
-          });
+          self.terrain.load(timers, id_allocator, block_position, new_lod, |block| {
+            timers.time("terrain_game_loader.load.physics", || {
+              for (&id, bounds) in block.bounds.iter() {
+                physics.insert_terrain(id, bounds.clone());
+              }
+            });
+
+            timers.time("terrain_game_loader.load.gpu", || {
+              terrain_vram_buffers.push(
+                gl,
+                block.vertex_coordinates.as_slice(),
+                block.normals.as_slice(),
+                block.colors.as_slice(),
+                block.ids.as_slice(),
+              );
+            })
+          })
         });
       },
     };

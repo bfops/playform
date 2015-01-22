@@ -3,7 +3,6 @@ use id_allocator::IdAllocator;
 use noise::Seed;
 use state::EntityId;
 use std::collections::hash_map::{HashMap, Entry};
-use std::mem;
 use stopwatch::TimerSet;
 use terrain_block::{TerrainBlock, BlockPosition};
 use terrain_heightmap::HeightMap;
@@ -57,42 +56,49 @@ impl Terrain {
     }
   }
 
-  pub unsafe fn load<'a>(
-    &'a mut self,
+  pub fn load<F>(
+    &mut self,
     timers: &TimerSet,
     id_allocator: &mut IdAllocator<EntityId>,
-    position: &'a BlockPosition,
+    position: &BlockPosition,
     lod_index: u32,
-  ) -> &'a TerrainBlock {
-    let mip_mesh =
-      match self.all_blocks.entry(*position) {
-        Entry::Occupied(mut entry) => {
-          // Fudge the lifetime bounds
-          mem::transmute(entry.get_mut())
-        },
-        Entry::Vacant(entry) => {
-          entry.insert(
-            TerrainMipMesh {
-              lods: range(0, LOD_QUALITY.len()).map(|_| None).collect(),
-            }
-          )
-        },
-      };
+    f: F,
+  ) where F: FnOnce(&TerrainBlock)
+  {
+    let heightmap = &self.heightmap;
+    let treemap = &self.treemap;
 
-    let mesh = mip_mesh.lods.get_mut(lod_index as usize).unwrap();
-    if mesh.is_none() {
-      *mesh = Some(
-        TerrainBlock::generate(
-          timers,
-          id_allocator,
-          &self.heightmap,
-          &self.treemap,
-          position,
-          LOD_QUALITY[lod_index as usize],
-        )
-      );
-    }
-    
-    mesh.as_ref().unwrap()
+    macro_rules! load_lod(
+      ($mip_mesh: expr) => ({
+        let mesh = $mip_mesh.lods.get_mut(lod_index as usize).unwrap();
+        if mesh.is_none() {
+          *mesh = Some(
+            TerrainBlock::generate(
+              timers,
+              id_allocator,
+              heightmap,
+              treemap,
+              position,
+              LOD_QUALITY[lod_index as usize],
+            )
+          );
+        }
+
+        f(mesh.as_ref().unwrap())
+      })
+    );
+
+    match self.all_blocks.entry(*position) {
+      Entry::Occupied(mut entry) => {
+        load_lod!(entry.get_mut())
+      },
+      Entry::Vacant(entry) => {
+        load_lod!(entry.insert(
+          TerrainMipMesh {
+            lods: range(0, LOD_QUALITY.len()).map(|_| None).collect(),
+          }
+        ))
+      },
+    };
   }
 }
