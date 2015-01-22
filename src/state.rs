@@ -271,7 +271,7 @@ impl<'a> App<'a> {
 
     let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
     let terrain_game_loader =
-      TerrainGameLoader::new(gl, gl_context, &mut terrain_shader.shader, &mut texture_unit_alloc);
+      TerrainGameLoader::new(gl, gl_context, &mut terrain_shader, &mut texture_unit_alloc);
 
     let (text_textures, text_triangles) =
       make_text(gl, gl_context, &hud_texture_shader.shader);
@@ -297,7 +297,7 @@ impl<'a> App<'a> {
           &mut physics,
           &mut id_allocator,
           &mut owner_allocator,
-          &mob_shader.shader,
+          &mob_shader,
         )
       });
 
@@ -435,7 +435,7 @@ fn make_mobs<'a>(
   physics: &mut Physics,
   id_allocator: &mut IdAllocator<EntityId>,
   owner_allocator: &mut IdAllocator<OwnerId>,
-  shader: &Shader<'a>,
+  shader: &shaders::color::ColorShader<'a>,
 ) -> (HashMap<EntityId, Rc<RefCell<mob::Mob<'a>>>>, mob::MobBuffers<'a>) {
   let mut mobs = HashMap::new();
   let mut mob_buffers = mob::MobBuffers::new(gl, gl_context, shader);

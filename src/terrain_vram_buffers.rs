@@ -2,10 +2,10 @@ use common::*;
 use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
+use shaders::terrain::TerrainShader;
 use state::EntityId;
 use std::collections::HashMap;
 use yaglw::gl_context::{GLContext,GLContextExistence};
-use yaglw::shader::Shader;
 use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
 
@@ -69,16 +69,16 @@ impl<'a> TerrainVRAMBuffers<'a> {
     &self,
     gl: &mut GLContext,
     texture_unit_alloc: &mut IdAllocator<TextureUnit>,
-    shader: &mut Shader,
+    shader: &mut TerrainShader,
   ) {
-    shader.use_shader(gl);
+    shader.shader.use_shader(gl);
     let mut bind = |&mut: name, id| {
       let unit = texture_unit_alloc.allocate();
       unsafe {
         gl::ActiveTexture(unit.gl_id());
         gl::BindTexture(gl::TEXTURE_BUFFER, id);
       }
-      let loc = shader.get_uniform_location(name);
+      let loc = shader.shader.get_uniform_location(name);
       unsafe {
         gl::Uniform1i(loc, unit.glsl_id as GLint);
       }

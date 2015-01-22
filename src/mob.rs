@@ -1,5 +1,6 @@
 use common::*;
 use nalgebra::{Pnt3, Vec3};
+use shaders::color::ColorShader;
 use state::App;
 use state::EntityId;
 use std::collections::HashMap;
@@ -8,7 +9,6 @@ use vertex::ColoredVertex;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, VertexAttribData};
 use yaglw::vertex_buffer::{DrawMode, GLType};
 use yaglw::gl_context::{GLContext, GLContextExistence};
-use yaglw::shader::Shader;
 
 pub type Behavior = fn(&App, &mut Mob);
 
@@ -33,7 +33,7 @@ impl<'a> MobBuffers<'a> {
   pub fn new(
     gl: &'a GLContextExistence,
     gl_context: &mut GLContext,
-    color_shader: &Shader<'a>,
+    shader: &ColorShader<'a>,
   ) -> MobBuffers<'a> {
     let buffer = GLBuffer::new(gl, gl_context, 32 * TRIANGLE_VERTICES_PER_BOX as usize);
     MobBuffers {
@@ -43,7 +43,7 @@ impl<'a> MobBuffers<'a> {
       triangles: GLArray::new(
         gl,
         gl_context,
-        color_shader,
+        &shader.shader,
         &[
           VertexAttribData { name: "position", size: 3, unit: GLType::Float },
           VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },

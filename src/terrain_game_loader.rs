@@ -3,13 +3,13 @@ use in_progress_terrain::InProgressTerrain;
 use lod_map::{LOD, OwnerId, LODMap};
 use noise::Seed;
 use physics::Physics;
+use shaders::terrain::TerrainShader;
 use state::EntityId;
 use stopwatch::TimerSet;
 use terrain::Terrain;
 use terrain_block::BlockPosition;
 use terrain_vram_buffers::TerrainVRAMBuffers;
 use yaglw::gl_context::{GLContext, GLContextExistence};
-use yaglw::shader::Shader;
 use yaglw::texture::TextureUnit;
 
 /// Load and unload TerrainBlocks from the game.
@@ -27,7 +27,7 @@ impl<'a> TerrainGameLoader<'a> {
   pub fn new(
     gl: &'a GLContextExistence,
     gl_context: &mut GLContext,
-    shader: &mut Shader,
+    shader: &mut TerrainShader,
     texture_unit_alloc: &mut IdAllocator<TextureUnit>,
   ) -> TerrainGameLoader<'a> {
     let terrain_vram_buffers = TerrainVRAMBuffers::new(gl, gl_context);
