@@ -120,7 +120,12 @@ impl TreePlacer {
         block.bounds.insert(id2, bounds);
       };
 
-    let mass = 1.0 - self.tree_field.point_at(center.x, center.z).y;
+    let mut mass = self.tree_field.point_at(center.x, center.z).y;
+    if mass < 0.0 || mass > 1.0 {
+      warn!("clamping out-of-bounds mass: {}", mass);
+      mass = partial_min(partial_max(0.0, mass).unwrap(), 1.0).unwrap();
+    }
+    mass = 1.0 - mass;
 
     {
       let radius = mass * mass * 2.0;
