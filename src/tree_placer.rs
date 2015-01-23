@@ -91,7 +91,7 @@ impl TreePlacer {
           n2.x, n2.y, n2.z,
           n4.x, n4.y, n4.z,
 
-          n2.x, n2.y, n2.z,
+          n1.x, n1.y, n1.z,
           n4.x, n4.y, n4.z,
           n3.x, n3.y, n3.z,
         ]);
