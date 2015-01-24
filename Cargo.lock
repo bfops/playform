@@ -77,7 +77,7 @@ dependencies = [
 [[package]]
 name = "ncollide"
 version = "0.3.0"
-source = "git+https://github.com/bfops/ncollide#cc37376c22986027b0babbfc516aaf4ec0eceb89"
+source = "git+https://github.com/bfops/ncollide#ff99d6a8d13b9408db3c3a63d8709086d3e21bc7"
 dependencies = [
  "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
  "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
@@ -91,7 +91,7 @@ dependencies = [
 [[package]]
 name = "ncollide_entities"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#cc37376c22986027b0babbfc516aaf4ec0eceb89"
+source = "git+https://github.com/bfops/ncollide#ff99d6a8d13b9408db3c3a63d8709086d3e21bc7"
 dependencies = [
  "nalgebra 0.2.1 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
@@ -102,7 +102,7 @@ dependencies = [
 [[package]]
 name = "ncollide_math"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#cc37376c22986027b0babbfc516aaf4ec0eceb89"
+source = "git+https://github.com/bfops/ncollide#ff99d6a8d13b9408db3c3a63d8709086d3e21bc7"
 dependencies = [
  "nalgebra 0.2.1 (git+https://github.com/sebcrozet/nalgebra)",
 ]
@@ -110,7 +110,7 @@ dependencies = [
 [[package]]
 name = "ncollide_pipeline"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#cc37376c22986027b0babbfc516aaf4ec0eceb89"
+source = "git+https://github.com/bfops/ncollide#ff99d6a8d13b9408db3c3a63d8709086d3e21bc7"
 dependencies = [
  "nalgebra 0.2.1 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
@@ -123,7 +123,7 @@ dependencies = [
 [[package]]
 name = "ncollide_procedural"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#cc37376c22986027b0babbfc516aaf4ec0eceb89"
+source = "git+https://github.com/bfops/ncollide#ff99d6a8d13b9408db3c3a63d8709086d3e21bc7"
 dependencies = [
  "nalgebra 0.2.1 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
@@ -134,7 +134,7 @@ dependencies = [
 [[package]]
 name = "ncollide_queries"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#cc37376c22986027b0babbfc516aaf4ec0eceb89"
+source = "git+https://github.com/bfops/ncollide#ff99d6a8d13b9408db3c3a63d8709086d3e21bc7"
 dependencies = [
  "nalgebra 0.2.1 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
@@ -146,7 +146,7 @@ dependencies = [
 [[package]]
 name = "ncollide_transformation"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#cc37376c22986027b0babbfc516aaf4ec0eceb89"
+source = "git+https://github.com/bfops/ncollide#ff99d6a8d13b9408db3c3a63d8709086d3e21bc7"
 dependencies = [
  "nalgebra 0.2.1 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
@@ -160,7 +160,7 @@ dependencies = [
 [[package]]
 name = "ncollide_utils"
 version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#cc37376c22986027b0babbfc516aaf4ec0eceb89"
+source = "git+https://github.com/bfops/ncollide#ff99d6a8d13b9408db3c3a63d8709086d3e21bc7"
 dependencies = [
  "nalgebra 0.2.1 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
