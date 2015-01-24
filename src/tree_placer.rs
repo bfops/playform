@@ -2,42 +2,33 @@ use color::Color3;
 use id_allocator::IdAllocator;
 use nalgebra::{Pnt3, Vec3, normalize};
 use ncollide::bounding_volume::AABB;
-use noise::Seed;
 use state::EntityId;
 use std::cmp::{partial_min, partial_max};
-use terrain_block::TerrainBlock;
-use terrain_heightmap::HeightMap;
+use std::rand::{Rng, SeedableRng, IsaacRng};
+use terrain::LOD_QUALITY;
+use terrain_block::{TerrainBlock, BLOCK_WIDTH};
 
 /// Use one-octave perlin noise local maxima to place trees.
 pub struct TreePlacer {
-  tree_field: HeightMap,
+  seed: u32,
 }
 
 impl TreePlacer {
-  pub fn new(seed: Seed) -> TreePlacer {
-    let octaves = 1;
-    let frequency = 1.0 / 4.0;
-    let persistence = 1.0;
-    let lacunarity = 1.0;
-    let amplitude = 1.0;
+  pub fn new(seed: u32) -> TreePlacer {
     TreePlacer {
-      tree_field: HeightMap::new(seed, octaves, frequency, persistence, lacunarity, amplitude),
+      seed: seed,
     }
   }
 
+  fn rng_at(&self, center: &Pnt3<f32>, mut seed: Vec<u32>) -> IsaacRng {
+    let center = *center * (LOD_QUALITY[0] as f32) / (BLOCK_WIDTH as f32);
+    seed.push_all(&[self.seed, center.x as u32, center.z as u32]);
+    SeedableRng::from_seed(seed.as_slice())
+  }
+
   pub fn should_place_tree(&self, center: &Pnt3<f32>) -> bool {
-    let center = self.tree_field.point_at(center.x, center.z);
-
-    let delta = 0.1;
-    let corners = [
-      (-delta, -delta),
-      (-delta,  delta),
-      ( delta,  delta),
-      ( delta, -delta),
-    ];
-
-    corners.iter()
-      .all(|&(l, h)| center.y > self.tree_field.point_at(center.x + l, center.z + h).y)
+    let mut rng = self.rng_at(center, vec!(0));
+    rng.next_u32() > 0xFFF7FFFF
   }
 
   pub fn place_tree(
@@ -120,12 +111,10 @@ impl TreePlacer {
         block.bounds.insert(id2, bounds);
       };
 
-    let mut mass = self.tree_field.point_at(center.x, center.z).y;
-    if mass < 0.0 || mass > 1.0 {
-      warn!("clamping out-of-bounds mass: {}", mass);
-      mass = partial_min(partial_max(0.0, mass).unwrap(), 1.0).unwrap();
-    }
-    mass = 1.0 - mass;
+    let mut rng = self.rng_at(&center, vec!(1));
+    let mass = (rng.next_u32() as f32) / (0x10000 as f32) / (0x10000 as f32);
+    let mass = 0.1 + mass * 0.9;
+    let mass = partial_min(partial_max(0.0, mass).unwrap(), 1.0).unwrap();
 
     {
       let radius = mass * mass * 2.0;

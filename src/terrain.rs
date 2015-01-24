@@ -47,7 +47,7 @@ pub struct Terrain {
 }
 
 impl Terrain {
-  pub fn new(terrain_seed: Seed, tree_seed: Seed) -> Terrain {
+  pub fn new(terrain_seed: Seed, tree_seed: u32) -> Terrain {
     Terrain {
       heightmap:
         HeightMap::new(terrain_seed, OCTAVES, FREQUENCY, PERSISTENCE, LACUNARITY, AMPLITUDE),
