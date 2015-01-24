@@ -145,6 +145,8 @@ impl TreePlacer {
         place_side(&corners, &color, 1, 2, 5, 6);
         place_side(&corners, &color, 2, 3, 6, 7);
         place_side(&corners, &color, 3, 0, 7, 4);
+        place_side(&corners, &color, 1, 0, 2, 3);
+        place_side(&corners, &color, 4, 5, 7, 6);
       };
 
     let wood_color = Color3::of_rgb(0.4, 0.3, 0.1);
