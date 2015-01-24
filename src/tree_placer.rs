@@ -208,8 +208,10 @@ impl TreePlacer {
           // A node with no branches gets leaves.
 
           let radius = 2.0;
+          let height = 2.0 * radius;
+
           let color = Color3::of_rgb(0.0, 0.4, 0.0);
-          place_block(&p, &(p + Vec3::new(0.0, radius, 0.0)), radius, color);
+          place_block(&p, &(p + Vec3::new(0.0, height, 0.0)), radius, color);
         }
       }
     }
