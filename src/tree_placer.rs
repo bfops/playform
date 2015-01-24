@@ -187,6 +187,7 @@ impl TreePlacer {
 
       while let Some(p) = fringe.pop_front() {
         let mut i = 0;
+        let mut any_branches = false;
         while i < points.len() {
           let &target = points.get(i).unwrap();
           if sqr_distance(&p, &target) <= 4.0*4.0 {
@@ -197,9 +198,18 @@ impl TreePlacer {
             }
             fringe.push_back(target);
             points.swap_remove(i);
+            any_branches = true;
           } else {
             i += 1;
           }
+        }
+
+        if !any_branches {
+          // A node with no branches gets leaves.
+
+          let radius = 2.0;
+          let color = Color3::of_rgb(0.0, 0.4, 0.0);
+          place_block(&p, &(p + Vec3::new(0.0, radius, 0.0)), radius, color);
         }
       }
     }
