@@ -4,9 +4,26 @@ use nalgebra::{Pnt3, Vec3, normalize};
 use ncollide::bounding_volume::AABB;
 use state::EntityId;
 use std::cmp::{partial_min, partial_max};
+use std::collections::RingBuf;
+use std::num::Float;
 use std::rand::{Rng, SeedableRng, IsaacRng};
 use terrain::LOD_QUALITY;
 use terrain_block::{TerrainBlock, BLOCK_WIDTH};
+
+#[inline(always)]
+fn fmod(mut dividend: f64, divisor: f64) -> f64 {
+  dividend -= divisor * (dividend / divisor).floor();
+  if dividend < 0.0 || dividend >= divisor{
+    // clamp
+    dividend = 0.0;
+  }
+  dividend
+}
+
+fn sqr_distance(p1: &Pnt3<f32>, p2: &Pnt3<f32>) -> f32 {
+  let d = *p1 - *p2.as_vec();
+  d.x*d.x + d.y*d.y + d.z*d.z
+}
 
 /// Use one-octave perlin noise local maxima to place trees.
 pub struct TreePlacer {
@@ -97,7 +114,7 @@ impl TreePlacer {
         let minz = partial_min(v1.z, v2.z).unwrap();
         let maxz = partial_max(v1.z, v2.z).unwrap();
 
-        let bounds = 
+        let bounds =
           AABB::new(
             Pnt3::new(minx, v1.y, minz),
             Pnt3::new(maxx, v3.y, maxz),
@@ -111,6 +128,27 @@ impl TreePlacer {
         block.bounds.insert(id2, bounds);
       };
 
+    let mut place_block =
+      |&mut: low_center: &Pnt3<f32>, high_center: &Pnt3<f32>, radius: f32, color| {
+        let corners = [
+          *low_center + Vec3::new(-radius, 0.0, -radius),
+          *low_center + Vec3::new(-radius, 0.0,  radius),
+          *low_center + Vec3::new( radius, 0.0,  radius),
+          *low_center + Vec3::new( radius, 0.0, -radius),
+          *high_center + Vec3::new(-radius, 0.0, -radius),
+          *high_center + Vec3::new(-radius, 0.0,  radius),
+          *high_center + Vec3::new( radius, 0.0,  radius),
+          *high_center + Vec3::new( radius, 0.0, -radius),
+        ];
+
+        place_side(&corners, &color, 0, 1, 4, 5);
+        place_side(&corners, &color, 1, 2, 5, 6);
+        place_side(&corners, &color, 2, 3, 6, 7);
+        place_side(&corners, &color, 3, 0, 7, 4);
+      };
+
+    let wood_color = Color3::of_rgb(0.4, 0.3, 0.1);
+
     let mut rng = self.rng_at(&center, vec!(1));
     let mass = (rng.next_u32() as f32) / (0x10000 as f32) / (0x10000 as f32);
     let mass = 0.1 + mass * 0.9;
@@ -119,47 +157,49 @@ impl TreePlacer {
     {
       let radius = mass * mass * 2.0;
       let height = mass * 16.0;
-      let corners = [
-        center + Vec3::new(-radius, 0.0, -radius),
-        center + Vec3::new(-radius, 0.0,  radius),
-        center + Vec3::new( radius, 0.0,  radius),
-        center + Vec3::new( radius, 0.0, -radius),
-        center + Vec3::new(-radius, height, -radius),
-        center + Vec3::new(-radius, height,  radius),
-        center + Vec3::new( radius, height,  radius),
-        center + Vec3::new( radius, height, -radius),
-      ];
-
-      let color = Color3::of_rgb(0.4, 0.3, 0.1);
-      place_side(&corners, &color, 0, 1, 4, 5);
-      place_side(&corners, &color, 1, 2, 5, 6);
-      place_side(&corners, &color, 2, 3, 6, 7);
-      place_side(&corners, &color, 3, 0, 7, 4);
-
+      place_block(&center, &(center + Vec3::new(0.0, height, 0.0)), radius, wood_color);
       center = center + Vec3::new(0.0, height, 0.0);
     }
 
     {
       let radius = mass * mass * 16.0;
       let height = mass * mass * 16.0;
-      let corners = [
-        center + Vec3::new(-radius, 0.0, -radius),
-        center + Vec3::new(-radius, 0.0,  radius),
-        center + Vec3::new( radius, 0.0,  radius),
-        center + Vec3::new( radius, 0.0, -radius),
-        center + Vec3::new(-radius, height, -radius),
-        center + Vec3::new(-radius, height,  radius),
-        center + Vec3::new( radius, height,  radius),
-        center + Vec3::new( radius, height, -radius),
-      ];
 
-      let color = Color3::of_rgb(0.0, 0.4, 0.0);
-      place_side(&corners, &color, 0, 1, 4, 5);
-      place_side(&corners, &color, 1, 2, 5, 6);
-      place_side(&corners, &color, 2, 3, 6, 7);
-      place_side(&corners, &color, 3, 0, 7, 4);
-      place_side(&corners, &color, 4, 5, 7, 6);
-      place_side(&corners, &color, 1, 0, 2, 3);
+      let mut points: Vec<Pnt3<_>> =
+        range(0, (radius * radius * height / 8.0) as u32)
+        .map(|_| {
+          let x = rng.next_u32();
+          let y = rng.next_u32();
+          let z = rng.next_u32();
+          Pnt3::new(
+            fmod(x as f64, 2.0 * radius as f64) as f32 - radius,
+            fmod(y as f64, height as f64) as f32,
+            fmod(z as f64, 2.0 * radius as f64) as f32 - radius,
+          )
+        })
+        .map(|p| p + *center.as_vec())
+        .collect();
+
+      let mut fringe = RingBuf::new();
+      fringe.push_back(center);
+
+      while let Some(p) = fringe.pop_front() {
+        let mut i = 0;
+        while i < points.len() {
+          let &target = points.get(i).unwrap();
+          if sqr_distance(&p, &target) <= 4.0*4.0 {
+            if p.y < target.y {
+              place_block(&p, &target, 0.2, wood_color);
+            } else {
+              place_block(&target, &p, 0.2, wood_color);
+            }
+            fringe.push_back(target);
+            points.swap_remove(i);
+          } else {
+            i += 1;
+          }
+        }
+      }
     }
   }
 }
