@@ -5,7 +5,7 @@ use ncollide::bounding_volume::{AABB, AABB3};
 use ncollide::bounding_volume::BoundingVolume;
 use ncollide::ray::{Ray3, LocalRayCast};
 use std::cmp::Ordering::{Greater, Less, Equal};
-use std::fmt::Show;
+use std::fmt::Debug;
 use std::num::NumCast;
 use std::ptr;
 
@@ -84,7 +84,7 @@ pub struct Octree<V> {
 
 // TODO: fix shaky octree outline insertion/removal conditions.
 
-impl<V: Show + Copy + Eq + PartialOrd> Octree<V> {
+impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
   pub fn new(bounds: &AABB3<f32>) -> Octree<V> {
     Octree {
       parent: ptr::null_mut(),
