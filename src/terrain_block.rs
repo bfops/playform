@@ -8,7 +8,7 @@ use std::collections::hash_map::HashMap;
 use std::num::Float;
 use std::ops::Add;
 use stopwatch::TimerSet;
-use terrain::TerrainType;
+use terrain::{TerrainType, LOD_QUALITY};
 use terrain_heightmap::HeightMap;
 use tree_placer::TreePlacer;
 
@@ -110,7 +110,7 @@ impl TerrainBlock {
     heightmap: &HeightMap,
     treemap: &TreePlacer,
     position: &BlockPosition,
-    lateral_samples: u32,
+    lod_index: u32,
   ) -> TerrainBlock {
     timers.time("update.generate_block", || {
       let mut block = TerrainBlock::empty();
@@ -119,6 +119,7 @@ impl TerrainBlock {
       let y = (position.as_pnt().y * BLOCK_WIDTH) as f32;
       let z = (position.as_pnt().z * BLOCK_WIDTH) as f32;
 
+      let lateral_samples = LOD_QUALITY[lod_index as usize];
       let sample_width = BLOCK_WIDTH as f32 / lateral_samples as f32;
 
       for dx in range(0, lateral_samples) {
@@ -134,6 +135,7 @@ impl TerrainBlock {
             &mut block,
             sample_width,
             &position,
+            lod_index,
           );
         }
       }
@@ -150,6 +152,7 @@ impl TerrainBlock {
     block: &mut TerrainBlock,
     sample_width: f32,
     position: &Pnt3<f32>,
+    lod_index: u32,
   ) {
     let half_width = sample_width / 2.0;
     let center = hm.point_at(position.x + half_width, position.z + half_width);
@@ -243,7 +246,14 @@ impl TerrainBlock {
       place_terrain!(&ps[3], &ps[0], &ns[3], &ns[0], ps[0].x, ps[0].z, ps[3].x, centr.z);
 
       if treemap.should_place_tree(&centr) {
-        treemap.place_tree(centr, id_allocator, block);
+        let max_tree_lod = 3;
+        let lod =
+          if lod_index < max_tree_lod {
+            lod_index
+          } else {
+            max_tree_lod
+          };
+        treemap.place_tree(centr, id_allocator, block, lod);
       }
     })
   }

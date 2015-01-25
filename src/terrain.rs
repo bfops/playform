@@ -3,19 +3,20 @@ use id_allocator::IdAllocator;
 use noise::Seed;
 use state::EntityId;
 use std::collections::hash_map::{HashMap, Entry};
+use std::iter::range_inclusive;
 use stopwatch::TimerSet;
 use terrain_block::{TerrainBlock, BlockPosition};
 use terrain_heightmap::HeightMap;
 use tree_placer::TreePlacer;
+
+// Quality is the number of times the noise function is sampled along each axis.
+pub const LOD_QUALITY: [u32; 5] = [32, 16, 4, 2, 1];
 
 pub const AMPLITUDE: f64 = 64.0;
 pub const FREQUENCY: f64 = 1.0 / 64.0;
 pub const PERSISTENCE: f64 = 1.0 / 16.0;
 pub const LACUNARITY: f64 = 8.0;
 pub const OCTAVES: usize = 2;
-
-// Quality is the number of times the noise function is sampled along each axis.
-pub const LOD_QUALITY: [u32; 5] = [32, 16, 4, 2, 1];
 
 #[derive(Show, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TerrainType {
@@ -70,7 +71,12 @@ impl Terrain {
 
     macro_rules! load_lod(
       ($mip_mesh: expr) => ({
-        let mesh = $mip_mesh.lods.get_mut(lod_index as usize).unwrap();
+        let lod_index = lod_index as usize;
+        for _ in range_inclusive($mip_mesh.lods.len(), lod_index) {
+          $mip_mesh.lods.push(None);
+        }
+        let mesh = $mip_mesh.lods.get_mut(lod_index).unwrap();
+        let lod_index = lod_index as u32;
         if mesh.is_none() {
           *mesh = Some(
             TerrainBlock::generate(
@@ -79,7 +85,7 @@ impl Terrain {
               heightmap,
               treemap,
               position,
-              LOD_QUALITY[lod_index as usize],
+              lod_index,
             )
           );
         }
@@ -93,11 +99,12 @@ impl Terrain {
         load_lod!(entry.get_mut())
       },
       Entry::Vacant(entry) => {
-        load_lod!(entry.insert(
+        let r = entry.insert(
           TerrainMipMesh {
-            lods: range(0, LOD_QUALITY.len()).map(|_| None).collect(),
+            lods: Vec::new(),
           }
-        ))
+        );
+        load_lod!(r)
       },
     };
   }

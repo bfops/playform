@@ -10,6 +10,10 @@ use std::rand::{Rng, SeedableRng, IsaacRng};
 use terrain::LOD_QUALITY;
 use terrain_block::{TerrainBlock, BLOCK_WIDTH};
 
+const TREE_NODES: [f32; 4] = [1.0, 1.0/8.0, 1.0/32.0, 1.0/128.0];
+const MAX_BRANCH_LENGTH: [f32; 4] = [2.0, 4.0, 16.0, 32.0];
+const LEAF_RADIUS: [f32; 4] = [1.0, 2.0, 4.0, 16.0];
+
 #[inline(always)]
 fn fmod(mut dividend: f64, divisor: f64) -> f64 {
   dividend -= divisor * (dividend / divisor).floor();
@@ -53,7 +57,9 @@ impl TreePlacer {
     mut center: Pnt3<f32>,
     id_allocator: &mut IdAllocator<EntityId>,
     block: &mut TerrainBlock,
+    lod: u32,
   ) {
+    let lod = lod as usize;
     let normals = [
       normalize(&Vec3::new(-1.0, -1.0, -1.0)),
       normalize(&Vec3::new(-1.0, -1.0,  1.0)),
@@ -69,20 +75,20 @@ impl TreePlacer {
       |&mut:
         corners: &[Pnt3<f32>],
         color: &Color3<f32>,
-        idx1,
-        idx2,
-        idx3,
-        idx4,
+        idx1: usize,
+        idx2: usize,
+        idx3: usize,
+        idx4: usize,
       | {
-        let n1 = normals.get(idx1).unwrap();
-        let n2 = normals.get(idx2).unwrap();
-        let n3 = normals.get(idx3).unwrap();
-        let n4 = normals.get(idx4).unwrap();
+        let n1 = normals[idx1];
+        let n2 = normals[idx2];
+        let n3 = normals[idx3];
+        let n4 = normals[idx4];
 
-        let v1 = corners.get(idx1).unwrap();
-        let v2 = corners.get(idx2).unwrap();
-        let v3 = corners.get(idx3).unwrap();
-        let v4 = corners.get(idx4).unwrap();
+        let v1 = corners[idx1];
+        let v2 = corners[idx2];
+        let v3 = corners[idx3];
+        let v4 = corners[idx4];
 
         block.vertex_coordinates.push_all(&[
           v1.x, v1.y, v1.z,
@@ -167,8 +173,9 @@ impl TreePlacer {
       let radius = mass * mass * 16.0;
       let height = mass * mass * 16.0;
 
-      let mut points: Vec<Pnt3<_>> =
-        range(0, (radius * radius * height / 8.0) as u32)
+      let mut points: Vec<Pnt3<_>> = {
+        let n_points = (radius * radius * height * TREE_NODES[lod]) as u32;
+        range(0, n_points)
         .map(|_| {
           let x = rng.next_u32();
           let y = rng.next_u32();
@@ -180,7 +187,8 @@ impl TreePlacer {
           )
         })
         .map(|p| p + *center.as_vec())
-        .collect();
+        .collect()
+      };
 
       let mut fringe = RingBuf::new();
       fringe.push_back(center);
@@ -188,15 +196,16 @@ impl TreePlacer {
       while let Some(p) = fringe.pop_front() {
         let mut i = 0;
         let mut any_branches = false;
+
+        let radius = MAX_BRANCH_LENGTH[lod];
         while i < points.len() {
-          let &target = points.get(i).unwrap();
-          if sqr_distance(&p, &target) <= 4.0*4.0 {
-            if p.y < target.y {
-              place_block(&p, &target, 0.2, wood_color);
+          if sqr_distance(&p, &points[i]) <= radius * radius {
+            if p.y < points[i].y {
+              place_block(&p, &points[i], 0.2, wood_color);
             } else {
-              place_block(&target, &p, 0.2, wood_color);
+              place_block(&points[i], &p, 0.2, wood_color);
             }
-            fringe.push_back(target);
+            fringe.push_back(points[i]);
             points.swap_remove(i);
             any_branches = true;
           } else {
@@ -207,7 +216,7 @@ impl TreePlacer {
         if !any_branches {
           // A node with no branches gets leaves.
 
-          let radius = 2.0;
+          let radius = LEAF_RADIUS[lod];
           let height = 2.0 * radius;
 
           let color = Color3::of_rgb(0.0, 0.4, 0.0);
