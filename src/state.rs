@@ -33,7 +33,7 @@ use yaglw::gl_context::{GLContext, GLContextExistence};
 use yaglw::shader::Shader;
 use yaglw::texture::{Texture2D, TextureUnit};
 
-const SUN_TICK_NS: u64 = 100000000;
+const SUN_TICK_NS: u64 = 1000000;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
 pub struct EntityId(u32);

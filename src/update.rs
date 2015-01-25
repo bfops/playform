@@ -80,7 +80,7 @@ pub fn update<'a>(app: &mut App) {
 
       let radius = 1024.0;
       // Convert the sun angle to radians.
-      let sun_f = (app.sun as f32) * 2.0 * PI / 256.0;
+      let sun_f = (app.sun as f32) * 2.0 * PI / 65536.0;
       let (s, c) = sun_f.sin_cos();
       let sun_position = app.player.camera.position + Vec3::new(c, s, 0.0) * radius;
 
