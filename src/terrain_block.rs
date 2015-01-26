@@ -4,7 +4,6 @@ use nalgebra::{Pnt3, Vec3};
 use ncollide::bounding_volume::{AABB, AABB3};
 use state::EntityId;
 use std::cmp::partial_max;
-use std::collections::hash_map::HashMap;
 use std::num::Float;
 use std::ops::Add;
 use stopwatch::TimerSet;
@@ -90,7 +89,8 @@ pub struct TerrainBlock {
   // per-triangle entity IDs
   pub ids: Vec<EntityId>,
   // per-triangle bounding boxes
-  pub bounds: HashMap<EntityId, AABB3<GLfloat>>,
+  // TODO: Change this back to a HashMap once initial capacity is zero for those.
+  pub bounds: Vec<(EntityId, AABB3<GLfloat>)>,
 }
 
 impl TerrainBlock {
@@ -100,7 +100,7 @@ impl TerrainBlock {
       normals: Vec::new(),
       colors: Vec::new(),
       ids: Vec::new(),
-      bounds: HashMap::new(),
+      bounds: Vec::new(),
     }
   }
 
@@ -222,13 +222,13 @@ impl TerrainBlock {
           let color = terrain_type.color();
           block.colors.push_all(&[color.r, color.g, color.b]);
           block.ids.push(id);
-          block.bounds.insert(
+          block.bounds.push((
             id,
             AABB::new(
               Pnt3::new($minx, $v1.y, $minz),
               Pnt3::new($maxx, maxy, $maxz),
             ),
-          );
+          ));
         });
       );
 

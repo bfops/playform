@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::iter::IteratorExt;
 use std::ops::Add;
 use terrain_block::BlockPosition;
 
@@ -56,10 +57,8 @@ impl LODMap {
   ) -> Option<LODChange> {
     match self.loaded.entry(position) {
       Entry::Vacant(entry) => {
-        let mut owner_lods = HashMap::new();
-        owner_lods.insert(owner, new_lod);
         entry.insert(BlockLoadState {
-          owner_lods: owner_lods,
+          owner_lods: vec!((owner, new_lod)),
           loaded_lod: new_lod,
         });
 
@@ -71,19 +70,20 @@ impl LODMap {
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
 
-        match block_load_state.owner_lods.entry(owner) {
-          Entry::Occupied(mut entry) => {
-            if new_lod <= *entry.get() {
+        match block_load_state.owner_lods.iter().position(|&(o, _)| o == owner) {
+          None => {
+            block_load_state.owner_lods.push((owner, new_lod));
+          },
+          Some(position) => {
+            let &mut (_, ref mut lod) = block_load_state.owner_lods.get_mut(position).unwrap();
+            if new_lod <= *lod {
               return None;
             }
-            entry.insert(new_lod);
+            *lod = new_lod;
           },
-          Entry::Vacant(entry) => {
-            entry.insert(new_lod);
-          }
-        }
+        };
 
-        let new_lod = *block_load_state.owner_lods.values().max_by(|x| *x).unwrap();
+        let (_, new_lod) = *block_load_state.owner_lods.iter().max_by(|&&(_, x)| x).unwrap();
 
         if new_lod == block_load_state.loaded_lod {
           // Already loaded at the right LOD.
@@ -112,34 +112,38 @@ impl LODMap {
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
 
-        match block_load_state.owner_lods.entry(owner) {
-          Entry::Vacant(_) => return None,
-          Entry::Occupied(mut entry) => {
+        match block_load_state.owner_lods.iter().position(|&(o, _)| o == owner) {
+          None => {
+            return None;
+          },
+          Some(position) => {
             match new_lod {
               None => {
-                entry.remove();
+                block_load_state.owner_lods.swap_remove(position);
               },
               Some(new_lod) => {
-                if new_lod >= *entry.get() {
+                let &mut (_, ref mut lod) =
+                  block_load_state.owner_lods.get_mut(position).unwrap();
+                if new_lod >= *lod {
                   return None;
                 }
-                entry.insert(new_lod);
+                *lod = new_lod;
               }
             }
           },
-        }
+        };
 
         let loaded_lod = block_load_state.loaded_lod;
 
         let new_lod;
-        match block_load_state.owner_lods.values().max_by(|x| *x) {
+        match block_load_state.owner_lods.iter().max_by(|&&(_, x)| x) {
           None => {
             return Some(LODChange {
               desired: None,
               loaded: Some(loaded_lod),
             })
           },
-          Some(&lod) => {
+          Some(&(_, lod)) => {
             new_lod = lod;
           },
         }
@@ -180,6 +184,7 @@ impl Add<u32> for OwnerId {
 
 struct BlockLoadState {
   /// The LOD indexes requested by each owner of this block.
-  pub owner_lods: HashMap<OwnerId, LOD>,
+  // TODO: Change this back to a HashMap once initial capacity is zero for those.
+  pub owner_lods: Vec<(OwnerId, LOD)>,
   pub loaded_lod: LOD,
 }

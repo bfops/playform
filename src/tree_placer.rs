@@ -130,8 +130,8 @@ impl TreePlacer {
         let id2 = id_allocator.allocate();
         block.ids.push_all(&[id1, id2]);
 
-        block.bounds.insert(id1, bounds.clone());
-        block.bounds.insert(id2, bounds);
+        block.bounds.push((id1, bounds.clone()));
+        block.bounds.push((id2, bounds));
       };
 
     let mut place_block =

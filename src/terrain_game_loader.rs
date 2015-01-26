@@ -86,8 +86,8 @@ impl<'a> TerrainGameLoader<'a> {
           let terrain_vram_buffers = &mut self.terrain_vram_buffers;
           self.terrain.load(timers, id_allocator, block_position, new_lod, |block| {
             timers.time("terrain_game_loader.load.physics", || {
-              for (&id, bounds) in block.bounds.iter() {
-                physics.insert_terrain(id, bounds.clone());
+              for &(ref id, ref bounds) in block.bounds.iter() {
+                physics.insert_terrain(*id, bounds.clone());
               }
             });
 
