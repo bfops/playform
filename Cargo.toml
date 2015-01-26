@@ -10,7 +10,7 @@ authors = [
 
 # The development profile, used for `cargo build`
 [profile.dev]
-opt-level = 3
+opt-level = 2
 debug = true
 rpath = false
 lto = false
