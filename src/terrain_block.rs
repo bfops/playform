@@ -246,14 +246,7 @@ impl TerrainBlock {
       place_terrain!(&ps[3], &ps[0], &ns[3], &ns[0], ps[0].x, ps[0].z, ps[3].x, centr.z);
 
       if treemap.should_place_tree(&centr) {
-        let max_tree_lod = 3;
-        let lod =
-          if lod_index < max_tree_lod {
-            lod_index
-          } else {
-            max_tree_lod
-          };
-        treemap.place_tree(centr, id_allocator, block, lod);
+        treemap.place_tree(centr, id_allocator, block, lod_index);
       }
     })
   }

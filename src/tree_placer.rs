@@ -10,9 +10,9 @@ use std::rand::{Rng, SeedableRng, IsaacRng};
 use terrain::LOD_QUALITY;
 use terrain_block::{TerrainBlock, BLOCK_WIDTH};
 
-const TREE_NODES: [f32; 4] = [1.0, 1.0/8.0, 1.0/32.0, 1.0/128.0];
-const MAX_BRANCH_LENGTH: [f32; 4] = [2.0, 4.0, 16.0, 32.0];
-const LEAF_RADIUS: [f32; 4] = [1.0, 2.0, 4.0, 16.0];
+const TREE_NODES: [f32; 5] = [1.0/8.0, 1.0/16.0, 1.0/32.0, 1.0/64.0, 1.0/128.0];
+const MAX_BRANCH_LENGTH: [f32; 5] = [2.0, 4.0, 8.0, 16.0, 32.0];
+const LEAF_RADIUS: [f32; 5] = [1.0, 2.0, 4.0, 8.0, 16.0];
 
 #[inline(always)]
 fn fmod(mut dividend: f64, divisor: f64) -> f64 {
@@ -57,9 +57,9 @@ impl TreePlacer {
     mut center: Pnt3<f32>,
     id_allocator: &mut IdAllocator<EntityId>,
     block: &mut TerrainBlock,
-    lod: u32,
+    lod_index: u32,
   ) {
-    let lod = lod as usize;
+    let lod_index = lod_index as usize;
     let normals = [
       normalize(&Vec3::new(-1.0, -1.0, -1.0)),
       normalize(&Vec3::new(-1.0, -1.0,  1.0)),
@@ -172,18 +172,19 @@ impl TreePlacer {
     {
       let radius = mass * mass * 16.0;
       let height = mass * mass * 16.0;
+      let width = radius * 2.0;
 
       let mut points: Vec<Pnt3<_>> = {
-        let n_points = (radius * radius * height * TREE_NODES[lod]) as u32;
+        let n_points = (width * width * height * TREE_NODES[lod_index]) as u32;
         range(0, n_points)
         .map(|_| {
           let x = rng.next_u32();
           let y = rng.next_u32();
           let z = rng.next_u32();
           Pnt3::new(
-            fmod(x as f64, 2.0 * radius as f64) as f32 - radius,
             fmod(y as f64, height as f64) as f32,
-            fmod(z as f64, 2.0 * radius as f64) as f32 - radius,
+            fmod(x as f64, width as f64) as f32 - radius,
+            fmod(z as f64, width as f64) as f32 - radius,
           )
         })
         .map(|p| p + *center.as_vec())
@@ -197,7 +198,7 @@ impl TreePlacer {
         let mut i = 0;
         let mut any_branches = false;
 
-        let radius = MAX_BRANCH_LENGTH[lod];
+        let radius = MAX_BRANCH_LENGTH[lod_index];
         while i < points.len() {
           if sqr_distance(&p, &points[i]) <= radius * radius {
             if p.y < points[i].y {
@@ -216,7 +217,7 @@ impl TreePlacer {
         if !any_branches {
           // A node with no branches gets leaves.
 
-          let radius = LEAF_RADIUS[lod];
+          let radius = LEAF_RADIUS[lod_index];
           let height = 2.0 * radius;
 
           let color = Color3::of_rgb(0.0, 0.4, 0.0);
