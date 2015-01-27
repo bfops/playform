@@ -41,6 +41,7 @@ impl<'a> TerrainGameLoader<'a> {
     }
   }
 
+  /// Returns false if pushing into buffers fails.
   fn re_lod_block(
     &mut self,
     timers: &TimerSet,
@@ -50,7 +51,7 @@ impl<'a> TerrainGameLoader<'a> {
     block_position: &BlockPosition,
     loaded_lod: Option<LOD>,
     new_lod: Option<LOD>,
-  ) {
+  ) -> bool {
     // Unload whatever's there.
     match loaded_lod {
       None => {},
@@ -77,9 +78,10 @@ impl<'a> TerrainGameLoader<'a> {
 
     // Load whatever we should be loading.
     match new_lod {
-      None => {},
+      None => true,
       Some(LOD::Placeholder) => {
         self.in_progress_terrain.insert(id_allocator, physics, block_position);
+        true
       },
       Some(LOD::LodIndex(new_lod)) => {
         timers.time("terrain_game_loader.load", || {
@@ -98,12 +100,12 @@ impl<'a> TerrainGameLoader<'a> {
                 block.normals.as_slice(),
                 block.colors.as_slice(),
                 block.ids.as_slice(),
-              );
+              )
             })
           })
-        });
+        })
       },
-    };
+    }
   }
 
   pub fn increase_lod(
@@ -115,19 +117,31 @@ impl<'a> TerrainGameLoader<'a> {
     block_position: &BlockPosition,
     target_lod: LOD,
     owner: OwnerId,
-  ) {
-    self.lod_map
-      .increase_lod(*block_position, target_lod, owner)
-      .map(|lod_change|
-        self.re_lod_block(
-          timers,
-          gl,
-          id_allocator,
-          physics,
-          block_position,
-          lod_change.loaded,
-          lod_change.desired,
-        ));
+  ) -> bool {
+    let (prev_lod, lod_change) =
+      self.lod_map.increase_lod(*block_position, target_lod, owner);
+
+    match lod_change {
+      None => true,
+      Some(lod_change) => {
+        let success =
+          self.re_lod_block(
+            timers,
+            gl,
+            id_allocator,
+            physics,
+            block_position,
+            lod_change.loaded,
+            lod_change.desired,
+          );
+        if !success {
+          // We failed to change LOD. Revert the lod_map entry.
+
+          self.lod_map.decrease_lod(*block_position, prev_lod, owner);
+        }
+        success
+      },
+    }
   }
 
   pub fn decrease_lod(
@@ -139,18 +153,31 @@ impl<'a> TerrainGameLoader<'a> {
     block_position: &BlockPosition,
     target_lod: Option<LOD>,
     owner: OwnerId,
-  ) {
-    self.lod_map
-      .decrease_lod(*block_position, target_lod, owner)
-      .map(|lod_change|
-        self.re_lod_block(
-          timers,
-          gl,
-          id_allocator,
-          physics,
-          block_position,
-          lod_change.loaded,
-          lod_change.desired,
-        ));
+  ) -> bool {
+    let (prev_lod, lod_change) =
+      self.lod_map.decrease_lod(*block_position, target_lod, owner);
+
+    match lod_change {
+      None => true,
+      Some(lod_change) => {
+        let success =
+          self.re_lod_block(
+            timers,
+            gl,
+            id_allocator,
+            physics,
+            block_position,
+            lod_change.loaded,
+            lod_change.desired,
+          );
+        if !success {
+          // We failed to change LOD. Revert the lod_map entry.
+
+          prev_lod
+            .map(|prev_lod| self.lod_map.increase_lod(*block_position, prev_lod, owner));
+        }
+        success
+      },
+    }
   }
 }

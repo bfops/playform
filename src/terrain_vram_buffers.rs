@@ -96,10 +96,24 @@ impl<'a> TerrainVRAMBuffers<'a> {
     normals: &[GLfloat],
     colors: &[GLfloat],
     ids: &[EntityId],
-  ) {
+  ) -> bool {
     assert_eq!(vertices.len(), 3 * VERTICES_PER_TRIANGLE as usize * ids.len());
     assert_eq!(normals.len(), vertices.len());
     assert_eq!(colors.len(), 3 * ids.len());
+
+    self.vertex_positions.buffer.byte_buffer.bind(gl);
+    let r = self.vertex_positions.buffer.push(gl, vertices);
+    if !r {
+      return false;
+    }
+
+    self.normals.buffer.byte_buffer.bind(gl);
+    let r = self.normals.buffer.push(gl, normals);
+    assert!(r);
+
+    self.colors.buffer.byte_buffer.bind(gl);
+    let r = self.colors.buffer.push(gl, colors);
+    assert!(r);
 
     for &id in ids.iter() {
       self.id_to_index.insert(id, self.index_to_id.len());
@@ -107,12 +121,8 @@ impl<'a> TerrainVRAMBuffers<'a> {
     }
 
     self.length += 3 * ids.len();
-    self.vertex_positions.buffer.byte_buffer.bind(gl);
-    self.vertex_positions.buffer.push(gl, vertices);
-    self.normals.buffer.byte_buffer.bind(gl);
-    self.normals.buffer.push(gl, normals);
-    self.colors.buffer.byte_buffer.bind(gl);
-    self.colors.buffer.push(gl, colors);
+
+    true
   }
 
   // Note: `id` must be present in the buffers.

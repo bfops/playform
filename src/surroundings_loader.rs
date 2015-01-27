@@ -80,18 +80,23 @@ impl<'a> SurroundingsLoader<'a> {
         let block_position = self.loaded_vec[self.next_unload_index];
         let distance = radius_between(&position, &block_position);
         if distance > self.max_load_distance {
-          terrain_game_loader.decrease_lod(
-            timers,
-            gl,
-            id_allocator,
-            physics,
-            &block_position,
-            None,
-            self.id,
-          );
+          let success =
+            terrain_game_loader.decrease_lod(
+              timers,
+              gl,
+              id_allocator,
+              physics,
+              &block_position,
+              None,
+              self.id,
+            );
+          if !success {
+            panic!("Failed to unload terrain.");
+          }
           self.loaded_vec.swap_remove(self.next_unload_index);
         } else {
           let lod = (self.lod)(distance);
+          // This can fail; we leave it in the vec for next time.
           terrain_game_loader.decrease_lod(
             timers,
             gl,
@@ -113,17 +118,22 @@ impl<'a> SurroundingsLoader<'a> {
 
         let lod = (self.lod)(self.to_load.as_ref().unwrap().next_distance);
 
-        terrain_game_loader.increase_lod(
-          timers,
-          gl,
-          id_allocator,
-          physics,
-          &block_position,
-          lod,
-          self.id,
-        );
+        let success =
+          terrain_game_loader.increase_lod(
+            timers,
+            gl,
+            id_allocator,
+            physics,
+            &block_position,
+            lod,
+            self.id,
+          );
 
-        self.loaded_vec.push(block_position);
+        if success {
+          self.loaded_vec.push(block_position);
+        } else {
+          warn!("Failed to load {:?}", block_position);
+        }
       }
     }
   }

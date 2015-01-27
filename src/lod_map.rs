@@ -48,13 +48,13 @@ impl LODMap {
     }
   }
 
-  /// Returns: (new LOD, previous LOD)
+  // Returns (previous `owner` LOD, LOD change)
   pub fn increase_lod(
     &mut self,
     position: BlockPosition,
     new_lod: LOD,
     owner: OwnerId,
-  ) -> Option<LODChange> {
+  ) -> (Option<LOD>, Option<LODChange>) {
     match self.loaded.entry(position) {
       Entry::Vacant(entry) => {
         entry.insert(BlockLoadState {
@@ -62,23 +62,29 @@ impl LODMap {
           loaded_lod: new_lod,
         });
 
-        Some(LODChange {
-          loaded: None,
-          desired: Some(new_lod),
-        })
+        (
+          None,
+          Some(LODChange {
+            loaded: None,
+            desired: Some(new_lod),
+          }),
+        )
       },
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
 
+        let prev_lod;
         match block_load_state.owner_lods.iter().position(|&(o, _)| o == owner) {
           None => {
             block_load_state.owner_lods.push((owner, new_lod));
+            prev_lod = None;
           },
           Some(position) => {
             let &mut (_, ref mut lod) = block_load_state.owner_lods.get_mut(position).unwrap();
             if new_lod <= *lod {
-              return None;
+              return (None, None);
             }
+            prev_lod = Some(*lod);
             *lod = new_lod;
           },
         };
@@ -87,46 +93,53 @@ impl LODMap {
 
         if new_lod == block_load_state.loaded_lod {
           // Already loaded at the right LOD.
-          return None;
+          return (prev_lod, None);
         }
 
         let loaded_lod = Some(block_load_state.loaded_lod);
         block_load_state.loaded_lod = new_lod;
 
-        Some(LODChange {
-          loaded: loaded_lod,
-          desired: Some(new_lod),
-        })
+        (
+          prev_lod,
+          Some(LODChange {
+            loaded: loaded_lod,
+            desired: Some(new_lod),
+          }),
+        )
       },
     }
   }
 
+  // Returns (previous `owner` LOD, LOD change)
   pub fn decrease_lod(
     &mut self,
     position: BlockPosition,
     new_lod: Option<LOD>,
     owner: OwnerId,
-  ) -> Option<LODChange> {
+  ) -> (Option<LOD>, Option<LODChange>) {
     match self.loaded.entry(position) {
-      Entry::Vacant(_) => None,
+      Entry::Vacant(_) => (None, None),
       Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
 
+        let prev_lod;
         match block_load_state.owner_lods.iter().position(|&(o, _)| o == owner) {
           None => {
-            return None;
+            return (None, None);
           },
           Some(position) => {
             match new_lod {
               None => {
                 block_load_state.owner_lods.swap_remove(position);
+                prev_lod = None;
               },
               Some(new_lod) => {
                 let &mut (_, ref mut lod) =
                   block_load_state.owner_lods.get_mut(position).unwrap();
                 if new_lod >= *lod {
-                  return None;
+                  return (None, None);
                 }
+                prev_lod = Some(*lod);
                 *lod = new_lod;
               }
             }
@@ -138,10 +151,13 @@ impl LODMap {
         let new_lod;
         match block_load_state.owner_lods.iter().max_by(|&&(_, x)| x) {
           None => {
-            return Some(LODChange {
-              desired: None,
-              loaded: Some(loaded_lod),
-            })
+            return (
+              prev_lod,
+              Some(LODChange {
+                desired: None,
+                loaded: Some(loaded_lod),
+              }),
+            )
           },
           Some(&(_, lod)) => {
             new_lod = lod;
@@ -150,15 +166,18 @@ impl LODMap {
 
         if new_lod == loaded_lod {
           // Already loaded at the right LOD.
-          return None;
+          return (prev_lod, None);
         }
 
         block_load_state.loaded_lod = new_lod;
 
-        Some(LODChange {
-          loaded: Some(loaded_lod),
-          desired: Some(new_lod),
-        })
+        (
+          prev_lod,
+          Some(LODChange {
+            loaded: Some(loaded_lod),
+            desired: Some(new_lod),
+          }),
+        )
       },
     }
   }

@@ -305,7 +305,7 @@ impl<'a> App<'a> {
       let mut load_distance = Player::load_distance(terrain_vram_buffers::POLYGON_BUDGET as i32);
 
       // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-      let max_load_distance = 60;
+      let max_load_distance = 70;
       if load_distance > max_load_distance {
         info!("load_distance {} capped at {}", load_distance, max_load_distance);
         load_distance = max_load_distance;
@@ -337,7 +337,7 @@ impl<'a> App<'a> {
           ),
       };
 
-      let min = Pnt3::new(0.0, terrain::AMPLITUDE as f32 * 0.6, 4.0);
+      let min = Pnt3::new(0.0, terrain::AMPLITUDE as f32, 4.0);
       let max = min + Vec3::new(1.0, 2.0, 1.0);
       let bounds = AABB::new(min, max);
       physics.insert_misc(player.id, bounds.clone());
@@ -478,7 +478,7 @@ fn make_mobs<'a>(
     &mut mob_buffers,
     id_allocator,
     owner_allocator,
-    Pnt3::new(0.0, terrain::AMPLITUDE as f32 * 0.6, -1.0),
+    Pnt3::new(0.0, terrain::AMPLITUDE as f32, -1.0),
     mob_behavior
   );
 

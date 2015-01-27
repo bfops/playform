@@ -57,14 +57,15 @@ impl Terrain {
     }
   }
 
-  pub fn load<F>(
+  pub fn load<F, T>(
     &mut self,
     timers: &TimerSet,
     id_allocator: &mut IdAllocator<EntityId>,
     position: &BlockPosition,
     lod_index: u32,
     f: F,
-  ) where F: FnOnce(&TerrainBlock)
+  ) -> T
+    where F: FnOnce(&TerrainBlock) -> T
   {
     let heightmap = &self.heightmap;
     let treemap = &self.treemap;
@@ -106,6 +107,6 @@ impl Terrain {
         );
         load_lod!(r)
       },
-    };
+    }
   }
 }
