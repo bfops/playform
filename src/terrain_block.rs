@@ -11,7 +11,7 @@ use terrain::{TerrainType, LOD_QUALITY};
 use terrain_heightmap::HeightMap;
 use tree_placer::TreePlacer;
 
-pub const BLOCK_WIDTH: i32 = 4;
+pub const BLOCK_WIDTH: i32 = 8;
 
 #[derive(Show, PartialEq, Eq, Hash, Copy, Clone)]
 pub struct BlockPosition(Pnt3<i32>);

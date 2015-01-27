@@ -10,7 +10,7 @@ use terrain_heightmap::HeightMap;
 use tree_placer::TreePlacer;
 
 // Quality is the number of times the noise function is sampled along each axis.
-pub const LOD_QUALITY: [u32; 5] = [32, 16, 4, 2, 1];
+pub const LOD_QUALITY: [u32; 5] = [64, 32, 8, 4, 2];
 
 pub const AMPLITUDE: f64 = 64.0;
 pub const FREQUENCY: f64 = 1.0 / 64.0;
