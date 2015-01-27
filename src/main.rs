@@ -26,7 +26,7 @@ pub fn main() {
   sdl2::video::gl_set_attribute(sdl2::video::GLAttr::GLContextMinorVersion, 3);
   sdl2::video::gl_set_attribute(
     sdl2::video::GLAttr::GLContextProfileMask,
-    sdl2::video::GLProfile::GLCoreProfile as isize
+    sdl2::video::GLProfile::GLCoreProfile as i32,
   );
 
   let mut window =
@@ -34,8 +34,8 @@ pub fn main() {
       "playform",
       sdl2::video::WindowPos::PosCentered,
       sdl2::video::WindowPos::PosCentered,
-      WINDOW_WIDTH as isize,
-      WINDOW_HEIGHT as isize,
+      WINDOW_WIDTH as i32,
+      WINDOW_HEIGHT as i32,
       sdl2::video::OPENGL,
     ).unwrap();
 
