@@ -49,7 +49,7 @@ impl TreePlacer {
 
   pub fn should_place_tree(&self, center: &Pnt3<f32>) -> bool {
     let mut rng = self.rng_at(center, vec!(0));
-    rng.next_u32() > 0xFFF7FFFF
+    rng.next_u32() > 0xFF7FFFFF
   }
 
   pub fn place_tree(
