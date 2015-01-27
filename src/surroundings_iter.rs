@@ -44,7 +44,7 @@ impl Iterator for SurroundingsIter {
           cube_shell(&self.center, self.next_distance).into_iter()
         );
       } else {
-        debug!("Done loading surroundings");
+        info!("Done loading surroundings");
       }
     }
     r
