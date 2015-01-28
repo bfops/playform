@@ -10,9 +10,9 @@ use std::rand::{Rng, SeedableRng, IsaacRng};
 use terrain::LOD_QUALITY;
 use terrain_block::{TerrainBlock, BLOCK_WIDTH};
 
-const TREE_NODES: [f32; 5] = [1.0/8.0, 1.0/16.0, 1.0/32.0, 1.0/64.0, 1.0/128.0];
-const MAX_BRANCH_LENGTH: [f32; 5] = [2.0, 4.0, 8.0, 16.0, 32.0];
-const LEAF_RADIUS: [f32; 5] = [1.0, 2.0, 4.0, 8.0, 16.0];
+const TREE_NODES: [f32; 4] = [1.0/16.0, 1.0/16.0, 1.0/64.0, 1.0/128.0];
+const MAX_BRANCH_LENGTH: [f32; 4] = [4.0, 4.0, 8.0, 16.0];
+const LEAF_RADIUS: [f32; 4] = [1.5, 1.5, 8.0, 16.0];
 
 #[inline(always)]
 fn fmod(mut dividend: f64, divisor: f64) -> f64 {
