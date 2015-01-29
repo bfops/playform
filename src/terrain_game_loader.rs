@@ -6,7 +6,7 @@ use physics::Physics;
 use shaders::terrain::TerrainShader;
 use state::EntityId;
 use stopwatch::TimerSet;
-use terrain::Terrain;
+use terrain::{Terrain, TerrainType};
 use terrain_block::BlockPosition;
 use terrain_vram_buffers::TerrainVRAMBuffers;
 use yaglw::gl_context::{GLContext, GLContextExistence};
@@ -30,8 +30,16 @@ impl<'a> TerrainGameLoader<'a> {
     shader: &mut TerrainShader,
     texture_unit_alloc: &mut IdAllocator<TextureUnit>,
   ) -> TerrainGameLoader<'a> {
-    let terrain_vram_buffers = TerrainVRAMBuffers::new(gl, gl_context);
+    let mut terrain_vram_buffers = TerrainVRAMBuffers::new(gl, gl_context);
     terrain_vram_buffers.bind_glsl_uniforms(gl_context, texture_unit_alloc, shader);
+
+    terrain_vram_buffers.push_pixels(gl_context, &[
+      TerrainType::Grass.color(),
+      TerrainType::Dirt.color(),
+      TerrainType::Stone.color(),
+      TerrainType::Wood.color(),
+      TerrainType::Leaf.color(),
+    ]);
 
     TerrainGameLoader {
       terrain: Terrain::new(Seed::new(0), 0),
@@ -98,7 +106,7 @@ impl<'a> TerrainGameLoader<'a> {
                 gl,
                 block.vertex_coordinates.as_slice(),
                 block.normals.as_slice(),
-                block.colors.as_slice(),
+                block.coords.as_slice(),
                 block.ids.as_slice(),
               )
             })

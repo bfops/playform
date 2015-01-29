@@ -23,6 +23,8 @@ pub enum TerrainType {
   Grass,
   Dirt,
   Stone,
+  Wood,
+  Leaf,
 }
 
 impl TerrainType {
@@ -31,6 +33,8 @@ impl TerrainType {
       TerrainType::Grass => Color3::of_rgb(0.0, 0.5, 0.0),
       TerrainType::Dirt => Color3::of_rgb(0.5, 0.4, 0.2),
       TerrainType::Stone => Color3::of_rgb(0.5, 0.5, 0.5),
+      TerrainType::Wood => Color3::of_rgb(0.4, 0.3, 0.1),
+      TerrainType::Leaf => Color3::of_rgb(0.0, 0.4, 0.0),
     }
   }
 }

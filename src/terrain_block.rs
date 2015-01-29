@@ -1,7 +1,6 @@
-use color::Color3;
 use gl::types::*;
 use id_allocator::IdAllocator;
-use nalgebra::{Pnt3, Vec3};
+use nalgebra::{Pnt2, Pnt3, Vec3};
 use ncollide::bounding_volume::{AABB, AABB3};
 use state::EntityId;
 use std::cmp::partial_max;
@@ -82,7 +81,8 @@ pub struct TerrainBlock {
 
   pub vertex_coordinates: Vec<[Pnt3<GLfloat>; 3]>,
   pub normals: Vec<[Vec3<GLfloat>; 3]>,
-  pub colors: Vec<Color3<GLfloat>>,
+  // per-vertex 2D coordinates into terrain_vram_buffers::pixels.
+  pub coords: Vec<[Pnt2<u32>; 3]>,
 
   // per-triangle entity IDs
   pub ids: Vec<EntityId>,
@@ -96,7 +96,8 @@ impl TerrainBlock {
     TerrainBlock {
       vertex_coordinates: Vec::new(),
       normals: Vec::new(),
-      colors: Vec::new(),
+      coords: Vec::new(),
+
       ids: Vec::new(),
       bounds: Vec::new(),
     }
@@ -207,10 +208,20 @@ impl TerrainBlock {
           let maxy = maxy.unwrap();
 
           let id = id_allocator.allocate();
+
           block.vertex_coordinates.push([$v1, $v2, center]);
           block.normals.push([$n1, $n2, center_normal]);
-          let color = terrain_type.color();
-          block.colors.push(color);
+          let coord =
+            Pnt2::new(0,
+              match terrain_type {
+                TerrainType::Grass => 0,
+                TerrainType::Dirt => 1,
+                TerrainType::Stone => 2,
+                TerrainType::Wood => 3,
+                TerrainType::Leaf => 4,
+              }
+            );
+          block.coords.push([coord, coord, coord]);
           block.ids.push(id);
           block.bounds.push((
             id,
@@ -221,6 +232,14 @@ impl TerrainBlock {
           ));
         });
       );
+
+      let polys =
+        (LOD_QUALITY[lod_index as usize] * LOD_QUALITY[lod_index as usize] * 4) as usize;
+      block.vertex_coordinates.reserve(polys);
+      block.normals.reserve(polys);
+      block.coords.reserve(polys);
+      block.ids.reserve(polys);
+      block.bounds.reserve(polys);
 
       let centr = center; // makes alignment nice
       place_terrain!(ps[0], ps[1], ns[0], ns[1], ps[0].x, ps[0].z, centr.x, ps[1].z);

@@ -1,6 +1,5 @@
-use color::Color3;
 use id_allocator::IdAllocator;
-use nalgebra::{Pnt3, Vec3, normalize};
+use nalgebra::{Pnt2, Pnt3, Vec3, normalize};
 use ncollide::bounding_volume::AABB;
 use state::EntityId;
 use std::cmp::{partial_min, partial_max};
@@ -71,10 +70,13 @@ impl TreePlacer {
       normalize(&Vec3::new( 1.0,  1.0, -1.0)),
     ];
 
+    let wood_coords = Pnt2::new(0, 3);
+    let leaf_coords = Pnt2::new(0, 4);
+
     let mut place_side =
       |&mut:
         corners: &[Pnt3<f32>],
-        color: &Color3<f32>,
+        coords: Pnt2<u32>,
         idx1: usize,
         idx2: usize,
         idx3: usize,
@@ -92,7 +94,7 @@ impl TreePlacer {
 
         block.vertex_coordinates.push_all(&[[v1, v2, v4], [v1, v4, v3]]);
         block.normals.push_all(&[[n1, n2, n4], [n1, n4, n3]]);
-        block.colors.push_all(&[*color, *color]);
+        block.coords.push_all(&[[coords, coords, coords], [coords, coords, coords]]);
 
         let minx = partial_min(v1.x, v2.x).unwrap();
         let maxx = partial_max(v1.x, v2.x).unwrap();
@@ -115,7 +117,7 @@ impl TreePlacer {
 
     let mut place_block =
       |&mut:
-        color,
+        coords: Pnt2<u32>,
         low_center: &Pnt3<f32>, low_radius: f32,
         high_center: &Pnt3<f32>, high_radius: f32| {
         let corners = [
@@ -129,15 +131,13 @@ impl TreePlacer {
           *high_center + Vec3::new( high_radius, 0.0, -high_radius),
         ];
 
-        place_side(&corners, &color, 0, 1, 4, 5);
-        place_side(&corners, &color, 1, 2, 5, 6);
-        place_side(&corners, &color, 2, 3, 6, 7);
-        place_side(&corners, &color, 3, 0, 7, 4);
-        place_side(&corners, &color, 1, 0, 2, 3);
-        place_side(&corners, &color, 4, 5, 7, 6);
+        place_side(&corners, coords, 0, 1, 4, 5);
+        place_side(&corners, coords, 1, 2, 5, 6);
+        place_side(&corners, coords, 2, 3, 6, 7);
+        place_side(&corners, coords, 3, 0, 7, 4);
+        place_side(&corners, coords, 1, 0, 2, 3);
+        place_side(&corners, coords, 4, 5, 7, 6);
       };
-
-    let wood_color = Color3::of_rgb(0.4, 0.3, 0.1);
 
     let mut rng = self.rng_at(&center, vec!(1));
     let mass = (rng.next_u32() as f32) / (0x10000 as f32) / (0x10000 as f32);
@@ -150,7 +150,7 @@ impl TreePlacer {
 
     {
       place_block(
-        wood_color,
+        wood_coords,
         &center, trunk_radius,
         &(center + Vec3::new(0.0, trunk_height, 0.0)), trunk_radius,
       );
@@ -192,9 +192,9 @@ impl TreePlacer {
           if sqr_distance(&center, &points[i]) <= radius * radius {
             let next_thickness = thickness * 0.6;
             if center.y < points[i].y {
-              place_block(wood_color, &center, thickness, &points[i], next_thickness);
+              place_block(wood_coords, &center, thickness, &points[i], next_thickness);
             } else {
-              place_block(wood_color, &points[i], next_thickness, &center, thickness);
+              place_block(wood_coords, &points[i], next_thickness, &center, thickness);
             }
             fringe.push_back((points[i], next_thickness));
             points.swap_remove(i);
@@ -210,9 +210,8 @@ impl TreePlacer {
           let radius = LEAF_RADIUS[lod_index];
           let height = 2.0 * radius;
 
-          let color = Color3::of_rgb(0.0, 0.4, 0.0);
           place_block(
-            color,
+            leaf_coords,
             &center, radius,
             &(center + Vec3::new(0.0, height, 0.0)), radius,
           );

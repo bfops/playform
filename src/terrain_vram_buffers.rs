@@ -2,7 +2,7 @@ use color::Color3;
 use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
-use nalgebra::{Pnt3, Vec3};
+use nalgebra::{Pnt2, Pnt3, Vec3};
 use shaders::terrain::TerrainShader;
 use state::EntityId;
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ use std::mem;
 
 // VRAM bytes
 pub const BYTE_BUDGET: usize = 64_000_000;
-pub const POLYGON_COST: usize = 84;
+pub const POLYGON_COST: usize = 80;
 // This assumes there exists only one set of TerrainVRAMBuffers.
 pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
 
@@ -29,20 +29,19 @@ pub struct TerrainVRAMBuffers<'a> {
   empty_array: GLuint,
   length: usize,
 
-  // Each position is buffered as 3 separate floats due to image format restrictions.
   vertex_positions: BufferTexture<'a, Triangle<Pnt3<GLfloat>>>,
-  // Each position is buffered as 3 separate floats due to image format restrictions.
   normals: BufferTexture<'a, Triangle<Vec3<GLfloat>>>,
-  // Each position is buffered as 3 separate floats due to image format restrictions.
-  colors: BufferTexture<'a, Color3<GLfloat>>,
+  // 2D coordinates into `pixels`
+  coords: BufferTexture<'a, Triangle<Pnt2<u32>>>,
+  pixels: BufferTexture<'a, Color3<GLfloat>>,
 }
 
 #[test]
 fn correct_size() {
   assert!(mem::size_of::<Triangle<Pnt3<GLfloat>>>() == 3 * mem::size_of::<Pnt3<GLfloat>>());
+  assert!(mem::size_of::<Pnt2<GLfloat>>() == 2 * mem::size_of::<GLfloat>());
   assert!(mem::size_of::<Pnt3<GLfloat>>() == 3 * mem::size_of::<GLfloat>());
   assert!(mem::size_of::<Vec3<GLfloat>>() == 3 * mem::size_of::<GLfloat>());
-  assert!(mem::size_of::<Color3<GLfloat>>() == 3 * mem::size_of::<GLfloat>());
 }
 
 impl<'a> TerrainVRAMBuffers<'a> {
@@ -61,7 +60,8 @@ impl<'a> TerrainVRAMBuffers<'a> {
       length: 0,
       vertex_positions: BufferTexture::new(gl, gl_context, gl::R32F, POLYGON_BUDGET),
       normals: BufferTexture::new(gl, gl_context, gl::R32F, POLYGON_BUDGET),
-      colors: BufferTexture::new(gl, gl_context, gl::R32F, POLYGON_BUDGET),
+      coords: BufferTexture::new(gl, gl_context, gl::R32F, POLYGON_BUDGET),
+      pixels: BufferTexture::new(gl, gl_context, gl::R32F, 5),
     }
   }
 
@@ -86,7 +86,8 @@ impl<'a> TerrainVRAMBuffers<'a> {
 
     bind("positions", self.vertex_positions.handle.gl_id);
     bind("normals", self.normals.handle.gl_id);
-    bind("colors", self.colors.handle.gl_id);
+    bind("coords", self.coords.handle.gl_id);
+    bind("pixels", self.pixels.handle.gl_id);
   }
 
   pub fn push(
@@ -94,12 +95,12 @@ impl<'a> TerrainVRAMBuffers<'a> {
     gl: &mut GLContext,
     vertices: &[Triangle<Pnt3<GLfloat>>],
     normals: &[Triangle<Vec3<GLfloat>>],
-    colors: &[Color3<GLfloat>],
+    coords: &[Triangle<Pnt2<u32>>],
     ids: &[EntityId],
   ) -> bool {
     assert_eq!(vertices.len(), ids.len());
     assert_eq!(normals.len(), ids.len());
-    assert_eq!(colors.len(), ids.len());
+    assert_eq!(coords.len(), ids.len());
 
     self.vertex_positions.buffer.byte_buffer.bind(gl);
     let r = self.vertex_positions.buffer.push(gl, vertices);
@@ -111,8 +112,8 @@ impl<'a> TerrainVRAMBuffers<'a> {
     let r = self.normals.buffer.push(gl, normals);
     assert!(r);
 
-    self.colors.buffer.byte_buffer.bind(gl);
-    let r = self.colors.buffer.push(gl, colors);
+    self.coords.buffer.byte_buffer.bind(gl);
+    let r = self.coords.buffer.push(gl, coords);
     assert!(r);
 
     for &id in ids.iter() {
@@ -123,6 +124,16 @@ impl<'a> TerrainVRAMBuffers<'a> {
     self.length += 3 * ids.len();
 
     true
+  }
+
+  pub fn push_pixels(
+    &mut self,
+    gl: &mut GLContext,
+    pixels: &[Color3<GLfloat>],
+  ) {
+    self.pixels.buffer.byte_buffer.bind(gl);
+    let success = self.pixels.buffer.push(gl, pixels);
+    assert!(success);
   }
 
   // Note: `id` must be present in the buffers.
@@ -141,8 +152,8 @@ impl<'a> TerrainVRAMBuffers<'a> {
     self.vertex_positions.buffer.swap_remove(gl, idx, 1);
     self.normals.buffer.byte_buffer.bind(gl);
     self.normals.buffer.swap_remove(gl, idx, 1);
-    self.colors.buffer.byte_buffer.bind(gl);
-    self.colors.buffer.swap_remove(gl, idx, 1);
+    self.coords.buffer.byte_buffer.bind(gl);
+    self.coords.buffer.swap_remove(gl, idx, 1);
   }
 
   pub fn draw(&self, _gl: &mut GLContext) {
