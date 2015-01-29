@@ -90,30 +90,9 @@ impl TreePlacer {
         let v3 = corners[idx3];
         let v4 = corners[idx4];
 
-        block.vertex_coordinates.push_all(&[
-          v1.x, v1.y, v1.z,
-          v2.x, v2.y, v2.z,
-          v4.x, v4.y, v4.z,
-
-          v1.x, v1.y, v1.z,
-          v4.x, v4.y, v4.z,
-          v3.x, v3.y, v3.z,
-        ]);
-
-        block.normals.push_all(&[
-          n1.x, n1.y, n1.z,
-          n2.x, n2.y, n2.z,
-          n4.x, n4.y, n4.z,
-
-          n1.x, n1.y, n1.z,
-          n4.x, n4.y, n4.z,
-          n3.x, n3.y, n3.z,
-        ]);
-
-        block.colors.push_all(&[
-          color.r, color.g, color.b,
-          color.r, color.g, color.b,
-        ]);
+        block.vertex_coordinates.push_all(&[[v1, v2, v4], [v1, v4, v3]]);
+        block.normals.push_all(&[[n1, n2, n4], [n1, n4, n3]]);
+        block.colors.push_all(&[*color, *color]);
 
         let minx = partial_min(v1.x, v2.x).unwrap();
         let maxx = partial_max(v1.x, v2.x).unwrap();

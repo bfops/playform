@@ -1,7 +1,8 @@
-use common::*;
+use color::Color3;
 use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
+use nalgebra::{Pnt3, Vec3};
 use shaders::terrain::TerrainShader;
 use state::EntityId;
 use std::collections::HashMap;
@@ -9,11 +10,16 @@ use yaglw::gl_context::{GLContext,GLContextExistence};
 use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
 
+#[cfg(test)]
+use std::mem;
+
 // VRAM bytes
 pub const BYTE_BUDGET: usize = 64_000_000;
 pub const POLYGON_COST: usize = 84;
 // This assumes there exists only one set of TerrainVRAMBuffers.
 pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
+
+pub type Triangle<T> = [T; 3];
 
 pub struct TerrainVRAMBuffers<'a> {
   id_to_index: HashMap<EntityId, usize>,
@@ -24,11 +30,19 @@ pub struct TerrainVRAMBuffers<'a> {
   length: usize,
 
   // Each position is buffered as 3 separate floats due to image format restrictions.
-  vertex_positions: BufferTexture<'a, GLfloat>,
+  vertex_positions: BufferTexture<'a, Triangle<Pnt3<GLfloat>>>,
   // Each position is buffered as 3 separate floats due to image format restrictions.
-  normals: BufferTexture<'a, GLfloat>,
+  normals: BufferTexture<'a, Triangle<Vec3<GLfloat>>>,
   // Each position is buffered as 3 separate floats due to image format restrictions.
-  colors: BufferTexture<'a, GLfloat>,
+  colors: BufferTexture<'a, Color3<GLfloat>>,
+}
+
+#[test]
+fn correct_size() {
+  assert!(mem::size_of::<Triangle<Pnt3<GLfloat>>>() == 3 * mem::size_of::<Pnt3<GLfloat>>());
+  assert!(mem::size_of::<Pnt3<GLfloat>>() == 3 * mem::size_of::<GLfloat>());
+  assert!(mem::size_of::<Vec3<GLfloat>>() == 3 * mem::size_of::<GLfloat>());
+  assert!(mem::size_of::<Color3<GLfloat>>() == 3 * mem::size_of::<GLfloat>());
 }
 
 impl<'a> TerrainVRAMBuffers<'a> {
@@ -45,23 +59,9 @@ impl<'a> TerrainVRAMBuffers<'a> {
         empty_array
       },
       length: 0,
-      // There are 3 R32F components per vertex.
-      vertex_positions:
-        BufferTexture::new(
-          gl,
-          gl_context,
-          gl::R32F,
-          3 * VERTICES_PER_TRIANGLE as usize * POLYGON_BUDGET,
-        ),
-      // There are 3 R32F components per normal.
-      normals:
-        BufferTexture::new(
-          gl,
-          gl_context,
-          gl::R32F,
-          3 * VERTICES_PER_TRIANGLE as usize * POLYGON_BUDGET,
-        ),
-      colors: BufferTexture::new(gl, gl_context, gl::R32F, 3 * POLYGON_BUDGET),
+      vertex_positions: BufferTexture::new(gl, gl_context, gl::R32F, POLYGON_BUDGET),
+      normals: BufferTexture::new(gl, gl_context, gl::R32F, POLYGON_BUDGET),
+      colors: BufferTexture::new(gl, gl_context, gl::R32F, POLYGON_BUDGET),
     }
   }
 
@@ -92,14 +92,14 @@ impl<'a> TerrainVRAMBuffers<'a> {
   pub fn push(
     &mut self,
     gl: &mut GLContext,
-    vertices: &[GLfloat],
-    normals: &[GLfloat],
-    colors: &[GLfloat],
+    vertices: &[Triangle<Pnt3<GLfloat>>],
+    normals: &[Triangle<Vec3<GLfloat>>],
+    colors: &[Color3<GLfloat>],
     ids: &[EntityId],
   ) -> bool {
-    assert_eq!(vertices.len(), 3 * VERTICES_PER_TRIANGLE as usize * ids.len());
-    assert_eq!(normals.len(), vertices.len());
-    assert_eq!(colors.len(), 3 * ids.len());
+    assert_eq!(vertices.len(), ids.len());
+    assert_eq!(normals.len(), ids.len());
+    assert_eq!(colors.len(), ids.len());
 
     self.vertex_positions.buffer.byte_buffer.bind(gl);
     let r = self.vertex_positions.buffer.push(gl, vertices);
@@ -138,19 +138,11 @@ impl<'a> TerrainVRAMBuffers<'a> {
 
     self.length -= 3;
     self.vertex_positions.buffer.byte_buffer.bind(gl);
-    self.vertex_positions.buffer.swap_remove(
-      gl,
-      idx * 3 * VERTICES_PER_TRIANGLE as usize,
-      3 * VERTICES_PER_TRIANGLE as usize,
-    );
+    self.vertex_positions.buffer.swap_remove(gl, idx, 1);
     self.normals.buffer.byte_buffer.bind(gl);
-    self.normals.buffer.swap_remove(
-      gl,
-      3 * idx * VERTICES_PER_TRIANGLE as usize,
-      3 * VERTICES_PER_TRIANGLE as usize,
-    );
+    self.normals.buffer.swap_remove(gl, idx, 1);
     self.colors.buffer.byte_buffer.bind(gl);
-    self.colors.buffer.swap_remove(gl, 3 * idx, 3);
+    self.colors.buffer.swap_remove(gl, idx, 1);
   }
 
   pub fn draw(&self, _gl: &mut GLContext) {

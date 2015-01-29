@@ -1,3 +1,4 @@
+use color::Color3;
 use gl::types::*;
 use id_allocator::IdAllocator;
 use nalgebra::{Pnt3, Vec3};
@@ -77,14 +78,11 @@ impl Add<Vec3<i32>> for BlockPosition {
 }
 
 pub struct TerrainBlock {
-  // These Vecs must all be ordered the same way.
+  // These Vecs must all be ordered the same way; each entry is the next triangle.
 
-  // vertex coordinates flattened into separate GLfloats (x, y, z order)
-  pub vertex_coordinates: Vec<GLfloat>,
-  // per-vertex normal vectors flattened into separate GLfloats (x, y, z order)
-  pub normals: Vec<GLfloat>,
-  // per-triangle terrain colors flattened into separate GLfloats (x, y, z order)
-  pub colors: Vec<GLfloat>,
+  pub vertex_coordinates: Vec<[Pnt3<GLfloat>; 3]>,
+  pub normals: Vec<[Vec3<GLfloat>; 3]>,
+  pub colors: Vec<Color3<GLfloat>>,
 
   // per-triangle entity IDs
   pub ids: Vec<EntityId>,
@@ -209,18 +207,10 @@ impl TerrainBlock {
           let maxy = maxy.unwrap();
 
           let id = id_allocator.allocate();
-          block.vertex_coordinates.push_all(&[
-            $v1.x, $v1.y, $v1.z,
-            $v2.x, $v2.y, $v2.z,
-            center.x, center.y, center.z,
-          ]);
-          block.normals.push_all(&[
-            $n1.x, $n1.y, $n1.z,
-            $n2.x, $n2.y, $n2.z,
-            center_normal.x, center_normal.y, center_normal.z,
-          ]);
+          block.vertex_coordinates.push([$v1, $v2, center]);
+          block.normals.push([$n1, $n2, center_normal]);
           let color = terrain_type.color();
-          block.colors.push_all(&[color.r, color.g, color.b]);
+          block.colors.push(color);
           block.ids.push(id);
           block.bounds.push((
             id,
@@ -232,18 +222,11 @@ impl TerrainBlock {
         });
       );
 
-      let placements = 4;
-      block.vertex_coordinates.reserve(placements*9);
-      block.normals.reserve(placements*9);
-      block.colors.reserve(placements*3);
-      block.ids.reserve(placements);
-      block.bounds.reserve(placements);
-
       let centr = center; // makes alignment nice
-      place_terrain!(&ps[0], &ps[1], &ns[0], &ns[1], ps[0].x, ps[0].z, centr.x, ps[1].z);
-      place_terrain!(&ps[1], &ps[2], &ns[1], &ns[2], ps[1].x, centr.z, ps[2].x, ps[2].z);
-      place_terrain!(&ps[2], &ps[3], &ns[2], &ns[3], centr.x, centr.z, ps[2].x, ps[2].z);
-      place_terrain!(&ps[3], &ps[0], &ns[3], &ns[0], ps[0].x, ps[0].z, ps[3].x, centr.z);
+      place_terrain!(ps[0], ps[1], ns[0], ns[1], ps[0].x, ps[0].z, centr.x, ps[1].z);
+      place_terrain!(ps[1], ps[2], ns[1], ns[2], ps[1].x, centr.z, ps[2].x, ps[2].z);
+      place_terrain!(ps[2], ps[3], ns[2], ns[3], centr.x, centr.z, ps[2].x, ps[2].z);
+      place_terrain!(ps[3], ps[0], ns[3], ns[0], ps[0].x, ps[0].z, ps[3].x, centr.z);
 
       if treemap.should_place_tree(&centr) {
         treemap.place_tree(centr, id_allocator, block, lod_index);
