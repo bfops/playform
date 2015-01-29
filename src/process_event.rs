@@ -19,17 +19,17 @@ pub fn process_event<'a>(
   event: Event,
 ) {
   match event {
-    Event::KeyDown(_, _, key, _, _, repeat) => {
+    Event::KeyDown{keycode, repeat, ..} => {
       if !repeat {
-        key_press(timers, app, gl_context, key);
+        key_press(timers, app, gl_context, keycode);
       }
     },
-    Event::KeyUp(_, _, key, _, _, repeat) => {
+    Event::KeyUp{keycode, repeat, ..} => {
       if !repeat {
-        key_release(timers, app, key);
+        key_release(timers, app, keycode);
       }
     },
-    Event::MouseMotion(_, _, _, _, x, y, _, _) => {
+    Event::MouseMotion{x, y, ..} => {
       mouse_move(timers, app, game_window, x, y);
     },
     _ => {},

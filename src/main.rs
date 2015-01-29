@@ -87,13 +87,13 @@ pub fn main() {
           Event::None => {
             break;
           },
-          Event::Quit(_) => {
+          Event::Quit{..} => {
             return;
           }
-          Event::AppTerminating(_) => {
+          Event::AppTerminating{..} => {
             return;
           }
-          Event::Window(_, _, event_id, _, _) => {
+          Event::Window{win_event_id: event_id, ..} => {
             // Manage has_focus so that we don't capture the cursor when the
             // window is in the background
             match event_id {
