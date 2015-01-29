@@ -6,30 +6,43 @@ use sdl2::keycode::KeyCode;
 use sdl2::mouse;
 use sdl2::video;
 use state::App;
+use stopwatch::TimerSet;
 use std::f32::consts::PI;
 use vertex::ColoredVertex;
+use yaglw::gl_context::GLContext;
 
-pub fn process_event<'a>(app: &mut App<'a>, game_window: &mut video::Window, event: Event) {
+pub fn process_event<'a>(
+  timers: &TimerSet,
+  app: &mut App<'a>,
+  game_window: &mut video::Window,
+  gl_context: &mut GLContext,
+  event: Event,
+) {
   match event {
     Event::KeyDown(_, _, key, _, _, repeat) => {
       if !repeat {
-        key_press(app, key);
+        key_press(timers, app, gl_context, key);
       }
     },
     Event::KeyUp(_, _, key, _, _, repeat) => {
       if !repeat {
-        key_release(app, key);
+        key_release(timers, app, key);
       }
     },
     Event::MouseMotion(_, _, _, _, x, y, _, _) => {
-      mouse_move(app, game_window, x, y);
+      mouse_move(timers, app, game_window, x, y);
     },
     _ => {},
   }
 }
 
-fn key_press<'a>(app: &mut App<'a>, key: KeyCode) {
-  app.timers.time("event.key_press", || {
+fn key_press<'a>(
+  timers: &TimerSet,
+  app: &mut App<'a>,
+  gl_context: &mut GLContext,
+  key: KeyCode,
+) {
+  timers.time("event.key_press", || {
     match key {
       KeyCode::A => {
         app.player.walk(Vec3::new(-1.0, 0.0, 0.0));
@@ -67,7 +80,7 @@ fn key_press<'a>(app: &mut App<'a>, key: KeyCode) {
             color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
           },
         ];
-        app.line_of_sight.buffer.update(app.gl_context, 0, &updates);
+        app.line_of_sight.buffer.update(gl_context, 0, &updates);
       },
       KeyCode::L => {
         app.render_outlines = !app.render_outlines;
@@ -77,8 +90,8 @@ fn key_press<'a>(app: &mut App<'a>, key: KeyCode) {
   })
 }
 
-fn key_release<'a>(app: &mut App<'a>, key: KeyCode) {
-  app.timers.time("event.key_release", || {
+fn key_release<'a>(timers: &TimerSet, app: &mut App<'a>, key: KeyCode) {
+  timers.time("event.key_release", || {
     match key {
       // accelerations are negated from those in key_press.
       KeyCode::A => {
@@ -103,8 +116,13 @@ fn key_release<'a>(app: &mut App<'a>, key: KeyCode) {
   })
 }
 
-fn mouse_move<'a>(app: &mut App<'a>, window: &mut video::Window, x: i32, y: i32) {
-  app.timers.time("event.mouse_move", || {
+fn mouse_move<'a>(
+  timers: &TimerSet,
+  app: &mut App<'a>,
+  window: &mut video::Window,
+  x: i32, y: i32,
+) {
+  timers.time("event.mouse_move", || {
     let (cx, cy) = (WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2);
     // y is measured from the top of the window.
     let (dx, dy) = (x - cx, cy - y);

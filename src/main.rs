@@ -20,6 +20,8 @@ pub const UPDATES_PER_SECOND: u64 = 30;
 pub fn main() {
   debug!("starting");
 
+  let timers = TimerSet::new();
+
   sdl2::init(sdl2::INIT_EVERYTHING);
 
   sdl2::video::gl_set_attribute(sdl2::video::GLAttr::GLContextMajorVersion, 3);
@@ -54,7 +56,6 @@ pub fn main() {
       GLContext::new()
     };
 
-    let timers = TimerSet::new();
     let mut app = App::new(&gl, &mut gl_context, &timers);
 
     let mut render_timer;
@@ -71,12 +72,12 @@ pub fn main() {
     loop {
       let updates = update_timer.update(time::precise_time_ns());
       if updates > 0 {
-        update(&mut app);
+        update(&timers, &mut app, &mut gl_context);
       }
 
       let renders = render_timer.update(time::precise_time_ns());
       if renders > 0 {
-        render(&mut app);
+        render(&timers, &mut app, &mut gl_context);
         // swap buffers
         window.gl_swap_window();
       }
@@ -109,7 +110,7 @@ pub fn main() {
           }
           event => {
             if has_focus {
-              process_event(&mut app, &mut window, event);
+              process_event(&timers, &mut app, &mut window, &mut gl_context, event);
             }
           },
         }
@@ -117,6 +118,10 @@ pub fn main() {
       timer::sleep(Duration::microseconds(10));
     }
   }
+
+  info!("Update Stats");
+  info!("====================");
+  timers.print();
 
   debug!("finished");
 }

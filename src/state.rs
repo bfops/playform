@@ -164,17 +164,13 @@ pub struct App<'a> {
   pub hud_color_shader: shaders::color::ColorShader<'a>,
 
   pub render_outlines: bool,
-
-  pub timers: &'a TimerSet,
-  pub gl: &'a GLContextExistence,
-  pub gl_context: &'a mut GLContext,
 }
 
 impl<'a> App<'a> {
   /// Initializes an empty app.
   pub fn new(
     gl: &'a GLContextExistence,
-    gl_context: &'a mut GLContext,
+    gl_context: &mut GLContext,
     timers: &'a TimerSet,
   ) -> App<'a> {
     gl_context.print_stats();
@@ -385,9 +381,6 @@ impl<'a> App<'a> {
       hud_color_shader: hud_color_shader,
       hud_texture_shader: hud_texture_shader,
       render_outlines: false,
-      timers: timers,
-      gl: gl,
-      gl_context: gl_context,
     }
   }
 
@@ -483,14 +476,4 @@ fn make_mobs<'a>(
   );
 
   (mobs, mob_buffers)
-}
-
-// TODO(cgaebel): This should be removed when rustc bug #8861 is patched.
-#[unsafe_destructor]
-impl<'a> Drop for App<'a> {
-  fn drop(&mut self) {
-    info!("Update Stats");
-    info!("====================");
-    self.timers.print();
-  }
 }

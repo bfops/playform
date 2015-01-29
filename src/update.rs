@@ -10,35 +10,28 @@ use std::cmp::partial_max;
 use std::f32::consts::PI;
 use std::ops::{Deref, DerefMut};
 use std::num::Float;
+use stopwatch::TimerSet;
 use terrain_block::BlockPosition;
 use time;
 use yaglw::gl_context::GLContext;
 
-macro_rules! translate_mob(
-  ($world:expr, $mob:expr, $v:expr) => (
-    translate_mob(
-      $world.gl_context,
-      &mut $world.physics,
-      &mut $world.mob_buffers,
-      $mob,
-      $v
-    );
-  );
-);
-
-pub fn update<'a>(app: &mut App) {
-  app.timers.time("update", || {
-    app.timers.time("update.player", || {
+pub fn update(
+  timers: &TimerSet,
+  app: &mut App,
+  gl_context: &mut GLContext,
+) {
+  timers.time("update", || {
+    timers.time("update.player", || {
       app.player.update(
-        app.timers,
-        app.gl_context,
+        timers,
+        gl_context,
         &mut app.terrain_game_loader,
         &mut app.id_allocator,
         &mut app.physics,
       );
     });
 
-    app.timers.time("update.mobs", || {
+    timers.time("update.mobs", || {
       for (_, mob) in app.mobs.iter() {
         let mut mob_cell = mob.deref().borrow_mut();
         let mob = mob_cell.deref_mut();
@@ -46,8 +39,8 @@ pub fn update<'a>(app: &mut App) {
         let block_position = BlockPosition::from_world_position(&mob.position);
 
         mob.solid_boundary.update(
-          app.timers,
-          app.gl_context,
+          timers,
+          gl_context,
           &mut app.terrain_game_loader,
           &mut app.id_allocator,
           &mut app.physics,
@@ -61,20 +54,32 @@ pub fn update<'a>(app: &mut App) {
 
         mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
 
+        macro_rules! translate_mob(
+          ($v:expr) => (
+            translate_mob(
+              gl_context,
+              &mut app.physics,
+              &mut app.mob_buffers,
+              mob,
+              $v
+            );
+          );
+        );
+
         let delta_p = mob.speed;
         if delta_p.x != 0.0 {
-          translate_mob!(app, mob, Vec3::new(delta_p.x, 0.0, 0.0));
+          translate_mob!(Vec3::new(delta_p.x, 0.0, 0.0));
         }
         if delta_p.y != 0.0 {
-          translate_mob!(app, mob, Vec3::new(0.0, delta_p.y, 0.0));
+          translate_mob!(Vec3::new(0.0, delta_p.y, 0.0));
         }
         if delta_p.z != 0.0 {
-          translate_mob!(app, mob, Vec3::new(0.0, 0.0, delta_p.z));
+          translate_mob!(Vec3::new(0.0, 0.0, delta_p.z));
         }
       }
     });
 
-    app.timers.time("update.sun", || {
+    timers.time("update.sun", || {
       let ticks = app.sun_timer.update(time::precise_time_ns());
       app.sun += ticks as u16;
 
@@ -91,7 +96,7 @@ pub fn update<'a>(app: &mut App) {
 
       set_point_light(
         &mut app.terrain_shader.shader,
-        app.gl_context,
+        gl_context,
         &Light {
           position: sun_position,
           intensity: sun_color,
@@ -102,7 +107,7 @@ pub fn update<'a>(app: &mut App) {
 
       set_ambient_light(
         &mut app.terrain_shader.shader,
-        app.gl_context,
+        gl_context,
         Color3::of_rgb(
           sun_color.r * ambient_light,
           sun_color.g * ambient_light,
@@ -110,7 +115,7 @@ pub fn update<'a>(app: &mut App) {
         ),
       );
 
-      app.gl_context.set_background_color(sun_color.r, sun_color.g, sun_color.b, 1.0);
+      gl_context.set_background_color(sun_color.r, sun_color.g, sun_color.b, 1.0);
     });
   })
 }
