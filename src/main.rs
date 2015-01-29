@@ -8,7 +8,7 @@ use sdl2::event::Event;
 use state::App;
 use std::mem;
 use std::time::duration::Duration;
-use std::io::timer;
+use std::old_io::timer;
 use stopwatch::TimerSet;
 use time;
 use update::update;

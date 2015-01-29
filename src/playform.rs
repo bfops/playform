@@ -15,6 +15,7 @@ extern crate nalgebra;
 extern crate ncollide;
 extern crate noise;
 extern crate sdl2;
+extern crate "sdl2-sys" as sdl2_sys;
 extern crate test;
 extern crate time;
 extern crate yaglw;

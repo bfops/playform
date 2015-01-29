@@ -1,9 +1,9 @@
 extern crate gl;
 
 use color::Color4;
-use sdl2::pixels::ll::{SDL_Color,SDL_PIXELFORMAT_ARGB8888};
-use sdl2::surface::ll::SDL_Surface;
-use sdl2::surface;
+use sdl2_sys::pixels::{SDL_Color,SDL_PIXELFORMAT_ARGB8888};
+use sdl2_sys::surface::SDL_Surface;
+use sdl2_sys::surface;
 use std::ffi::CString;
 use std::path::{BytesContainer, Path};
 use yaglw::gl_context::GLContextExistence;
@@ -14,8 +14,8 @@ use yaglw::texture::Texture2D;
 pub mod ffi {
   extern crate libc;
 
-  use sdl2::pixels::ll::SDL_Color;
-  use sdl2::surface::ll::SDL_Surface;
+  use sdl2_sys::pixels::SDL_Color;
+  use sdl2_sys::surface::SDL_Surface;
 
   pub use self::libc::{c_int, c_char, c_void, c_long};
 
@@ -130,7 +130,7 @@ impl Font {
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
-      surface::ll::SDL_FreeSurface(surface_ptr as *const SDL_Surface);
+      surface::SDL_FreeSurface(surface_ptr as *const SDL_Surface);
     }
 
     texture
