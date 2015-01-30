@@ -60,4 +60,4 @@ git = "https://github.com/sebcrozet/nalgebra"
 git = "https://github.com/bfops/ncollide"
 
 [dependencies.noise]
-git = "https://github.com/bjz/noise-rs"
+git = "https://github.com/bfops/noise-rs"

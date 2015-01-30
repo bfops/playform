@@ -1,6 +1,5 @@
 //! The entry point.
 #![crate_type = "bin"]
-#![allow(unstable)]
 #![deny(missing_docs)]
 #![deny(warnings)]
 #![feature(slicing_syntax)]
