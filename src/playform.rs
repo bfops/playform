@@ -6,6 +6,16 @@
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 
+#![feature(core)]
+#![feature(collections)]
+#![feature(hash)]
+#![feature(io)]
+#![feature(libc)]
+#![feature(path)]
+#![feature(rand)]
+#![feature(std_misc)]
+#![feature(test)]
+
 extern crate gl;
 extern crate libc;
 #[macro_use]
