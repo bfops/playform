@@ -39,6 +39,7 @@ mod in_progress_terrain;
 mod interval_timer;
 mod light;
 mod loader;
+mod logger;
 mod lod_map;
 mod main;
 mod mob;

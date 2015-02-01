@@ -1,6 +1,8 @@
 use common::*;
 use gl;
 use interval_timer::IntervalTimer;
+use log;
+use logger::Logger;
 use process_event::process_event;
 use render::render;
 use sdl2;
@@ -18,6 +20,11 @@ pub const FRAMES_PER_SECOND: u64 = 30;
 pub const UPDATES_PER_SECOND: u64 = 30;
 
 pub fn main() {
+  log::set_logger(|max_log_level| {
+    max_log_level.set(log::LogLevelFilter::Debug);
+    Box::new(Logger)
+  }).unwrap();
+
   debug!("starting");
 
   let timers = TimerSet::new();
@@ -69,7 +76,7 @@ pub fn main() {
 
     let mut has_focus = true;
 
-    loop {
+    'game_loop:loop {
       let updates = update_timer.update(time::precise_time_ns());
       if updates > 0 {
         update(&timers, &mut app, &mut gl_context);
@@ -82,16 +89,16 @@ pub fn main() {
         window.gl_swap_window();
       }
 
-      loop {
+      'event_loop:loop {
         match sdl2::event::poll_event() {
           Event::None => {
-            break;
+            break 'event_loop;
           },
           Event::Quit{..} => {
-            return;
+            break 'game_loop;
           }
           Event::AppTerminating{..} => {
-            return;
+            break 'game_loop;
           }
           Event::Window{win_event_id: event_id, ..} => {
             // Manage has_focus so that we don't capture the cursor when the
