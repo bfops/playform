@@ -1,3 +1,4 @@
+use color::Color3;
 use gl::types::*;
 use id_allocator::IdAllocator;
 use nalgebra::{Pnt2, Pnt3, Vec3};
@@ -12,6 +13,7 @@ use terrain_heightmap::HeightMap;
 use tree_placer::TreePlacer;
 
 pub const BLOCK_WIDTH: i32 = 8;
+pub const TEXTURE_LEN: usize = 5;
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub struct BlockPosition(Pnt3<i32>);
@@ -81,8 +83,10 @@ pub struct TerrainBlock {
 
   pub vertex_coordinates: Vec<[Pnt3<GLfloat>; 3]>,
   pub normals: Vec<[Vec3<GLfloat>; 3]>,
-  // per-vertex 2D coordinates into terrain_vram_buffers::pixels.
+  // per-vertex 2D coordinates into `pixels`.
   pub coords: Vec<[Pnt2<u32>; 3]>,
+
+  pub pixels: [Color3<f32>; TEXTURE_LEN],
 
   // per-triangle entity IDs
   pub ids: Vec<EntityId>,
@@ -97,6 +101,8 @@ impl TerrainBlock {
       vertex_coordinates: Vec::new(),
       normals: Vec::new(),
       coords: Vec::new(),
+
+      pixels: [Color3::of_rgb(0.0, 0.0, 0.0); TEXTURE_LEN],
 
       ids: Vec::new(),
       bounds: Vec::new(),
@@ -113,6 +119,14 @@ impl TerrainBlock {
   ) -> TerrainBlock {
     timers.time("update.generate_block", || {
       let mut block = TerrainBlock::empty();
+
+      block.pixels = [
+        TerrainType::Grass.color(),
+        TerrainType::Dirt.color(),
+        TerrainType::Stone.color(),
+        TerrainType::Wood.color(),
+        TerrainType::Leaf.color(),
+      ];
 
       let x = (position.as_pnt().x * BLOCK_WIDTH) as f32;
       let y = (position.as_pnt().y * BLOCK_WIDTH) as f32;

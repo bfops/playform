@@ -5,8 +5,9 @@ use noise::Seed;
 use physics::Physics;
 use shaders::terrain::TerrainShader;
 use state::EntityId;
+use std::iter::repeat;
 use stopwatch::TimerSet;
-use terrain::{Terrain, TerrainType};
+use terrain::Terrain;
 use terrain_block::BlockPosition;
 use terrain_vram_buffers::TerrainVRAMBuffers;
 use yaglw::gl_context::{GLContext, GLContextExistence};
@@ -30,16 +31,8 @@ impl<'a> TerrainGameLoader<'a> {
     shader: &mut TerrainShader,
     texture_unit_alloc: &mut IdAllocator<TextureUnit>,
   ) -> TerrainGameLoader<'a> {
-    let mut terrain_vram_buffers = TerrainVRAMBuffers::new(gl, gl_context);
+    let terrain_vram_buffers = TerrainVRAMBuffers::new(gl, gl_context);
     terrain_vram_buffers.bind_glsl_uniforms(gl_context, texture_unit_alloc, shader);
-
-    terrain_vram_buffers.push_pixels(gl_context, &[
-      TerrainType::Grass.color(),
-      TerrainType::Dirt.color(),
-      TerrainType::Stone.color(),
-      TerrainType::Wood.color(),
-      TerrainType::Leaf.color(),
-    ]);
 
     TerrainGameLoader {
       terrain: Terrain::new(Seed::new(0), 0),
@@ -78,6 +71,8 @@ impl<'a> TerrainGameLoader<'a> {
             physics.remove_terrain(*id);
             self.terrain_vram_buffers.swap_remove(gl, *id);
           }
+
+          self.terrain_vram_buffers.swap_remove_pixels(gl, *block_position);
         });
       },
     }
@@ -102,13 +97,33 @@ impl<'a> TerrainGameLoader<'a> {
             });
 
             timers.time("terrain_game_loader.load.gpu", || {
-              terrain_vram_buffers.push(
-                gl,
-                block.vertex_coordinates.as_slice(),
-                block.normals.as_slice(),
-                block.coords.as_slice(),
-                block.ids.as_slice(),
-              )
+              let block_indices;
+
+              if block.ids.is_empty() {
+                block_indices = Vec::new();
+              } else {
+                let block_index =
+                  terrain_vram_buffers.push_pixels(
+                    gl,
+                    &block.pixels,
+                    *block_position,
+                  );
+
+                block_indices =
+                  repeat(block_index).take(block.ids.len()).collect();
+              }
+
+              let success =
+                terrain_vram_buffers.push(
+                  gl,
+                  block.vertex_coordinates.as_slice(),
+                  block.normals.as_slice(),
+                  block.coords.as_slice(),
+                  block_indices.as_slice(),
+                  block.ids.as_slice(),
+                );
+
+              success
             })
           })
         })

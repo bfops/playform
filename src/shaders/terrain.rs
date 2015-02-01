@@ -1,5 +1,5 @@
 use gl;
-use terrain_block::BLOCK_WIDTH;
+use terrain_block;
 use yaglw::gl_context::GLContextExistence;
 use yaglw::shader::Shader;
 
@@ -56,6 +56,7 @@ impl<'a> TerrainShader<'a> {
 
         uniform samplerBuffer positions;
         uniform samplerBuffer pixels;
+        uniform isamplerBuffer block_indices;
 
         flat in int vertex_id;
         in vec3 normal;
@@ -67,13 +68,15 @@ impl<'a> TerrainShader<'a> {
           int face_id = vertex_id / 3;
           int color_id = face_id * 3;
 
+          int block_index = texelFetch(block_indices, face_id).r;
+
           vec4 base_color;
-          int pixel_id = int(pixel_coords.x) * {} + int(pixel_coords.y);
+          int pixel_idx = block_index*{} + int(pixel_coords.x)*{} + int(pixel_coords.y);
           // There are 3 components for every color.
-          pixel_id = pixel_id * 3;
-          base_color.r = texelFetch(pixels, pixel_id + 0).r;
-          base_color.g = texelFetch(pixels, pixel_id + 1).r;
-          base_color.b = texelFetch(pixels, pixel_id + 2).r;
+          pixel_idx = pixel_idx * 3;
+          base_color.r = texelFetch(pixels, pixel_idx + 0).r;
+          base_color.g = texelFetch(pixels, pixel_idx + 1).r;
+          base_color.b = texelFetch(pixels, pixel_idx + 2).r;
           base_color.a = 1.0;
 
           // Mutiply by 3 because there are 3 components for each position vector.
@@ -92,7 +95,7 @@ impl<'a> TerrainShader<'a> {
 
           vec3 lighting = brightness * light.intensity + ambient_light;
           frag_color = vec4(clamp(lighting, 0, 1), 1) * base_color;
-        }}", BLOCK_WIDTH)),
+        }}", terrain_block::TEXTURE_LEN, terrain_block::BLOCK_WIDTH)),
     );
     TerrainShader {
       shader: Shader::new(gl, components.into_iter()),

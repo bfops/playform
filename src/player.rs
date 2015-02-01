@@ -226,6 +226,8 @@ impl<'a> Player<'a> {
   }
 
   pub fn load_distance(mut polygon_budget: i32) -> i32 {
+    // TODO: This should try to account for VRAM not used on a per-poly basis.
+
     let mut load_distance = 0;
     let mut prev_threshold = 0;
     let mut prev_square = 0;
