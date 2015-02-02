@@ -35,7 +35,7 @@ use yaglw::texture::{Texture2D, TextureUnit};
 
 const SUN_TICK_NS: u64 = 1000000;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct EntityId(u32);
 
 impl Default for EntityId {

@@ -5,7 +5,7 @@ use std::iter::IteratorExt;
 use std::ops::Add;
 use terrain_block::BlockPosition;
 
-#[derive(Show, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LOD {
   LodIndex(u32),
   // An invisible solid block
@@ -189,7 +189,7 @@ pub struct LODChange {
 }
 
 /// These are used to identify the owners of terrain load operations.
-#[derive(Copy, Clone, Show, PartialEq, Eq, Hash, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct OwnerId(u32);
 
 impl Add<u32> for OwnerId {
