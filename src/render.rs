@@ -31,7 +31,8 @@ pub fn render(
       }
 
       app.terrain_shader.shader.use_shader(gl_context);
-      app.terrain_game_loader.terrain_vram_buffers.draw(gl_context);
+      app.terrain_game_loader.draw(gl_context);
+
       app.mob_shader.shader.use_shader(gl_context);
       app.mob_buffers.draw(gl_context);
 
@@ -41,7 +42,8 @@ pub fn render(
       }
     } else {
       app.terrain_shader.shader.use_shader(gl_context);
-      app.terrain_game_loader.terrain_vram_buffers.draw(gl_context);
+      app.terrain_game_loader.draw(gl_context);
+
       app.mob_shader.shader.use_shader(gl_context);
       app.mob_buffers.draw(gl_context);
     }

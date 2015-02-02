@@ -17,11 +17,11 @@ use yaglw::texture::TextureUnit;
 /// Each TerrainBlock can be owned by a set of owners, each of which can independently request LODs.
 /// The maximum LOD requested is the one that is actually loaded.
 pub struct TerrainGameLoader<'a> {
-  pub terrain: Terrain,
-  pub terrain_vram_buffers: TerrainVRAMBuffers<'a>,
-  pub in_progress_terrain: InProgressTerrain,
+  terrain: Terrain,
+  terrain_vram_buffers: TerrainVRAMBuffers<'a>,
+  in_progress_terrain: InProgressTerrain,
   // The LODs of the currently loaded blocks.
-  pub lod_map: LODMap,
+  lod_map: LODMap,
 }
 
 impl<'a> TerrainGameLoader<'a> {
@@ -202,5 +202,9 @@ impl<'a> TerrainGameLoader<'a> {
         success
       },
     }
+  }
+
+  pub fn draw(&self, gl: &mut GLContext) {
+    self.terrain_vram_buffers.draw(gl);
   }
 }
