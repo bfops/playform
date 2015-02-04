@@ -2,6 +2,7 @@ use id_allocator::IdAllocator;
 use lod_map::{LOD, OwnerId};
 use terrain_block::BlockPosition;
 use terrain_game_loader::TerrainGameLoader;
+use opencl_context::CL;
 use physics::Physics;
 use state::EntityId;
 use std::cmp::max;
@@ -62,6 +63,7 @@ impl<'a> SurroundingsLoader<'a> {
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
+    cl: &CL,
     terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
@@ -84,6 +86,7 @@ impl<'a> SurroundingsLoader<'a> {
             terrain_game_loader.decrease_lod(
               timers,
               gl,
+              cl,
               id_allocator,
               physics,
               &block_position,
@@ -100,6 +103,7 @@ impl<'a> SurroundingsLoader<'a> {
           terrain_game_loader.decrease_lod(
             timers,
             gl,
+            cl,
             id_allocator,
             physics,
             &block_position,
@@ -122,6 +126,7 @@ impl<'a> SurroundingsLoader<'a> {
           terrain_game_loader.increase_lod(
             timers,
             gl,
+            cl,
             id_allocator,
             physics,
             &block_position,

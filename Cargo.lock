@@ -7,6 +7,7 @@ dependencies = [
  "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide 0.3.0 (git+https://github.com/bfops/ncollide)",
  "noise 0.0.3 (git+https://github.com/bfops/noise-rs)",
+ "opencl 0.3.0-dev (git+https://github.com/bfops/rust-opencl)",
  "sdl2 0.0.22 (git+https://github.com/bfops/rust-sdl2)",
  "sdl2-sys 0.0.22 (git+https://github.com/bfops/rust-sdl2)",
  "time 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -169,6 +170,11 @@ dependencies = [
 name = "noise"
 version = "0.0.3"
 source = "git+https://github.com/bfops/noise-rs#11ea60395d187d7d6fb6932d1f01e4b4a5d109b8"
+
+[[package]]
+name = "opencl"
+version = "0.3.0-dev"
+source = "git+https://github.com/bfops/rust-opencl#8b67721075995f1b09d3a6f733da5aab432d216c"
 
 [[package]]
 name = "pkg-config"

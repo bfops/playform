@@ -61,3 +61,6 @@ git = "https://github.com/bfops/ncollide"
 
 [dependencies.noise]
 git = "https://github.com/bfops/noise-rs"
+
+[dependencies.opencl]
+git = "https://github.com/bfops/rust-opencl"

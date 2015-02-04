@@ -1,16 +1,17 @@
-use color::Color3;
 use id_allocator::IdAllocator;
 use noise::Seed;
+use opencl_context::CL;
 use state::EntityId;
 use std::collections::hash_map::{HashMap, Entry};
 use std::iter::range_inclusive;
 use stopwatch::TimerSet;
 use terrain_block::{TerrainBlock, BlockPosition};
 use terrain_heightmap::HeightMap;
+use terrain_texture::TerrainTextureGenerator;
 use tree_placer::TreePlacer;
 
 // Quality is the number of times the noise function is sampled along each axis.
-pub const LOD_QUALITY: [u32; 4] = [8, 4, 2, 1];
+pub const LOD_QUALITY: [u16; 4] = [8, 4, 2, 1];
 
 pub const AMPLITUDE: f64 = 64.0;
 pub const FREQUENCY: f64 = 1.0 / 64.0;
@@ -25,18 +26,6 @@ pub enum TerrainType {
   Stone,
   Wood,
   Leaf,
-}
-
-impl TerrainType {
-  pub fn color(&self) -> Color3<f32> {
-    match *self {
-      TerrainType::Grass => Color3::of_rgb(0.0, 0.5, 0.0),
-      TerrainType::Dirt => Color3::of_rgb(0.5, 0.4, 0.2),
-      TerrainType::Stone => Color3::of_rgb(0.5, 0.5, 0.5),
-      TerrainType::Wood => Color3::of_rgb(0.4, 0.3, 0.1),
-      TerrainType::Leaf => Color3::of_rgb(0.0, 0.4, 0.0),
-    }
-  }
 }
 
 pub struct TerrainMipMesh {
@@ -64,6 +53,8 @@ impl Terrain {
   pub fn load<F, T>(
     &mut self,
     timers: &TimerSet,
+    cl: &CL,
+    texture_generator: &TerrainTextureGenerator,
     id_allocator: &mut IdAllocator<EntityId>,
     position: &BlockPosition,
     lod_index: u32,
@@ -86,8 +77,10 @@ impl Terrain {
           *mesh = Some(
             TerrainBlock::generate(
               timers,
+              cl,
               id_allocator,
               heightmap,
+              texture_generator,
               treemap,
               position,
               lod_index,

@@ -1,19 +1,21 @@
 use color::Color3;
 use gl::types::*;
 use id_allocator::IdAllocator;
-use nalgebra::{Pnt2, Pnt3, Vec3};
+use nalgebra::{Pnt2, Pnt3, Vec2, Vec3};
 use ncollide::bounding_volume::{AABB, AABB3};
+use opencl_context::CL;
 use state::EntityId;
 use std::cmp::partial_max;
 use std::num::Float;
 use std::ops::Add;
 use stopwatch::TimerSet;
-use terrain::{TerrainType, LOD_QUALITY};
+use terrain::LOD_QUALITY;
 use terrain_heightmap::HeightMap;
+use terrain_texture;
+use terrain_texture::TerrainTextureGenerator;
 use tree_placer::TreePlacer;
 
 pub const BLOCK_WIDTH: i32 = 8;
-pub const TEXTURE_LEN: usize = 5;
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub struct BlockPosition(Pnt3<i32>);
@@ -84,9 +86,9 @@ pub struct TerrainBlock {
   pub vertex_coordinates: Vec<[Pnt3<GLfloat>; 3]>,
   pub normals: Vec<[Vec3<GLfloat>; 3]>,
   // per-vertex 2D coordinates into `pixels`.
-  pub coords: Vec<[Pnt2<u32>; 3]>,
+  pub coords: Vec<[Pnt2<f32>; 3]>,
 
-  pub pixels: [Color3<f32>; TEXTURE_LEN],
+  pub pixels: Vec<Color3<f32>>,
 
   // per-triangle entity IDs
   pub ids: Vec<EntityId>,
@@ -102,7 +104,7 @@ impl TerrainBlock {
       normals: Vec::new(),
       coords: Vec::new(),
 
-      pixels: [Color3::of_rgb(0.0, 0.0, 0.0); TEXTURE_LEN],
+      pixels: Vec::new(),
 
       ids: Vec::new(),
       bounds: Vec::new(),
@@ -111,8 +113,10 @@ impl TerrainBlock {
 
   pub fn generate(
     timers: &TimerSet,
+    cl: &CL,
     id_allocator: &mut IdAllocator<EntityId>,
     heightmap: &HeightMap,
+    texture_generator: &TerrainTextureGenerator,
     treemap: &TreePlacer,
     position: &BlockPosition,
     lod_index: u32,
@@ -120,37 +124,43 @@ impl TerrainBlock {
     timers.time("update.generate_block", || {
       let mut block = TerrainBlock::empty();
 
-      block.pixels = [
-        TerrainType::Grass.color(),
-        TerrainType::Dirt.color(),
-        TerrainType::Stone.color(),
-        TerrainType::Wood.color(),
-        TerrainType::Leaf.color(),
-      ];
+      let position = position.to_world_position();
 
-      let x = (position.as_pnt().x * BLOCK_WIDTH) as f32;
-      let y = (position.as_pnt().y * BLOCK_WIDTH) as f32;
-      let z = (position.as_pnt().z * BLOCK_WIDTH) as f32;
-
-      let lateral_samples = LOD_QUALITY[lod_index as usize];
+      let lateral_samples = LOD_QUALITY[lod_index as usize] as u8;
       let sample_width = BLOCK_WIDTH as f32 / lateral_samples as f32;
 
+      let mut any_tiles = false;
       for dx in range(0, lateral_samples) {
-        let x = x + dx as f32 * sample_width;
+        let dx = dx as f32;
         for dz in range(0, lateral_samples) {
-          let z = z + dz as f32 * sample_width;
-          let position = Pnt3::new(x, y, z);
-          TerrainBlock::add_tile(
+          let dz = dz as f32;
+          let tex_sample = terrain_texture::TEXTURE_WIDTH as f32 / lateral_samples as f32;
+          let tex_coord = Pnt2::new(dx, dz) * tex_sample;
+          let tile_position = position + Vec3::new(dx, 0.0, dz) * sample_width;
+          if TerrainBlock::add_tile(
             timers,
             heightmap,
             treemap,
             id_allocator,
             &mut block,
             sample_width,
-            &position,
+            tex_sample,
+            &tile_position,
+            tex_coord,
             lod_index,
-          );
+          ) {
+            any_tiles = true;
+          }
         }
+      }
+
+      if any_tiles {
+        block.pixels =
+          texture_generator.generate(
+            cl,
+            position.x as f32,
+            position.z as f32,
+          );
       }
 
       block
@@ -164,14 +174,16 @@ impl TerrainBlock {
     id_allocator: &mut IdAllocator<EntityId>,
     block: &mut TerrainBlock,
     sample_width: f32,
+    tex_sample: f32,
     position: &Pnt3<f32>,
+    tex_coord: Pnt2<f32>,
     lod_index: u32,
-  ) {
+  ) -> bool {
     let half_width = sample_width / 2.0;
     let center = hm.point_at(position.x + half_width, position.z + half_width);
 
     if position.y >= center.y || center.y > position.y + BLOCK_WIDTH as f32 {
-      return;
+      return false;
     }
 
     timers.time("update.generate_block.add_tile", || {
@@ -182,65 +194,58 @@ impl TerrainBlock {
       let x2 = position.x + sample_width;
       let z2 = position.z + sample_width;
 
-      let ps: [Pnt3<f32>; 4] =
-        [ hm.point_at(position.x, position.z)
-        , hm.point_at(position.x, z2)
-        , hm.point_at(x2, z2)
-        , hm.point_at(x2, position.z)
-        ];
+      let ps: [Pnt3<_>; 4] = [
+        hm.point_at(position.x, position.z),
+        hm.point_at(position.x, z2),
+        hm.point_at(x2, z2),
+        hm.point_at(x2, position.z),
+      ];
 
-      let ns: [Vec3<f32>; 4] =
-        [ hm.normal_at(normal_delta, position.x, position.z)
-        , hm.normal_at(normal_delta, position.x, z2)
-        , hm.normal_at(normal_delta, x2, z2)
-        , hm.normal_at(normal_delta, x2, position.z)
-        ];
+      let ns: [Vec3<_>; 4] = [
+        hm.normal_at(normal_delta, position.x, position.z),
+        hm.normal_at(normal_delta, position.x, z2),
+        hm.normal_at(normal_delta, x2, z2),
+        hm.normal_at(normal_delta, x2, position.z),
+      ];
 
-      let center_lower_than = ps.iter().filter(|v| center.y < v.y).count();
+      let ts: [Pnt2<_>; 4] = [
+        (tex_coord.to_vec() + Vec2::new(0.0, 0.0)).to_pnt(),
+        (tex_coord.to_vec() + Vec2::new(0.0, tex_sample)).to_pnt(),
+        (tex_coord.to_vec() + Vec2::new(tex_sample, tex_sample)).to_pnt(),
+        (tex_coord.to_vec() + Vec2::new(tex_sample, 0.0)).to_pnt(),
+      ];
 
-      let terrain_type =
-        if center_lower_than == 4 {
-          TerrainType::Stone
-        } else if center_lower_than == 3 {
-          TerrainType::Dirt
-        } else {
-          TerrainType::Grass
-        };
+      let center_tex_coord =
+        (tex_coord.to_vec() + Pnt2::new(tex_sample, tex_sample).to_vec() / 2.0).to_pnt();
 
       macro_rules! place_terrain(
         ($v1: expr,
          $v2: expr,
-         $n1: expr,
-         $n2: expr,
          $minx: expr,
          $minz: expr,
          $maxx: expr,
          $maxz: expr
         ) => ({
-          let maxy = partial_max($v1.y, $v2.y);
+          let v1 = &ps[$v1];
+          let v2 = &ps[$v2];
+          let n1 = &ns[$v1];
+          let n2 = &ns[$v2];
+          let t1 = &ts[$v1];
+          let t2 = &ts[$v2];
+          let maxy = partial_max(v1.y, v2.y);
           let maxy = maxy.and_then(|m| partial_max(m, center.y));
           let maxy = maxy.unwrap();
 
           let id = id_allocator.allocate();
 
-          block.vertex_coordinates.push([$v1, $v2, center]);
-          block.normals.push([$n1, $n2, center_normal]);
-          let coord =
-            Pnt2::new(0,
-              match terrain_type {
-                TerrainType::Grass => 0,
-                TerrainType::Dirt => 1,
-                TerrainType::Stone => 2,
-                TerrainType::Wood => 3,
-                TerrainType::Leaf => 4,
-              }
-            );
-          block.coords.push([coord, coord, coord]);
+          block.vertex_coordinates.push([*v1, *v2, center]);
+          block.normals.push([*n1, *n2, center_normal]);
+          block.coords.push([*t1, *t2, center_tex_coord]);
           block.ids.push(id);
           block.bounds.push((
             id,
             AABB::new(
-              Pnt3::new($minx, $v1.y, $minz),
+              Pnt3::new($minx, v1.y, $minz),
               Pnt3::new($maxx, maxy, $maxz),
             ),
           ));
@@ -256,14 +261,16 @@ impl TerrainBlock {
       block.bounds.reserve(polys);
 
       let centr = center; // makes alignment nice
-      place_terrain!(ps[0], ps[1], ns[0], ns[1], ps[0].x, ps[0].z, centr.x, ps[1].z);
-      place_terrain!(ps[1], ps[2], ns[1], ns[2], ps[1].x, centr.z, ps[2].x, ps[2].z);
-      place_terrain!(ps[2], ps[3], ns[2], ns[3], centr.x, centr.z, ps[2].x, ps[2].z);
-      place_terrain!(ps[3], ps[0], ns[3], ns[0], ps[0].x, ps[0].z, ps[3].x, centr.z);
+      place_terrain!(0, 1, ps[0].x, ps[0].z, centr.x, ps[1].z);
+      place_terrain!(1, 2, ps[1].x, centr.z, ps[2].x, ps[2].z);
+      place_terrain!(2, 3, centr.x, centr.z, ps[2].x, ps[2].z);
+      place_terrain!(3, 0, ps[0].x, ps[0].z, ps[3].x, centr.z);
 
       if treemap.should_place_tree(&centr) {
         treemap.place_tree(centr, id_allocator, block, lod_index);
       }
+
+      true
     })
   }
 }

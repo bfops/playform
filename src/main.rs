@@ -3,6 +3,7 @@ use gl;
 use interval_timer::IntervalTimer;
 use log;
 use logger::Logger;
+use opencl_context::CL;
 use process_event::process_event;
 use render::render;
 use sdl2;
@@ -28,6 +29,10 @@ pub fn main() {
   debug!("starting");
 
   let timers = TimerSet::new();
+
+  let cl = unsafe {
+    CL::new()
+  };
 
   sdl2::init(sdl2::INIT_EVERYTHING);
 
@@ -63,7 +68,7 @@ pub fn main() {
       GLContext::new()
     };
 
-    let mut app = App::new(&gl, &mut gl_context, &timers);
+    let mut app = App::new(&gl, &mut gl_context, &cl, &timers);
 
     let mut render_timer;
     let mut update_timer;
@@ -79,7 +84,7 @@ pub fn main() {
     'game_loop:loop {
       let updates = update_timer.update(time::precise_time_ns());
       if updates > 0 {
-        update(&timers, &mut app, &mut gl_context);
+        update(&timers, &mut app, &mut gl_context, &cl);
       }
 
       let renders = render_timer.update(time::precise_time_ns());

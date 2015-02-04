@@ -70,13 +70,13 @@ impl TreePlacer {
       normalize(&Vec3::new( 1.0,  1.0, -1.0)),
     ];
 
-    let wood_coords = Pnt2::new(0, 3);
-    let leaf_coords = Pnt2::new(0, 4);
+    let wood_coords = Pnt2::new(0.0, 3.0);
+    let leaf_coords = Pnt2::new(0.0, 4.0);
 
     let mut place_side =
       |&mut:
         corners: &[Pnt3<f32>],
-        coords: Pnt2<u32>,
+        coords: Pnt2<f32>,
         idx1: usize,
         idx2: usize,
         idx3: usize,
@@ -117,7 +117,7 @@ impl TreePlacer {
 
     let mut place_block =
       |&mut:
-        coords: Pnt2<u32>,
+        coords: Pnt2<f32>,
         low_center: &Pnt3<f32>, low_radius: f32,
         high_center: &Pnt3<f32>, high_radius: f32| {
         let corners = [

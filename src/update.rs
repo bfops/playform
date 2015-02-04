@@ -4,6 +4,7 @@ use gl::types::*;
 use light::{Light, set_point_light, set_ambient_light};
 use mob;
 use nalgebra::Vec3;
+use opencl_context::CL;
 use physics::Physics;
 use state::App;
 use std::cmp::partial_max;
@@ -19,12 +20,14 @@ pub fn update(
   timers: &TimerSet,
   app: &mut App,
   gl_context: &mut GLContext,
+  cl: &CL,
 ) {
   timers.time("update", || {
     timers.time("update.player", || {
       app.player.update(
         timers,
         gl_context,
+        cl,
         &mut app.terrain_game_loader,
         &mut app.id_allocator,
         &mut app.physics,
@@ -41,6 +44,7 @@ pub fn update(
         mob.solid_boundary.update(
           timers,
           gl_context,
+          cl,
           &mut app.terrain_game_loader,
           &mut app.id_allocator,
           &mut app.physics,

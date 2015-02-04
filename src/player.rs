@@ -4,6 +4,7 @@ use id_allocator::IdAllocator;
 use nalgebra::Vec3;
 use ncollide::bounding_volume::AABB;
 use ncollide::ray::{Ray, Ray3};
+use opencl_context::CL;
 use physics::Physics;
 use state::EntityId;
 use std::f32::consts::PI;
@@ -105,6 +106,7 @@ impl<'a> Player<'a> {
     &mut self,
     timers: &TimerSet,
     gl_context: &mut GLContext,
+    cl: &CL,
     terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
@@ -115,6 +117,7 @@ impl<'a> Player<'a> {
       self.surroundings_loader.update(
         timers,
         gl_context,
+        cl,
         terrain_game_loader,
         id_allocator,
         physics,
@@ -124,6 +127,7 @@ impl<'a> Player<'a> {
       self.solid_boundary.update(
         timers,
         gl_context,
+        cl,
         terrain_game_loader,
         id_allocator,
         physics,

@@ -2,23 +2,33 @@ use id_allocator::IdAllocator;
 use in_progress_terrain::InProgressTerrain;
 use lod_map::{LOD, OwnerId, LODMap};
 use noise::Seed;
+use opencl_context::CL;
 use physics::Physics;
 use shaders::terrain::TerrainShader;
 use state::EntityId;
 use std::iter::repeat;
+use std::mem;
 use stopwatch::TimerSet;
 use terrain::Terrain;
 use terrain_block::BlockPosition;
+use terrain_texture;
+use terrain_texture::TerrainTextureGenerator;
 use terrain_vram_buffers::TerrainVRAMBuffers;
 use yaglw::gl_context::{GLContext, GLContextExistence};
 use yaglw::texture::TextureUnit;
+
+unsafe fn get_slice<'a, V>(v: &'a Vec<V>) -> &'a [V; terrain_texture::TEXTURE_LEN] {
+  assert_eq!(v.len(), terrain_texture::TEXTURE_LEN);
+  mem::transmute(v.as_ptr())
+}
 
 /// Load and unload TerrainBlocks from the game.
 /// Each TerrainBlock can be owned by a set of owners, each of which can independently request LODs.
 /// The maximum LOD requested is the one that is actually loaded.
 pub struct TerrainGameLoader<'a> {
   terrain: Terrain,
-  terrain_vram_buffers: TerrainVRAMBuffers<'a>,
+  texture_generator: TerrainTextureGenerator,
+  vram_buffers: TerrainVRAMBuffers<'a>,
   in_progress_terrain: InProgressTerrain,
   // The LODs of the currently loaded blocks.
   lod_map: LODMap,
@@ -28,15 +38,17 @@ impl<'a> TerrainGameLoader<'a> {
   pub fn new(
     gl: &'a GLContextExistence,
     gl_context: &mut GLContext,
+    cl: &CL,
     shader: &mut TerrainShader,
     texture_unit_alloc: &mut IdAllocator<TextureUnit>,
   ) -> TerrainGameLoader<'a> {
-    let terrain_vram_buffers = TerrainVRAMBuffers::new(gl, gl_context);
-    terrain_vram_buffers.bind_glsl_uniforms(gl_context, texture_unit_alloc, shader);
+    let vram_buffers = TerrainVRAMBuffers::new(gl, gl_context);
+    vram_buffers.bind_glsl_uniforms(gl_context, texture_unit_alloc, shader);
 
     TerrainGameLoader {
       terrain: Terrain::new(Seed::new(0), 0),
-      terrain_vram_buffers: terrain_vram_buffers,
+      texture_generator: TerrainTextureGenerator::new(cl),
+      vram_buffers: vram_buffers,
       in_progress_terrain: InProgressTerrain::new(),
       lod_map: LODMap::new(),
     }
@@ -47,6 +59,7 @@ impl<'a> TerrainGameLoader<'a> {
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
+    cl: &CL,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
@@ -69,10 +82,10 @@ impl<'a> TerrainGameLoader<'a> {
           let block = lods[loaded_lod as usize].as_ref().unwrap();
           for id in block.ids.iter() {
             physics.remove_terrain(*id);
-            self.terrain_vram_buffers.swap_remove(gl, *id);
+            self.vram_buffers.swap_remove(gl, *id);
           }
 
-          self.terrain_vram_buffers.swap_remove_pixels(gl, *block_position);
+          self.vram_buffers.free_pixels(block_position);
         });
       },
     }
@@ -88,44 +101,54 @@ impl<'a> TerrainGameLoader<'a> {
       },
       Some(LOD::LodIndex(new_lod)) => {
         timers.time("terrain_game_loader.load", || {
-          let terrain_vram_buffers = &mut self.terrain_vram_buffers;
-          self.terrain.load(timers, id_allocator, block_position, new_lod, |block| {
-            timers.time("terrain_game_loader.load.physics", || {
-              for &(ref id, ref bounds) in block.bounds.iter() {
-                physics.insert_terrain(*id, bounds.clone());
-              }
-            });
+          let vram_buffers = &mut self.vram_buffers;
+          self.terrain.load(
+            timers,
+            cl,
+            &self.texture_generator,
+            id_allocator,
+            block_position,
+            new_lod,
+            |block| {
+              timers.time("terrain_game_loader.load.physics", || {
+                for &(ref id, ref bounds) in block.bounds.iter() {
+                  physics.insert_terrain(*id, bounds.clone());
+                }
+              });
 
-            timers.time("terrain_game_loader.load.gpu", || {
-              let block_indices;
+              timers.time("terrain_game_loader.load.gpu", || {
+                if block.ids.is_empty() {
+                  true
+                } else {
+                  let block_pixels = unsafe {
+                    get_slice(&block.pixels)
+                  };
 
-              if block.ids.is_empty() {
-                block_indices = Vec::new();
-              } else {
-                let block_index =
-                  terrain_vram_buffers.push_pixels(
-                    gl,
-                    &block.pixels,
-                    *block_position,
-                  );
+                  let block_index =
+                    vram_buffers.push_pixels(
+                      gl,
+                      block_pixels,
+                      *block_position,
+                    );
 
-                block_indices =
-                  repeat(block_index).take(block.ids.len()).collect();
-              }
+                  let block_indices: Vec<_> =
+                    repeat(block_index).take(block.ids.len()).collect();
 
-              let success =
-                terrain_vram_buffers.push(
-                  gl,
-                  block.vertex_coordinates.as_slice(),
-                  block.normals.as_slice(),
-                  block.coords.as_slice(),
-                  block_indices.as_slice(),
-                  block.ids.as_slice(),
-                );
+                  let success =
+                    vram_buffers.push(
+                      gl,
+                      block.vertex_coordinates.as_slice(),
+                      block.normals.as_slice(),
+                      block.coords.as_slice(),
+                      block_indices.as_slice(),
+                      block.ids.as_slice(),
+                    );
 
-              success
-            })
-          })
+                  success
+                }
+              })
+            },
+          )
         })
       },
     }
@@ -135,6 +158,7 @@ impl<'a> TerrainGameLoader<'a> {
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
+    cl: &CL,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
@@ -151,6 +175,7 @@ impl<'a> TerrainGameLoader<'a> {
           self.re_lod_block(
             timers,
             gl,
+            cl,
             id_allocator,
             physics,
             block_position,
@@ -171,6 +196,7 @@ impl<'a> TerrainGameLoader<'a> {
     &mut self,
     timers: &TimerSet,
     gl: &mut GLContext,
+    cl: &CL,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
     block_position: &BlockPosition,
@@ -187,6 +213,7 @@ impl<'a> TerrainGameLoader<'a> {
           self.re_lod_block(
             timers,
             gl,
+            cl,
             id_allocator,
             physics,
             block_position,
@@ -205,6 +232,6 @@ impl<'a> TerrainGameLoader<'a> {
   }
 
   pub fn draw(&self, gl: &mut GLContext) {
-    self.terrain_vram_buffers.draw(gl);
+    self.vram_buffers.draw(gl);
   }
 }

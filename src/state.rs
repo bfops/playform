@@ -12,6 +12,7 @@ use mob;
 use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
 use nalgebra;
 use ncollide::bounding_volume::{AABB, AABB3};
+use opencl_context::CL;
 use physics::Physics;
 use player::Player;
 use shaders;
@@ -171,6 +172,7 @@ impl<'a> App<'a> {
   pub fn new(
     gl: &'a GLContextExistence,
     gl_context: &mut GLContext,
+    cl: &CL,
     timers: &'a TimerSet,
   ) -> App<'a> {
     gl_context.print_stats();
@@ -267,7 +269,13 @@ impl<'a> App<'a> {
 
     let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
     let terrain_game_loader =
-      TerrainGameLoader::new(gl, gl_context, &mut terrain_shader, &mut texture_unit_alloc);
+      TerrainGameLoader::new(
+        gl,
+        gl_context,
+        cl,
+        &mut terrain_shader,
+        &mut texture_unit_alloc,
+      );
 
     let (text_textures, text_triangles) =
       make_text(gl, gl_context, &hud_texture_shader.shader);
