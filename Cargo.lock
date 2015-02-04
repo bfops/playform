@@ -27,22 +27,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "gl"
 version = "0.0.7"
-source = "git+https://github.com/bjz/gl-rs#c5303f86a9aac5392bae959b21a8af84e86510e3"
+source = "git+https://github.com/bjz/gl-rs#304569673d345b7b752aff2242f6926043e47b46"
 dependencies = [
  "gl_common 0.0.3 (git+https://github.com/bjz/gl-rs)",
- "gl_generator 0.0.13 (git+https://github.com/bjz/gl-rs)",
+ "gl_generator 0.0.14 (git+https://github.com/bjz/gl-rs)",
  "khronos_api 0.0.5 (git+https://github.com/bjz/gl-rs)",
 ]
 
 [[package]]
 name = "gl_common"
 version = "0.0.3"
-source = "git+https://github.com/bjz/gl-rs#c5303f86a9aac5392bae959b21a8af84e86510e3"
+source = "git+https://github.com/bjz/gl-rs#304569673d345b7b752aff2242f6926043e47b46"
 
 [[package]]
 name = "gl_generator"
-version = "0.0.13"
-source = "git+https://github.com/bjz/gl-rs#c5303f86a9aac5392bae959b21a8af84e86510e3"
+version = "0.0.14"
+source = "git+https://github.com/bjz/gl-rs#304569673d345b7b752aff2242f6926043e47b46"
 dependencies = [
  "gl_common 0.0.3 (git+https://github.com/bjz/gl-rs)",
  "khronos_api 0.0.5 (git+https://github.com/bjz/gl-rs)",
@@ -53,7 +53,7 @@ dependencies = [
 [[package]]
 name = "khronos_api"
 version = "0.0.5"
-source = "git+https://github.com/bjz/gl-rs#c5303f86a9aac5392bae959b21a8af84e86510e3"
+source = "git+https://github.com/bjz/gl-rs#304569673d345b7b752aff2242f6926043e47b46"
 
 [[package]]
 name = "libc"
