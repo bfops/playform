@@ -4,7 +4,7 @@ use opencl::hl::{Program, Kernel};
 use opencl::mem::CLBuffer;
 use opencl_context::CL;
 
-pub const TEXTURE_WIDTH: usize = 8;
+pub const TEXTURE_WIDTH: usize = 16;
 pub const TEXTURE_LEN: usize = TEXTURE_WIDTH * TEXTURE_WIDTH;
 
 const INCLUDE_PERLIN: &'static str = "
@@ -44,7 +44,7 @@ pub struct TerrainTextureGenerator {
 }
 
 impl TerrainTextureGenerator {
-  pub fn new(cl: &CL) -> TerrainTextureGenerator {
+  pub fn new(cl: &CL, width: u32) -> TerrainTextureGenerator {
     let output = cl.context.create_buffer(TEXTURE_LEN, opencl::cl::CL_MEM_WRITE_ONLY);
 
     let program = {
@@ -57,12 +57,13 @@ impl TerrainTextureGenerator {
             __global float* output)
           {{
             int W = {};
+            int w = {};
             int i = get_global_id(0);
 
             double c_x = i % W;
             double c_y = i / W;
-            c_x = c_x + low_x;
-            c_y = c_y + low_z;
+            c_x = c_x*w/W + low_x;
+            c_y = c_y*w/W + low_z;
 
             double r = perlin({}, {}, {}, {}, {}, c_x, c_y);
 
@@ -78,7 +79,8 @@ impl TerrainTextureGenerator {
         ",
           INCLUDE_PERLIN,
           TEXTURE_WIDTH,
-          1.0, 1.0 / 32.0, 1.0, 1.0, 3,
+          width,
+          1.0, 1.0 / 32.0, 0.8, 2.4, 2,
         );
       cl.context.create_program_from_source(ker.as_slice())
     };

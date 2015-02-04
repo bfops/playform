@@ -10,7 +10,7 @@ use std::iter::repeat;
 use std::mem;
 use stopwatch::TimerSet;
 use terrain::Terrain;
-use terrain_block::BlockPosition;
+use terrain_block::{BlockPosition, BLOCK_WIDTH};
 use terrain_texture;
 use terrain_texture::TerrainTextureGenerator;
 use terrain_vram_buffers::TerrainVRAMBuffers;
@@ -47,7 +47,7 @@ impl<'a> TerrainGameLoader<'a> {
 
     TerrainGameLoader {
       terrain: Terrain::new(Seed::new(0), 0),
-      texture_generator: TerrainTextureGenerator::new(cl),
+      texture_generator: TerrainTextureGenerator::new(cl, BLOCK_WIDTH as u32),
       vram_buffers: vram_buffers,
       in_progress_terrain: InProgressTerrain::new(),
       lod_map: LODMap::new(),

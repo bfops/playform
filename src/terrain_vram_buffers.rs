@@ -59,6 +59,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
     gl: &'a GLContextExistence,
     gl_context: &mut GLContext,
   ) -> TerrainVRAMBuffers<'a> {
+    let len = 32768;
     TerrainVRAMBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
@@ -74,7 +75,6 @@ impl<'a> TerrainVRAMBuffers<'a> {
       block_indices: BufferTexture::new(gl, gl_context, gl::R32UI, POLYGON_BUDGET),
 
       pixels: {
-        let len = 65536;
         let mut pixels = BufferTexture::new(gl, gl_context, gl::R32F, len);
         let init: [Color3<f32>; terrain_texture::TEXTURE_LEN] =
           [Color3::of_rgb(0.0, 0.0, 0.0); terrain_texture::TEXTURE_LEN];
@@ -83,7 +83,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
         pixels
       },
       block_to_index: HashMap::new(),
-      free_list: range(0, 65536).collect(),
+      free_list: range(0, len as u32).collect(),
     }
   }
 
