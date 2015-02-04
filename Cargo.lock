@@ -68,7 +68,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "nalgebra"
 version = "0.2.2"
-source = "git+https://github.com/sebcrozet/nalgebra#39fd7c1ae7d0792b4cc6e9931d9d9d3a5e654e4e"
+source = "git+https://github.com/sebcrozet/nalgebra#316298f82596a19210630b088c193e2b6906f93c"
 dependencies = [
  "rustc-serialize 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
