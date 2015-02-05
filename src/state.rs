@@ -455,8 +455,8 @@ fn make_mobs<'a>(
     }
 
     fn follow_player(world: &App, mob: &mut mob::Mob) {
-      let mut to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
-      if to_player.normalize() < 2.0 {
+      let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
+      if to_player.sqnorm() < 4.0 {
         mob.behavior = wait_to_reset;
         mob.speed = Vec3::new(0.0, 0.0, 0.0);
       } else {
