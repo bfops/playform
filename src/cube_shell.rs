@@ -1,5 +1,5 @@
 use range_abs::range_abs;
-use terrain_block::BlockPosition;
+use terrain::terrain_block::BlockPosition;
 
 #[cfg(test)]
 use std::collections::HashSet;

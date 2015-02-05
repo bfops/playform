@@ -8,11 +8,11 @@ use shaders::terrain::TerrainShader;
 use state::EntityId;
 use std::iter::repeat;
 use stopwatch::TimerSet;
-use terrain::Terrain;
-use terrain_block::{BlockPosition, BLOCK_WIDTH};
-use terrain_texture::TEXTURE_WIDTH;
-use terrain_texture::TerrainTextureGenerator;
-use terrain_vram_buffers::TerrainVRAMBuffers;
+use terrain::terrain::Terrain;
+use terrain::terrain_block::{BlockPosition, BLOCK_WIDTH};
+use terrain::texture_generator::TEXTURE_WIDTH;
+use terrain::texture_generator::TerrainTextureGenerator;
+use terrain::terrain_vram_buffers::TerrainVRAMBuffers;
 use yaglw::gl_context::{GLContext, GLContextExistence};
 use yaglw::texture::TextureUnit;
 

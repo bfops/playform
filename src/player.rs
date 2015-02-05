@@ -12,9 +12,9 @@ use std::iter::range_inclusive;
 use std::num;
 use stopwatch::TimerSet;
 use surroundings_loader::SurroundingsLoader;
-use terrain;
-use terrain_block::BlockPosition;
-use terrain_game_loader::TerrainGameLoader;
+use terrain::terrain;
+use terrain::terrain_block::BlockPosition;
+use terrain::terrain_game_loader::TerrainGameLoader;
 use yaglw::gl_context::GLContext;
 
 const LOD_THRESHOLDS: [i32; 3] = [1, 8, 32];

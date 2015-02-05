@@ -6,8 +6,8 @@ use state::EntityId;
 use std::cmp::{partial_min, partial_max};
 use std::collections::RingBuf;
 use std::num::Float;
-use terrain::LOD_QUALITY;
-use terrain_block::{TerrainBlock, BLOCK_WIDTH};
+use terrain::terrain::LOD_QUALITY;
+use terrain::terrain_block::{TerrainBlock, BLOCK_WIDTH};
 
 const TREE_NODES: [f32; 4] = [1.0/16.0, 1.0/16.0, 1.0/64.0, 1.0/128.0];
 const MAX_BRANCH_LENGTH: [f32; 4] = [4.0, 4.0, 8.0, 16.0];

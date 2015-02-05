@@ -9,11 +9,11 @@ use std::cmp::partial_max;
 use std::num::Float;
 use std::ops::Add;
 use stopwatch::TimerSet;
-use terrain::LOD_QUALITY;
-use terrain_heightmap::HeightMap;
-use terrain_texture;
-use terrain_texture::TerrainTextureGenerator;
-use tree_placer::TreePlacer;
+use terrain::terrain::LOD_QUALITY;
+use terrain::heightmap::HeightMap;
+use terrain::texture_generator;
+use terrain::texture_generator::TerrainTextureGenerator;
+use terrain::tree_placer::TreePlacer;
 
 pub const BLOCK_WIDTH: i32 = 8;
 
@@ -135,7 +135,7 @@ impl TerrainBlock {
         for dz in range(0, lateral_samples) {
           let dz = dz as f32;
           let tex_sample =
-            terrain_texture::TEXTURE_WIDTH[lod_index as usize] as f32 / lateral_samples as f32;
+            texture_generator::TEXTURE_WIDTH[lod_index as usize] as f32 / lateral_samples as f32;
           let tex_coord = Pnt2::new(dx, dz) * tex_sample;
           let tile_position = position + Vec3::new(dx, 0.0, dz) * sample_width;
           if TerrainBlock::add_tile(

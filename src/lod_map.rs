@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::iter::IteratorExt;
 use std::ops::Add;
-use terrain_block::BlockPosition;
+use terrain::terrain_block::BlockPosition;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LOD {

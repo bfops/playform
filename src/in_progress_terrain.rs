@@ -4,7 +4,7 @@ use ncollide::bounding_volume::AABB;
 use physics::Physics;
 use state::EntityId;
 use std::collections::hash_map::{HashMap, Entry};
-use terrain_block::{BlockPosition, BLOCK_WIDTH};
+use terrain::terrain_block::{BlockPosition, BLOCK_WIDTH};
 
 pub struct InProgressTerrain {
   pub blocks: HashMap<BlockPosition, EntityId>,

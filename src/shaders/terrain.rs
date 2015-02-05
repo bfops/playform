@@ -1,5 +1,5 @@
 use gl;
-use terrain_texture;
+use terrain::texture_generator;
 use yaglw::gl_context::GLContextExistence;
 use yaglw::shader::Shader;
 
@@ -139,10 +139,10 @@ impl<'a> TerrainShader<'a> {
           vec3 lighting = brightness * light.intensity + ambient_light;
           frag_color = vec4(clamp(lighting, 0, 1), 1) * base_color;
         }}",
-          terrain_texture::TEXTURE_WIDTH[0], terrain_texture::TEXTURE_LEN[0],
-          terrain_texture::TEXTURE_WIDTH[1], terrain_texture::TEXTURE_LEN[1],
-          terrain_texture::TEXTURE_WIDTH[2], terrain_texture::TEXTURE_LEN[2],
-          terrain_texture::TEXTURE_WIDTH[3], terrain_texture::TEXTURE_LEN[3],
+          texture_generator::TEXTURE_WIDTH[0], texture_generator::TEXTURE_LEN[0],
+          texture_generator::TEXTURE_WIDTH[1], texture_generator::TEXTURE_LEN[1],
+          texture_generator::TEXTURE_WIDTH[2], texture_generator::TEXTURE_LEN[2],
+          texture_generator::TEXTURE_WIDTH[3], texture_generator::TEXTURE_LEN[3],
         )),
     );
     TerrainShader {

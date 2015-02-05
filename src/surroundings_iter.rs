@@ -1,6 +1,6 @@
 use cube_shell::cube_shell;
-use terrain_block::BlockPosition;
 use std::collections::RingBuf;
+use terrain::terrain_block::BlockPosition;
 
 #[cfg(test)]
 use std::iter::range_inclusive;

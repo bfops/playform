@@ -9,8 +9,8 @@ use state::EntityId;
 use std::collections::HashMap;
 use std::iter::{IteratorExt, repeat};
 use std::u32;
-use terrain_block::BlockPosition;
-use terrain_texture;
+use terrain::terrain_block::BlockPosition;
+use terrain::texture_generator;
 use yaglw::gl_context::{GLContext,GLContextExistence};
 use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
@@ -96,10 +96,10 @@ impl<'a> TerrainVRAMBuffers<'a> {
         pixels
       },
       pixels: [
-        PixelBuffer::new(gl, gl_context, terrain_texture::TEXTURE_WIDTH[0], 32),
-        PixelBuffer::new(gl, gl_context, terrain_texture::TEXTURE_WIDTH[1], 512),
-        PixelBuffer::new(gl, gl_context, terrain_texture::TEXTURE_WIDTH[2], 8192),
-        PixelBuffer::new(gl, gl_context, terrain_texture::TEXTURE_WIDTH[3], 32768),
+        PixelBuffer::new(gl, gl_context, texture_generator::TEXTURE_WIDTH[0], 32),
+        PixelBuffer::new(gl, gl_context, texture_generator::TEXTURE_WIDTH[1], 512),
+        PixelBuffer::new(gl, gl_context, texture_generator::TEXTURE_WIDTH[2], 8192),
+        PixelBuffer::new(gl, gl_context, texture_generator::TEXTURE_WIDTH[3], 32768),
       ],
     }
   }
@@ -221,7 +221,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
     self.lods.buffer.byte_buffer.bind(gl);
     self.lods.buffer.update(gl, block_idx as usize, &[lod]);
 
-    let len = terrain_texture::TEXTURE_LEN[lod as usize];
+    let len = texture_generator::TEXTURE_LEN[lod as usize];
     assert_eq!(len, pixels.len());
 
     let pixel_idx;

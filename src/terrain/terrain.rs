@@ -5,10 +5,10 @@ use state::EntityId;
 use std::collections::hash_map::{HashMap, Entry};
 use std::iter::range_inclusive;
 use stopwatch::TimerSet;
-use terrain_block::{TerrainBlock, BlockPosition};
-use terrain_heightmap::HeightMap;
-use terrain_texture::TerrainTextureGenerator;
-use tree_placer::TreePlacer;
+use terrain::heightmap::HeightMap;
+use terrain::terrain_block::{TerrainBlock, BlockPosition};
+use terrain::texture_generator::TerrainTextureGenerator;
+use terrain::tree_placer::TreePlacer;
 
 // Quality is the number of times the noise function is sampled along each axis.
 pub const LOD_QUALITY: [u16; 4] = [8, 4, 2, 1];

@@ -1,16 +1,16 @@
 use id_allocator::IdAllocator;
 use lod_map::{LOD, OwnerId};
-use terrain_block::BlockPosition;
-use terrain_game_loader::TerrainGameLoader;
 use opencl_context::CL;
 use physics::Physics;
 use state::EntityId;
 use std::cmp::max;
 use std::num::Float;
 use std::num::SignedInt;
-use surroundings_iter::SurroundingsIter;
-use time;
 use stopwatch::TimerSet;
+use surroundings_iter::SurroundingsIter;
+use terrain::terrain_block::BlockPosition;
+use terrain::terrain_game_loader::TerrainGameLoader;
+use time;
 use yaglw::gl_context::GLContext;
 
 // Rough budget (in microseconds) for how long block updating can take PER SurroundingsLoader.

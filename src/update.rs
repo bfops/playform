@@ -12,7 +12,7 @@ use std::f32::consts::PI;
 use std::ops::{Deref, DerefMut};
 use std::num::Float;
 use stopwatch::TimerSet;
-use terrain_block::BlockPosition;
+use terrain::terrain_block::BlockPosition;
 use time;
 use yaglw::gl_context::GLContext;
 
