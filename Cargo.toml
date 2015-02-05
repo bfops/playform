@@ -38,8 +38,9 @@ name = "playform"
 path = "./src/playform.rs"
 
 [dependencies]
-time = "*"
 log = "*"
+rand = "*"
+time = "*"
 
 [dependencies.gl]
 git = "https://github.com/bjz/gl-rs"

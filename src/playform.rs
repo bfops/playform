@@ -12,7 +12,6 @@
 #![feature(io)]
 #![feature(libc)]
 #![feature(path)]
-#![feature(rand)]
 #![feature(std_misc)]
 #![feature(test)]
 
@@ -24,6 +23,7 @@ extern crate nalgebra;
 extern crate ncollide;
 extern crate noise;
 extern crate opencl;
+extern crate rand;
 extern crate sdl2;
 extern crate "sdl2-sys" as sdl2_sys;
 extern crate test;

@@ -1,4 +1,4 @@
-use std::cell::{RefCell, Ref};
+use std::cell::{RefCell, Ref, BorrowState};
 use std::rc::Rc;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
@@ -71,10 +71,12 @@ impl TimerSet {
         Entry::Vacant(entry) => entry.insert(Rc::new(RefCell::new(Stopwatch::new()))).clone(),
       };
 
-    match timer.try_borrow_mut() {
-      None => panic!("timer \"{}\" used recursively", name),
-      Some(mut timer) => timer.timed(f),
+    if timer.borrow_state() != BorrowState::Unused {
+      panic!("timer \"{}\" used recursively", name);
     }
+
+    let mut timer = timer.borrow_mut();
+    timer.timed(f)
   }
 
   /// Prints all the timer statistics to stdout, each tagged with their name.

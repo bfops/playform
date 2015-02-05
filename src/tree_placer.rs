@@ -1,11 +1,11 @@
 use id_allocator::IdAllocator;
 use nalgebra::{Pnt2, Pnt3, Vec3, normalize};
 use ncollide::bounding_volume::AABB;
+use rand::{Rng, SeedableRng, IsaacRng};
 use state::EntityId;
 use std::cmp::{partial_min, partial_max};
 use std::collections::RingBuf;
 use std::num::Float;
-use std::rand::{Rng, SeedableRng, IsaacRng};
 use terrain::LOD_QUALITY;
 use terrain_block::{TerrainBlock, BLOCK_WIDTH};
 

@@ -5,7 +5,7 @@ use sdl2_sys::pixels::{SDL_Color,SDL_PIXELFORMAT_ARGB8888};
 use sdl2_sys::surface::SDL_Surface;
 use sdl2_sys::surface;
 use std::ffi::CString;
-use std::path::{BytesContainer, Path};
+use std::old_path::{BytesContainer, Path};
 use yaglw::gl_context::GLContextExistence;
 use yaglw::texture::Texture2D;
 

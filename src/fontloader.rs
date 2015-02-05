@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::old_path::Path;
 use ttf;
 
 pub struct FontLoader {
