@@ -7,27 +7,21 @@ use physics::Physics;
 use shaders::terrain::TerrainShader;
 use state::EntityId;
 use std::iter::repeat;
-use std::mem;
 use stopwatch::TimerSet;
 use terrain::Terrain;
 use terrain_block::{BlockPosition, BLOCK_WIDTH};
-use terrain_texture;
+use terrain_texture::TEXTURE_WIDTH;
 use terrain_texture::TerrainTextureGenerator;
 use terrain_vram_buffers::TerrainVRAMBuffers;
 use yaglw::gl_context::{GLContext, GLContextExistence};
 use yaglw::texture::TextureUnit;
-
-unsafe fn get_slice<'a, V>(v: &'a Vec<V>) -> &'a [V; terrain_texture::TEXTURE_LEN] {
-  assert_eq!(v.len(), terrain_texture::TEXTURE_LEN);
-  mem::transmute(v.as_ptr())
-}
 
 /// Load and unload TerrainBlocks from the game.
 /// Each TerrainBlock can be owned by a set of owners, each of which can independently request LODs.
 /// The maximum LOD requested is the one that is actually loaded.
 pub struct TerrainGameLoader<'a> {
   terrain: Terrain,
-  texture_generator: TerrainTextureGenerator,
+  texture_generators: [TerrainTextureGenerator; 4],
   vram_buffers: TerrainVRAMBuffers<'a>,
   in_progress_terrain: InProgressTerrain,
   // The LODs of the currently loaded blocks.
@@ -47,7 +41,12 @@ impl<'a> TerrainGameLoader<'a> {
 
     TerrainGameLoader {
       terrain: Terrain::new(Seed::new(0), 0),
-      texture_generator: TerrainTextureGenerator::new(cl, BLOCK_WIDTH as u32),
+      texture_generators: [
+        TerrainTextureGenerator::new(cl, TEXTURE_WIDTH[0], BLOCK_WIDTH as u32),
+        TerrainTextureGenerator::new(cl, TEXTURE_WIDTH[1], BLOCK_WIDTH as u32),
+        TerrainTextureGenerator::new(cl, TEXTURE_WIDTH[2], BLOCK_WIDTH as u32),
+        TerrainTextureGenerator::new(cl, TEXTURE_WIDTH[3], BLOCK_WIDTH as u32),
+      ],
       vram_buffers: vram_buffers,
       in_progress_terrain: InProgressTerrain::new(),
       lod_map: LODMap::new(),
@@ -85,7 +84,7 @@ impl<'a> TerrainGameLoader<'a> {
             self.vram_buffers.swap_remove(gl, *id);
           }
 
-          self.vram_buffers.free_pixels(block_position);
+          self.vram_buffers.free_block_data(loaded_lod, block_position);
         });
       },
     }
@@ -105,7 +104,7 @@ impl<'a> TerrainGameLoader<'a> {
           self.terrain.load(
             timers,
             cl,
-            &self.texture_generator,
+            &self.texture_generators[new_lod as usize],
             id_allocator,
             block_position,
             new_lod,
@@ -120,15 +119,12 @@ impl<'a> TerrainGameLoader<'a> {
                 if block.ids.is_empty() {
                   true
                 } else {
-                  let block_pixels = unsafe {
-                    get_slice(&block.pixels)
-                  };
-
                   let block_index =
-                    vram_buffers.push_pixels(
+                    vram_buffers.push_block_data(
                       gl,
-                      block_pixels,
                       *block_position,
+                      block.pixels.as_slice(),
+                      new_lod,
                     );
 
                   let block_indices: Vec<_> =

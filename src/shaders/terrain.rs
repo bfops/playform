@@ -56,8 +56,14 @@ impl<'a> TerrainShader<'a> {
         uniform vec3 ambient_light;
 
         uniform samplerBuffer positions;
-        uniform samplerBuffer pixels;
         uniform isamplerBuffer block_indices;
+        uniform isamplerBuffer lods;
+        uniform isamplerBuffer pixel_indices;
+
+        uniform samplerBuffer pixels_0;
+        uniform samplerBuffer pixels_1;
+        uniform samplerBuffer pixels_2;
+        uniform samplerBuffer pixels_3;
 
         flat in int vertex_id;
         in vec3 normal;
@@ -66,30 +72,55 @@ impl<'a> TerrainShader<'a> {
         out vec4 frag_color;
 
         void main() {{
-          int tex_length = {};
-          int tex_width = {};
+          int tex_width[4];
+          int tex_length[4];
+          tex_width[0] = {};
+          tex_length[0] = {};
+          tex_width[1] = {};
+          tex_length[1] = {};
+          tex_width[2] = {};
+          tex_length[2] = {};
+          tex_width[3] = {};
+          tex_length[3] = {};
 
           int face_id = vertex_id / 3;
           int color_id = face_id * 3;
 
           int block_index = texelFetch(block_indices, face_id).r;
 
+          int lod = texelFetch(lods, block_index).r;
+
           vec4 base_color;
           int p_x = int(pixel_coords.x);
           int p_y = int(pixel_coords.y);
-          if (p_x >= tex_width) {{
-            p_x = tex_width - 1;
+          if (p_x >= tex_width[lod]) {{
+            p_x = tex_width[lod] - 1;
           }}
-          if (p_y >= tex_width) {{
-            p_y = tex_width - 1;
+          if (p_y >= tex_width[lod]) {{
+            p_y = tex_width[lod] - 1;
           }}
 
-          int pixel_idx = block_index*tex_length + p_y*tex_width + p_x;
+          int pixel_idx = texelFetch(pixel_indices, block_index).r;
+          pixel_idx = pixel_idx*tex_length[lod] + p_y*tex_width[lod] + p_x;
           // There are 3 components for every color.
           pixel_idx = pixel_idx * 3;
-          base_color.r = texelFetch(pixels, pixel_idx + 0).r;
-          base_color.g = texelFetch(pixels, pixel_idx + 1).r;
-          base_color.b = texelFetch(pixels, pixel_idx + 2).r;
+          if (lod == 0) {{
+            base_color.r = texelFetch(pixels_0, pixel_idx + 0).r;
+            base_color.g = texelFetch(pixels_0, pixel_idx + 1).r;
+            base_color.b = texelFetch(pixels_0, pixel_idx + 2).r;
+          }} else if (lod == 1) {{
+            base_color.r = texelFetch(pixels_1, pixel_idx + 0).r;
+            base_color.g = texelFetch(pixels_1, pixel_idx + 1).r;
+            base_color.b = texelFetch(pixels_1, pixel_idx + 2).r;
+          }} else if (lod == 2) {{
+            base_color.r = texelFetch(pixels_2, pixel_idx + 0).r;
+            base_color.g = texelFetch(pixels_2, pixel_idx + 1).r;
+            base_color.b = texelFetch(pixels_2, pixel_idx + 2).r;
+          }} else if (lod == 3) {{
+            base_color.r = texelFetch(pixels_3, pixel_idx + 0).r;
+            base_color.g = texelFetch(pixels_3, pixel_idx + 1).r;
+            base_color.b = texelFetch(pixels_3, pixel_idx + 2).r;
+          }}
           base_color.a = 1.0;
 
           // Mutiply by 3 because there are 3 components for each position vector.
@@ -107,7 +138,12 @@ impl<'a> TerrainShader<'a> {
 
           vec3 lighting = brightness * light.intensity + ambient_light;
           frag_color = vec4(clamp(lighting, 0, 1), 1) * base_color;
-        }}", terrain_texture::TEXTURE_LEN, terrain_texture::TEXTURE_WIDTH)),
+        }}",
+          terrain_texture::TEXTURE_WIDTH[0], terrain_texture::TEXTURE_LEN[0],
+          terrain_texture::TEXTURE_WIDTH[1], terrain_texture::TEXTURE_LEN[1],
+          terrain_texture::TEXTURE_WIDTH[2], terrain_texture::TEXTURE_LEN[2],
+          terrain_texture::TEXTURE_WIDTH[3], terrain_texture::TEXTURE_LEN[3],
+        )),
     );
     TerrainShader {
       shader: Shader::new(gl, components.into_iter()),

@@ -134,7 +134,8 @@ impl TerrainBlock {
         let dx = dx as f32;
         for dz in range(0, lateral_samples) {
           let dz = dz as f32;
-          let tex_sample = terrain_texture::TEXTURE_WIDTH as f32 / lateral_samples as f32;
+          let tex_sample =
+            terrain_texture::TEXTURE_WIDTH[lod_index as usize] as f32 / lateral_samples as f32;
           let tex_coord = Pnt2::new(dx, dz) * tex_sample;
           let tile_position = position + Vec3::new(dx, 0.0, dz) * sample_width;
           if TerrainBlock::add_tile(

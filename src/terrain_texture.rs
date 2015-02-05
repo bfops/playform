@@ -4,8 +4,13 @@ use opencl::hl::{Program, Kernel};
 use opencl::mem::CLBuffer;
 use opencl_context::CL;
 
-pub const TEXTURE_WIDTH: usize = 16;
-pub const TEXTURE_LEN: usize = TEXTURE_WIDTH * TEXTURE_WIDTH;
+pub const TEXTURE_WIDTH: [u32; 4] = [16, 8, 4, 1];
+pub const TEXTURE_LEN: [usize; 4] = [
+  TEXTURE_WIDTH[0] as usize * TEXTURE_WIDTH[0] as usize,
+  TEXTURE_WIDTH[1] as usize * TEXTURE_WIDTH[1] as usize,
+  TEXTURE_WIDTH[2] as usize * TEXTURE_WIDTH[2] as usize,
+  TEXTURE_WIDTH[3] as usize * TEXTURE_WIDTH[3] as usize,
+];
 
 const INCLUDE_PERLIN: &'static str = "
   double perlin(
@@ -41,11 +46,13 @@ pub struct TerrainTextureGenerator {
   output: CLBuffer<Color3<f32>>,
   _program: Program,
   kernel: Kernel,
+  len: usize,
 }
 
 impl TerrainTextureGenerator {
-  pub fn new(cl: &CL, width: u32) -> TerrainTextureGenerator {
-    let output = cl.context.create_buffer(TEXTURE_LEN, opencl::cl::CL_MEM_WRITE_ONLY);
+  pub fn new(cl: &CL, texture_width: u32, target_width: u32) -> TerrainTextureGenerator {
+    let len = (texture_width * texture_width) as usize;
+    let output = cl.context.create_buffer(len, opencl::cl::CL_MEM_WRITE_ONLY);
 
     let program = {
       let ker =
@@ -78,8 +85,8 @@ impl TerrainTextureGenerator {
           }}
         ",
           INCLUDE_PERLIN,
-          TEXTURE_WIDTH,
-          width,
+          texture_width,
+          target_width,
           1.0, 1.0 / 32.0, 0.8, 2.4, 2,
         );
       cl.context.create_program_from_source(ker.as_slice())
@@ -92,6 +99,7 @@ impl TerrainTextureGenerator {
       output: output,
       _program: program,
       kernel: kernel,
+      len: len,
     }
   }
 
@@ -103,8 +111,7 @@ impl TerrainTextureGenerator {
     // `CLBuffer<Color3<f32>>` to a `CLBuffer<f32>`.
     self.kernel.set_arg(2, &self.output);
 
-    let event =
-      cl.queue.enqueue_async_kernel(&self.kernel, TEXTURE_LEN, None, ());
+    let event = cl.queue.enqueue_async_kernel(&self.kernel, self.len, None, ());
     cl.queue.get(&self.output, &event)
   }
 }

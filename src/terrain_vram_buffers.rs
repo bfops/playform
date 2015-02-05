@@ -7,7 +7,8 @@ use nalgebra::{Pnt2, Pnt3, Vec3};
 use shaders::terrain::TerrainShader;
 use state::EntityId;
 use std::collections::HashMap;
-use std::iter::IteratorExt;
+use std::iter::{IteratorExt, repeat};
+use std::u32;
 use terrain_block::BlockPosition;
 use terrain_texture;
 use yaglw::gl_context::{GLContext,GLContextExistence};
@@ -33,6 +34,8 @@ pub struct TerrainVRAMBuffers<'a> {
   empty_array: GLuint,
   length: usize,
 
+  // Per-triangle buffers
+
   vertex_positions: BufferTexture<'a, Triangle<Pnt3<GLfloat>>>,
   normals: BufferTexture<'a, Triangle<Vec3<GLfloat>>>,
   // Index into `pixels`.
@@ -40,10 +43,14 @@ pub struct TerrainVRAMBuffers<'a> {
   // 2D coordinates into a texture in `pixels`.
   coords: BufferTexture<'a, Triangle<Pnt2<GLfloat>>>,
 
-  pixels: BufferTexture<'a, [Color3<GLfloat>; terrain_texture::TEXTURE_LEN]>,
+  // Per-block buffers
+
   block_to_index: HashMap<BlockPosition, GLuint>,
-  // List of free texture positions in `pixels`.
   free_list: Vec<GLuint>,
+  lods: BufferTexture<'a, GLuint>,
+  pixel_indices: BufferTexture<'a, GLuint>,
+
+  pixels: [PixelBuffer<'a>; 4],
 }
 
 #[test]
@@ -59,7 +66,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
     gl: &'a GLContextExistence,
     gl_context: &mut GLContext,
   ) -> TerrainVRAMBuffers<'a> {
-    let len = 32768;
+    let num_blocks = 65536;
     TerrainVRAMBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
@@ -74,16 +81,26 @@ impl<'a> TerrainVRAMBuffers<'a> {
       coords: BufferTexture::new(gl, gl_context, gl::R32F, POLYGON_BUDGET),
       block_indices: BufferTexture::new(gl, gl_context, gl::R32UI, POLYGON_BUDGET),
 
-      pixels: {
-        let mut pixels = BufferTexture::new(gl, gl_context, gl::R32F, len);
-        let init: [Color3<f32>; terrain_texture::TEXTURE_LEN] =
-          [Color3::of_rgb(0.0, 0.0, 0.0); terrain_texture::TEXTURE_LEN];
-        let init: Vec<_> = range(0, len).map(|_| init).collect();
+      block_to_index: HashMap::new(),
+      free_list: range(0, num_blocks as u32).collect(),
+      lods: {
+        let mut lods = BufferTexture::new(gl, gl_context, gl::R32UI, num_blocks);
+        let init: Vec<_> = repeat(u32::MAX).take(num_blocks).collect();
+        lods.buffer.push(gl_context, init.as_slice());
+        lods
+      },
+      pixel_indices: {
+        let mut pixels = BufferTexture::new(gl, gl_context, gl::R32UI, num_blocks);
+        let init: Vec<_> = repeat(u32::MAX).take(num_blocks).collect();
         pixels.buffer.push(gl_context, init.as_slice());
         pixels
       },
-      block_to_index: HashMap::new(),
-      free_list: range(0, len as u32).collect(),
+      pixels: [
+        PixelBuffer::new(gl, gl_context, terrain_texture::TEXTURE_WIDTH[0], 32),
+        PixelBuffer::new(gl, gl_context, terrain_texture::TEXTURE_WIDTH[1], 512),
+        PixelBuffer::new(gl, gl_context, terrain_texture::TEXTURE_WIDTH[2], 8192),
+        PixelBuffer::new(gl, gl_context, terrain_texture::TEXTURE_WIDTH[3], 32768),
+      ],
     }
   }
 
@@ -111,7 +128,13 @@ impl<'a> TerrainVRAMBuffers<'a> {
     bind("block_indices", self.block_indices.handle.gl_id);
     bind("coords", self.coords.handle.gl_id);
 
-    bind("pixels", self.pixels.handle.gl_id);
+    bind("pixels_0", self.pixels[0].buffer.handle.gl_id);
+    bind("pixels_1", self.pixels[1].buffer.handle.gl_id);
+    bind("pixels_2", self.pixels[2].buffer.handle.gl_id);
+    bind("pixels_3", self.pixels[3].buffer.handle.gl_id);
+
+    bind("lods", self.lods.handle.gl_id);
+    bind("pixel_indices", self.pixel_indices.handle.gl_id);
   }
 
   pub fn push(
@@ -156,27 +179,6 @@ impl<'a> TerrainVRAMBuffers<'a> {
     true
   }
 
-  pub fn push_pixels(
-    &mut self,
-    gl: &mut GLContext,
-    pixels: &[Color3<GLfloat>; terrain_texture::TEXTURE_LEN],
-    id: BlockPosition,
-  ) -> u32 {
-    let idx;
-    match self.free_list.pop() {
-      None => panic!("Ran out of texture VRAM"),
-      Some(i) => idx = i,
-    }
-
-    self.block_to_index.insert(id, idx);
-
-    self.pixels.buffer.byte_buffer.bind(gl);
-    // TODO: Does &[*x] copy? I hope not. We should be able to cast this.
-    self.pixels.buffer.update(gl, idx as usize, &[*pixels]);
-
-    idx
-  }
-
   // TODO: Make this take many ids as a parameter, to reduce `bind`s.
   // Note: `id` must be present in the buffers.
   pub fn swap_remove(&mut self, gl: &mut GLContext, id: EntityId) {
@@ -204,13 +206,47 @@ impl<'a> TerrainVRAMBuffers<'a> {
     self.block_indices.buffer.swap_remove(gl, idx, 1);
   }
 
-  pub fn free_pixels(&mut self, id: &BlockPosition) -> bool {
+  pub fn push_block_data(
+    &mut self,
+    gl: &mut GLContext,
+    id: BlockPosition,
+    pixels: &[Color3<GLfloat>],
+    lod: u32,
+  ) -> u32 {
+    let block_idx;
+    match self.free_list.pop() {
+      None => panic!("Ran out of VRAM for block data."),
+      Some(i) => block_idx = i,
+    }
+    self.lods.buffer.byte_buffer.bind(gl);
+    self.lods.buffer.update(gl, block_idx as usize, &[lod]);
+
+    let len = terrain_texture::TEXTURE_LEN[lod as usize];
+    assert_eq!(len, pixels.len());
+
+    let pixel_idx;
+    match self.pixels[lod as usize].push(gl, pixels, id) {
+      None => panic!("Ran out of texture VRAM for LOD: {}.", lod),
+      Some(i) => pixel_idx = i,
+    };
+
+    self.pixel_indices.buffer.byte_buffer.bind(gl);
+    self.pixel_indices.buffer.update(gl, block_idx as usize, &[pixel_idx]);
+
+    self.block_to_index.insert(id, block_idx);
+
+    block_idx
+  }
+
+  pub fn free_block_data(&mut self, lod: u32, id: &BlockPosition) -> bool {
     match self.block_to_index.remove(id) {
       None => false,
       Some(idx) => {
         self.free_list.push(idx);
+        let idx = self.pixels[lod as usize].block_to_index.remove(id).unwrap();
+        self.pixels[lod as usize].free_list.push(idx);
         true
-      },
+      }
     }
   }
 
@@ -219,5 +255,51 @@ impl<'a> TerrainVRAMBuffers<'a> {
       gl::BindVertexArray(self.empty_array);
       gl::DrawArrays(gl::TRIANGLES, 0, self.length as GLint);
     }
+  }
+}
+
+struct PixelBuffer<'a> {
+  buffer: BufferTexture<'a, Color3<GLfloat>>,
+  // Map each block to a (2D) location in buffer.
+  block_to_index: HashMap<BlockPosition, GLuint>,
+  // List of free (2D) texture locations in `buffer`.
+  free_list: Vec<GLuint>,
+}
+
+impl<'a> PixelBuffer<'a> {
+  pub fn new(
+    gl: &'a GLContextExistence,
+    gl_context: &mut GLContext,
+    texture_width: u32,
+    len: u32,
+  ) -> PixelBuffer<'a> {
+    let tex_len = texture_width * texture_width;
+    let buf_len = (tex_len * len) as usize;
+    PixelBuffer {
+      buffer: {
+        let mut buffer = BufferTexture::new(gl, gl_context, gl::R32F, buf_len);
+        let init = Color3::of_rgb(0.0, 0.0, 0.0);
+        let init: Vec<_> = repeat(init).take(buf_len).collect();
+        buffer.buffer.push(gl_context, init.as_slice());
+        buffer
+      },
+      block_to_index: HashMap::new(),
+      free_list: range(0, len).collect(),
+    }
+  }
+
+  pub fn push(
+    &mut self,
+    gl: &mut GLContext,
+    pixels: &[Color3<GLfloat>],
+    id: BlockPosition,
+  ) -> Option<u32> {
+    self.free_list.pop().map(|idx| {
+      self.buffer.buffer.byte_buffer.bind(gl);
+      self.buffer.buffer.update(gl, idx as usize * pixels.len(), pixels);
+
+      self.block_to_index.insert(id, idx);
+      idx
+    })
   }
 }
