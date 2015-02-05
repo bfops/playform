@@ -4,7 +4,7 @@ use opencl::hl::{Program, Kernel};
 use opencl::mem::CLBuffer;
 use opencl_context::CL;
 
-pub const TEXTURE_WIDTH: [u32; 4] = [16, 8, 4, 1];
+pub const TEXTURE_WIDTH: [u32; 4] = [32, 16, 4, 1];
 pub const TEXTURE_LEN: [usize; 4] = [
   TEXTURE_WIDTH[0] as usize * TEXTURE_WIDTH[0] as usize,
   TEXTURE_WIDTH[1] as usize * TEXTURE_WIDTH[1] as usize,

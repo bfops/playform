@@ -97,7 +97,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
       },
       pixels: [
         PixelBuffer::new(gl, gl_context, texture_generator::TEXTURE_WIDTH[0], 32),
-        PixelBuffer::new(gl, gl_context, texture_generator::TEXTURE_WIDTH[1], 512),
+        PixelBuffer::new(gl, gl_context, texture_generator::TEXTURE_WIDTH[1], 2048),
         PixelBuffer::new(gl, gl_context, texture_generator::TEXTURE_WIDTH[2], 8192),
         PixelBuffer::new(gl, gl_context, texture_generator::TEXTURE_WIDTH[3], 32768),
       ],
