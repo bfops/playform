@@ -5,6 +5,7 @@ pub mod texture;
 use camera;
 use color::Color3;
 use common::*;
+use gl;
 use light::{Light, set_point_light, set_ambient_light};
 use nalgebra::{Vec3, Pnt3};
 use yaglw::gl_context::{GLContext, GLContextExistence};
@@ -54,6 +55,11 @@ impl<'a> Shaders<'a> {
       gl_context,
       &hud_camera,
     );
+
+    match gl_context.get_error() {
+      gl::NO_ERROR => {},
+      err => warn!("OpenGL error 0x{:x}", err),
+    }
 
     Shaders {
       mob_shader: mob_shader,

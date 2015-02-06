@@ -8,13 +8,9 @@ use opencl_context::CL;
 use physics::Physics;
 use shaders::Shaders;
 use state::App;
-use std::cmp::partial_max;
-use std::f32::consts::PI;
 use std::ops::{Deref, DerefMut};
-use std::num::Float;
 use stopwatch::TimerSet;
 use terrain::terrain_block::BlockPosition;
-use time;
 use yaglw::gl_context::GLContext;
 
 pub fn update(
@@ -86,30 +82,16 @@ pub fn update(
     });
 
     timers.time("update.sun", || {
-      let ticks = app.sun_timer.update(time::precise_time_ns());
-      app.sun += ticks as u16;
-
-      let radius = 1024.0;
-      // Convert the sun angle to radians.
-      let sun_f = (app.sun as f32) * 2.0 * PI / 65536.0;
-      let (s, c) = sun_f.sin_cos();
-      let sun_position = app.player.camera.position + Vec3::new(c, s, 0.0) * radius;
-
-      let r = c.abs();
-      let g = (s + 1.0) / 2.0;
-      let b = (s * 0.75 + 0.25).abs();
-      let sun_color = Color3::of_rgb(r, g, b);
+      let (rel_position, sun_color, ambient_light) = app.sun.update();
 
       set_point_light(
         &mut shaders.terrain_shader.shader,
         gl_context,
         &Light {
-          position: sun_position,
+          position: app.player.camera.position + rel_position,
           intensity: sun_color,
         }
       );
-
-      let ambient_light = partial_max(0.4, s / 2.0).unwrap();
 
       set_ambient_light(
         &mut shaders.terrain_shader.shader,

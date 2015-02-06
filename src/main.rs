@@ -1,5 +1,6 @@
 use common::*;
 use gl;
+use init::init;
 use interval_timer::IntervalTimer;
 use log;
 use logger::Logger;
@@ -9,7 +10,6 @@ use render::render;
 use sdl2;
 use sdl2::event::Event;
 use shaders::Shaders;
-use state::App;
 use std::mem;
 use std::time::duration::Duration;
 use std::old_io::timer;
@@ -69,9 +69,11 @@ pub fn main() {
       GLContext::new()
     };
 
+    gl_context.print_stats();
+
     let mut shaders = Shaders::new(&gl, &mut gl_context);
 
-    let mut app = App::new(&gl, &mut gl_context, &mut shaders, &cl, &timers);
+    let mut app = init(&gl, &mut gl_context, &mut shaders, &cl, &timers);
 
     let mut render_timer;
     let mut update_timer;
