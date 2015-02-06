@@ -127,7 +127,7 @@ pub fn main() {
           }
           event => {
             if has_focus {
-              process_event(&timers, &mut app, &mut window, &mut gl_context, event);
+              process_event(&timers, &mut app, &mut window, event);
             }
           },
         }

@@ -1,4 +1,3 @@
-use color::Color4;
 use common::*;
 use nalgebra::Vec3;
 use sdl2::event::Event;
@@ -8,20 +7,17 @@ use sdl2::video;
 use state::App;
 use stopwatch::TimerSet;
 use std::f32::consts::PI;
-use vertex::ColoredVertex;
-use yaglw::gl_context::GLContext;
 
 pub fn process_event<'a>(
   timers: &TimerSet,
   app: &mut App<'a>,
   game_window: &mut video::Window,
-  gl_context: &mut GLContext,
   event: Event,
 ) {
   match event {
     Event::KeyDown{keycode, repeat, ..} => {
       if !repeat {
-        key_press(timers, app, gl_context, keycode);
+        key_press(timers, app, keycode);
       }
     },
     Event::KeyUp{keycode, repeat, ..} => {
@@ -39,7 +35,6 @@ pub fn process_event<'a>(
 fn key_press<'a>(
   timers: &TimerSet,
   app: &mut App<'a>,
-  gl_context: &mut GLContext,
   key: KeyCode,
 ) {
   timers.time("event.key_press", || {
@@ -69,19 +64,6 @@ fn key_press<'a>(
         app.player.rotate_vertical(PI / 12.0),
       KeyCode::Down =>
         app.player.rotate_vertical(-PI / 12.0),
-      KeyCode::M => {
-        let updates = [
-          ColoredVertex {
-            position: app.player.camera.position,
-            color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
-          },
-          ColoredVertex {
-            position: app.player.camera.position + app.player.forward() * (32.0 as f32),
-            color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
-          },
-        ];
-        app.line_of_sight.buffer.update(gl_context, 0, &updates);
-      },
       KeyCode::L => {
         app.render_outlines = !app.render_outlines;
       }

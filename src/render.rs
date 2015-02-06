@@ -18,10 +18,6 @@ pub fn render(
 
     shaders.mob_shader.shader.use_shader(gl_context);
 
-    // debug stuff
-    app.line_of_sight.bind(gl_context);
-    app.line_of_sight.draw(gl_context);
-
     set_camera(&mut shaders.terrain_shader.shader, gl_context, &app.player.camera);
 
     // draw the world

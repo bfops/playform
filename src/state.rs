@@ -44,7 +44,6 @@ pub struct App<'a> {
 
   // OpenGL buffers
   pub mob_buffers: mob::MobBuffers<'a>,
-  pub line_of_sight: GLArray<'a, ColoredVertex>,
   pub hud_triangles: GLArray<'a, ColoredVertex>,
   pub text_triangles: GLArray<'a, TextureVertex>,
 

@@ -2,7 +2,6 @@ pub mod hud;
 pub mod mobs;
 pub mod text;
 
-use color::Color4;
 use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
@@ -21,8 +20,6 @@ use sun::Sun;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use terrain::terrain_vram_buffers;
-use vertex::ColoredVertex;
-use yaglw::vertex_buffer::*;
 use yaglw::gl_context::{GLContext, GLContextExistence};
 use yaglw::texture::TextureUnit;
 
@@ -43,39 +40,6 @@ pub fn init<'a>(
   gl_context.enable_alpha_blending();
   gl_context.enable_smooth_lines();
   gl_context.enable_depth_buffer(1.0);
-
-  let line_of_sight = {
-    let buffer = GLBuffer::new(gl, gl_context, 2 * 2);
-    let mut line_of_sight = {
-      GLArray::new(
-        gl,
-        gl_context,
-        &shaders.mob_shader.shader,
-        &[
-          VertexAttribData { name: "position", size: 3, unit: GLType::Float },
-          VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },
-        ],
-        DrawMode::Lines,
-        buffer,
-      )
-    };
-
-    line_of_sight.push(
-      gl_context,
-      &[
-        ColoredVertex {
-          position: Pnt3::new(0.0, 0.0, 0.0),
-          color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
-        },
-        ColoredVertex {
-          position: Pnt3::new(0.0, 0.0, 0.0),
-          color: Color4::of_rgba(1.0, 0.0, 0.0, 1.0),
-        },
-      ]
-    );
-
-    line_of_sight
-  };
 
   let hud_triangles = make_hud(gl, gl_context, &shaders.hud_color_shader.shader);
 
@@ -154,7 +118,6 @@ pub fn init<'a>(
   }
 
   App {
-    line_of_sight: line_of_sight,
     physics: physics,
     id_allocator: id_allocator,
     terrain_game_loader: terrain_game_loader,
