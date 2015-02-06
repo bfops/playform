@@ -1,3 +1,6 @@
+// Thanks to http://procworld.blogspot.com/2011/02/space-colonization.html
+// for the basic idea used to generate these trees!
+
 use id_allocator::IdAllocator;
 use nalgebra::{Pnt2, Pnt3, Vec3, normalize};
 use ncollide::bounding_volume::AABB;
