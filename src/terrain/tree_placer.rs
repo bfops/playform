@@ -76,8 +76,7 @@ impl TreePlacer {
     let wood_coords = Pnt2::new(0.0, 3.0);
     let leaf_coords = Pnt2::new(0.0, 4.0);
 
-    let mut place_side =
-      |&mut:
+    let mut place_side = |
         corners: &[Pnt3<f32>],
         coords: Pnt2<f32>,
         idx1: usize,
@@ -118,11 +117,11 @@ impl TreePlacer {
         block.bounds.push((id2, bounds));
       };
 
-    let mut place_block =
-      |&mut:
+    let mut place_block = |
         coords: Pnt2<f32>,
         low_center: &Pnt3<f32>, low_radius: f32,
-        high_center: &Pnt3<f32>, high_radius: f32| {
+        high_center: &Pnt3<f32>, high_radius: f32,
+      | {
         let corners = [
           *low_center + Vec3::new(-low_radius, 0.0, -low_radius),
           *low_center + Vec3::new(-low_radius, 0.0,  low_radius),

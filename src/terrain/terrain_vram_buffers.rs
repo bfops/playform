@@ -111,7 +111,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
     shader: &mut TerrainShader,
   ) {
     shader.shader.use_shader(gl);
-    let mut bind = |&mut: name, id| {
+    let mut bind = |name, id| {
       let unit = texture_unit_alloc.allocate();
       unsafe {
         gl::ActiveTexture(unit.gl_id());

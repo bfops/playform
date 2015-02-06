@@ -72,13 +72,13 @@ impl<'a> Player<'a> {
         SurroundingsLoader::new(
           owner_allocator.allocate(),
           load_distance,
-          Box::new(|&mut: d| LOD::LodIndex(Player::lod_index(d))),
+          Box::new(|d| LOD::LodIndex(Player::lod_index(d))),
         ),
       solid_boundary:
         SurroundingsLoader::new(
           owner_allocator.allocate(),
           1,
-          Box::new(|&mut: _| LOD::Placeholder),
+          Box::new(|_| LOD::Placeholder),
         ),
     };
 
