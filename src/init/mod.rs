@@ -23,7 +23,7 @@ use terrain::terrain_vram_buffers;
 use yaglw::gl_context::{GLContext, GLContextExistence};
 use yaglw::texture::TextureUnit;
 
-const SUN_TICK_NS: u64 = 1000000;
+const SUN_TICK_NS: u64 = 5000000;
 
 pub fn init<'a>(
   gl: &'a GLContextExistence,

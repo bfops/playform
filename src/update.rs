@@ -82,28 +82,28 @@ pub fn update(
     });
 
     timers.time("update.sun", || {
-      let (rel_position, sun_color, ambient_light) = app.sun.update();
+      app.sun.update().map(|(rel_position, sun_color, ambient_light)| {
+        set_point_light(
+          &mut shaders.terrain_shader.shader,
+          gl_context,
+          &Light {
+            position: app.player.camera.position + rel_position,
+            intensity: sun_color,
+          }
+        );
 
-      set_point_light(
-        &mut shaders.terrain_shader.shader,
-        gl_context,
-        &Light {
-          position: app.player.camera.position + rel_position,
-          intensity: sun_color,
-        }
-      );
+        set_ambient_light(
+          &mut shaders.terrain_shader.shader,
+          gl_context,
+          Color3::of_rgb(
+            sun_color.r * ambient_light,
+            sun_color.g * ambient_light,
+            sun_color.b * ambient_light,
+          ),
+        );
 
-      set_ambient_light(
-        &mut shaders.terrain_shader.shader,
-        gl_context,
-        Color3::of_rgb(
-          sun_color.r * ambient_light,
-          sun_color.g * ambient_light,
-          sun_color.b * ambient_light,
-        ),
-      );
-
-      gl_context.set_background_color(sun_color.r, sun_color.g, sun_color.b, 1.0);
+        gl_context.set_background_color(sun_color.r, sun_color.g, sun_color.b, 1.0);
+      });
     });
   })
 }

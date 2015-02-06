@@ -10,6 +10,7 @@ pub struct Sun {
   // The sun as portions of a 65536-degree circle.
   pub position: u16,
   pub timer: IntervalTimer,
+  pub print_timer: IntervalTimer,
 }
 
 impl Sun {
@@ -17,17 +18,31 @@ impl Sun {
     Sun {
       position: 0,
       timer: IntervalTimer::new(tick_ns, time::precise_time_ns()),
+      print_timer: IntervalTimer::new(2e9 as u64, time::precise_time_ns()),
     }
   }
 
-  pub fn update(&mut self) -> (Vec3<f32>, Color3<f32>, f32) {
+  pub fn update(&mut self) -> Option<(Vec3<f32>, Color3<f32>, f32)> {
     let ticks = self.timer.update(time::precise_time_ns());
+
+    if ticks == 0 {
+      return None;
+    }
+
     self.position += ticks as u16;
 
-    let radius = 1024.0;
-    // Convert the sun angle to radians.
-    let angle = (self.position as f32) * 2.0 * PI / 65536.0;
+    // Fraction completed of a full cycle.
+    let fraction = (self.position as f32) / 65536.0;
+
+    if self.print_timer.update(time::precise_time_ns()) > 0 {
+      debug!("Sun is at {:.0}%.", fraction * 100.0);
+    }
+
+    // Convert to radians.
+    let angle = fraction * 2.0 * PI;
+
     let (s, c) = angle.sin_cos();
+    let radius = 1024.0;
     let sun_position = Vec3::new(c, s, 0.0) * radius;
 
     let r = c.abs();
@@ -37,6 +52,6 @@ impl Sun {
 
     let ambient_light = partial_max(0.4, s / 2.0).unwrap();
 
-    (sun_position, sun_color, ambient_light)
+    Some((sun_position, sun_color, ambient_light))
   }
 }
