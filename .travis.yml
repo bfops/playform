@@ -5,7 +5,7 @@ before_install:
   - sudo apt-get update -qq
 
 install:
-  - sudo apt-get install -qq libportaudio-dev libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev
+  - sudo apt-get install -qq libportaudio-dev libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev opencl-headers fglrx
 
 script:
   - cargo build --verbose
