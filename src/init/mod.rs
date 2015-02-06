@@ -2,7 +2,6 @@ pub mod hud;
 pub mod mobs;
 pub mod text;
 
-use camera;
 use color::Color4;
 use gl;
 use gl::types::*;
@@ -10,18 +9,15 @@ use id_allocator::IdAllocator;
 use init::hud::make_hud;
 use init::mobs::make_mobs;
 use init::text::make_text;
-use lod_map::LOD;
-use nalgebra::{Vec3, Pnt3};
-use ncollide::bounding_volume::{AABB, AABB3};
+use nalgebra::Pnt3;
+use ncollide::bounding_volume::AABB;
 use opencl_context::CL;
 use physics::Physics;
 use player::Player;
 use shaders;
 use state::App;
 use stopwatch::TimerSet;
-use std::f32::consts::PI;
 use sun::Sun;
-use surroundings_loader::SurroundingsLoader;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use terrain::terrain_vram_buffers;
@@ -31,10 +27,6 @@ use yaglw::gl_context::{GLContext, GLContextExistence};
 use yaglw::texture::TextureUnit;
 
 const SUN_TICK_NS: u64 = 1000000;
-
-fn center(bounds: &AABB3<f32>) -> Pnt3<GLfloat> {
-  (*bounds.mins() + bounds.maxs().to_vec()) / (2.0 as GLfloat)
-}
 
 pub fn init<'a>(
   gl: &'a GLContextExistence,
@@ -125,54 +117,25 @@ pub fn init<'a>(
       )
     });
 
-  let player = {
-    let mut load_distance = Player::load_distance(terrain_vram_buffers::POLYGON_BUDGET as i32);
+  let mut load_distance =
+    Player::load_distance(terrain_vram_buffers::POLYGON_BUDGET as i32);
 
-    // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-    let max_load_distance = 90;
-    if load_distance > max_load_distance {
-      info!("load_distance {} capped at {}", load_distance, max_load_distance);
-      load_distance = max_load_distance;
-    } else {
-      info!("load_distance {}", load_distance);
-    }
+  // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
+  let max_load_distance = 90;
+  if load_distance > max_load_distance {
+    info!("load_distance {} capped at {}", load_distance, max_load_distance);
+    load_distance = max_load_distance;
+  } else {
+    info!("load_distance {}", load_distance);
+  }
 
-    let mut player = Player {
-      camera: camera::Camera::unit(),
-      speed: Vec3::new(0.0, 0.0, 0.0),
-      accel: Vec3::new(0.0, -0.1, 0.0),
-      walk_accel: Vec3::new(0.0, 0.0, 0.0),
-      jump_fuel: 0,
-      is_jumping: false,
-      id: id_allocator.allocate(),
-      lateral_rotation: 0.0,
-      vertical_rotation: 0.0,
-      surroundings_loader:
-        SurroundingsLoader::new(
-          owner_allocator.allocate(),
-          load_distance,
-          Box::new(|&mut: d| LOD::LodIndex(Player::lod_index(d))),
-        ),
-      solid_boundary:
-        SurroundingsLoader::new(
-          owner_allocator.allocate(),
-          1,
-          Box::new(|&mut: _| LOD::Placeholder),
-        ),
-    };
-
-    let min = Pnt3::new(0.0, terrain::AMPLITUDE as f32, 4.0);
-    let max = min + Vec3::new(1.0, 2.0, 1.0);
-    let bounds = AABB::new(min, max);
-    physics.insert_misc(player.id, bounds.clone());
-
-    // initialize the projection matrix
-    player.camera.translate(center(&bounds).to_vec());
-    player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 2048.0);
-    player.rotate_lateral(PI / 2.0);
-
-    player
-  };
+  let player =
+    Player::new(
+      &mut id_allocator,
+      &mut owner_allocator,
+      &mut physics,
+      load_distance,
+    );
 
   let misc_texture_unit = texture_unit_alloc.allocate();
   unsafe {

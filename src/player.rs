@@ -1,8 +1,9 @@
 use camera;
 use gl::types::*;
 use id_allocator::IdAllocator;
-use nalgebra::Vec3;
-use ncollide::bounding_volume::AABB;
+use lod_map::{LOD, OwnerId};
+use nalgebra::{Pnt3, Vec3};
+use ncollide::bounding_volume::{AABB, AABB3};
 use ncollide::ray::{Ray, Ray3};
 use opencl_context::CL;
 use physics::Physics;
@@ -21,6 +22,10 @@ const LOD_THRESHOLDS: [i32; 3] = [1, 16, 32];
 
 const MAX_JUMP_FUEL: u32 = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;
+
+fn center(bounds: &AABB3<f32>) -> Pnt3<GLfloat> {
+  (*bounds.mins() + bounds.maxs().to_vec()) / (2.0 as GLfloat)
+}
 
 pub struct Player<'a> {
   pub camera: camera::Camera,
@@ -47,6 +52,49 @@ pub struct Player<'a> {
 }
 
 impl<'a> Player<'a> {
+  pub fn new(
+    id_allocator: &mut IdAllocator<EntityId>,
+    owner_allocator: &mut IdAllocator<OwnerId>,
+    physics: &mut Physics,
+    load_distance: i32,
+  ) -> Player<'a> {
+    let mut player = Player {
+      camera: camera::Camera::unit(),
+      speed: Vec3::new(0.0, 0.0, 0.0),
+      accel: Vec3::new(0.0, -0.1, 0.0),
+      walk_accel: Vec3::new(0.0, 0.0, 0.0),
+      jump_fuel: 0,
+      is_jumping: false,
+      id: id_allocator.allocate(),
+      lateral_rotation: 0.0,
+      vertical_rotation: 0.0,
+      surroundings_loader:
+        SurroundingsLoader::new(
+          owner_allocator.allocate(),
+          load_distance,
+          Box::new(|&mut: d| LOD::LodIndex(Player::lod_index(d))),
+        ),
+      solid_boundary:
+        SurroundingsLoader::new(
+          owner_allocator.allocate(),
+          1,
+          Box::new(|&mut: _| LOD::Placeholder),
+        ),
+    };
+
+    let min = Pnt3::new(0.0, terrain::AMPLITUDE as f32, 4.0);
+    let max = min + Vec3::new(1.0, 2.0, 1.0);
+    let bounds = AABB::new(min, max);
+    physics.insert_misc(player.id, bounds.clone());
+
+    // initialize the projection matrix
+    player.camera.translate(center(&bounds).to_vec());
+    player.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 2048.0);
+    player.rotate_lateral(PI / 2.0);
+
+    player
+  }
+
   /// Translates the player/camera by a vector.
   /// If the player collides with something with a small height jump, the player will shift upward.
   pub fn translate(&mut self, physics: &mut Physics, v: Vec3<GLfloat>) {
