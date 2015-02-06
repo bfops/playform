@@ -157,8 +157,6 @@ pub struct App<'a> {
   pub misc_texture_unit: TextureUnit,
   pub text_textures: Vec<Texture2D<'a>>,
 
-  pub shaders: shaders::Shaders<'a>,
-
   pub render_outlines: bool,
 }
 
@@ -167,6 +165,7 @@ impl<'a> App<'a> {
   pub fn new(
     gl: &'a GLContextExistence,
     gl_context: &mut GLContext,
+    shaders: &mut shaders::Shaders<'a>,
     cl: &CL,
     timers: &'a TimerSet,
   ) -> App<'a> {
@@ -180,8 +179,6 @@ impl<'a> App<'a> {
     gl_context.enable_alpha_blending();
     gl_context.enable_smooth_lines();
     gl_context.enable_depth_buffer(1.0);
-
-    let mut shaders = shaders::Shaders::new(gl, gl_context);
 
     match gl_context.get_error() {
       gl::NO_ERROR => {},
@@ -340,7 +337,6 @@ impl<'a> App<'a> {
       text_textures: text_textures,
       text_triangles: text_triangles,
       misc_texture_unit: misc_texture_unit,
-      shaders: shaders,
       render_outlines: false,
     }
   }

@@ -8,6 +8,7 @@ use process_event::process_event;
 use render::render;
 use sdl2;
 use sdl2::event::Event;
+use shaders::Shaders;
 use state::App;
 use std::mem;
 use std::time::duration::Duration;
@@ -68,7 +69,9 @@ pub fn main() {
       GLContext::new()
     };
 
-    let mut app = App::new(&gl, &mut gl_context, &cl, &timers);
+    let mut shaders = Shaders::new(&gl, &mut gl_context);
+
+    let mut app = App::new(&gl, &mut gl_context, &mut shaders, &cl, &timers);
 
     let mut render_timer;
     let mut update_timer;
@@ -84,12 +87,12 @@ pub fn main() {
     'game_loop:loop {
       let updates = update_timer.update(time::precise_time_ns());
       if updates > 0 {
-        update(&timers, &mut app, &mut gl_context, &cl);
+        update(&timers, &mut app, &mut shaders, &mut gl_context, &cl);
       }
 
       let renders = render_timer.update(time::precise_time_ns());
       if renders > 0 {
-        render(&timers, &mut app, &mut gl_context);
+        render(&timers, &mut app, &mut shaders, &mut gl_context);
         // swap buffers
         window.gl_swap_window();
       }
