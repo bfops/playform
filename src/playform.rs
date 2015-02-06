@@ -2,21 +2,19 @@
 #![crate_type = "bin"]
 #![deny(missing_docs)]
 #![deny(warnings)]
-#![feature(slicing_syntax)]
-#![feature(unboxed_closures)]
-#![feature(unsafe_destructor)]
 
 #![feature(core)]
 #![feature(collections)]
 #![feature(hash)]
 #![feature(io)]
-#![feature(libc)]
 #![feature(path)]
+#![feature(slicing_syntax)]
 #![feature(std_misc)]
 #![feature(test)]
+#![feature(unboxed_closures)]
+#![feature(unsafe_destructor)]
 
 extern crate gl;
-extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate nalgebra;

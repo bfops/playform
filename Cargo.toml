@@ -38,6 +38,7 @@ name = "playform"
 path = "./src/playform.rs"
 
 [dependencies]
+libc = "*"
 log = "*"
 rand = "*"
 time = "*"

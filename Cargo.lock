@@ -3,6 +3,7 @@ name = "playform"
 version = "0.0.0"
 dependencies = [
  "gl 0.0.8 (git+https://github.com/bjz/gl-rs)",
+ "libc 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide 0.3.0 (git+https://github.com/bfops/ncollide)",

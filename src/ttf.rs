@@ -1,6 +1,5 @@
-extern crate gl;
-
 use color::Color4;
+use gl;
 use sdl2_sys::pixels::{SDL_Color,SDL_PIXELFORMAT_ARGB8888};
 use sdl2_sys::surface::SDL_Surface;
 use sdl2_sys::surface;
