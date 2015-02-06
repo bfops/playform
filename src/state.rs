@@ -1,12 +1,11 @@
 use camera;
-use color::{Color3, Color4};
+use color::Color4;
 use common::*;
 use fontloader;
 use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
 use interval_timer::IntervalTimer;
-use light::{Light, set_point_light, set_ambient_light};
 use lod_map::{LOD, OwnerId};
 use mob;
 use nalgebra::{Pnt2, Vec2, Vec3, Pnt3, Norm};
@@ -158,11 +157,7 @@ pub struct App<'a> {
   pub misc_texture_unit: TextureUnit,
   pub text_textures: Vec<Texture2D<'a>>,
 
-  // OpenGL shader "program" ids
-  pub mob_shader: shaders::color::ColorShader<'a>,
-  pub terrain_shader: shaders::terrain::TerrainShader<'a>,
-  pub hud_texture_shader: shaders::texture::TextureShader<'a>,
-  pub hud_color_shader: shaders::color::ColorShader<'a>,
+  pub shaders: shaders::Shaders<'a>,
 
   pub render_outlines: bool,
 }
@@ -186,46 +181,7 @@ impl<'a> App<'a> {
     gl_context.enable_smooth_lines();
     gl_context.enable_depth_buffer(1.0);
 
-    let mut terrain_shader = {
-      let mut terrain_shader = shaders::terrain::TerrainShader::new(gl);
-      set_point_light(
-        &mut terrain_shader.shader,
-        gl_context,
-        &Light {
-          position: Pnt3::new(0.0, 0.0, 0.0),
-          intensity: Color3::of_rgb(0.0, 0.0, 0.0),
-        }
-      );
-      set_ambient_light(
-        &mut terrain_shader.shader,
-        gl_context,
-        Color3::of_rgb(0.4, 0.4, 0.4),
-      );
-      terrain_shader
-    };
-    let mob_shader = shaders::color::ColorShader::new(gl);
-    let mut hud_color_shader = shaders::color::ColorShader::new(gl);
-    let mut hud_texture_shader = shaders::texture::TextureShader::new(gl);
-
-    {
-      let hud_camera = {
-        let mut c = camera::Camera::unit();
-        c.fov = camera::sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
-        c.fov = camera::translation(Vec3::new(0.0, 0.0, -1.0)) * c.fov;
-        c
-      };
-
-      camera::set_camera(
-        &mut hud_color_shader.shader,
-        gl_context,
-        &hud_camera,
-      );
-      camera::set_camera(
-        &mut hud_texture_shader.shader,
-        gl_context,
-        &hud_camera,
-      );
-    }
+    let mut shaders = shaders::Shaders::new(gl, gl_context);
 
     match gl_context.get_error() {
       gl::NO_ERROR => {},
@@ -238,7 +194,7 @@ impl<'a> App<'a> {
         GLArray::new(
           gl,
           gl_context,
-          &mob_shader.shader,
+          &shaders.mob_shader.shader,
           &[
 	          VertexAttribData { name: "position", size: 3, unit: GLType::Float },
             VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },
@@ -265,7 +221,7 @@ impl<'a> App<'a> {
       line_of_sight
     };
 
-    let hud_triangles = make_hud(gl, gl_context, &hud_color_shader.shader);
+    let hud_triangles = make_hud(gl, gl_context, &shaders.hud_color_shader.shader);
 
     let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
     let terrain_game_loader =
@@ -273,12 +229,12 @@ impl<'a> App<'a> {
         gl,
         gl_context,
         cl,
-        &mut terrain_shader,
+        &mut shaders.terrain_shader,
         &mut texture_unit_alloc,
       );
 
     let (text_textures, text_triangles) =
-      make_text(gl, gl_context, &hud_texture_shader.shader);
+      make_text(gl, gl_context, &shaders.hud_texture_shader.shader);
 
     let world_width: u32 = 1 << 11;
     let world_width = world_width as f32;
@@ -301,7 +257,7 @@ impl<'a> App<'a> {
           &mut physics,
           &mut id_allocator,
           &mut owner_allocator,
-          &mob_shader,
+          &shaders.mob_shader,
         )
       });
 
@@ -359,8 +315,8 @@ impl<'a> App<'a> {
       gl::ActiveTexture(misc_texture_unit.gl_id());
     }
 
-    let texture_in = hud_texture_shader.shader.get_uniform_location("texture_in");
-    hud_texture_shader.shader.use_shader(gl_context);
+    let texture_in = shaders.hud_texture_shader.shader.get_uniform_location("texture_in");
+    shaders.hud_texture_shader.shader.use_shader(gl_context);
     unsafe {
       gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
     }
@@ -384,10 +340,7 @@ impl<'a> App<'a> {
       text_textures: text_textures,
       text_triangles: text_triangles,
       misc_texture_unit: misc_texture_unit,
-      mob_shader: mob_shader,
-      terrain_shader: terrain_shader,
-      hud_color_shader: hud_color_shader,
-      hud_texture_shader: hud_texture_shader,
+      shaders: shaders,
       render_outlines: false,
     }
   }

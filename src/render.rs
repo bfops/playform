@@ -13,15 +13,15 @@ pub fn render(
   timers.time("render", || {
     gl_context.clear_buffer();
 
-    set_camera(&mut app.mob_shader.shader, gl_context, &app.player.camera);
+    set_camera(&mut app.shaders.mob_shader.shader, gl_context, &app.player.camera);
 
-    app.mob_shader.shader.use_shader(gl_context);
+    app.shaders.mob_shader.shader.use_shader(gl_context);
 
     // debug stuff
     app.line_of_sight.bind(gl_context);
     app.line_of_sight.draw(gl_context);
 
-    set_camera(&mut app.terrain_shader.shader, gl_context, &app.player.camera);
+    set_camera(&mut app.shaders.terrain_shader.shader, gl_context, &app.player.camera);
 
     // draw the world
     if app.render_outlines {
@@ -30,10 +30,10 @@ pub fn render(
         gl::Disable(gl::CULL_FACE);
       }
 
-      app.terrain_shader.shader.use_shader(gl_context);
+      app.shaders.terrain_shader.shader.use_shader(gl_context);
       app.terrain_game_loader.draw(gl_context);
 
-      app.mob_shader.shader.use_shader(gl_context);
+      app.shaders.mob_shader.shader.use_shader(gl_context);
       app.mob_buffers.draw(gl_context);
 
       unsafe {
@@ -41,20 +41,20 @@ pub fn render(
         gl::Enable(gl::CULL_FACE);
       }
     } else {
-      app.terrain_shader.shader.use_shader(gl_context);
+      app.shaders.terrain_shader.shader.use_shader(gl_context);
       app.terrain_game_loader.draw(gl_context);
 
-      app.mob_shader.shader.use_shader(gl_context);
+      app.shaders.mob_shader.shader.use_shader(gl_context);
       app.mob_buffers.draw(gl_context);
     }
 
     // draw the hud
-    app.hud_color_shader.shader.use_shader(gl_context);
+    app.shaders.hud_color_shader.shader.use_shader(gl_context);
     app.hud_triangles.bind(gl_context);
     app.hud_triangles.draw(gl_context);
 
     // draw hud textures
-    app.hud_texture_shader.shader.use_shader(gl_context);
+    app.shaders.hud_texture_shader.shader.use_shader(gl_context);
     unsafe {
       gl::ActiveTexture(app.misc_texture_unit.gl_id());
     }
