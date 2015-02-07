@@ -60,7 +60,6 @@ git = "https://github.com/sebcrozet/nalgebra"
 
 [dependencies.ncollide]
 git = "https://github.com/bfops/ncollide"
-branch = "merge"
 
 [dependencies.noise]
 git = "https://github.com/bfops/noise-rs"
