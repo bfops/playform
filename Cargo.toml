@@ -58,7 +58,10 @@ git = "https://github.com/bfops/yaglw"
 [dependencies.nalgebra]
 git = "https://github.com/sebcrozet/nalgebra"
 
-[dependencies.ncollide]
+[dependencies.ncollide_entities]
+git = "https://github.com/bfops/ncollide"
+
+[dependencies.ncollide_queries]
 git = "https://github.com/bfops/ncollide"
 
 [dependencies.noise]

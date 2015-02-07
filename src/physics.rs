@@ -1,5 +1,5 @@
 use nalgebra::Vec3;
-use ncollide::bounding_volume::{AABB, AABB3};
+use ncollide_entities::bounding_volume::{AABB, AABB3};
 use octree::Octree;
 use state::EntityId;
 use std::collections::HashMap;

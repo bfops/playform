@@ -9,7 +9,7 @@ use init::hud::make_hud;
 use init::mobs::make_mobs;
 use init::text::make_text;
 use nalgebra::Pnt3;
-use ncollide::bounding_volume::AABB;
+use ncollide_entities::bounding_volume::AABB;
 use opencl_context::CL;
 use physics::Physics;
 use player::Player;

@@ -18,7 +18,8 @@ extern crate gl;
 #[macro_use]
 extern crate log;
 extern crate nalgebra;
-extern crate ncollide;
+extern crate ncollide_entities;
+extern crate ncollide_queries;
 extern crate noise;
 extern crate opencl;
 extern crate rand;

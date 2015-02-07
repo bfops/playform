@@ -2,7 +2,7 @@ use color::Color3;
 use gl::types::*;
 use id_allocator::IdAllocator;
 use nalgebra::{Pnt2, Pnt3, Vec2, Vec3};
-use ncollide::bounding_volume::{AABB, AABB3};
+use ncollide_entities::bounding_volume::{AABB, AABB3};
 use opencl_context::CL;
 use state::EntityId;
 use std::cmp::partial_max;

@@ -1,7 +1,7 @@
 use gl::types::*;
 use color::Color4;
 use nalgebra::Pnt3;
-use ncollide::bounding_volume::AABB3;
+use ncollide_entities::bounding_volume::AABB3;
 use vertex::ColoredVertex;
 
 pub const WINDOW_WIDTH:  u32 = 800;

@@ -6,7 +6,7 @@ use lod_map::{LOD, OwnerId};
 use mob;
 use nalgebra::{Vec3, Pnt3, Norm};
 use nalgebra;
-use ncollide::bounding_volume::{AABB, AABB3};
+use ncollide_entities::bounding_volume::{AABB, AABB3};
 use physics::Physics;
 use renderer::Renderer;
 use state::{App, EntityId};

@@ -1,6 +1,6 @@
 use id_allocator::IdAllocator;
 use mob;
-use ncollide::bounding_volume::{AABB3};
+use ncollide_entities::bounding_volume::{AABB3};
 use physics::Physics;
 use player::Player;
 use std::cell::RefCell;

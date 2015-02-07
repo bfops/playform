@@ -3,7 +3,7 @@
 
 use id_allocator::IdAllocator;
 use nalgebra::{Pnt2, Pnt3, Vec3, normalize};
-use ncollide::bounding_volume::AABB;
+use ncollide_entities::bounding_volume::AABB;
 use rand::{Rng, SeedableRng, IsaacRng};
 use state::EntityId;
 use std::cmp::{partial_min, partial_max};

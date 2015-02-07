@@ -1,6 +1,6 @@
 use id_allocator::IdAllocator;
 use nalgebra::Vec3;
-use ncollide::bounding_volume::AABB;
+use ncollide_entities::bounding_volume::AABB;
 use physics::Physics;
 use state::EntityId;
 use std::collections::hash_map::{HashMap, Entry};

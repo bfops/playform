@@ -1,9 +1,9 @@
 use common::*;
 use nalgebra::Pnt3;
 use nalgebra::partial_lt;
-use ncollide::bounding_volume::{AABB, AABB3};
-use ncollide::bounding_volume::BoundingVolume;
-use ncollide::ray::{Ray3, LocalRayCast};
+use ncollide_entities::bounding_volume::{AABB, AABB3};
+use ncollide_entities::bounding_volume::BoundingVolume;
+use ncollide_queries::ray::{Ray3, LocalRayCast};
 use std::cmp::Ordering::{Greater, Less, Equal};
 use std::fmt::Debug;
 use std::num::NumCast;
