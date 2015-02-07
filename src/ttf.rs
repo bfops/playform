@@ -5,7 +5,7 @@ use sdl2_sys::surface::SDL_Surface;
 use sdl2_sys::surface;
 use std::ffi::CString;
 use std::old_path::{BytesContainer, Path};
-use yaglw::gl_context::GLContextExistence;
+use yaglw::gl_context::GLContext;
 use yaglw::texture::Texture2D;
 
 #[allow(non_camel_case_types)]
@@ -95,7 +95,7 @@ impl Font {
   /// Color is rgba
   pub fn render<'a>(
     &self,
-    gl: &'a GLContextExistence,
+    gl: &'a GLContext,
     txt: &str,
     color: Color4<u8>,
   ) -> Texture2D<'a> {
@@ -137,19 +137,19 @@ impl Font {
 
   /// Color the text red.
   #[allow(dead_code)]
-  pub fn red<'a>(&self, gl: &'a GLContextExistence, txt: &str) -> Texture2D<'a> {
+  pub fn red<'a>(&self, gl: &'a GLContext, txt: &str) -> Texture2D<'a> {
     self.render(gl, txt, Color4::of_rgba(0xFF, 0x00, 0x00, 0xFF))
   }
 
   /// dark black #333
   #[allow(dead_code)]
-  pub fn dark<'a>(&self, gl: &'a GLContextExistence, txt: &str) -> Texture2D<'a> {
+  pub fn dark<'a>(&self, gl: &'a GLContext, txt: &str) -> Texture2D<'a> {
     self.render(gl, txt, Color4::of_rgba(0x33, 0x33, 0x33, 0xFF))
   }
 
   /// light black #555
   #[allow(dead_code)]
-  pub fn light<'a>(&self, gl: &'a GLContextExistence, txt: &str) -> Texture2D<'a> {
+  pub fn light<'a>(&self, gl: &'a GLContext, txt: &str) -> Texture2D<'a> {
     self.render(gl, txt, Color4::of_rgba(0x55, 0x55, 0x55, 0xFF))
   }
 }

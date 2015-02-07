@@ -11,7 +11,7 @@ use std::iter::{IteratorExt, repeat};
 use std::u32;
 use terrain::terrain_block::BlockPosition;
 use terrain::texture_generator;
-use yaglw::gl_context::{GLContext,GLContextExistence};
+use yaglw::gl_context::GLContext;
 use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
 
@@ -62,10 +62,9 @@ fn correct_size() {
 }
 
 impl<'a> TerrainVRAMBuffers<'a> {
-  pub fn new(
-    gl: &'a GLContextExistence,
-    gl_context: &mut GLContext,
-  ) -> TerrainVRAMBuffers<'a> {
+  pub fn new<'b:'a>(
+    gl: &'a mut GLContext,
+  ) -> TerrainVRAMBuffers<'b> {
     let num_blocks = 65536;
     TerrainVRAMBuffers {
       id_to_index: HashMap::new(),
@@ -76,30 +75,30 @@ impl<'a> TerrainVRAMBuffers<'a> {
         empty_array
       },
       length: 0,
-      vertex_positions: BufferTexture::new(gl, gl_context, gl::R32F, POLYGON_BUDGET),
-      normals: BufferTexture::new(gl, gl_context, gl::R32F, POLYGON_BUDGET),
-      coords: BufferTexture::new(gl, gl_context, gl::R32F, POLYGON_BUDGET),
-      block_indices: BufferTexture::new(gl, gl_context, gl::R32UI, POLYGON_BUDGET),
+      vertex_positions: BufferTexture::new(gl, gl::R32F, POLYGON_BUDGET),
+      normals: BufferTexture::new(gl, gl::R32F, POLYGON_BUDGET),
+      coords: BufferTexture::new(gl, gl::R32F, POLYGON_BUDGET),
+      block_indices: BufferTexture::new(gl, gl::R32UI, POLYGON_BUDGET),
 
       block_to_index: HashMap::new(),
       free_list: range(0, num_blocks as u32).collect(),
       lods: {
-        let mut lods = BufferTexture::new(gl, gl_context, gl::R32UI, num_blocks);
+        let mut lods = BufferTexture::new(gl, gl::R32UI, num_blocks);
         let init: Vec<_> = repeat(u32::MAX).take(num_blocks).collect();
-        lods.buffer.push(gl_context, init.as_slice());
+        lods.buffer.push(gl, init.as_slice());
         lods
       },
       pixel_indices: {
-        let mut pixels = BufferTexture::new(gl, gl_context, gl::R32UI, num_blocks);
+        let mut pixels = BufferTexture::new(gl, gl::R32UI, num_blocks);
         let init: Vec<_> = repeat(u32::MAX).take(num_blocks).collect();
-        pixels.buffer.push(gl_context, init.as_slice());
+        pixels.buffer.push(gl, init.as_slice());
         pixels
       },
       pixels: [
-        PixelBuffer::new(gl, gl_context, texture_generator::TEXTURE_WIDTH[0], 32),
-        PixelBuffer::new(gl, gl_context, texture_generator::TEXTURE_WIDTH[1], 2048),
-        PixelBuffer::new(gl, gl_context, texture_generator::TEXTURE_WIDTH[2], 8192),
-        PixelBuffer::new(gl, gl_context, texture_generator::TEXTURE_WIDTH[3], 32768),
+        PixelBuffer::new(gl, texture_generator::TEXTURE_WIDTH[0], 32),
+        PixelBuffer::new(gl, texture_generator::TEXTURE_WIDTH[1], 2048),
+        PixelBuffer::new(gl, texture_generator::TEXTURE_WIDTH[2], 8192),
+        PixelBuffer::new(gl, texture_generator::TEXTURE_WIDTH[3], 32768),
       ],
     }
   }
@@ -267,20 +266,19 @@ struct PixelBuffer<'a> {
 }
 
 impl<'a> PixelBuffer<'a> {
-  pub fn new(
-    gl: &'a GLContextExistence,
-    gl_context: &mut GLContext,
+  pub fn new<'b:'a>(
+    gl: &'a mut GLContext,
     texture_width: u32,
     len: u32,
-  ) -> PixelBuffer<'a> {
+  ) -> PixelBuffer<'b> {
     let tex_len = texture_width * texture_width;
     let buf_len = (tex_len * len) as usize;
     PixelBuffer {
       buffer: {
-        let mut buffer = BufferTexture::new(gl, gl_context, gl::R32F, buf_len);
+        let mut buffer = BufferTexture::new(gl, gl::R32F, buf_len);
         let init = Color3::of_rgb(0.0, 0.0, 0.0);
         let init: Vec<_> = repeat(init).take(buf_len).collect();
-        buffer.buffer.push(gl_context, init.as_slice());
+        buffer.buffer.push(gl, init.as_slice());
         buffer
       },
       block_to_index: HashMap::new(),

@@ -13,7 +13,7 @@ use terrain::terrain_block::{BlockPosition, BLOCK_WIDTH};
 use terrain::texture_generator::TEXTURE_WIDTH;
 use terrain::texture_generator::TerrainTextureGenerator;
 use terrain::terrain_vram_buffers::TerrainVRAMBuffers;
-use yaglw::gl_context::{GLContext, GLContextExistence};
+use yaglw::gl_context::GLContext;
 use yaglw::texture::TextureUnit;
 
 /// Load and unload TerrainBlocks from the game.
@@ -30,14 +30,13 @@ pub struct TerrainGameLoader<'a> {
 
 impl<'a> TerrainGameLoader<'a> {
   pub fn new(
-    gl: &'a GLContextExistence,
-    gl_context: &mut GLContext,
+    gl: &'a mut GLContext,
     cl: &CL,
     shader: &mut TerrainShader,
     texture_unit_alloc: &mut IdAllocator<TextureUnit>,
   ) -> TerrainGameLoader<'a> {
-    let vram_buffers = TerrainVRAMBuffers::new(gl, gl_context);
-    vram_buffers.bind_glsl_uniforms(gl_context, texture_unit_alloc, shader);
+    let vram_buffers = TerrainVRAMBuffers::new(gl);
+    vram_buffers.bind_glsl_uniforms(gl, texture_unit_alloc, shader);
 
     TerrainGameLoader {
       terrain: Terrain::new(Seed::new(0), 0),

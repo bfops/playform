@@ -15,22 +15,21 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use surroundings_loader::SurroundingsLoader;
 use terrain::terrain;
-use yaglw::gl_context::{GLContext, GLContextExistence};
+use yaglw::gl_context::GLContext;
 
 fn center(bounds: &AABB3<f32>) -> Pnt3<GLfloat> {
   (*bounds.mins() + bounds.maxs().to_vec()) / (2.0 as GLfloat)
 }
 
-pub fn make_mobs<'a>(
-  gl: &'a GLContextExistence,
-  gl_context: & mut GLContext,
+pub fn make_mobs<'a, 'b:'a>(
+  gl: &'a mut GLContext,
   physics: &mut Physics,
   id_allocator: &mut IdAllocator<EntityId>,
   owner_allocator: &mut IdAllocator<OwnerId>,
-  shader: &shaders::color::ColorShader<'a>,
-) -> (HashMap<EntityId, Rc<RefCell<mob::Mob<'a>>>>, mob::MobBuffers<'a>) {
+  shader: &shaders::color::ColorShader<'b>,
+) -> (HashMap<EntityId, Rc<RefCell<mob::Mob<'b>>>>, mob::MobBuffers<'b>) {
   let mut mobs = HashMap::new();
-  let mut mob_buffers = mob::MobBuffers::new(gl, gl_context, shader);
+  let mut mob_buffers = mob::MobBuffers::new(gl, shader);
 
   fn mob_behavior(world: &App, mob: &mut mob::Mob) {
     let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
@@ -64,7 +63,7 @@ pub fn make_mobs<'a>(
   }
 
   add_mob(
-    gl_context,
+    gl,
     physics,
     &mut mobs,
     &mut mob_buffers,

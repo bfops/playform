@@ -3,22 +3,20 @@ use fontloader;
 use nalgebra::Vec2;
 use vertex::TextureVertex;
 use yaglw::vertex_buffer::*;
-use yaglw::gl_context::{GLContext, GLContextExistence};
+use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 use yaglw::texture::Texture2D;
 
-pub fn make_text<'a>(
-  gl: &'a GLContextExistence,
-  gl_context: &mut GLContext,
-  shader: &Shader<'a>,
-) -> (Vec<Texture2D<'a>>, GLArray<'a, TextureVertex>) {
+pub fn make_text<'a, 'b:'a>(
+  gl: &'a mut GLContext,
+  shader: &Shader<'b>,
+) -> (Vec<Texture2D<'b>>, GLArray<'b, TextureVertex>) {
   let fontloader = fontloader::FontLoader::new();
   let mut textures = Vec::new();
-  let buffer = GLBuffer::new(gl, gl_context, 8 * VERTICES_PER_TRIANGLE as usize);
+  let buffer = GLBuffer::new(gl, 8 * VERTICES_PER_TRIANGLE as usize);
   let mut triangles =
     GLArray::new(
       gl,
-      gl_context,
       shader,
       &[
         VertexAttribData { name: "position", size: 3, unit: GLType::Float },
@@ -40,7 +38,7 @@ pub fn make_text<'a>(
     textures.push(fontloader.sans.red(gl, *line));
 
     triangles.push(
-      gl_context,
+      gl,
       &TextureVertex::square(
         Vec2 { x: -0.97, y: y - 0.2 },
         Vec2 { x: 0.0,   y: y       }

@@ -8,7 +8,7 @@ use common::*;
 use gl;
 use light::{Light, set_point_light, set_ambient_light};
 use nalgebra::{Vec3, Pnt3};
-use yaglw::gl_context::{GLContext, GLContextExistence};
+use yaglw::gl_context::GLContext;
 
 pub struct Shaders<'a> {
   pub mob_shader: self::color::ColorShader<'a>,
@@ -18,7 +18,7 @@ pub struct Shaders<'a> {
 }
 
 impl<'a> Shaders<'a> {
-  pub fn new(gl: &'a GLContextExistence, gl_context: &mut GLContext) -> Shaders<'a> {
+  pub fn new<'b:'a>(gl: &'a mut GLContext) -> Shaders<'b> {
     let mut terrain_shader = self::terrain::TerrainShader::new(gl);
     let mob_shader = self::color::ColorShader::new(gl);
     let mut hud_color_shader = self::color::ColorShader::new(gl);
@@ -26,7 +26,7 @@ impl<'a> Shaders<'a> {
 
     set_point_light(
       &mut terrain_shader.shader,
-      gl_context,
+      gl,
       &Light {
         position: Pnt3::new(0.0, 0.0, 0.0),
         intensity: Color3::of_rgb(0.0, 0.0, 0.0),
@@ -34,7 +34,7 @@ impl<'a> Shaders<'a> {
     );
     set_ambient_light(
       &mut terrain_shader.shader,
-      gl_context,
+      gl,
       Color3::of_rgb(0.4, 0.4, 0.4),
     );
 
@@ -47,16 +47,16 @@ impl<'a> Shaders<'a> {
 
     camera::set_camera(
       &mut hud_color_shader.shader,
-      gl_context,
+      gl,
       &hud_camera,
     );
     camera::set_camera(
       &mut hud_texture_shader.shader,
-      gl_context,
+      gl,
       &hud_camera,
     );
 
-    match gl_context.get_error() {
+    match gl.get_error() {
       gl::NO_ERROR => {},
       err => warn!("OpenGL error 0x{:x}", err),
     }

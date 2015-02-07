@@ -20,41 +20,39 @@ use sun::Sun;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use terrain::terrain_vram_buffers;
-use yaglw::gl_context::{GLContext, GLContextExistence};
+use yaglw::gl_context::GLContext;
 use yaglw::texture::TextureUnit;
 
 const SUN_TICK_NS: u64 = 5000000;
 
-pub fn init<'a>(
-  gl: &'a GLContextExistence,
-  gl_context: &mut GLContext,
-  shaders: &mut shaders::Shaders<'a>,
+pub fn init<'a, 'b:'a>(
+  gl: &'a mut GLContext,
+  shaders: &mut shaders::Shaders<'b>,
   cl: &CL,
-  timers: &'a TimerSet,
-) -> App<'a> {
+  timers: &TimerSet,
+) -> App<'b> {
   unsafe {
     gl::FrontFace(gl::CCW);
     gl::CullFace(gl::BACK);
     gl::Enable(gl::CULL_FACE);
   }
-  gl_context.enable_alpha_blending();
-  gl_context.enable_smooth_lines();
-  gl_context.enable_depth_buffer(1.0);
+  gl.enable_alpha_blending();
+  gl.enable_smooth_lines();
+  gl.enable_depth_buffer(1.0);
 
-  let hud_triangles = make_hud(gl, gl_context, &shaders.hud_color_shader.shader);
+  let hud_triangles = make_hud(gl, &shaders.hud_color_shader.shader);
 
   let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
   let terrain_game_loader =
     TerrainGameLoader::new(
       gl,
-      gl_context,
       cl,
       &mut shaders.terrain_shader,
       &mut texture_unit_alloc,
     );
 
   let (text_textures, text_triangles) =
-    make_text(gl, gl_context, &shaders.hud_texture_shader.shader);
+    make_text(gl, &shaders.hud_texture_shader.shader);
 
   let world_width: u32 = 1 << 11;
   let world_width = world_width as f32;
@@ -73,7 +71,6 @@ pub fn init<'a>(
     timers.time("make_mobs", || {
       make_mobs(
         gl,
-        gl_context,
         &mut physics,
         &mut id_allocator,
         &mut owner_allocator,
@@ -107,12 +104,12 @@ pub fn init<'a>(
   }
 
   let texture_in = shaders.hud_texture_shader.shader.get_uniform_location("texture_in");
-  shaders.hud_texture_shader.shader.use_shader(gl_context);
+  shaders.hud_texture_shader.shader.use_shader(gl);
   unsafe {
     gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
   }
 
-  match gl_context.get_error() {
+  match gl.get_error() {
     gl::NO_ERROR => {},
     err => warn!("OpenGL error 0x{:x} in load()", err),
   }

@@ -1,6 +1,6 @@
 use gl;
 use terrain::texture_generator;
-use yaglw::gl_context::GLContextExistence;
+use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 
 pub struct TerrainShader<'a> {
@@ -8,7 +8,7 @@ pub struct TerrainShader<'a> {
 }
 
 impl<'a> TerrainShader<'a> {
-  pub fn new(gl: &'a GLContextExistence) -> TerrainShader<'a> {
+  pub fn new<'b:'a>(gl: &'a GLContext) -> TerrainShader<'b> {
     let components = vec!(
       (gl::VERTEX_SHADER, "
         #version 330 core

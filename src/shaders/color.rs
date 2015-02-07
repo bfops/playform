@@ -1,5 +1,5 @@
 use gl;
-use yaglw::gl_context::GLContextExistence;
+use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 
 pub struct ColorShader<'a> {
@@ -7,7 +7,7 @@ pub struct ColorShader<'a> {
 }
 
 impl<'a> ColorShader<'a> {
-  pub fn new(gl: &'a GLContextExistence) -> ColorShader<'a> {
+  pub fn new<'b:'a>(gl: &'a GLContext) -> ColorShader<'b> {
     let components = vec!(
       (gl::FRAGMENT_SHADER, "
         #version 330 core

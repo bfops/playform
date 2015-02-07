@@ -1,5 +1,5 @@
 use gl;
-use yaglw::gl_context::GLContextExistence;
+use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 
 pub struct TextureShader<'a> {
@@ -7,7 +7,7 @@ pub struct TextureShader<'a> {
 }
 
 impl<'a> TextureShader<'a> {
-  pub fn new(gl: &'a GLContextExistence) -> TextureShader<'a> {
+  pub fn new<'b:'a>(gl: &'a GLContext) -> TextureShader<'b> {
     let components = vec!(
       (gl::VERTEX_SHADER, "
         #version 330 core

@@ -8,7 +8,7 @@ use surroundings_loader::SurroundingsLoader;
 use vertex::ColoredVertex;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, VertexAttribData};
 use yaglw::vertex_buffer::{DrawMode, GLType};
-use yaglw::gl_context::{GLContext, GLContextExistence};
+use yaglw::gl_context::GLContext;
 
 pub type Behavior = fn(&App, &mut Mob);
 
@@ -30,19 +30,17 @@ pub struct MobBuffers<'a> {
 }
 
 impl<'a> MobBuffers<'a> {
-  pub fn new(
-    gl: &'a GLContextExistence,
-    gl_context: &mut GLContext,
-    shader: &ColorShader<'a>,
-  ) -> MobBuffers<'a> {
-    let buffer = GLBuffer::new(gl, gl_context, 32 * TRIANGLE_VERTICES_PER_BOX as usize);
+  pub fn new<'b:'a>(
+    gl: &'a mut GLContext,
+    shader: &ColorShader<'b>,
+  ) -> MobBuffers<'b> {
+    let buffer = GLBuffer::new(gl, 32 * TRIANGLE_VERTICES_PER_BOX as usize);
     MobBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
 
       triangles: GLArray::new(
         gl,
-        gl_context,
         &shader.shader,
         &[
           VertexAttribData { name: "position", size: 3, unit: GLType::Float },
