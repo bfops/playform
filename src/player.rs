@@ -7,6 +7,7 @@ use ncollide::bounding_volume::{AABB, AABB3};
 use ncollide::ray::{Ray, Ray3};
 use opencl_context::CL;
 use physics::Physics;
+use renderer::Renderer;
 use state::EntityId;
 use std::f32::consts::PI;
 use std::iter::range_inclusive;
@@ -16,7 +17,6 @@ use surroundings_loader::SurroundingsLoader;
 use terrain::terrain;
 use terrain::terrain_block::BlockPosition;
 use terrain::terrain_game_loader::TerrainGameLoader;
-use yaglw::gl_context::GLContext;
 
 const LOD_THRESHOLDS: [i32; 3] = [1, 8, 32];
 
@@ -153,7 +153,7 @@ impl<'a> Player<'a> {
   pub fn update(
     &mut self,
     timers: &TimerSet,
-    gl_context: &mut GLContext,
+    renderer: &mut Renderer,
     cl: &CL,
     terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
@@ -164,7 +164,7 @@ impl<'a> Player<'a> {
     timers.time("update.player.surroundings", || {
       self.surroundings_loader.update(
         timers,
-        gl_context,
+        renderer,
         cl,
         terrain_game_loader,
         id_allocator,
@@ -174,7 +174,7 @@ impl<'a> Player<'a> {
 
       self.solid_boundary.update(
         timers,
-        gl_context,
+        renderer,
         cl,
         terrain_game_loader,
         id_allocator,

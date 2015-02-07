@@ -2,6 +2,7 @@ use id_allocator::IdAllocator;
 use lod_map::{LOD, OwnerId};
 use opencl_context::CL;
 use physics::Physics;
+use renderer::Renderer;
 use state::EntityId;
 use std::cmp::max;
 use std::num::Float;
@@ -11,7 +12,6 @@ use surroundings_iter::SurroundingsIter;
 use terrain::terrain_block::BlockPosition;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use time;
-use yaglw::gl_context::GLContext;
 
 // Rough budget (in microseconds) for how long block updating can take PER SurroundingsLoader.
 pub const BLOCK_UPDATE_BUDGET: u64 = 20000;
@@ -62,7 +62,7 @@ impl<'a> SurroundingsLoader<'a> {
   pub fn update(
     &mut self,
     timers: &TimerSet,
-    gl: &mut GLContext,
+    renderer: &mut Renderer,
     cl: &CL,
     terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
@@ -85,7 +85,7 @@ impl<'a> SurroundingsLoader<'a> {
           let success =
             terrain_game_loader.decrease_lod(
               timers,
-              gl,
+              renderer,
               cl,
               id_allocator,
               physics,
@@ -102,7 +102,7 @@ impl<'a> SurroundingsLoader<'a> {
           // This can fail; we leave it in the vec for next time.
           terrain_game_loader.decrease_lod(
             timers,
-            gl,
+            renderer,
             cl,
             id_allocator,
             physics,
@@ -125,7 +125,7 @@ impl<'a> SurroundingsLoader<'a> {
         let success =
           terrain_game_loader.increase_lod(
             timers,
-            gl,
+            renderer,
             cl,
             id_allocator,
             physics,

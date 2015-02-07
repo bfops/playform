@@ -8,7 +8,7 @@ use nalgebra::{Vec3, Pnt3, Norm};
 use nalgebra;
 use ncollide::bounding_volume::{AABB, AABB3};
 use physics::Physics;
-use shaders;
+use renderer::Renderer;
 use state::{App, EntityId};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -21,15 +21,13 @@ fn center(bounds: &AABB3<f32>) -> Pnt3<GLfloat> {
   (*bounds.mins() + bounds.maxs().to_vec()) / (2.0 as GLfloat)
 }
 
-pub fn make_mobs<'a, 'b:'a>(
-  gl: &'a mut GLContext,
+pub fn make_mobs<'a>(
+  renderer: &mut Renderer,
   physics: &mut Physics,
   id_allocator: &mut IdAllocator<EntityId>,
   owner_allocator: &mut IdAllocator<OwnerId>,
-  shader: &shaders::color::ColorShader<'b>,
-) -> (HashMap<EntityId, Rc<RefCell<mob::Mob<'b>>>>, mob::MobBuffers<'b>) {
+) -> HashMap<EntityId, Rc<RefCell<mob::Mob<'a>>>> {
   let mut mobs = HashMap::new();
-  let mut mob_buffers = mob::MobBuffers::new(gl, shader);
 
   fn mob_behavior(world: &App, mob: &mut mob::Mob) {
     let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
@@ -63,17 +61,17 @@ pub fn make_mobs<'a, 'b:'a>(
   }
 
   add_mob(
-    gl,
+    &mut renderer.gl,
     physics,
     &mut mobs,
-    &mut mob_buffers,
+    &mut renderer.mob_buffers,
     id_allocator,
     owner_allocator,
     Pnt3::new(0.0, terrain::AMPLITUDE as f32, -1.0),
     mob_behavior
   );
 
-  (mobs, mob_buffers)
+  mobs
 }
 
 fn add_mob(

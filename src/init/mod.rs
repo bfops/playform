@@ -13,21 +13,18 @@ use ncollide::bounding_volume::AABB;
 use opencl_context::CL;
 use physics::Physics;
 use player::Player;
-use shaders;
+use renderer::Renderer;
 use state::App;
 use stopwatch::TimerSet;
 use sun::Sun;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use terrain::terrain_vram_buffers;
-use yaglw::gl_context::GLContext;
-use yaglw::texture::TextureUnit;
 
 const SUN_TICK_NS: u64 = 5000000;
 
 pub fn init<'a, 'b:'a>(
-  gl: &'a mut GLContext,
-  shaders: &mut shaders::Shaders<'b>,
+  renderer: &mut Renderer<'b>,
   cl: &CL,
   timers: &TimerSet,
 ) -> App<'b> {
@@ -36,23 +33,15 @@ pub fn init<'a, 'b:'a>(
     gl::CullFace(gl::BACK);
     gl::Enable(gl::CULL_FACE);
   }
-  gl.enable_alpha_blending();
-  gl.enable_smooth_lines();
-  gl.enable_depth_buffer(1.0);
+  renderer.gl.enable_alpha_blending();
+  renderer.gl.enable_smooth_lines();
+  renderer.gl.enable_depth_buffer(1.0);
 
-  let hud_triangles = make_hud(gl, &shaders.hud_color_shader.shader);
+  make_hud(renderer);
 
-  let mut texture_unit_alloc: IdAllocator<TextureUnit> = IdAllocator::new();
-  let terrain_game_loader =
-    TerrainGameLoader::new(
-      gl,
-      cl,
-      &mut shaders.terrain_shader,
-      &mut texture_unit_alloc,
-    );
+  let terrain_game_loader = TerrainGameLoader::new(cl);
 
-  let (text_textures, text_triangles) =
-    make_text(gl, &shaders.hud_texture_shader.shader);
+  make_text(renderer);
 
   let world_width: u32 = 1 << 11;
   let world_width = world_width as f32;
@@ -67,14 +56,13 @@ pub fn init<'a, 'b:'a>(
   let mut id_allocator = IdAllocator::new();
   let mut owner_allocator = IdAllocator::new();
 
-  let (mobs, mob_buffers) =
+  let mobs =
     timers.time("make_mobs", || {
       make_mobs(
-        gl,
+        renderer,
         &mut physics,
         &mut id_allocator,
         &mut owner_allocator,
-        &shaders.mob_shader,
       )
     });
 
@@ -98,18 +86,18 @@ pub fn init<'a, 'b:'a>(
       load_distance,
     );
 
-  let misc_texture_unit = texture_unit_alloc.allocate();
   unsafe {
-    gl::ActiveTexture(misc_texture_unit.gl_id());
+    gl::ActiveTexture(renderer.misc_texture_unit.gl_id());
   }
 
-  let texture_in = shaders.hud_texture_shader.shader.get_uniform_location("texture_in");
-  shaders.hud_texture_shader.shader.use_shader(gl);
+  let texture_in =
+    renderer.shaders.hud_texture_shader.shader.get_uniform_location("texture_in");
+  renderer.shaders.hud_texture_shader.shader.use_shader(&mut renderer.gl);
   unsafe {
-    gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
+    gl::Uniform1i(texture_in, renderer.misc_texture_unit.glsl_id as GLint);
   }
 
-  match gl.get_error() {
+  match renderer.gl.get_error() {
     gl::NO_ERROR => {},
     err => warn!("OpenGL error 0x{:x} in load()", err),
   }
@@ -118,14 +106,9 @@ pub fn init<'a, 'b:'a>(
     physics: physics,
     id_allocator: id_allocator,
     terrain_game_loader: terrain_game_loader,
-    mob_buffers: mob_buffers,
     player: player,
     mobs: mobs,
     sun: Sun::new(SUN_TICK_NS),
-    hud_triangles: hud_triangles,
-    text_textures: text_textures,
-    text_triangles: text_triangles,
-    misc_texture_unit: misc_texture_unit,
     render_outlines: false,
   }
 }

@@ -6,7 +6,7 @@ use mob;
 use nalgebra::Vec3;
 use opencl_context::CL;
 use physics::Physics;
-use shaders::Shaders;
+use renderer::Renderer;
 use state::App;
 use std::ops::{Deref, DerefMut};
 use stopwatch::TimerSet;
@@ -16,15 +16,14 @@ use yaglw::gl_context::GLContext;
 pub fn update(
   timers: &TimerSet,
   app: &mut App,
-  shaders: &mut Shaders,
-  gl_context: &mut GLContext,
+  renderer: &mut Renderer,
   cl: &CL,
 ) {
   timers.time("update", || {
     timers.time("update.player", || {
       app.player.update(
         timers,
-        gl_context,
+        renderer,
         cl,
         &mut app.terrain_game_loader,
         &mut app.id_allocator,
@@ -41,7 +40,7 @@ pub fn update(
 
         mob.solid_boundary.update(
           timers,
-          gl_context,
+          renderer,
           cl,
           &mut app.terrain_game_loader,
           &mut app.id_allocator,
@@ -59,9 +58,9 @@ pub fn update(
         macro_rules! translate_mob(
           ($v:expr) => (
             translate_mob(
-              gl_context,
+              &mut renderer.gl,
               &mut app.physics,
-              &mut app.mob_buffers,
+              &mut renderer.mob_buffers,
               mob,
               $v
             );
@@ -84,8 +83,8 @@ pub fn update(
     timers.time("update.sun", || {
       app.sun.update().map(|(rel_position, sun_color, ambient_light)| {
         set_point_light(
-          &mut shaders.terrain_shader.shader,
-          gl_context,
+          &mut renderer.shaders.terrain_shader.shader,
+          &mut renderer.gl,
           &Light {
             position: app.player.camera.position + rel_position,
             intensity: sun_color,
@@ -93,8 +92,8 @@ pub fn update(
         );
 
         set_ambient_light(
-          &mut shaders.terrain_shader.shader,
-          gl_context,
+          &mut renderer.shaders.terrain_shader.shader,
+          &mut renderer.gl,
           Color3::of_rgb(
             sun_color.r * ambient_light,
             sun_color.g * ambient_light,
@@ -102,7 +101,7 @@ pub fn update(
           ),
         );
 
-        gl_context.set_background_color(sun_color.r, sun_color.g, sun_color.b, 1.0);
+        renderer.gl.set_background_color(sun_color.r, sun_color.g, sun_color.b, 1.0);
       });
     });
   })

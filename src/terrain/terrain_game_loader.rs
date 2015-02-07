@@ -4,7 +4,7 @@ use lod_map::{LOD, OwnerId, LODMap};
 use noise::Seed;
 use opencl_context::CL;
 use physics::Physics;
-use shaders::terrain::TerrainShader;
+use renderer::Renderer;
 use state::EntityId;
 use std::iter::repeat;
 use stopwatch::TimerSet;
@@ -12,9 +12,6 @@ use terrain::terrain::Terrain;
 use terrain::terrain_block::{BlockPosition, BLOCK_WIDTH};
 use terrain::texture_generator::TEXTURE_WIDTH;
 use terrain::texture_generator::TerrainTextureGenerator;
-use terrain::terrain_vram_buffers::TerrainVRAMBuffers;
-use yaglw::gl_context::GLContext;
-use yaglw::texture::TextureUnit;
 
 /// Load and unload TerrainBlocks from the game.
 /// Each TerrainBlock can be owned by a set of owners, each of which can independently request LODs.
@@ -22,22 +19,13 @@ use yaglw::texture::TextureUnit;
 pub struct TerrainGameLoader<'a> {
   terrain: Terrain,
   texture_generators: [TerrainTextureGenerator; 4],
-  vram_buffers: TerrainVRAMBuffers<'a>,
   in_progress_terrain: InProgressTerrain,
   // The LODs of the currently loaded blocks.
   lod_map: LODMap,
 }
 
 impl<'a> TerrainGameLoader<'a> {
-  pub fn new(
-    gl: &'a mut GLContext,
-    cl: &CL,
-    shader: &mut TerrainShader,
-    texture_unit_alloc: &mut IdAllocator<TextureUnit>,
-  ) -> TerrainGameLoader<'a> {
-    let vram_buffers = TerrainVRAMBuffers::new(gl);
-    vram_buffers.bind_glsl_uniforms(gl, texture_unit_alloc, shader);
-
+  pub fn new(cl: &CL) -> TerrainGameLoader<'a> {
     TerrainGameLoader {
       terrain: Terrain::new(Seed::new(0), 0),
       texture_generators: [
@@ -46,7 +34,6 @@ impl<'a> TerrainGameLoader<'a> {
         TerrainTextureGenerator::new(cl, TEXTURE_WIDTH[2], BLOCK_WIDTH as u32),
         TerrainTextureGenerator::new(cl, TEXTURE_WIDTH[3], BLOCK_WIDTH as u32),
       ],
-      vram_buffers: vram_buffers,
       in_progress_terrain: InProgressTerrain::new(),
       lod_map: LODMap::new(),
     }
@@ -56,7 +43,7 @@ impl<'a> TerrainGameLoader<'a> {
   fn re_lod_block(
     &mut self,
     timers: &TimerSet,
-    gl: &mut GLContext,
+    renderer: &mut Renderer,
     cl: &CL,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
@@ -80,10 +67,10 @@ impl<'a> TerrainGameLoader<'a> {
           let block = lods[loaded_lod as usize].as_ref().unwrap();
           for id in block.ids.iter() {
             physics.remove_terrain(*id);
-            self.vram_buffers.swap_remove(gl, *id);
+            renderer.terrain_buffers.swap_remove(&mut renderer.gl, *id);
           }
 
-          self.vram_buffers.free_block_data(loaded_lod, block_position);
+          renderer.terrain_buffers.free_block_data(loaded_lod, block_position);
         });
       },
     }
@@ -99,7 +86,8 @@ impl<'a> TerrainGameLoader<'a> {
       },
       Some(LOD::LodIndex(new_lod)) => {
         timers.time("terrain_game_loader.load", || {
-          let vram_buffers = &mut self.vram_buffers;
+          let gl = &mut renderer.gl;
+          let vram_buffers = &mut renderer.terrain_buffers;
           self.terrain.load(
             timers,
             cl,
@@ -152,7 +140,7 @@ impl<'a> TerrainGameLoader<'a> {
   pub fn increase_lod(
     &mut self,
     timers: &TimerSet,
-    gl: &mut GLContext,
+    renderer: &mut Renderer,
     cl: &CL,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
@@ -169,7 +157,7 @@ impl<'a> TerrainGameLoader<'a> {
         let success =
           self.re_lod_block(
             timers,
-            gl,
+            renderer,
             cl,
             id_allocator,
             physics,
@@ -190,7 +178,7 @@ impl<'a> TerrainGameLoader<'a> {
   pub fn decrease_lod(
     &mut self,
     timers: &TimerSet,
-    gl: &mut GLContext,
+    renderer: &mut Renderer,
     cl: &CL,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
@@ -207,7 +195,7 @@ impl<'a> TerrainGameLoader<'a> {
         let success =
           self.re_lod_block(
             timers,
-            gl,
+            renderer,
             cl,
             id_allocator,
             physics,
@@ -224,9 +212,5 @@ impl<'a> TerrainGameLoader<'a> {
         success
       },
     }
-  }
-
-  pub fn draw(&self, gl: &mut GLContext) {
-    self.vram_buffers.draw(gl);
   }
 }

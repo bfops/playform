@@ -7,9 +7,9 @@ use logger::Logger;
 use opencl_context::CL;
 use process_event::process_event;
 use render::render;
+use renderer::Renderer;
 use sdl2;
 use sdl2::event::Event;
-use shaders::Shaders;
 use std::mem;
 use std::time::duration::Duration;
 use std::old_io::timer;
@@ -65,15 +65,15 @@ pub fn main() {
       mem::transmute(sdl2::video::gl_get_proc_address(s))
     });
 
-    let mut gl = unsafe {
+    let gl = unsafe {
       GLContext::new()
     };
 
     gl.print_stats();
 
-    let mut shaders = Shaders::new(&mut gl);
+    let mut renderer = Renderer::new(gl);
 
-    let mut app = init(&mut gl, &mut shaders, &cl, &timers);
+    let mut app = init(&mut renderer, &cl, &timers);
 
     let mut render_timer;
     let mut update_timer;
@@ -89,12 +89,12 @@ pub fn main() {
     'game_loop:loop {
       let updates = update_timer.update(time::precise_time_ns());
       if updates > 0 {
-        update(&timers, &mut app, &mut shaders, &mut gl, &cl);
+        update(&timers, &mut app, &mut renderer, &cl);
       }
 
       let renders = render_timer.update(time::precise_time_ns());
       if renders > 0 {
-        render(&timers, &mut app, &mut shaders, &mut gl);
+        render(&timers, &mut app, &mut renderer);
         // swap buffers
         window.gl_swap_window();
       }

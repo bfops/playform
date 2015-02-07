@@ -10,9 +10,6 @@ use std::ops::Add;
 use std::rc::Rc;
 use sun::Sun;
 use terrain::terrain_game_loader::TerrainGameLoader;
-use vertex::{ColoredVertex, TextureVertex};
-use yaglw::vertex_buffer::*;
-use yaglw::texture::{Texture2D, TextureUnit};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct EntityId(u32);
@@ -41,14 +38,6 @@ pub struct App<'a> {
 
   pub id_allocator: IdAllocator<EntityId>,
   pub terrain_game_loader: TerrainGameLoader<'a>,
-
-  // OpenGL buffers
-  pub mob_buffers: mob::MobBuffers<'a>,
-  pub hud_triangles: GLArray<'a, ColoredVertex>,
-  pub text_triangles: GLArray<'a, TextureVertex>,
-
-  pub misc_texture_unit: TextureUnit,
-  pub text_textures: Vec<Texture2D<'a>>,
 
   pub render_outlines: bool,
 }

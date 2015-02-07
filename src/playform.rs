@@ -50,6 +50,7 @@ mod player;
 mod process_event;
 mod range_abs;
 mod render;
+mod renderer;
 mod shaders;
 mod state;
 mod stopwatch;

@@ -1,24 +1,22 @@
 use camera::set_camera;
 use gl;
-use shaders::Shaders;
+use renderer::Renderer;
 use state::App;
 use stopwatch::TimerSet;
-use yaglw::gl_context::GLContext;
 
 pub fn render(
   timers: &TimerSet,
   app: &App,
-  shaders: &mut Shaders,
-  gl_context: &mut GLContext,
+  renderer: &mut Renderer,
 ) {
   timers.time("render", || {
-    gl_context.clear_buffer();
+    &mut renderer.gl.clear_buffer();
 
-    set_camera(&mut shaders.mob_shader.shader, gl_context, &app.player.camera);
+    set_camera(&mut renderer.shaders.mob_shader.shader, &mut renderer.gl, &app.player.camera);
 
-    shaders.mob_shader.shader.use_shader(gl_context);
+    renderer.shaders.mob_shader.shader.use_shader(&mut renderer.gl);
 
-    set_camera(&mut shaders.terrain_shader.shader, gl_context, &app.player.camera);
+    set_camera(&mut renderer.shaders.terrain_shader.shader, &mut renderer.gl, &app.player.camera);
 
     // draw the world
     if app.render_outlines {
@@ -27,41 +25,41 @@ pub fn render(
         gl::Disable(gl::CULL_FACE);
       }
 
-      shaders.terrain_shader.shader.use_shader(gl_context);
-      app.terrain_game_loader.draw(gl_context);
+      renderer.shaders.terrain_shader.shader.use_shader(&mut renderer.gl);
+      renderer.terrain_buffers.draw(&mut renderer.gl);
 
-      shaders.mob_shader.shader.use_shader(gl_context);
-      app.mob_buffers.draw(gl_context);
+      renderer.shaders.mob_shader.shader.use_shader(&mut renderer.gl);
+      renderer.mob_buffers.draw(&mut renderer.gl);
 
       unsafe {
         gl::PolygonMode(gl::FRONT_AND_BACK, gl::FILL);
         gl::Enable(gl::CULL_FACE);
       }
     } else {
-      shaders.terrain_shader.shader.use_shader(gl_context);
-      app.terrain_game_loader.draw(gl_context);
+      renderer.shaders.terrain_shader.shader.use_shader(&mut renderer.gl);
+      renderer.terrain_buffers.draw(&mut renderer.gl);
 
-      shaders.mob_shader.shader.use_shader(gl_context);
-      app.mob_buffers.draw(gl_context);
+      renderer.shaders.mob_shader.shader.use_shader(&mut renderer.gl);
+      renderer.mob_buffers.draw(&mut renderer.gl);
     }
 
     // draw the hud
-    shaders.hud_color_shader.shader.use_shader(gl_context);
-    app.hud_triangles.bind(gl_context);
-    app.hud_triangles.draw(gl_context);
+    renderer.shaders.hud_color_shader.shader.use_shader(&mut renderer.gl);
+    renderer.hud_triangles.bind(&mut renderer.gl);
+    renderer.hud_triangles.draw(&mut renderer.gl);
 
     // draw hud textures
-    shaders.hud_texture_shader.shader.use_shader(gl_context);
+    renderer.shaders.hud_texture_shader.shader.use_shader(&mut renderer.gl);
     unsafe {
-      gl::ActiveTexture(app.misc_texture_unit.gl_id());
+      gl::ActiveTexture(renderer.misc_texture_unit.gl_id());
     }
 
-    app.text_triangles.bind(gl_context);
-    for (i, tex) in app.text_textures.iter().enumerate() {
+    renderer.text_triangles.bind(&mut renderer.gl);
+    for (i, tex) in renderer.text_textures.iter().enumerate() {
       unsafe {
         gl::BindTexture(gl::TEXTURE_2D, tex.handle.gl_id);
       }
-      app.text_triangles.draw_slice(gl_context, i * 6, 6);
+      renderer.text_triangles.draw_slice(&mut renderer.gl, i * 6, 6);
     }
   })
 }
