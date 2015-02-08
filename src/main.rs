@@ -73,7 +73,7 @@ pub fn main() {
 
     let mut render_state = RenderState::new(gl);
 
-    let mut world = world::init(&mut render_state, &cl, &timers);
+    let mut world = world::init(&cl, &mut render_state, &timers);
 
     let mut render_timer;
     let mut update_timer;

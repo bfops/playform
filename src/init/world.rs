@@ -1,6 +1,4 @@
-use camera;
 use gl;
-use gl::types::*;
 use id_allocator::IdAllocator;
 use init::hud::make_hud;
 use init::mobs::make_mobs;
@@ -25,19 +23,10 @@ fn center(bounds: &AABB3<f32>) -> Pnt3<f32> {
 }
 
 pub fn init<'a, 'b:'a>(
-  render_state: &mut RenderState<'b>,
   cl: &CL,
+  render_state: &mut RenderState<'a>,
   timers: &TimerSet,
 ) -> World<'b> {
-  unsafe {
-    gl::FrontFace(gl::CCW);
-    gl::CullFace(gl::BACK);
-    gl::Enable(gl::CULL_FACE);
-  }
-  render_state.gl.enable_alpha_blending();
-  render_state.gl.enable_smooth_lines();
-  render_state.gl.enable_depth_buffer(1.0);
-
   make_hud(render_state);
 
   let terrain_game_loader = TerrainGameLoader::new(cl);
@@ -94,24 +83,12 @@ pub fn init<'a, 'b:'a>(
 
     // Initialize the projection matrix.
     render_state.camera.translate(position.to_vec());
-    render_state.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 2048.0);
 
     player.rotate_lateral(PI / 2.0);
     render_state.rotate_lateral(PI / 2.0);
 
     player
   };
-
-  unsafe {
-    gl::ActiveTexture(render_state.misc_texture_unit.gl_id());
-  }
-
-  let texture_in =
-    render_state.shaders.hud_texture_shader.shader.get_uniform_location("texture_in");
-  render_state.shaders.hud_texture_shader.shader.use_shader(&mut render_state.gl);
-  unsafe {
-    gl::Uniform1i(texture_in, render_state.misc_texture_unit.glsl_id as GLint);
-  }
 
   match render_state.gl.get_error() {
     gl::NO_ERROR => {},

@@ -1,6 +1,7 @@
 use camera;
 use camera::Camera;
 use common::*;
+use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
 use mob;
@@ -74,6 +75,33 @@ impl<'a> RenderState<'a> {
 
     let misc_texture_unit = texture_unit_alloc.allocate();
 
+    unsafe {
+      gl::FrontFace(gl::CCW);
+      gl::CullFace(gl::BACK);
+      gl::Enable(gl::CULL_FACE);
+
+      gl::Enable(gl::BLEND);
+      gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+
+      gl::Enable(gl::LINE_SMOOTH);
+      gl::LineWidth(2.5);
+
+      gl::Enable(gl::DEPTH_TEST);
+      gl::DepthFunc(gl::LESS);
+      gl::ClearDepth(1.0);
+    }
+
+    unsafe {
+      gl::ActiveTexture(misc_texture_unit.gl_id());
+    }
+
+    let texture_in =
+      shaders.hud_texture_shader.shader.get_uniform_location("texture_in");
+    shaders.hud_texture_shader.shader.use_shader(&mut gl);
+    unsafe {
+      gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
+    }
+
     RenderState {
       gl: gl,
       shaders: shaders,
@@ -85,7 +113,12 @@ impl<'a> RenderState<'a> {
 
       misc_texture_unit: misc_texture_unit,
       text_textures: text_textures,
-      camera: Camera::unit(),
+      camera: {
+        let mut camera = Camera::unit();
+        // Initialize the projection matrix.
+        camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 2048.0);
+        camera
+      },
 
       lateral_rotation: 0.0,
       vertical_rotation: 0.0,
