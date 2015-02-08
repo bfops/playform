@@ -14,8 +14,8 @@ use ncollide_entities::bounding_volume::{AABB, AABB3};
 use opencl_context::CL;
 use physics::Physics;
 use player::Player;
-use renderer::Renderer;
-use state::App;
+use render_state::RenderState;
+use world::World;
 use std::f32::consts::PI;
 use stopwatch::TimerSet;
 use sun::Sun;
@@ -30,24 +30,24 @@ fn center(bounds: &AABB3<f32>) -> Pnt3<f32> {
 }
 
 pub fn init<'a, 'b:'a>(
-  renderer: &mut Renderer<'b>,
+  render_state: &mut RenderState<'b>,
   cl: &CL,
   timers: &TimerSet,
-) -> App<'b> {
+) -> World<'b> {
   unsafe {
     gl::FrontFace(gl::CCW);
     gl::CullFace(gl::BACK);
     gl::Enable(gl::CULL_FACE);
   }
-  renderer.gl.enable_alpha_blending();
-  renderer.gl.enable_smooth_lines();
-  renderer.gl.enable_depth_buffer(1.0);
+  render_state.gl.enable_alpha_blending();
+  render_state.gl.enable_smooth_lines();
+  render_state.gl.enable_depth_buffer(1.0);
 
-  make_hud(renderer);
+  make_hud(render_state);
 
   let terrain_game_loader = TerrainGameLoader::new(cl);
 
-  make_text(renderer);
+  make_text(render_state);
 
   let world_width: u32 = 1 << 11;
   let world_width = world_width as f32;
@@ -65,7 +65,7 @@ pub fn init<'a, 'b:'a>(
   let mobs =
     timers.time("make_mobs", || {
       make_mobs(
-        renderer,
+        render_state,
         &mut physics,
         &mut id_allocator,
         &mut owner_allocator,
@@ -100,32 +100,32 @@ pub fn init<'a, 'b:'a>(
     player.position = position;
 
     // Initialize the projection matrix.
-    renderer.camera.translate(position.to_vec());
-    renderer.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 2048.0);
+    render_state.camera.translate(position.to_vec());
+    render_state.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 2048.0);
 
     player.rotate_lateral(PI / 2.0);
-    renderer.rotate_lateral(PI / 2.0);
+    render_state.rotate_lateral(PI / 2.0);
 
     player
   };
 
   unsafe {
-    gl::ActiveTexture(renderer.misc_texture_unit.gl_id());
+    gl::ActiveTexture(render_state.misc_texture_unit.gl_id());
   }
 
   let texture_in =
-    renderer.shaders.hud_texture_shader.shader.get_uniform_location("texture_in");
-  renderer.shaders.hud_texture_shader.shader.use_shader(&mut renderer.gl);
+    render_state.shaders.hud_texture_shader.shader.get_uniform_location("texture_in");
+  render_state.shaders.hud_texture_shader.shader.use_shader(&mut render_state.gl);
   unsafe {
-    gl::Uniform1i(texture_in, renderer.misc_texture_unit.glsl_id as GLint);
+    gl::Uniform1i(texture_in, render_state.misc_texture_unit.glsl_id as GLint);
   }
 
-  match renderer.gl.get_error() {
+  match render_state.gl.get_error() {
     gl::NO_ERROR => {},
     err => warn!("OpenGL error 0x{:x} in load()", err),
   }
 
-  App {
+  World {
     physics: physics,
     id_allocator: id_allocator,
     terrain_game_loader: terrain_game_loader,

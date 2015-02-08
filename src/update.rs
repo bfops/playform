@@ -6,8 +6,8 @@ use mob;
 use nalgebra::Vec3;
 use opencl_context::CL;
 use physics::Physics;
-use renderer::Renderer;
-use state::App;
+use render_state::RenderState;
+use world::World;
 use std::ops::{Deref, DerefMut};
 use stopwatch::TimerSet;
 use terrain::terrain_block::BlockPosition;
@@ -15,15 +15,15 @@ use yaglw::gl_context::GLContext;
 
 pub fn update(
   timers: &TimerSet,
-  app: &mut App,
-  renderer: &mut Renderer,
+  app: &mut World,
+  render_state: &mut RenderState,
   cl: &CL,
 ) {
   timers.time("update", || {
     timers.time("update.player", || {
       app.player.update(
         timers,
-        renderer,
+        render_state,
         cl,
         &mut app.terrain_game_loader,
         &mut app.id_allocator,
@@ -40,7 +40,7 @@ pub fn update(
 
         mob.solid_boundary.update(
           timers,
-          renderer,
+          render_state,
           cl,
           &mut app.terrain_game_loader,
           &mut app.id_allocator,
@@ -58,9 +58,9 @@ pub fn update(
         macro_rules! translate_mob(
           ($v:expr) => (
             translate_mob(
-              &mut renderer.gl,
+              &mut render_state.gl,
               &mut app.physics,
-              &mut renderer.mob_buffers,
+              &mut render_state.mob_buffers,
               mob,
               $v
             );
@@ -83,17 +83,17 @@ pub fn update(
     timers.time("update.sun", || {
       app.sun.update().map(|(rel_position, sun_color, ambient_light)| {
         set_point_light(
-          &mut renderer.shaders.terrain_shader.shader,
-          &mut renderer.gl,
+          &mut render_state.shaders.terrain_shader.shader,
+          &mut render_state.gl,
           &Light {
-            position: renderer.camera.position + rel_position,
+            position: render_state.camera.position + rel_position,
             intensity: sun_color,
           }
         );
 
         set_ambient_light(
-          &mut renderer.shaders.terrain_shader.shader,
-          &mut renderer.gl,
+          &mut render_state.shaders.terrain_shader.shader,
+          &mut render_state.gl,
           Color3::of_rgb(
             sun_color.r * ambient_light,
             sun_color.g * ambient_light,
@@ -101,7 +101,7 @@ pub fn update(
           ),
         );
 
-        renderer.gl.set_background_color(sun_color.r, sun_color.g, sun_color.b, 1.0);
+        render_state.gl.set_background_color(sun_color.r, sun_color.g, sun_color.b, 1.0);
       });
     });
   })

@@ -2,7 +2,7 @@ use id_allocator::IdAllocator;
 use nalgebra::Vec3;
 use ncollide_entities::bounding_volume::AABB;
 use physics::Physics;
-use state::EntityId;
+use world::EntityId;
 use std::collections::hash_map::{HashMap, Entry};
 use terrain::terrain_block::{BlockPosition, BLOCK_WIDTH};
 

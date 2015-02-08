@@ -5,7 +5,7 @@ use gl::types::*;
 use id_allocator::IdAllocator;
 use nalgebra::{Pnt2, Pnt3, Vec3};
 use shaders::terrain::TerrainShader;
-use state::EntityId;
+use world::EntityId;
 use std::collections::HashMap;
 use std::iter::{IteratorExt, repeat};
 use std::u32;

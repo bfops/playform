@@ -6,8 +6,8 @@ use ncollide_entities::bounding_volume::AABB;
 use ncollide_queries::ray::{Ray, Ray3};
 use opencl_context::CL;
 use physics::Physics;
-use renderer::Renderer;
-use state::EntityId;
+use render_state::RenderState;
+use world::EntityId;
 use std::f32::consts::PI;
 use std::iter::range_inclusive;
 use std::num;
@@ -81,7 +81,7 @@ impl<'a> Player<'a> {
   /// If the player collides with something with a small height jump, the player will shift upward.
   pub fn translate(
     &mut self,
-    renderer: &mut Renderer,
+    render_state: &mut RenderState,
     physics: &mut Physics,
     v: Vec3<f32>,
   ) {
@@ -100,7 +100,7 @@ impl<'a> Player<'a> {
         None => {
           let move_successful = Physics::reinsert(&mut physics.misc_octree, self.id, bounds, new_bounds).is_none();
           if move_successful {
-            renderer.camera.translate(v + Vec3::new(0.0, step, 0.0));
+            render_state.camera.translate(v + Vec3::new(0.0, step, 0.0));
           }
           break;
         },
@@ -140,7 +140,7 @@ impl<'a> Player<'a> {
   pub fn update(
     &mut self,
     timers: &TimerSet,
-    renderer: &mut Renderer,
+    render_state: &mut RenderState,
     cl: &CL,
     terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
@@ -151,7 +151,7 @@ impl<'a> Player<'a> {
     timers.time("update.player.surroundings", || {
       self.surroundings_loader.update(
         timers,
-        renderer,
+        render_state,
         cl,
         terrain_game_loader,
         id_allocator,
@@ -161,7 +161,7 @@ impl<'a> Player<'a> {
 
       self.solid_boundary.update(
         timers,
-        renderer,
+        render_state,
         cl,
         terrain_game_loader,
         id_allocator,
@@ -182,13 +182,13 @@ impl<'a> Player<'a> {
 
     let delta_p = self.speed;
     if delta_p.x != 0.0 {
-      self.translate(renderer, physics, Vec3::new(delta_p.x, 0.0, 0.0));
+      self.translate(render_state, physics, Vec3::new(delta_p.x, 0.0, 0.0));
     }
     if delta_p.y != 0.0 {
-      self.translate(renderer, physics, Vec3::new(0.0, delta_p.y, 0.0));
+      self.translate(render_state, physics, Vec3::new(0.0, delta_p.y, 0.0));
     }
     if delta_p.z != 0.0 {
-      self.translate(renderer, physics, Vec3::new(0.0, 0.0, delta_p.z));
+      self.translate(render_state, physics, Vec3::new(0.0, 0.0, delta_p.z));
     }
 
     let y_axis = Vec3::new(0.0, 1.0, 0.0);

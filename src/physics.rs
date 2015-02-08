@@ -1,7 +1,7 @@
 use nalgebra::Vec3;
 use ncollide_entities::bounding_volume::{AABB, AABB3};
 use octree::Octree;
-use state::EntityId;
+use world::EntityId;
 use std::collections::HashMap;
 
 pub struct Physics {

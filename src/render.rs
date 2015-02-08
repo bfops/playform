@@ -1,11 +1,11 @@
 use camera::set_camera;
 use gl;
-use renderer::Renderer;
+use render_state::RenderState;
 use stopwatch::TimerSet;
 
 pub fn render(
   timers: &TimerSet,
-  rndr: &mut Renderer,
+  rndr: &mut RenderState,
 ) {
   timers.time("render", || {
     &mut rndr.gl.clear_buffer();

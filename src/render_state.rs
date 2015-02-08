@@ -12,7 +12,7 @@ use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, DrawMode, VertexAttribData
 use yaglw::texture::{Texture2D, TextureUnit};
 use vertex::{ColoredVertex, TextureVertex};
 
-pub struct Renderer<'a> {
+pub struct RenderState<'a> {
   pub gl: GLContext,
   pub shaders: Shaders<'a>,
 
@@ -28,8 +28,8 @@ pub struct Renderer<'a> {
   pub vertical_rotation: f32,
 }
 
-impl<'a> Renderer<'a> {
-  pub fn new(mut gl: GLContext) -> Renderer<'a> {
+impl<'a> RenderState<'a> {
+  pub fn new(mut gl: GLContext) -> RenderState<'a> {
     let mut texture_unit_alloc = IdAllocator::new();
 
     let mut shaders = Shaders::new(&mut gl);
@@ -74,7 +74,7 @@ impl<'a> Renderer<'a> {
 
     let misc_texture_unit = texture_unit_alloc.allocate();
 
-    Renderer {
+    RenderState {
       gl: gl,
       shaders: shaders,
 

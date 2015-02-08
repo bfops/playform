@@ -1,8 +1,8 @@
 use common::*;
 use nalgebra::{Pnt3, Vec3};
 use shaders::color::ColorShader;
-use state::App;
-use state::EntityId;
+use world::World;
+use world::EntityId;
 use std::collections::HashMap;
 use surroundings_loader::SurroundingsLoader;
 use vertex::ColoredVertex;
@@ -10,7 +10,7 @@ use yaglw::vertex_buffer::{GLArray, GLBuffer, VertexAttribData};
 use yaglw::vertex_buffer::{DrawMode, GLType};
 use yaglw::gl_context::GLContext;
 
-pub type Behavior = fn(&App, &mut Mob);
+pub type Behavior = fn(&World, &mut Mob);
 
 pub struct Mob<'a> {
   pub position: Pnt3<f32>,
