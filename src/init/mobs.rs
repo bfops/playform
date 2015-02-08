@@ -8,7 +8,7 @@ use nalgebra::{Vec3, Pnt3, Norm};
 use nalgebra;
 use ncollide_entities::bounding_volume::{AABB, AABB3};
 use physics::Physics;
-use render_state::RenderState;
+use view::View;
 use world::{World, EntityId};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -22,7 +22,7 @@ fn center(bounds: &AABB3<f32>) -> Pnt3<GLfloat> {
 }
 
 pub fn make_mobs<'a>(
-  render_state: &mut RenderState,
+  view: &mut View,
   physics: &mut Physics,
   id_allocator: &mut IdAllocator<EntityId>,
   owner_allocator: &mut IdAllocator<OwnerId>,
@@ -61,10 +61,10 @@ pub fn make_mobs<'a>(
   }
 
   add_mob(
-    &mut render_state.gl,
+    &mut view.gl,
     physics,
     &mut mobs,
-    &mut render_state.mob_buffers,
+    &mut view.mob_buffers,
     id_allocator,
     owner_allocator,
     Pnt3::new(0.0, terrain::AMPLITUDE as f32, -1.0),

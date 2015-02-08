@@ -7,7 +7,7 @@ use ncollide_entities::bounding_volume::{AABB, AABB3};
 use opencl_context::CL;
 use physics::Physics;
 use player::Player;
-use render_state::RenderState;
+use view::View;
 use world::World;
 use std::f32::consts::PI;
 use stopwatch::TimerSet;
@@ -24,10 +24,10 @@ fn center(bounds: &AABB3<f32>) -> Pnt3<f32> {
 
 pub fn init<'a, 'b:'a>(
   cl: &CL,
-  render_state: &mut RenderState<'a>,
+  view: &mut View<'a>,
   timers: &TimerSet,
 ) -> World<'b> {
-  make_hud(render_state);
+  make_hud(view);
 
   let terrain_game_loader = TerrainGameLoader::new(cl);
 
@@ -47,7 +47,7 @@ pub fn init<'a, 'b:'a>(
   let mobs =
     timers.time("make_mobs", || {
       make_mobs(
-        render_state,
+        view,
         &mut physics,
         &mut id_allocator,
         &mut owner_allocator,
@@ -82,15 +82,15 @@ pub fn init<'a, 'b:'a>(
     player.position = position;
 
     // Initialize the projection matrix.
-    render_state.camera.translate(position.to_vec());
+    view.camera.translate(position.to_vec());
 
     player.rotate_lateral(PI / 2.0);
-    render_state.rotate_lateral(PI / 2.0);
+    view.rotate_lateral(PI / 2.0);
 
     player
   };
 
-  match render_state.gl.get_error() {
+  match view.gl.get_error() {
     gl::NO_ERROR => {},
     err => warn!("OpenGL error 0x{:x} in load()", err),
   }

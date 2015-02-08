@@ -1,6 +1,6 @@
 use common::*;
 use nalgebra::Vec3;
-use render_state::RenderState;
+use view::View;
 use sdl2::event::Event;
 use sdl2::keycode::KeyCode;
 use sdl2::mouse;
@@ -12,14 +12,14 @@ use std::f32::consts::PI;
 pub fn process_event<'a>(
   timers: &TimerSet,
   app: &mut World<'a>,
-  render_state: &mut RenderState,
+  view: &mut View,
   game_window: &mut video::Window,
   event: Event,
 ) {
   match event {
     Event::KeyDown{keycode, repeat, ..} => {
       if !repeat {
-        key_press(timers, app, render_state, keycode);
+        key_press(timers, app, view, keycode);
       }
     },
     Event::KeyUp{keycode, repeat, ..} => {
@@ -28,7 +28,7 @@ pub fn process_event<'a>(
       }
     },
     Event::MouseMotion{x, y, ..} => {
-      mouse_move(timers, app, render_state, game_window, x, y);
+      mouse_move(timers, app, view, game_window, x, y);
     },
     _ => {},
   }
@@ -37,7 +37,7 @@ pub fn process_event<'a>(
 fn key_press<'a>(
   timers: &TimerSet,
   app: &mut World<'a>,
-  render_state: &mut RenderState,
+  view: &mut View,
   key: KeyCode,
 ) {
   timers.time("event.key_press", || {
@@ -61,19 +61,19 @@ fn key_press<'a>(
       },
       KeyCode::Left => {
         app.player.rotate_lateral(PI / 12.0);
-        render_state.rotate_lateral(PI / 12.0);
+        view.rotate_lateral(PI / 12.0);
       },
       KeyCode::Right => {
         app.player.rotate_lateral(-PI / 12.0);
-        render_state.rotate_lateral(-PI / 12.0);
+        view.rotate_lateral(-PI / 12.0);
       },
       KeyCode::Up => {
         app.player.rotate_vertical(PI / 12.0);
-        render_state.rotate_vertical(PI / 12.0);
+        view.rotate_vertical(PI / 12.0);
       },
       KeyCode::Down => {
         app.player.rotate_vertical(-PI / 12.0);
-        render_state.rotate_vertical(-PI / 12.0);
+        view.rotate_vertical(-PI / 12.0);
       },
       _ => {},
     }
@@ -109,7 +109,7 @@ fn key_release<'a>(timers: &TimerSet, app: &mut World<'a>, key: KeyCode) {
 fn mouse_move<'a>(
   timers: &TimerSet,
   app: &mut World<'a>,
-  render_state: &mut RenderState,
+  view: &mut View,
   window: &mut video::Window,
   x: i32, y: i32,
 ) {
@@ -121,9 +121,9 @@ fn mouse_move<'a>(
     let (rx, ry) = (dx as f32 * -3.14 / 2048.0, dy as f32 * 3.14 / 1600.0);
 
     app.player.rotate_lateral(rx);
-    render_state.rotate_lateral(rx);
+    view.rotate_lateral(rx);
     app.player.rotate_vertical(ry);
-    render_state.rotate_vertical(ry);
+    view.rotate_vertical(ry);
 
     mouse::warp_mouse_in_window(
       window,

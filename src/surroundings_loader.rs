@@ -2,7 +2,7 @@ use id_allocator::IdAllocator;
 use lod_map::{LOD, OwnerId};
 use opencl_context::CL;
 use physics::Physics;
-use render_state::RenderState;
+use view::View;
 use world::EntityId;
 use std::cmp::max;
 use std::num::Float;
@@ -62,7 +62,7 @@ impl<'a> SurroundingsLoader<'a> {
   pub fn update(
     &mut self,
     timers: &TimerSet,
-    render_state: &mut RenderState,
+    view: &mut View,
     cl: &CL,
     terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
@@ -85,7 +85,7 @@ impl<'a> SurroundingsLoader<'a> {
           let success =
             terrain_game_loader.decrease_lod(
               timers,
-              render_state,
+              view,
               cl,
               id_allocator,
               physics,
@@ -102,7 +102,7 @@ impl<'a> SurroundingsLoader<'a> {
           // This can fail; we leave it in the vec for next time.
           terrain_game_loader.decrease_lod(
             timers,
-            render_state,
+            view,
             cl,
             id_allocator,
             physics,
@@ -125,7 +125,7 @@ impl<'a> SurroundingsLoader<'a> {
         let success =
           terrain_game_loader.increase_lod(
             timers,
-            render_state,
+            view,
             cl,
             id_allocator,
             physics,

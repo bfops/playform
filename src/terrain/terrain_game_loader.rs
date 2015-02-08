@@ -4,7 +4,7 @@ use lod_map::{LOD, OwnerId, LODMap};
 use noise::Seed;
 use opencl_context::CL;
 use physics::Physics;
-use render_state::RenderState;
+use view::View;
 use world::EntityId;
 use std::iter::repeat;
 use stopwatch::TimerSet;
@@ -43,7 +43,7 @@ impl TerrainGameLoader {
   fn re_lod_block(
     &mut self,
     timers: &TimerSet,
-    render_state: &mut RenderState,
+    view: &mut View,
     cl: &CL,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
@@ -67,10 +67,10 @@ impl TerrainGameLoader {
           let block = lods[loaded_lod as usize].as_ref().unwrap();
           for id in block.ids.iter() {
             physics.remove_terrain(*id);
-            render_state.terrain_buffers.swap_remove(&mut render_state.gl, *id);
+            view.terrain_buffers.swap_remove(&mut view.gl, *id);
           }
 
-          render_state.terrain_buffers.free_block_data(loaded_lod, block_position);
+          view.terrain_buffers.free_block_data(loaded_lod, block_position);
         });
       },
     }
@@ -86,8 +86,8 @@ impl TerrainGameLoader {
       },
       Some(LOD::LodIndex(new_lod)) => {
         timers.time("terrain_game_loader.load", || {
-          let gl = &mut render_state.gl;
-          let vram_buffers = &mut render_state.terrain_buffers;
+          let gl = &mut view.gl;
+          let vram_buffers = &mut view.terrain_buffers;
           self.terrain.load(
             timers,
             cl,
@@ -140,7 +140,7 @@ impl TerrainGameLoader {
   pub fn increase_lod(
     &mut self,
     timers: &TimerSet,
-    render_state: &mut RenderState,
+    view: &mut View,
     cl: &CL,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
@@ -157,7 +157,7 @@ impl TerrainGameLoader {
         let success =
           self.re_lod_block(
             timers,
-            render_state,
+            view,
             cl,
             id_allocator,
             physics,
@@ -178,7 +178,7 @@ impl TerrainGameLoader {
   pub fn decrease_lod(
     &mut self,
     timers: &TimerSet,
-    render_state: &mut RenderState,
+    view: &mut View,
     cl: &CL,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
@@ -195,7 +195,7 @@ impl TerrainGameLoader {
         let success =
           self.re_lod_block(
             timers,
-            render_state,
+            view,
             cl,
             id_allocator,
             physics,

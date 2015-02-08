@@ -51,7 +51,6 @@ mod player;
 mod process_event;
 mod range_abs;
 mod render;
-mod render_state;
 mod shaders;
 mod stopwatch;
 mod sun;
@@ -61,6 +60,7 @@ mod terrain;
 mod ttf;
 mod update;
 mod vertex;
+mod view;
 mod world;
 
 #[allow(dead_code)]

@@ -7,7 +7,7 @@ use logger::Logger;
 use opencl_context::CL;
 use process_event::process_event;
 use render::render;
-use render_state::RenderState;
+use view::View;
 use sdl2;
 use sdl2::event::Event;
 use std::mem;
@@ -71,9 +71,9 @@ pub fn main() {
 
     gl.print_stats();
 
-    let mut render_state = RenderState::new(gl);
+    let mut view = View::new(gl);
 
-    let mut world = world::init(&cl, &mut render_state, &timers);
+    let mut world = world::init(&cl, &mut view, &timers);
 
     let mut render_timer;
     let mut update_timer;
@@ -89,12 +89,12 @@ pub fn main() {
     'game_loop:loop {
       let updates = update_timer.update(time::precise_time_ns());
       if updates > 0 {
-        update(&timers, &mut world, &mut render_state, &cl);
+        update(&timers, &mut world, &mut view, &cl);
       }
 
       let renders = render_timer.update(time::precise_time_ns());
       if renders > 0 {
-        render(&timers, &mut render_state);
+        render(&timers, &mut view);
         // swap buffers
         window.gl_swap_window();
       }
@@ -127,7 +127,7 @@ pub fn main() {
           }
           event => {
             if has_focus {
-              process_event(&timers, &mut world, &mut render_state, &mut window, event);
+              process_event(&timers, &mut world, &mut view, &mut window, event);
             }
           },
         }
