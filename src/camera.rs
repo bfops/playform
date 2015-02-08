@@ -1,6 +1,6 @@
 use gl;
 use gl::types::*;
-use nalgebra::{Mat3, Mat4, Vec3, Pnt3};
+use nalgebra::{Mat3, Mat4, Vec3};
 use nalgebra;
 use std::mem;
 use std::num::Float;
@@ -12,7 +12,6 @@ pub struct Camera {
   pub translation: Mat4<GLfloat>,
   pub rotation: Mat4<GLfloat>,
   pub fov: Mat4<GLfloat>,
-  pub position: Pnt3<GLfloat>,
 }
 
 /// Create a 3D translation matrix.
@@ -91,7 +90,6 @@ impl Camera {
       translation: nalgebra::new_identity(4),
       rotation: nalgebra::new_identity(4),
       fov: nalgebra::new_identity(4),
-      position: Pnt3::new(0.0, 0.0, 0.0),
     }
   }
 
@@ -102,7 +100,6 @@ impl Camera {
   /// Shift the camera by a vector.
   pub fn translate(&mut self, v: Vec3<GLfloat>) {
     self.translation = self.translation * translation(-v);
-    self.position = self.position + v;
   }
 
   /// Rotate about a given vector, by `r` radians.
