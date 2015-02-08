@@ -38,8 +38,6 @@ pub struct App<'a> {
 
   pub id_allocator: IdAllocator<EntityId>,
   pub terrain_game_loader: TerrainGameLoader<'a>,
-
-  pub render_outlines: bool,
 }
 
 impl<'a> App<'a> {

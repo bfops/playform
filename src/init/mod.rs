@@ -109,7 +109,6 @@ pub fn init<'a, 'b:'a>(
     player: player,
     mobs: mobs,
     sun: Sun::new(SUN_TICK_NS),
-    render_outlines: false,
   }
 }
 

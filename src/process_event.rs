@@ -64,9 +64,6 @@ fn key_press<'a>(
         app.player.rotate_vertical(PI / 12.0),
       KeyCode::Down =>
         app.player.rotate_vertical(-PI / 12.0),
-      KeyCode::L => {
-        app.render_outlines = !app.render_outlines;
-      }
       _ => {},
     }
   })

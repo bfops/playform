@@ -19,29 +19,11 @@ pub fn render(
     set_camera(&mut renderer.shaders.terrain_shader.shader, &mut renderer.gl, &app.player.camera);
 
     // draw the world
-    if app.render_outlines {
-      unsafe {
-        gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
-        gl::Disable(gl::CULL_FACE);
-      }
+    renderer.shaders.terrain_shader.shader.use_shader(&mut renderer.gl);
+    renderer.terrain_buffers.draw(&mut renderer.gl);
 
-      renderer.shaders.terrain_shader.shader.use_shader(&mut renderer.gl);
-      renderer.terrain_buffers.draw(&mut renderer.gl);
-
-      renderer.shaders.mob_shader.shader.use_shader(&mut renderer.gl);
-      renderer.mob_buffers.draw(&mut renderer.gl);
-
-      unsafe {
-        gl::PolygonMode(gl::FRONT_AND_BACK, gl::FILL);
-        gl::Enable(gl::CULL_FACE);
-      }
-    } else {
-      renderer.shaders.terrain_shader.shader.use_shader(&mut renderer.gl);
-      renderer.terrain_buffers.draw(&mut renderer.gl);
-
-      renderer.shaders.mob_shader.shader.use_shader(&mut renderer.gl);
-      renderer.mob_buffers.draw(&mut renderer.gl);
-    }
+    renderer.shaders.mob_shader.shader.use_shader(&mut renderer.gl);
+    renderer.mob_buffers.draw(&mut renderer.gl);
 
     // draw the hud
     renderer.shaders.hud_color_shader.shader.use_shader(&mut renderer.gl);
