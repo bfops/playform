@@ -15,24 +15,24 @@ use yaglw::gl_context::GLContext;
 
 pub fn update(
   timers: &TimerSet,
-  app: &mut World,
+  world: &mut World,
   view: &mut View,
   cl: &CL,
 ) {
   timers.time("update", || {
     timers.time("update.player", || {
-      app.player.update(
+      world.player.update(
         timers,
         view,
         cl,
-        &mut app.terrain_game_loader,
-        &mut app.id_allocator,
-        &mut app.physics,
+        &mut world.terrain_game_loader,
+        &mut world.id_allocator,
+        &mut world.physics,
       );
     });
 
     timers.time("update.mobs", || {
-      for (_, mob) in app.mobs.iter() {
+      for (_, mob) in world.mobs.iter() {
         let mut mob_cell = mob.deref().borrow_mut();
         let mob = mob_cell.deref_mut();
 
@@ -42,15 +42,15 @@ pub fn update(
           timers,
           view,
           cl,
-          &mut app.terrain_game_loader,
-          &mut app.id_allocator,
-          &mut app.physics,
+          &mut world.terrain_game_loader,
+          &mut world.id_allocator,
+          &mut world.physics,
           block_position,
         );
 
         {
           let behavior = mob.behavior;
-          (behavior)(app, mob);
+          (behavior)(world, mob);
         }
 
         mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
@@ -59,7 +59,7 @@ pub fn update(
           ($v:expr) => (
             translate_mob(
               &mut view.gl,
-              &mut app.physics,
+              &mut world.physics,
               &mut view.mob_buffers,
               mob,
               $v
@@ -81,7 +81,7 @@ pub fn update(
     });
 
     timers.time("update.sun", || {
-      app.sun.update().map(|(rel_position, sun_color, ambient_light)| {
+      world.sun.update().map(|(rel_position, sun_color, ambient_light)| {
         set_point_light(
           &mut view.shaders.terrain_shader.shader,
           &mut view.gl,
