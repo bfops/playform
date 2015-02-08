@@ -92,36 +92,34 @@ impl<'a> Player<'a> {
       );
     let mut new_bounds = init_bounds.clone();
     // The height of the player's "step".
-    let mut step = 0.0;
+    let mut step_height = 0.0;
     let mut collided = false;
     loop {
       match physics.terrain_octree.intersect(&new_bounds, None) {
         None => {
           Physics::reinsert(&mut physics.misc_octree, self.id, bounds, new_bounds);
+          self.position = self.position + v + Vec3::new(0.0, step_height, 0.0);
           break;
         },
         Some((collision_bounds, _)) => {
           collided = true;
           // Step to the top of whatever we hit.
-          step = collision_bounds.maxs().y - init_bounds.mins().y;
-          assert!(step > 0.0);
+          step_height = collision_bounds.maxs().y - init_bounds.mins().y;
+          assert!(step_height > 0.0);
 
-          if step > MAX_STEP_HEIGHT {
+          if step_height > MAX_STEP_HEIGHT {
             // Step is too big; we just ran into something.
             break;
           }
 
           new_bounds =
             AABB::new(
-              *init_bounds.mins() + Vec3::new(0.0, step, 0.0),
-              *init_bounds.maxs() + Vec3::new(0.0, step, 0.0),
+              *init_bounds.mins() + Vec3::new(0.0, step_height, 0.0),
+              *init_bounds.maxs() + Vec3::new(0.0, step_height, 0.0),
             );
         },
       }
     }
-
-    let dp = v + Vec3::new(0.0, step, 0.0);
-    self.position = self.position + dp;
 
     if collided {
       if v.y < 0.0 {
