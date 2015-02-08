@@ -7,6 +7,7 @@ use id_allocator::IdAllocator;
 use mob;
 use nalgebra::Vec3;
 use shaders::Shaders;
+use std::f32::consts::PI;
 use terrain::terrain_vram_buffers::TerrainVRAMBuffers;
 use yaglw::gl_context::GLContext;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, DrawMode, VertexAttribData};
@@ -135,6 +136,15 @@ impl<'a> View<'a> {
   /// Angles that "flip around" (i.e. looking too far up or down)
   /// are sliently rejected.
   pub fn rotate_vertical(&mut self, r: GLfloat) {
+    let new_rotation = self.vertical_rotation + r;
+
+    if new_rotation < -PI / 2.0
+    || new_rotation >  PI / 2.0 {
+      return
+    }
+
+    self.vertical_rotation = new_rotation;
+
     let axis =
       camera::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation) *
       Vec3::new(1.0, 0.0, 0.0);
