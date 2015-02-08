@@ -1,23 +1,23 @@
-use camera;
 use color::{Color3, Color4};
 use common::*;
 use gl::types::*;
-use light::{Light, set_point_light, set_ambient_light};
+use light::Light;
 use mob;
 use nalgebra::Vec3;
 use opencl_context::CL;
 use physics::Physics;
-use view::View;
 use world::World;
 use std::ops::{Deref, DerefMut};
+use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
 use terrain::terrain_block::BlockPosition;
-use yaglw::gl_context::GLContext;
+use view::ViewUpdate;
+use view::ViewUpdate::*;
 
 pub fn update(
   timers: &TimerSet,
   world: &mut World,
-  view: &mut View,
+  view: &Sender<ViewUpdate>,
   cl: &CL,
 ) {
   timers.time("update", || {
@@ -31,7 +31,7 @@ pub fn update(
         &mut world.physics,
       );
 
-      view.camera.translation = camera::translation(-world.player.position.to_vec());
+      view.send(MoveCamera(world.player.position)).unwrap();
     });
 
     timers.time("update.mobs", || {
@@ -61,9 +61,8 @@ pub fn update(
         macro_rules! translate_mob(
           ($v:expr) => (
             translate_mob(
-              &mut view.gl,
+              view,
               &mut world.physics,
-              &mut view.mob_buffers,
               mob,
               $v
             );
@@ -85,35 +84,30 @@ pub fn update(
 
     timers.time("update.sun", || {
       world.sun.update().map(|(rel_position, sun_color, ambient_light)| {
-        set_point_light(
-          &mut view.shaders.terrain_shader.shader,
-          &mut view.gl,
-          &Light {
+        view.send(SetPointLight(
+          Light {
             position: world.player.position + rel_position,
             intensity: sun_color,
           }
-        );
+        )).unwrap();
 
-        set_ambient_light(
-          &mut view.shaders.terrain_shader.shader,
-          &mut view.gl,
+        view.send(SetAmbientLight(
           Color3::of_rgb(
             sun_color.r * ambient_light,
             sun_color.g * ambient_light,
             sun_color.b * ambient_light,
           ),
-        );
+        )).unwrap();
 
-        view.gl.set_background_color(sun_color.r, sun_color.g, sun_color.b, 1.0);
+        view.send(SetBackgroundColor(sun_color)).unwrap();
       });
     });
   })
 }
 
 fn translate_mob(
-  gl: &mut GLContext,
+  view: &Sender<ViewUpdate>,
   physics: &mut Physics,
-  mob_buffers: &mut mob::MobBuffers,
   mob: &mut mob::Mob,
   delta_p: Vec3<GLfloat>,
 ) {
@@ -122,10 +116,12 @@ fn translate_mob(
   } else {
     let bounds = physics.get_bounds(mob.id).unwrap();
     mob.position = mob.position + delta_p;
-    mob_buffers.update(
-      gl,
-      mob.id,
-      &to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
-    );
+
+    let vec =
+      to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
+      .iter()
+      .map(|&x| x)
+      .collect();
+    view.send(UpdateMob((mob.id, vec))).unwrap();
   }
 }

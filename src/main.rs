@@ -1,25 +1,24 @@
 use common::*;
 use gl;
-use init::world;
 use interval_timer::IntervalTimer;
 use log;
 use logger::Logger;
-use opencl_context::CL;
 use process_event::process_event;
 use render::render;
 use view::View;
 use sdl2;
 use sdl2::event::Event;
 use std::mem;
-use std::time::duration::Duration;
 use std::old_io::timer;
+use std::sync::mpsc::{channel, TryRecvError};
+use std::thread::Thread;
+use std::time::duration::Duration;
 use stopwatch::TimerSet;
 use time;
-use update::update;
+use world::{WorldUpdate, world_thread};
 use yaglw::gl_context::GLContext;
 
 pub const FRAMES_PER_SECOND: u64 = 30;
-pub const UPDATES_PER_SECOND: u64 = 30;
 
 pub fn main() {
   log::set_logger(|max_log_level| {
@@ -30,10 +29,6 @@ pub fn main() {
   debug!("starting");
 
   let timers = TimerSet::new();
-
-  let cl = unsafe {
-    CL::new()
-  };
 
   sdl2::init(sdl2::INIT_EVERYTHING);
 
@@ -73,41 +68,33 @@ pub fn main() {
 
     let mut view = View::new(gl);
 
-    let mut world = world::init(&cl, &mut view, &timers);
-
     let mut render_timer;
-    let mut update_timer;
     {
       let now = time::precise_time_ns();
       let nanoseconds_per_second = 1000000000;
       render_timer = IntervalTimer::new(nanoseconds_per_second / FRAMES_PER_SECOND, now);
-      update_timer = IntervalTimer::new(nanoseconds_per_second / UPDATES_PER_SECOND, now);
     }
 
     let mut has_focus = true;
 
+    let (world_updates_send, world_updates_recv) = channel();
+    let (view_send, view_recv) = channel();
+
+    let _thread = Thread::spawn(|| world_thread(world_updates_recv, view_send));
+    let world_updates = world_updates_send;
+
     'game_loop:loop {
-      let updates = update_timer.update(time::precise_time_ns());
-      if updates > 0 {
-        update(&timers, &mut world, &mut view, &cl);
-      }
-
-      let renders = render_timer.update(time::precise_time_ns());
-      if renders > 0 {
-        render(&timers, &mut view);
-        // swap buffers
-        window.gl_swap_window();
-      }
-
       'event_loop:loop {
         match sdl2::event::poll_event() {
           Event::None => {
             break 'event_loop;
           },
           Event::Quit{..} => {
+            world_updates.send(WorldUpdate::Quit).unwrap();
             break 'game_loop;
           }
           Event::AppTerminating{..} => {
+            world_updates.send(WorldUpdate::Quit).unwrap();
             break 'game_loop;
           }
           Event::Window{win_event_id: event_id, ..} => {
@@ -127,12 +114,36 @@ pub fn main() {
           }
           event => {
             if has_focus {
-              process_event(&timers, &mut world, &mut view, &mut window, event);
+              process_event(
+                &timers,
+                &world_updates,
+                &mut view,
+                &mut window,
+                event,
+              );
             }
           },
         }
       }
-      timer::sleep(Duration::microseconds(10));
+
+      'event_loop:loop {
+        let event;
+        match view_recv.try_recv() {
+          Err(TryRecvError::Empty) => break 'event_loop,
+          Err(e) => panic!("Error getting view updates: {:?}", e),
+          Ok(e) => event = e,
+        };
+        event.apply(&mut view);
+      }
+
+      let renders = render_timer.update(time::precise_time_ns());
+      if renders > 0 {
+        render(&timers, &mut view);
+        // swap buffers
+        window.gl_swap_window();
+      }
+
+      timer::sleep(Duration::milliseconds(0));
     }
   }
 

@@ -2,16 +2,16 @@ use id_allocator::IdAllocator;
 use lod_map::{LOD, OwnerId};
 use opencl_context::CL;
 use physics::Physics;
-use view::View;
-use world::EntityId;
 use std::cmp::max;
-use std::num::Float;
-use std::num::SignedInt;
+use std::num::{Float, SignedInt};
+use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
 use surroundings_iter::SurroundingsIter;
 use terrain::terrain_block::BlockPosition;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use time;
+use view::ViewUpdate;
+use world::EntityId;
 
 // Rough budget (in microseconds) for how long block updating can take PER SurroundingsLoader.
 pub const BLOCK_UPDATE_BUDGET: u64 = 20000;
@@ -62,7 +62,7 @@ impl<'a> SurroundingsLoader<'a> {
   pub fn update(
     &mut self,
     timers: &TimerSet,
-    view: &mut View,
+    view: &Sender<ViewUpdate>,
     cl: &CL,
     terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
@@ -82,20 +82,16 @@ impl<'a> SurroundingsLoader<'a> {
         let block_position = self.loaded_vec[self.next_unload_index];
         let distance = radius_between(&position, &block_position);
         if distance > self.max_load_distance {
-          let success =
-            terrain_game_loader.decrease_lod(
-              timers,
-              view,
-              cl,
-              id_allocator,
-              physics,
-              &block_position,
-              None,
-              self.id,
-            );
-          if !success {
-            panic!("Failed to unload terrain.");
-          }
+          terrain_game_loader.decrease_lod(
+            timers,
+            view,
+            cl,
+            id_allocator,
+            physics,
+            &block_position,
+            None,
+            self.id,
+          );
           self.loaded_vec.swap_remove(self.next_unload_index);
         } else {
           let lod = (self.lod)(distance);
@@ -122,23 +118,18 @@ impl<'a> SurroundingsLoader<'a> {
 
         let lod = (self.lod)(self.to_load.as_ref().unwrap().next_distance);
 
-        let success =
-          terrain_game_loader.increase_lod(
-            timers,
-            view,
-            cl,
-            id_allocator,
-            physics,
-            &block_position,
-            lod,
-            self.id,
-          );
+        terrain_game_loader.increase_lod(
+          timers,
+          view,
+          cl,
+          id_allocator,
+          physics,
+          &block_position,
+          lod,
+          self.id,
+        );
 
-        if success {
-          self.loaded_vec.push(block_position);
-        } else {
-          warn!("Failed to load {:?}", block_position);
-        }
+        self.loaded_vec.push(block_position);
       }
     }
   }

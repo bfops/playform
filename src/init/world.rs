@@ -1,20 +1,21 @@
-use gl;
 use id_allocator::IdAllocator;
 use init::hud::make_hud;
 use init::mobs::make_mobs;
-use nalgebra::{Pnt3, Vec3};
+use nalgebra::{Pnt3, Vec2, Vec3};
 use ncollide_entities::bounding_volume::{AABB, AABB3};
 use opencl_context::CL;
 use physics::Physics;
 use player::Player;
-use view::View;
 use world::World;
 use std::f32::consts::PI;
+use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
 use sun::Sun;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use terrain::terrain_vram_buffers;
+use view::ViewUpdate;
+use view::ViewUpdate::*;
 
 const SUN_TICK_NS: u64 = 5000000;
 
@@ -24,7 +25,7 @@ fn center(bounds: &AABB3<f32>) -> Pnt3<f32> {
 
 pub fn init<'a, 'b:'a>(
   cl: &CL,
-  view: &mut View<'a>,
+  view: &Sender<ViewUpdate>,
   timers: &TimerSet,
 ) -> World<'b> {
   make_hud(view);
@@ -81,15 +82,10 @@ pub fn init<'a, 'b:'a>(
     player.position = center(&bounds);
 
     player.rotate_lateral(PI / 2.0);
-    view.rotate_lateral(PI / 2.0);
+    view.send(RotateCamera(Vec2::new(PI / 2.0, 0.0))).unwrap();
 
     player
   };
-
-  match view.gl.get_error() {
-    gl::NO_ERROR => {},
-    err => warn!("OpenGL error 0x{:x} in load()", err),
-  }
 
   World {
     physics: physics,

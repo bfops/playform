@@ -8,21 +8,22 @@ use nalgebra::{Vec3, Pnt3, Norm};
 use nalgebra;
 use ncollide_entities::bounding_volume::{AABB, AABB3};
 use physics::Physics;
-use view::View;
-use world::{World, EntityId};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::mpsc::Sender;
 use surroundings_loader::SurroundingsLoader;
 use terrain::terrain;
-use yaglw::gl_context::GLContext;
+use view::ViewUpdate;
+use view::ViewUpdate::*;
+use world::{World, EntityId};
 
 fn center(bounds: &AABB3<f32>) -> Pnt3<GLfloat> {
   (*bounds.mins() + bounds.maxs().to_vec()) / (2.0 as GLfloat)
 }
 
 pub fn make_mobs<'a>(
-  view: &mut View,
+  view: &Sender<ViewUpdate>,
   physics: &mut Physics,
   id_allocator: &mut IdAllocator<EntityId>,
   owner_allocator: &mut IdAllocator<OwnerId>,
@@ -61,10 +62,9 @@ pub fn make_mobs<'a>(
   }
 
   add_mob(
-    &mut view.gl,
+    view,
     physics,
     &mut mobs,
-    &mut view.mob_buffers,
     id_allocator,
     owner_allocator,
     Pnt3::new(0.0, terrain::AMPLITUDE as f32, -1.0),
@@ -75,10 +75,9 @@ pub fn make_mobs<'a>(
 }
 
 fn add_mob(
-  gl: &mut GLContext,
+  view: &Sender<ViewUpdate>,
   physics: &mut Physics,
   mobs: &mut HashMap<EntityId, Rc<RefCell<mob::Mob>>>,
-  mob_buffers: &mut mob::MobBuffers,
   id_allocator: &mut IdAllocator<EntityId>,
   owner_allocator: &mut IdAllocator<OwnerId>,
   low_corner: Pnt3<GLfloat>,
@@ -100,7 +99,12 @@ fn add_mob(
     };
   let mob = Rc::new(RefCell::new(mob));
 
-  mob_buffers.push(gl, id, &to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0)));
+  let triangles =
+    to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
+    .iter()
+    .map(|&x| x)
+    .collect();
+  view.send(PushMob((id, triangles))).unwrap();
 
   physics.insert_misc(id, bounds);
   mobs.insert(id, mob);

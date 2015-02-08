@@ -80,6 +80,7 @@ impl Add<Vec3<i32>> for BlockPosition {
   }
 }
 
+#[derive(Clone)]
 pub struct TerrainBlock {
   // These Vecs must all be ordered the same way; each entry is the next triangle.
 

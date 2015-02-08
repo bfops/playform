@@ -5,6 +5,7 @@ use nalgebra::Pnt3;
 use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 
+#[derive(Debug, Clone)]
 pub struct Light {
   pub position: Pnt3<GLfloat>,
   pub intensity: Color3<GLfloat>,

@@ -6,16 +6,17 @@ use ncollide_entities::bounding_volume::AABB;
 use ncollide_queries::ray::{Ray, Ray3};
 use opencl_context::CL;
 use physics::Physics;
-use view::View;
 use world::EntityId;
 use std::f32::consts::PI;
 use std::iter::range_inclusive;
 use std::num;
+use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
 use surroundings_loader::SurroundingsLoader;
 use terrain::terrain;
 use terrain::terrain_block::BlockPosition;
 use terrain::terrain_game_loader::TerrainGameLoader;
+use view::ViewUpdate;
 
 const LOD_THRESHOLDS: [i32; 3] = [1, 8, 32];
 
@@ -79,6 +80,7 @@ impl<'a> Player<'a> {
 
   /// Translates the player/camera by a vector.
   /// If the player collides with something with a small height jump, the player will shift upward.
+  /// Returns the actual amount moved by.
   pub fn translate(
     &mut self,
     physics: &mut Physics,
@@ -137,7 +139,7 @@ impl<'a> Player<'a> {
   pub fn update(
     &mut self,
     timers: &TimerSet,
-    view: &mut View,
+    view: &Sender<ViewUpdate>,
     cl: &CL,
     terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
