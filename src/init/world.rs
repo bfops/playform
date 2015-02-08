@@ -78,11 +78,7 @@ pub fn init<'a, 'b:'a>(
     let bounds = AABB::new(min, max);
     physics.insert_misc(player.id, bounds.clone());
 
-    let position = center(&bounds);
-    player.position = position;
-
-    // Initialize the projection matrix.
-    view.camera.translate(position.to_vec());
+    player.position = center(&bounds);
 
     player.rotate_lateral(PI / 2.0);
     view.rotate_lateral(PI / 2.0);

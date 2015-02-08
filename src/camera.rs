@@ -97,11 +97,6 @@ impl Camera {
     self.fov * self.rotation * self.translation
   }
 
-  /// Shift the camera by a vector.
-  pub fn translate(&mut self, v: Vec3<GLfloat>) {
-    self.translation = self.translation * translation(-v);
-  }
-
   /// Rotate about a given vector, by `r` radians.
   pub fn rotate(&mut self, v: Vec3<GLfloat>, r: GLfloat) {
     self.rotation = self.rotation * from_axis_angle4(v, -r);

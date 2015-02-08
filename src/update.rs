@@ -1,3 +1,4 @@
+use camera;
 use color::{Color3, Color4};
 use common::*;
 use gl::types::*;
@@ -29,6 +30,8 @@ pub fn update(
         &mut world.id_allocator,
         &mut world.physics,
       );
+
+      view.camera.translation = camera::translation(-world.player.position.to_vec());
     });
 
     timers.time("update.mobs", || {

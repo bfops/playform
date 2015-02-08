@@ -81,7 +81,6 @@ impl<'a> Player<'a> {
   /// If the player collides with something with a small height jump, the player will shift upward.
   pub fn translate(
     &mut self,
-    view: &mut View,
     physics: &mut Physics,
     v: Vec3<f32>,
   ) {
@@ -98,10 +97,7 @@ impl<'a> Player<'a> {
     loop {
       match physics.terrain_octree.intersect(&new_bounds, None) {
         None => {
-          let move_successful = Physics::reinsert(&mut physics.misc_octree, self.id, bounds, new_bounds).is_none();
-          if move_successful {
-            view.camera.translate(v + Vec3::new(0.0, step, 0.0));
-          }
+          Physics::reinsert(&mut physics.misc_octree, self.id, bounds, new_bounds);
           break;
         },
         Some((collision_bounds, _)) => {
@@ -123,6 +119,9 @@ impl<'a> Player<'a> {
         },
       }
     }
+
+    let dp = v + Vec3::new(0.0, step, 0.0);
+    self.position = self.position + dp;
 
     if collided {
       if v.y < 0.0 {
@@ -182,13 +181,13 @@ impl<'a> Player<'a> {
 
     let delta_p = self.speed;
     if delta_p.x != 0.0 {
-      self.translate(view, physics, Vec3::new(delta_p.x, 0.0, 0.0));
+      self.translate(physics, Vec3::new(delta_p.x, 0.0, 0.0));
     }
     if delta_p.y != 0.0 {
-      self.translate(view, physics, Vec3::new(0.0, delta_p.y, 0.0));
+      self.translate(physics, Vec3::new(0.0, delta_p.y, 0.0));
     }
     if delta_p.z != 0.0 {
-      self.translate(view, physics, Vec3::new(0.0, 0.0, delta_p.z));
+      self.translate(physics, Vec3::new(0.0, 0.0, delta_p.z));
     }
 
     let y_axis = Vec3::new(0.0, 1.0, 0.0);
