@@ -2,19 +2,21 @@ pub mod hud;
 pub mod mobs;
 pub mod text;
 
+use camera;
 use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
 use init::hud::make_hud;
 use init::mobs::make_mobs;
 use init::text::make_text;
-use nalgebra::Pnt3;
-use ncollide_entities::bounding_volume::AABB;
+use nalgebra::{Pnt3, Vec3};
+use ncollide_entities::bounding_volume::{AABB, AABB3};
 use opencl_context::CL;
 use physics::Physics;
 use player::Player;
 use renderer::Renderer;
 use state::App;
+use std::f32::consts::PI;
 use stopwatch::TimerSet;
 use sun::Sun;
 use terrain::terrain;
@@ -22,6 +24,10 @@ use terrain::terrain_game_loader::TerrainGameLoader;
 use terrain::terrain_vram_buffers;
 
 const SUN_TICK_NS: u64 = 5000000;
+
+fn center(bounds: &AABB3<f32>) -> Pnt3<f32> {
+  (*bounds.mins() + bounds.maxs().to_vec()) / (2.0 as f32)
+}
 
 pub fn init<'a, 'b:'a>(
   renderer: &mut Renderer<'b>,
@@ -78,13 +84,30 @@ pub fn init<'a, 'b:'a>(
     info!("load_distance {}", load_distance);
   }
 
-  let player =
-    Player::new(
+  let player = {
+    let mut player = Player::new(
       &mut id_allocator,
       &mut owner_allocator,
-      &mut physics,
       load_distance,
     );
+
+    let min = Pnt3::new(0.0, terrain::AMPLITUDE as f32, 4.0);
+    let max = min + Vec3::new(1.0, 2.0, 1.0);
+    let bounds = AABB::new(min, max);
+    physics.insert_misc(player.id, bounds.clone());
+
+    let position = center(&bounds);
+    player.position = position;
+
+    // Initialize the projection matrix.
+    renderer.camera.translate(position.to_vec());
+    renderer.camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 2048.0);
+
+    player.rotate_lateral(PI / 2.0);
+    renderer.rotate_lateral(PI / 2.0);
+
+    player
+  };
 
   unsafe {
     gl::ActiveTexture(renderer.misc_texture_unit.gl_id());

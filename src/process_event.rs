@@ -1,5 +1,6 @@
 use common::*;
 use nalgebra::Vec3;
+use renderer::Renderer;
 use sdl2::event::Event;
 use sdl2::keycode::KeyCode;
 use sdl2::mouse;
@@ -11,13 +12,14 @@ use std::f32::consts::PI;
 pub fn process_event<'a>(
   timers: &TimerSet,
   app: &mut App<'a>,
+  renderer: &mut Renderer,
   game_window: &mut video::Window,
   event: Event,
 ) {
   match event {
     Event::KeyDown{keycode, repeat, ..} => {
       if !repeat {
-        key_press(timers, app, keycode);
+        key_press(timers, app, renderer, keycode);
       }
     },
     Event::KeyUp{keycode, repeat, ..} => {
@@ -26,7 +28,7 @@ pub fn process_event<'a>(
       }
     },
     Event::MouseMotion{x, y, ..} => {
-      mouse_move(timers, app, game_window, x, y);
+      mouse_move(timers, app, renderer, game_window, x, y);
     },
     _ => {},
   }
@@ -35,6 +37,7 @@ pub fn process_event<'a>(
 fn key_press<'a>(
   timers: &TimerSet,
   app: &mut App<'a>,
+  renderer: &mut Renderer,
   key: KeyCode,
 ) {
   timers.time("event.key_press", || {
@@ -56,14 +59,22 @@ fn key_press<'a>(
       KeyCode::S => {
         app.player.walk(Vec3::new(0.0, 0.0, 1.0));
       },
-      KeyCode::Left =>
-        app.player.rotate_lateral(PI / 12.0),
-      KeyCode::Right =>
-        app.player.rotate_lateral(-PI / 12.0),
-      KeyCode::Up =>
-        app.player.rotate_vertical(PI / 12.0),
-      KeyCode::Down =>
-        app.player.rotate_vertical(-PI / 12.0),
+      KeyCode::Left => {
+        app.player.rotate_lateral(PI / 12.0);
+        renderer.rotate_lateral(PI / 12.0);
+      },
+      KeyCode::Right => {
+        app.player.rotate_lateral(-PI / 12.0);
+        renderer.rotate_lateral(-PI / 12.0);
+      },
+      KeyCode::Up => {
+        app.player.rotate_vertical(PI / 12.0);
+        renderer.rotate_vertical(PI / 12.0);
+      },
+      KeyCode::Down => {
+        app.player.rotate_vertical(-PI / 12.0);
+        renderer.rotate_vertical(-PI / 12.0);
+      },
       _ => {},
     }
   })
@@ -98,6 +109,7 @@ fn key_release<'a>(timers: &TimerSet, app: &mut App<'a>, key: KeyCode) {
 fn mouse_move<'a>(
   timers: &TimerSet,
   app: &mut App<'a>,
+  renderer: &mut Renderer,
   window: &mut video::Window,
   x: i32, y: i32,
 ) {
@@ -107,8 +119,11 @@ fn mouse_move<'a>(
     let (dx, dy) = (x - cx, cy - y);
     // magic numbers. Oh god why?
     let (rx, ry) = (dx as f32 * -3.14 / 2048.0, dy as f32 * 3.14 / 1600.0);
+
     app.player.rotate_lateral(rx);
+    renderer.rotate_lateral(rx);
     app.player.rotate_vertical(ry);
+    renderer.rotate_vertical(ry);
 
     mouse::warp_mouse_in_window(
       window,

@@ -1,47 +1,45 @@
 use camera::set_camera;
 use gl;
 use renderer::Renderer;
-use state::App;
 use stopwatch::TimerSet;
 
 pub fn render(
   timers: &TimerSet,
-  app: &App,
-  renderer: &mut Renderer,
+  rndr: &mut Renderer,
 ) {
   timers.time("render", || {
-    &mut renderer.gl.clear_buffer();
+    &mut rndr.gl.clear_buffer();
 
-    set_camera(&mut renderer.shaders.mob_shader.shader, &mut renderer.gl, &app.player.camera);
+    set_camera(&mut rndr.shaders.mob_shader.shader, &mut rndr.gl, &rndr.camera);
 
-    renderer.shaders.mob_shader.shader.use_shader(&mut renderer.gl);
+    rndr.shaders.mob_shader.shader.use_shader(&mut rndr.gl);
 
-    set_camera(&mut renderer.shaders.terrain_shader.shader, &mut renderer.gl, &app.player.camera);
+    set_camera(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.camera);
 
     // draw the world
-    renderer.shaders.terrain_shader.shader.use_shader(&mut renderer.gl);
-    renderer.terrain_buffers.draw(&mut renderer.gl);
+    rndr.shaders.terrain_shader.shader.use_shader(&mut rndr.gl);
+    rndr.terrain_buffers.draw(&mut rndr.gl);
 
-    renderer.shaders.mob_shader.shader.use_shader(&mut renderer.gl);
-    renderer.mob_buffers.draw(&mut renderer.gl);
+    rndr.shaders.mob_shader.shader.use_shader(&mut rndr.gl);
+    rndr.mob_buffers.draw(&mut rndr.gl);
 
     // draw the hud
-    renderer.shaders.hud_color_shader.shader.use_shader(&mut renderer.gl);
-    renderer.hud_triangles.bind(&mut renderer.gl);
-    renderer.hud_triangles.draw(&mut renderer.gl);
+    rndr.shaders.hud_color_shader.shader.use_shader(&mut rndr.gl);
+    rndr.hud_triangles.bind(&mut rndr.gl);
+    rndr.hud_triangles.draw(&mut rndr.gl);
 
     // draw hud textures
-    renderer.shaders.hud_texture_shader.shader.use_shader(&mut renderer.gl);
+    rndr.shaders.hud_texture_shader.shader.use_shader(&mut rndr.gl);
     unsafe {
-      gl::ActiveTexture(renderer.misc_texture_unit.gl_id());
+      gl::ActiveTexture(rndr.misc_texture_unit.gl_id());
     }
 
-    renderer.text_triangles.bind(&mut renderer.gl);
-    for (i, tex) in renderer.text_textures.iter().enumerate() {
+    rndr.text_triangles.bind(&mut rndr.gl);
+    for (i, tex) in rndr.text_textures.iter().enumerate() {
       unsafe {
         gl::BindTexture(gl::TEXTURE_2D, tex.handle.gl_id);
       }
-      renderer.text_triangles.draw_slice(&mut renderer.gl, i * 6, 6);
+      rndr.text_triangles.draw_slice(&mut rndr.gl, i * 6, 6);
     }
   })
 }

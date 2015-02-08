@@ -86,7 +86,7 @@ pub fn update(
           &mut renderer.shaders.terrain_shader.shader,
           &mut renderer.gl,
           &Light {
-            position: app.player.camera.position + rel_position,
+            position: renderer.camera.position + rel_position,
             intensity: sun_color,
           }
         );

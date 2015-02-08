@@ -94,7 +94,7 @@ pub fn main() {
 
       let renders = render_timer.update(time::precise_time_ns());
       if renders > 0 {
-        render(&timers, &mut app, &mut renderer);
+        render(&timers, &mut renderer);
         // swap buffers
         window.gl_swap_window();
       }
@@ -127,7 +127,7 @@ pub fn main() {
           }
           event => {
             if has_focus {
-              process_event(&timers, &mut app, &mut window, event);
+              process_event(&timers, &mut app, &mut renderer, &mut window, event);
             }
           },
         }
