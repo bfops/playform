@@ -37,7 +37,7 @@ pub struct App<'a> {
   pub sun: Sun,
 
   pub id_allocator: IdAllocator<EntityId>,
-  pub terrain_game_loader: TerrainGameLoader<'a>,
+  pub terrain_game_loader: TerrainGameLoader,
 }
 
 impl<'a> App<'a> {

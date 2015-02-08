@@ -16,7 +16,7 @@ use terrain::texture_generator::TerrainTextureGenerator;
 /// Load and unload TerrainBlocks from the game.
 /// Each TerrainBlock can be owned by a set of owners, each of which can independently request LODs.
 /// The maximum LOD requested is the one that is actually loaded.
-pub struct TerrainGameLoader<'a> {
+pub struct TerrainGameLoader {
   terrain: Terrain,
   texture_generators: [TerrainTextureGenerator; 4],
   in_progress_terrain: InProgressTerrain,
@@ -24,8 +24,8 @@ pub struct TerrainGameLoader<'a> {
   lod_map: LODMap,
 }
 
-impl<'a> TerrainGameLoader<'a> {
-  pub fn new(cl: &CL) -> TerrainGameLoader<'a> {
+impl TerrainGameLoader {
+  pub fn new(cl: &CL) -> TerrainGameLoader {
     TerrainGameLoader {
       terrain: Terrain::new(Seed::new(0), 0),
       texture_generators: [
