@@ -4,7 +4,6 @@ use gl::types::*;
 use id_allocator::IdAllocator;
 use init::hud::make_hud;
 use init::mobs::make_mobs;
-use init::text::make_text;
 use nalgebra::{Pnt3, Vec3};
 use ncollide_entities::bounding_volume::{AABB, AABB3};
 use opencl_context::CL;
@@ -42,8 +41,6 @@ pub fn init<'a, 'b:'a>(
   make_hud(render_state);
 
   let terrain_game_loader = TerrainGameLoader::new(cl);
-
-  make_text(render_state);
 
   let world_width: u32 = 1 << 11;
   let world_width = world_width as f32;
