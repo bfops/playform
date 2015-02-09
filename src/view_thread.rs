@@ -39,11 +39,12 @@ impl ViewUpdate {
         view.text_triangles.push(&mut view.gl, triangles.as_slice());
       },
       ViewUpdate::PushText((color, s)) => {
-        view.fontloader.sans.render(
+        let tex = view.fontloader.sans.render(
           &view.gl,
           s.as_slice(),
           color,
         );
+        view.text_textures.push(tex);
       },
       ViewUpdate::PushMob((id, triangles)) => {
         view.mob_buffers.push(&mut view.gl, id, triangles.as_slice());
