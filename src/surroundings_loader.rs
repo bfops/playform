@@ -11,7 +11,7 @@ use surroundings_iter::SurroundingsIter;
 use terrain::terrain_block::BlockPosition;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use time;
-use view::ViewUpdate;
+use view_thread::ViewUpdate;
 use world::EntityId;
 
 // Rough budget (in microseconds) for how long block updating can take PER SurroundingsLoader.

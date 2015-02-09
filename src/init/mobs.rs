@@ -15,8 +15,8 @@ use std::rc::Rc;
 use std::sync::mpsc::Sender;
 use surroundings_loader::SurroundingsLoader;
 use terrain::terrain;
-use view::ViewUpdate;
-use view::ViewUpdate::*;
+use view_thread::ViewUpdate;
+use view_thread::ViewUpdate::*;
 use world::{World, EntityId};
 
 fn center(bounds: &AABB3<f32>) -> Pnt3<GLfloat> {

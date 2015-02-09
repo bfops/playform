@@ -8,8 +8,8 @@ use sdl2::video;
 use stopwatch::TimerSet;
 use std::f32::consts::PI;
 use std::sync::mpsc::Sender;
-use world::WorldUpdate;
-use world::WorldUpdate::*;
+use world_thread::WorldUpdate;
+use world_thread::WorldUpdate::*;
 
 pub fn process_event (
   timers: &TimerSet,

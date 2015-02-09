@@ -14,8 +14,8 @@ use sun::Sun;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use terrain::terrain_vram_buffers;
-use view::ViewUpdate;
-use view::ViewUpdate::*;
+use view_thread::ViewUpdate;
+use view_thread::ViewUpdate::*;
 
 const SUN_TICK_NS: u64 = 5000000;
 

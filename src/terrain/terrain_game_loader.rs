@@ -11,8 +11,8 @@ use terrain::terrain::Terrain;
 use terrain::terrain_block::{BlockPosition, BLOCK_WIDTH};
 use terrain::texture_generator::TEXTURE_WIDTH;
 use terrain::texture_generator::TerrainTextureGenerator;
-use view::ViewUpdate;
-use view::ViewUpdate::*;
+use view_thread::ViewUpdate;
+use view_thread::ViewUpdate::*;
 
 /// Load and unload TerrainBlocks from the game.
 /// Each TerrainBlock can be owned by a set of owners, each of which can independently request LODs.

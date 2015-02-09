@@ -61,7 +61,9 @@ mod ttf;
 mod update;
 mod vertex;
 mod view;
+mod view_thread;
 mod world;
+mod world_thread;
 
 #[allow(dead_code)]
 fn main() {

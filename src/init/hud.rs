@@ -2,8 +2,8 @@ use color::Color4;
 use nalgebra::Pnt2;
 use nalgebra::Vec2;
 use std::sync::mpsc::Sender;
-use view::ViewUpdate;
-use view::ViewUpdate::*;
+use view_thread::ViewUpdate;
+use view_thread::ViewUpdate::*;
 use vertex::ColoredVertex;
 use vertex::TextureVertex;
 

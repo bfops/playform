@@ -15,7 +15,7 @@ use std::thread::Thread;
 use std::time::duration::Duration;
 use stopwatch::TimerSet;
 use time;
-use world::{WorldUpdate, world_thread};
+use world_thread::{WorldUpdate, world_thread};
 use yaglw::gl_context::GLContext;
 
 pub const FRAMES_PER_SECOND: u64 = 30;
