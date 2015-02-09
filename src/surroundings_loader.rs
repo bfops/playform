@@ -3,6 +3,7 @@ use lod_map::{LOD, OwnerId};
 use opencl_context::CL;
 use physics::Physics;
 use std::cmp::max;
+use std::collections::RingBuf;
 use std::num::{Float, SignedInt};
 use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
@@ -23,6 +24,8 @@ pub fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
   max(max(dx, dy), dz)
 }
 
+// TODO: This should probably use a trait instead of boxed closures.
+
 /// Keep surroundings loaded around a given world position.
 pub struct SurroundingsLoader<'a> {
   pub id: OwnerId,
@@ -32,10 +35,8 @@ pub struct SurroundingsLoader<'a> {
   pub max_load_distance: i32,
   pub to_load: Option<SurroundingsIter>,
 
-  pub loaded_vec: Vec<BlockPosition>,
-  // We iterate through loaded_vec, checking for things to unload.
-  // This is the next position to check.
-  pub next_unload_index: usize,
+  pub to_recheck: RingBuf<BlockPosition>,
+  pub lod_changes: Box<FnMut(&BlockPosition, &BlockPosition) -> Vec<BlockPosition> + 'a>,
 }
 
 impl<'a> SurroundingsLoader<'a> {
@@ -43,6 +44,7 @@ impl<'a> SurroundingsLoader<'a> {
     id: OwnerId,
     max_load_distance: i32,
     lod: Box<FnMut(i32) -> LOD + 'a>,
+    lod_changes: Box<FnMut(&BlockPosition, &BlockPosition) -> Vec<BlockPosition> + 'a>,
   ) -> SurroundingsLoader<'a> {
     assert!(max_load_distance >= 0);
 
@@ -54,8 +56,8 @@ impl<'a> SurroundingsLoader<'a> {
       to_load: None,
       max_load_distance: max_load_distance,
 
-      loaded_vec: Vec::new(),
-      next_unload_index: 0,
+      to_recheck: RingBuf::new(),
+      lod_changes: lod_changes,
     }
   }
 
@@ -72,14 +74,18 @@ impl<'a> SurroundingsLoader<'a> {
     let position_changed = Some(position) != self.last_position;
     if position_changed {
       self.to_load = Some(SurroundingsIter::new(position, self.max_load_distance));
-      self.next_unload_index = 0;
+      self.last_position.map(|last_position| {
+        self.to_recheck.extend(
+          (self.lod_changes)(&last_position, &position).into_iter()
+        );
+      });
+
       self.last_position = Some(position);
     }
 
     let target_time = time::precise_time_ns() + BLOCK_UPDATE_BUDGET * 1000;
     while time::precise_time_ns() < target_time {
-      if self.next_unload_index < self.loaded_vec.len() {
-        let block_position = self.loaded_vec[self.next_unload_index];
+      if let Some(block_position) = self.to_recheck.pop_front() {
         let distance = radius_between(&position, &block_position);
         if distance > self.max_load_distance {
           terrain_game_loader.decrease_lod(
@@ -92,10 +98,8 @@ impl<'a> SurroundingsLoader<'a> {
             None,
             self.id,
           );
-          self.loaded_vec.swap_remove(self.next_unload_index);
         } else {
           let lod = (self.lod)(distance);
-          // This can fail; we leave it in the vec for next time.
           terrain_game_loader.decrease_lod(
             timers,
             view,
@@ -106,8 +110,6 @@ impl<'a> SurroundingsLoader<'a> {
             Some(lod),
             self.id,
           );
-
-          self.next_unload_index += 1;
         }
       } else {
         let block_position =
@@ -128,8 +130,6 @@ impl<'a> SurroundingsLoader<'a> {
           lod,
           self.id,
         );
-
-        self.loaded_vec.push(block_position);
       }
     }
   }

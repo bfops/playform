@@ -1,4 +1,6 @@
 use range_abs::range_abs;
+use std::cmp::{min, max};
+use std::iter::range_inclusive;
 use terrain::terrain_block::BlockPosition;
 
 #[cfg(test)]
@@ -7,6 +9,7 @@ use std::collections::HashSet;
 use test::Bencher;
 
 #[inline]
+// TODO: This should return an iterator.
 /// Generate the set of points corresponding to the surface of a cube made of voxels.
 pub fn cube_shell(center: &BlockPosition, radius: i32) -> Vec<BlockPosition> {
   let mut shell = Vec::new();
@@ -49,6 +52,74 @@ pub fn cube_shell(center: &BlockPosition, radius: i32) -> Vec<BlockPosition> {
   );
 
   shell
+}
+
+// TODO: This should return an iterator.
+pub fn cube_diff(
+  from: &BlockPosition,
+  to: &BlockPosition,
+  radius: i32,
+) -> Vec<BlockPosition> {
+  let mut ret = Vec::new();
+
+  macro_rules! add_square(
+    ($xs: expr, $ys: expr, $zs: expr) => (
+      for x in $xs {
+        for y in $ys {
+          for z in $zs {
+            ret.push(BlockPosition::new(x, y, z));
+          }
+        }
+      }
+    );
+  );
+
+  let from = *from.as_pnt();
+  let to = *to.as_pnt();
+
+  if from.x < to.x {
+    add_square!(
+      range_inclusive(from.x - radius, min(from.x + radius, to.x - radius)),
+      range_inclusive(from.y - radius, from.y + radius),
+      range_inclusive(from.z - radius, from.z + radius)
+    );
+  } else {
+    add_square!(
+      range_inclusive(max(from.x - radius, to.x + radius), from.x + radius),
+      range_inclusive(from.y - radius, from.y + radius),
+      range_inclusive(from.z - radius, from.z + radius)
+    );
+  }
+
+  if from.y < to.y {
+    add_square!(
+      range_inclusive(from.x - radius, from.x + radius),
+      range_inclusive(from.y - radius, min(from.y + radius, to.y - radius)),
+      range_inclusive(from.z - radius, from.z + radius)
+    );
+  } else {
+    add_square!(
+      range_inclusive(from.x - radius, from.x + radius),
+      range_inclusive(max(from.y - radius, to.y + radius), from.y + radius),
+      range_inclusive(from.z - radius, from.z + radius)
+    );
+  }
+
+  if from.z < to.z {
+    add_square!(
+      range_inclusive(from.x - radius, from.x + radius),
+      range_inclusive(from.y - radius, from.y + radius),
+      range_inclusive(from.z - radius, min(from.z + radius, to.z - radius))
+    );
+  } else {
+    add_square!(
+      range_inclusive(from.x - radius, from.x + radius),
+      range_inclusive(from.y - radius, from.y + radius),
+      range_inclusive(max(from.z - radius, to.z + radius), from.z + radius)
+    );
+  }
+
+  ret
 }
 
 #[cfg(test)]

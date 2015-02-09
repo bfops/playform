@@ -1,4 +1,5 @@
 use camera;
+use cube_shell::cube_diff;
 use id_allocator::IdAllocator;
 use lod_map::{LOD, OwnerId};
 use nalgebra::{Pnt3, Vec3};
@@ -68,12 +69,21 @@ impl<'a> Player<'a> {
           owner_allocator.allocate(),
           load_distance,
           Box::new(|d| LOD::LodIndex(Player::lod_index(d))),
+          Box::new(move |last, cur| {
+            let mut vec = Vec::new();
+            for &r in LOD_THRESHOLDS.iter() {
+              vec.push_all(cube_diff(last, cur, r).as_slice());
+            }
+            vec.push_all(cube_diff(last, cur, load_distance).as_slice());
+            vec
+          }),
         ),
       solid_boundary:
         SurroundingsLoader::new(
           owner_allocator.allocate(),
           1,
           Box::new(|_| LOD::Placeholder),
+          Box::new(|&: last, cur| cube_diff(last, cur, 1)),
         ),
     }
   }

@@ -1,3 +1,4 @@
+use cube_shell::cube_diff;
 use color::Color4;
 use common::*;
 use gl::types::*;
@@ -95,7 +96,12 @@ fn add_mob(
       behavior: behavior,
       id: id,
       solid_boundary:
-        SurroundingsLoader::new(owner_allocator.allocate(), 1, Box::new(|&: _| LOD::Placeholder)),
+        SurroundingsLoader::new(
+          owner_allocator.allocate(),
+          1,
+          Box::new(|&: _| LOD::Placeholder),
+          Box::new(|&: last, cur| cube_diff(last, cur, 1)),
+        ),
     };
   let mob = Rc::new(RefCell::new(mob));
 
