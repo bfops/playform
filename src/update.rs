@@ -11,8 +11,8 @@ use std::ops::{Deref, DerefMut};
 use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
 use terrain::terrain_block::BlockPosition;
-use view_thread::ViewUpdate;
-use view_thread::ViewUpdate::*;
+use view_update::ViewUpdate;
+use view_update::ViewUpdate::*;
 
 pub fn update(
   timers: &TimerSet,

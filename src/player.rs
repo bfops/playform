@@ -17,7 +17,7 @@ use surroundings_loader::SurroundingsLoader;
 use terrain::terrain;
 use terrain::terrain_block::BlockPosition;
 use terrain::terrain_game_loader::TerrainGameLoader;
-use view_thread::ViewUpdate;
+use view_update::ViewUpdate;
 
 const LOD_THRESHOLDS: [i32; 3] = [1, 8, 32];
 

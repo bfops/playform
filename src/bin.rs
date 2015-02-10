@@ -62,8 +62,10 @@ mod update;
 mod vertex;
 mod view;
 mod view_thread;
+mod view_update;
 mod world;
 mod world_thread;
+mod world_update;
 
 #[allow(dead_code)]
 fn main() {
