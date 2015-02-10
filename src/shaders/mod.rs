@@ -4,10 +4,9 @@ pub mod texture;
 
 use camera;
 use color::Color3;
-use common::*;
 use gl;
 use light::{Light, set_point_light, set_ambient_light};
-use nalgebra::{Vec3, Pnt3};
+use nalgebra::{Pnt3, Vec2};
 use yaglw::gl_context::GLContext;
 
 pub struct Shaders<'a> {
@@ -18,7 +17,7 @@ pub struct Shaders<'a> {
 }
 
 impl<'a> Shaders<'a> {
-  pub fn new<'b:'a>(gl: &'a mut GLContext) -> Shaders<'b> {
+  pub fn new<'b:'a>(gl: &'a mut GLContext, window_size: Vec2<i32>) -> Shaders<'b> {
     let mut terrain_shader = self::terrain::TerrainShader::new(gl);
     let mob_shader = self::color::ColorShader::new(gl);
     let mut hud_color_shader = self::color::ColorShader::new(gl);
@@ -40,8 +39,7 @@ impl<'a> Shaders<'a> {
 
     let hud_camera = {
       let mut c = camera::Camera::unit();
-      c.fov = camera::sortho(WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, -1.0, 1.0);
-      c.fov = camera::translation(Vec3::new(0.0, 0.0, -1.0)) * c.fov;
+      c.fov = camera::sortho(window_size.x as f32 / window_size.y as f32, 1.0, -1.0, 1.0);
       c
     };
 

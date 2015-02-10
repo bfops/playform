@@ -1,6 +1,5 @@
 use client_update::ViewToClient;
 use client_update::ViewToClient::*;
-use common::*;
 use nalgebra::{Vec2, Vec3};
 use view::View;
 use sdl2::event::Event;
@@ -115,21 +114,20 @@ fn mouse_move<'a>(
   window: &mut video::Window,
   x: i32, y: i32,
 ) {
+  // x and y are measured from the top-left corner.
+
   timers.time("event.mouse_move", || {
-    let (cx, cy) = (WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2);
-    // y is measured from the top of the window.
-    let (dx, dy) = (x - cx, cy - y);
-    // magic numbers. Oh god why?
-    let (rx, ry) = (dx as f32 * -3.14 / 2048.0, dy as f32 * 3.14 / 1600.0);
+    let (w, h) = window.get_size();
+    let (cx, cy) = (w as i32 / 2, h as i32 / 2);
+    let d = Vec2::new(x - cx, cy - y);
+    // To-radians coefficient. Numbers closer to zero dull the mouse movement more.
+    let to_radians = Vec2::new(-1.0 / 1000.0, 1.0 / 1600.0);
+    let r = Vec2::new(d.x as f32 * to_radians.x, d.y as f32 * to_radians.y);
 
-    world.send(RotatePlayer(Vec2::new(rx, ry))).unwrap();
-    view.camera.rotate_lateral(rx);
-    view.camera.rotate_vertical(ry);
+    world.send(RotatePlayer(r)).unwrap();
+    view.camera.rotate_lateral(r.x);
+    view.camera.rotate_vertical(r.y);
 
-    mouse::warp_mouse_in_window(
-      window,
-      WINDOW_WIDTH as i32 / 2,
-      WINDOW_HEIGHT as i32 / 2
-    );
+    mouse::warp_mouse_in_window(window, cx, cy);
   })
 }

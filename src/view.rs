@@ -6,6 +6,7 @@ use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
 use mob;
+use nalgebra::Vec2;
 use shaders::Shaders;
 use std::f32::consts::PI;
 use terrain::terrain_vram_buffers::TerrainVRAMBuffers;
@@ -31,10 +32,10 @@ pub struct View<'a> {
 }
 
 impl<'a> View<'a> {
-  pub fn new(mut gl: GLContext) -> View<'a> {
+  pub fn new(mut gl: GLContext, window_size: Vec2<i32>) -> View<'a> {
     let mut texture_unit_alloc = IdAllocator::new();
 
-    let mut shaders = Shaders::new(&mut gl);
+    let mut shaders = Shaders::new(&mut gl, window_size);
 
     let terrain_buffers = TerrainVRAMBuffers::new(&mut gl);
     terrain_buffers.bind_glsl_uniforms(

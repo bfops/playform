@@ -3,10 +3,12 @@ use common::*;
 use gl;
 use init::hud::make_hud;
 use interval_timer::IntervalTimer;
+use nalgebra::Vec2;
 use process_event::process_event;
 use render::render;
 use sdl2;
 use sdl2::event::Event;
+use sdl2::video;
 use std::mem;
 use std::old_io::timer;
 use std::sync::mpsc::{Sender, Receiver, TryRecvError};
@@ -27,21 +29,21 @@ pub fn view_thread(
 
   sdl2::init(sdl2::INIT_EVERYTHING);
 
-  sdl2::video::gl_set_attribute(sdl2::video::GLAttr::GLContextMajorVersion, 3);
-  sdl2::video::gl_set_attribute(sdl2::video::GLAttr::GLContextMinorVersion, 3);
-  sdl2::video::gl_set_attribute(
-    sdl2::video::GLAttr::GLContextProfileMask,
-    sdl2::video::GLProfile::GLCoreProfile as i32,
+  video::gl_set_attribute(video::GLAttr::GLContextMajorVersion, 3);
+  video::gl_set_attribute(video::GLAttr::GLContextMinorVersion, 3);
+  video::gl_set_attribute(
+    video::GLAttr::GLContextProfileMask,
+    video::GLProfile::GLCoreProfile as i32,
   );
 
   let mut window =
-    sdl2::video::Window::new(
-      "playform",
-      sdl2::video::WindowPos::PosCentered,
-      sdl2::video::WindowPos::PosCentered,
+    video::Window::new(
+      "Playform",
+      video::WindowPos::PosCentered,
+      video::WindowPos::PosCentered,
       WINDOW_WIDTH as i32,
       WINDOW_HEIGHT as i32,
-      sdl2::video::OPENGL,
+      video::OPENGL,
     ).unwrap();
 
   // Send text input events.
@@ -51,7 +53,7 @@ pub fn view_thread(
 
   // Load the OpenGL function pointers.
   gl::load_with(|s| unsafe {
-    mem::transmute(sdl2::video::gl_get_proc_address(s))
+    mem::transmute(video::gl_get_proc_address(s))
   });
 
   let gl = unsafe {
@@ -60,7 +62,11 @@ pub fn view_thread(
 
   gl.print_stats();
 
-  let mut view = View::new(gl);
+  let window_size = {
+    let (w, h) = window.get_size();
+    Vec2::new(w, h)
+  };
+  let mut view = View::new(gl, window_size);
 
   make_hud(&mut view);
 
