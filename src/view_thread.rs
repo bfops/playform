@@ -1,5 +1,6 @@
 use common::*;
 use gl;
+use init::hud::make_hud;
 use interval_timer::IntervalTimer;
 use log;
 use process_event::process_event;
@@ -61,6 +62,8 @@ pub fn view_thread(
   gl.print_stats();
 
   let mut view = View::new(gl);
+
+  make_hud(&mut view);
 
   let mut render_timer;
   {

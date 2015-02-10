@@ -6,7 +6,6 @@ use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
 use mob;
-use nalgebra::Vec3;
 use shaders::Shaders;
 use std::f32::consts::PI;
 use terrain::terrain_vram_buffers::TerrainVRAMBuffers;
@@ -29,8 +28,6 @@ pub struct View<'a> {
   pub fontloader: FontLoader,
 
   pub camera: Camera,
-  pub lateral_rotation: f32,
-  pub vertical_rotation: f32,
 }
 
 impl<'a> View<'a> {
@@ -123,36 +120,9 @@ impl<'a> View<'a> {
         let mut camera = Camera::unit();
         // Initialize the projection matrix.
         camera.fov = camera::perspective(3.14/3.0, 4.0/3.0, 0.1, 2048.0);
+        camera.rotate_lateral(PI / 2.0);
         camera
       },
-
-      lateral_rotation: 0.0,
-      vertical_rotation: 0.0,
     }
-  }
-
-  /// Rotate the camera around the y axis, by `r` radians. Positive is counterclockwise.
-  pub fn rotate_lateral(&mut self, r: GLfloat) {
-    self.lateral_rotation = self.lateral_rotation + r;
-    self.camera.rotate(Vec3::new(0.0, 1.0, 0.0), r);
-  }
-
-  /// Changes the camera pitch by `r` radians. Positive is up.
-  /// Angles that "flip around" (i.e. looking too far up or down)
-  /// are sliently rejected.
-  pub fn rotate_vertical(&mut self, r: GLfloat) {
-    let new_rotation = self.vertical_rotation + r;
-
-    if new_rotation < -PI / 2.0
-    || new_rotation >  PI / 2.0 {
-      return
-    }
-
-    self.vertical_rotation = new_rotation;
-
-    let axis =
-      camera::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation) *
-      Vec3::new(1.0, 0.0, 0.0);
-    self.camera.rotate(axis, r);
   }
 }

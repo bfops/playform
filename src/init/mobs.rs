@@ -110,7 +110,7 @@ fn add_mob(
     .iter()
     .map(|&x| x)
     .collect();
-  view.send(PushMob((id, triangles))).unwrap();
+  view.send(AddMob((id, triangles))).unwrap();
 
   physics.insert_misc(id, bounds);
   mobs.insert(id, mob);

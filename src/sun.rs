@@ -1,9 +1,4 @@
-use color::Color3;
 use interval_timer::IntervalTimer;
-use nalgebra::Vec3;
-use std::cmp::partial_max;
-use std::f32::consts::PI;
-use std::num::Float;
 use time;
 
 pub struct Sun {
@@ -22,7 +17,7 @@ impl Sun {
     }
   }
 
-  pub fn update(&mut self) -> Option<(Vec3<f32>, Color3<f32>, f32)> {
+  pub fn update(&mut self) -> Option<f32> {
     let ticks = self.timer.update(time::precise_time_ns());
 
     if ticks == 0 {
@@ -38,20 +33,6 @@ impl Sun {
       debug!("Sun is at {:.0}%.", fraction * 100.0);
     }
 
-    // Convert to radians.
-    let angle = fraction * 2.0 * PI;
-
-    let (s, c) = angle.sin_cos();
-    let radius = 1024.0;
-    let sun_position = Vec3::new(c, s, 0.0) * radius;
-
-    let r = c.abs();
-    let g = (s + 1.0) / 2.0;
-    let b = (s * 0.75 + 0.25).abs();
-    let sun_color = Color3::of_rgb(r, g, b);
-
-    let ambient_light = partial_max(0.4, s / 2.0).unwrap();
-
-    Some((sun_position, sun_color, ambient_light))
+    Some(fraction)
   }
 }

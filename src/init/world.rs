@@ -1,7 +1,6 @@
 use id_allocator::IdAllocator;
-use init::hud::make_hud;
 use init::mobs::make_mobs;
-use nalgebra::{Pnt3, Vec2, Vec3};
+use nalgebra::{Pnt3, Vec3};
 use ncollide_entities::bounding_volume::{AABB, AABB3};
 use opencl_context::CL;
 use physics::Physics;
@@ -15,7 +14,6 @@ use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use terrain::terrain_vram_buffers;
 use view_update::ViewUpdate;
-use view_update::ViewUpdate::*;
 
 const SUN_TICK_NS: u64 = 5000000;
 
@@ -28,8 +26,6 @@ pub fn init<'a, 'b:'a>(
   view: &Sender<ViewUpdate>,
   timers: &TimerSet,
 ) -> World<'b> {
-  make_hud(view);
-
   let terrain_game_loader = TerrainGameLoader::new(cl);
 
   let world_width: u32 = 1 << 11;
@@ -82,7 +78,6 @@ pub fn init<'a, 'b:'a>(
     player.position = center(&bounds);
 
     player.rotate_lateral(PI / 2.0);
-    view.send(RotateCamera(Vec2::new(PI / 2.0, 0.0))).unwrap();
 
     player
   };

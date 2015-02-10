@@ -74,7 +74,7 @@ impl TerrainGameLoader {
               view.send(RemoveTerrain(*id)).unwrap();
             }
 
-            view.send(FreeBlock((*block_position, loaded_lod))).unwrap();
+            view.send(RemoveBlockData((*block_position, loaded_lod))).unwrap();
           });
         },
       };
@@ -106,7 +106,7 @@ impl TerrainGameLoader {
 
                 timers.time("terrain_game_loader.load.gpu", || {
                   view.send(
-                    PushBlock((*block_position, block.clone(), new_lod))
+                    AddBlock((*block_position, block.clone(), new_lod))
                   ).unwrap();
                 })
               },

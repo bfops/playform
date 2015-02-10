@@ -1,85 +1,81 @@
-use camera;
-use color::{Color3, Color4};
-use gl::types::*;
-use nalgebra::{Vec2, Pnt3};
+use color::Color3;
+use nalgebra::{Pnt3, Vec3};
 use light::{Light, set_point_light, set_ambient_light};
+use std::cmp::partial_max;
+use std::f32::consts::PI;
 use std::iter::repeat;
+use std::num::Float;
 use terrain::terrain_block::{BlockPosition, TerrainBlock};
-use vertex::{ColoredVertex, TextureVertex};
+use vertex::ColoredVertex;
 use view::View;
 use world::EntityId;
 
-// TODO: Make the view updates resemble updates that would come from a server.
 #[derive(Clone)]
 pub enum ViewUpdate {
-  PushHudTriangles(Vec<ColoredVertex>),
-  PushTextTriangles(Vec<TextureVertex>),
-  PushText((Color4<u8>, String)),
-  PushMob((EntityId, Vec<ColoredVertex>)),
+  UpdatePlayer(Pnt3<f32>),
+
+  AddMob((EntityId, Vec<ColoredVertex>)),
   UpdateMob((EntityId, Vec<ColoredVertex>)),
-  SetPointLight(Light),
-  SetAmbientLight(Color3<GLfloat>),
-  SetBackgroundColor(Color3<GLfloat>),
-  MoveCamera(Pnt3<GLfloat>),
-  RotateCamera(Vec2<GLfloat>),
+
+  // The sun as a [0, 1) portion of its cycle.
+  UpdateSun(f32),
+
+  AddBlock((BlockPosition, TerrainBlock, u32)),
   RemoveTerrain(EntityId),
-  PushBlock((BlockPosition, TerrainBlock, u32)),
-  FreeBlock((BlockPosition, u32)),
+  RemoveBlockData((BlockPosition, u32)),
 }
 
 impl ViewUpdate {
   pub fn apply(self, view: &mut View) {
     match self {
-      ViewUpdate::PushHudTriangles(triangles) => {
-        view.hud_triangles.bind(&mut view.gl);
-        view.hud_triangles.push(&mut view.gl, triangles.as_slice());
+      ViewUpdate::UpdatePlayer(position) => {
+        view.camera.translate_to(position);
       },
-      ViewUpdate::PushTextTriangles(triangles) => {
-        view.text_triangles.bind(&mut view.gl);
-        view.text_triangles.push(&mut view.gl, triangles.as_slice());
-      },
-      ViewUpdate::PushText((color, s)) => {
-        let tex = view.fontloader.sans.render(
-          &view.gl,
-          s.as_slice(),
-          color,
-        );
-        view.text_textures.push(tex);
-      },
-      ViewUpdate::PushMob((id, triangles)) => {
+      ViewUpdate::AddMob((id, triangles)) => {
         view.mob_buffers.push(&mut view.gl, id, triangles.as_slice());
       },
       ViewUpdate::UpdateMob((id, triangles)) => {
         view.mob_buffers.update(&mut view.gl, id, triangles.as_slice());
       },
-      ViewUpdate::SetPointLight(light) => {
+      ViewUpdate::UpdateSun(fraction) => {
+        // Convert to radians.
+        let angle = fraction * 2.0 * PI;
+        let (s, c) = angle.sin_cos();
+
+        let sun_color =
+          Color3::of_rgb(
+            c.abs(),
+            (s + 1.0) / 2.0,
+            (s * 0.75 + 0.25).abs(),
+          );
+
+        let radius = 1024.0;
+        let rel_position = Vec3::new(c, s, 0.0) * radius;
+
         set_point_light(
           &mut view.shaders.terrain_shader.shader,
           &mut view.gl,
-          &light,
+          &Light {
+            position: view.camera.position + rel_position,
+            intensity: sun_color,
+          }
         );
-      },
-      ViewUpdate::SetAmbientLight(color) => {
+
+        let ambient_light = partial_max(0.4, s / 2.0).unwrap();
+
         set_ambient_light(
           &mut view.shaders.terrain_shader.shader,
           &mut view.gl,
-          color,
+          Color3::of_rgb(
+            sun_color.r * ambient_light,
+            sun_color.g * ambient_light,
+            sun_color.b * ambient_light,
+          ),
         );
+
+        view.gl.set_background_color(sun_color.r, sun_color.g, sun_color.b, 1.0);
       },
-      ViewUpdate::SetBackgroundColor(color) => {
-        view.gl.set_background_color(color.r, color.g, color.b, 1.0);
-      },
-      ViewUpdate::MoveCamera(pos) => {
-        view.camera.translation = camera::translation(-pos.to_vec());
-      },
-      ViewUpdate::RotateCamera(rot) => {
-        view.rotate_lateral(rot.x);
-        view.rotate_vertical(rot.y);
-      },
-      ViewUpdate::RemoveTerrain(id) => {
-        view.terrain_buffers.swap_remove(&mut view.gl, id);
-      },
-      ViewUpdate::PushBlock((block_position, block, lod)) => {
+      ViewUpdate::AddBlock((block_position, block, lod)) => {
         if !block.ids.is_empty() {
           let block_index =
             view.terrain_buffers.push_block_data(
@@ -102,7 +98,10 @@ impl ViewUpdate {
           );
         }
       },
-      ViewUpdate::FreeBlock((block_position, lod)) => {
+      ViewUpdate::RemoveTerrain(id) => {
+        view.terrain_buffers.swap_remove(&mut view.gl, id);
+      },
+      ViewUpdate::RemoveBlockData((block_position, lod)) => {
         view.terrain_buffers.free_block_data(lod, &block_position);
       },
     };
@@ -110,4 +109,3 @@ impl ViewUpdate {
 }
 
 unsafe impl Send for ViewUpdate {}
-

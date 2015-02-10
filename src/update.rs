@@ -1,7 +1,6 @@
-use color::{Color3, Color4};
+use color::Color4;
 use common::*;
 use gl::types::*;
-use light::Light;
 use mob;
 use nalgebra::Vec3;
 use opencl_context::CL;
@@ -31,7 +30,7 @@ pub fn update(
         &mut world.physics,
       );
 
-      view.send(MoveCamera(world.player.position)).unwrap();
+      view.send(UpdatePlayer(world.player.position)).unwrap();
     });
 
     timers.time("update.mobs", || {
@@ -82,25 +81,8 @@ pub fn update(
       }
     });
 
-    timers.time("update.sun", || {
-      world.sun.update().map(|(rel_position, sun_color, ambient_light)| {
-        view.send(SetPointLight(
-          Light {
-            position: world.player.position + rel_position,
-            intensity: sun_color,
-          }
-        )).unwrap();
-
-        view.send(SetAmbientLight(
-          Color3::of_rgb(
-            sun_color.r * ambient_light,
-            sun_color.g * ambient_light,
-            sun_color.b * ambient_light,
-          ),
-        )).unwrap();
-
-        view.send(SetBackgroundColor(sun_color)).unwrap();
-      });
+    world.sun.update().map(|fraction| {
+      view.send(UpdateSun(fraction)).unwrap();
     });
   })
 }

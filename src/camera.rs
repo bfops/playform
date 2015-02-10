@@ -1,13 +1,18 @@
 use gl;
 use gl::types::*;
-use nalgebra::{Mat3, Mat4, Vec3};
+use nalgebra::{Mat3, Mat4, Vec3, Pnt3};
 use nalgebra;
+use std::f32::consts::PI;
 use std::mem;
 use std::num::Float;
 use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 
 pub struct Camera {
+  pub position: Pnt3<f32>,
+  pub lateral_rotation: f32,
+  pub vertical_rotation: f32,
+
   // projection matrix components
   pub translation: Mat4<GLfloat>,
   pub rotation: Mat4<GLfloat>,
@@ -87,6 +92,10 @@ impl Camera {
   /// and [0, -1] in z in depth.
   pub fn unit() -> Camera {
     Camera {
+      position: Pnt3::new(0.0, 0.0, 0.0),
+      lateral_rotation: 0.0,
+      vertical_rotation: 0.0,
+
       translation: nalgebra::new_identity(4),
       rotation: nalgebra::new_identity(4),
       fov: nalgebra::new_identity(4),
@@ -97,9 +106,39 @@ impl Camera {
     self.fov * self.rotation * self.translation
   }
 
+  pub fn translate_to(&mut self, p: Pnt3<f32>) {
+    self.position = p;
+    self.translation = translation(-p.to_vec());
+  }
+
   /// Rotate about a given vector, by `r` radians.
-  pub fn rotate(&mut self, v: Vec3<GLfloat>, r: GLfloat) {
+  pub fn rotate(&mut self, v: Vec3<f32>, r: f32) {
     self.rotation = self.rotation * from_axis_angle4(v, -r);
+  }
+
+  /// Rotate the camera around the y axis, by `r` radians. Positive is counterclockwise.
+  pub fn rotate_lateral(&mut self, r: GLfloat) {
+    self.lateral_rotation = self.lateral_rotation + r;
+    self.rotate(Vec3::new(0.0, 1.0, 0.0), r);
+  }
+
+  /// Changes the camera pitch by `r` radians. Positive is up.
+  /// Angles that "flip around" (i.e. looking too far up or down)
+  /// are sliently rejected.
+  pub fn rotate_vertical(&mut self, r: GLfloat) {
+    let new_rotation = self.vertical_rotation + r;
+
+    if new_rotation < -PI / 2.0
+    || new_rotation >  PI / 2.0 {
+      return
+    }
+
+    self.vertical_rotation = new_rotation;
+
+    let axis =
+      from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation) *
+      Vec3::new(1.0, 0.0, 0.0);
+    self.rotate(axis, r);
   }
 }
 

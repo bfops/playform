@@ -61,19 +61,19 @@ fn key_press<'a>(
       },
       KeyCode::Left => {
         world.send(RotatePlayer(Vec2::new(PI / 12.0, 0.0))).unwrap();
-        view.rotate_lateral(PI / 12.0);
+        view.camera.rotate_lateral(PI / 12.0);
       },
       KeyCode::Right => {
         world.send(RotatePlayer(Vec2::new(-PI / 12.0, 0.0))).unwrap();
-        view.rotate_lateral(-PI / 12.0);
+        view.camera.rotate_lateral(-PI / 12.0);
       },
       KeyCode::Up => {
         world.send(RotatePlayer(Vec2::new(0.0, PI / 12.0))).unwrap();
-        view.rotate_vertical(PI / 12.0);
+        view.camera.rotate_vertical(PI / 12.0);
       },
       KeyCode::Down => {
         world.send(RotatePlayer(Vec2::new(0.0, -PI / 12.0))).unwrap();
-        view.rotate_vertical(-PI / 12.0);
+        view.camera.rotate_vertical(-PI / 12.0);
       },
       _ => {},
     }
@@ -123,8 +123,8 @@ fn mouse_move<'a>(
     let (rx, ry) = (dx as f32 * -3.14 / 2048.0, dy as f32 * 3.14 / 1600.0);
 
     world.send(RotatePlayer(Vec2::new(rx, ry))).unwrap();
-    view.rotate_lateral(rx);
-    view.rotate_vertical(ry);
+    view.camera.rotate_lateral(rx);
+    view.camera.rotate_vertical(ry);
 
     mouse::warp_mouse_in_window(
       window,
