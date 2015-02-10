@@ -11,26 +11,27 @@ use server::World;
 use std::ops::{Deref, DerefMut};
 use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
+use surroundings_loader::LODChange;
 use terrain::terrain_block::BlockPosition;
 
 pub fn update(
   timers: &TimerSet,
   world: &mut World,
-  view: &Sender<ServerToClient>,
+  client: &Sender<ServerToClient>,
   cl: &CL,
 ) {
   timers.time("update", || {
     timers.time("update.player", || {
       world.player.update(
         timers,
-        view,
+        client,
         cl,
         &mut world.terrain_game_loader,
         &mut world.id_allocator,
         &mut world.physics,
       );
 
-      view.send(UpdatePlayer(world.player.position)).unwrap();
+      client.send(UpdatePlayer(world.player.position)).unwrap();
     });
 
     timers.time("update.mobs", || {
@@ -40,15 +41,42 @@ pub fn update(
 
         let block_position = BlockPosition::from_world_position(&mob.position);
 
-        mob.solid_boundary.update(
-          timers,
-          view,
-          cl,
-          &mut world.terrain_game_loader,
-          &mut world.id_allocator,
-          &mut world.physics,
-          block_position,
-        );
+        {
+          let terrain_game_loader = &mut world.terrain_game_loader;
+          let id_allocator = &mut world.id_allocator;
+          let physics = &mut world.physics;
+          mob.solid_boundary.update(
+            block_position,
+            |lod_change| {
+              match lod_change {
+                LODChange::Increase(pos, lod, id) => {
+                  terrain_game_loader.increase_lod(
+                    timers,
+                    &client,
+                    cl,
+                    id_allocator,
+                    physics,
+                    &pos,
+                    lod,
+                    id,
+                  );
+                },
+                LODChange::Decrease(pos, lod, id) => {
+                  terrain_game_loader.decrease_lod(
+                    timers,
+                    &client,
+                    cl,
+                    id_allocator,
+                    physics,
+                    &pos,
+                    lod,
+                    id,
+                  );
+                },
+              };
+            },
+          );
+        }
 
         {
           let behavior = mob.behavior;
@@ -60,7 +88,7 @@ pub fn update(
         macro_rules! translate_mob(
           ($v:expr) => (
             translate_mob(
-              view,
+              client,
               &mut world.physics,
               mob,
               $v
@@ -82,13 +110,13 @@ pub fn update(
     });
 
     world.sun.update().map(|fraction| {
-      view.send(UpdateSun(fraction)).unwrap();
+      client.send(UpdateSun(fraction)).unwrap();
     });
   })
 }
 
 fn translate_mob(
-  view: &Sender<ServerToClient>,
+  client: &Sender<ServerToClient>,
   physics: &mut Physics,
   mob: &mut mob::Mob,
   delta_p: Vec3<GLfloat>,
@@ -104,6 +132,6 @@ fn translate_mob(
       .iter()
       .map(|&x| x)
       .collect();
-    view.send(UpdateMob((mob.id, vec))).unwrap();
+    client.send(UpdateMob((mob.id, vec))).unwrap();
   }
 }

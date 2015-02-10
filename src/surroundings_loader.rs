@@ -1,18 +1,10 @@
-use client_update::ServerToClient;
-use id_allocator::IdAllocator;
 use lod_map::{LOD, OwnerId};
-use opencl_context::CL;
-use physics::Physics;
 use std::cmp::max;
 use std::collections::RingBuf;
 use std::num::{Float, SignedInt};
-use std::sync::mpsc::Sender;
-use stopwatch::TimerSet;
 use surroundings_iter::SurroundingsIter;
 use terrain::terrain_block::BlockPosition;
-use terrain::terrain_game_loader::TerrainGameLoader;
 use time;
-use server::EntityId;
 
 // Rough budget (in microseconds) for how long block updating can take PER SurroundingsLoader.
 pub const BLOCK_UPDATE_BUDGET: u64 = 20000;
@@ -25,6 +17,11 @@ pub fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
 }
 
 // TODO: This should probably use a trait instead of boxed closures.
+
+pub enum LODChange {
+  Increase(BlockPosition, LOD, OwnerId),
+  Decrease(BlockPosition, Option<LOD>, OwnerId),
+}
 
 /// Keep surroundings loaded around a given world position.
 pub struct SurroundingsLoader<'a> {
@@ -61,16 +58,13 @@ impl<'a> SurroundingsLoader<'a> {
     }
   }
 
-  pub fn update(
+  pub fn update<LODChangeFunc>(
     &mut self,
-    timers: &TimerSet,
-    client: &Sender<ServerToClient>,
-    cl: &CL,
-    terrain_game_loader: &mut TerrainGameLoader,
-    id_allocator: &mut IdAllocator<EntityId>,
-    physics: &mut Physics,
     position: BlockPosition,
-  ) {
+    mut lod_change: LODChangeFunc,
+  ) where
+    LODChangeFunc: FnMut(LODChange),
+  {
     let position_changed = Some(position) != self.last_position;
     if position_changed {
       self.to_load = Some(SurroundingsIter::new(position, self.max_load_distance));
@@ -88,28 +82,10 @@ impl<'a> SurroundingsLoader<'a> {
       if let Some(block_position) = self.to_recheck.pop_front() {
         let distance = radius_between(&position, &block_position);
         if distance > self.max_load_distance {
-          terrain_game_loader.decrease_lod(
-            timers,
-            client,
-            cl,
-            id_allocator,
-            physics,
-            &block_position,
-            None,
-            self.id,
-          );
+          lod_change(LODChange::Decrease(block_position, None, self.id));
         } else {
           let lod = (self.lod)(distance);
-          terrain_game_loader.decrease_lod(
-            timers,
-            client,
-            cl,
-            id_allocator,
-            physics,
-            &block_position,
-            Some(lod),
-            self.id,
-          );
+          lod_change(LODChange::Decrease(block_position, Some(lod), self.id));
         }
       } else {
         let block_position =
@@ -119,17 +95,7 @@ impl<'a> SurroundingsLoader<'a> {
           };
 
         let lod = (self.lod)(self.to_load.as_ref().unwrap().next_distance);
-
-        terrain_game_loader.increase_lod(
-          timers,
-          client,
-          cl,
-          id_allocator,
-          physics,
-          &block_position,
-          lod,
-          self.id,
-        );
+        lod_change(LODChange::Increase(block_position, lod, self.id));
       }
     }
   }

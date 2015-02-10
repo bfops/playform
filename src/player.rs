@@ -14,7 +14,7 @@ use std::iter::range_inclusive;
 use std::num;
 use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
-use surroundings_loader::SurroundingsLoader;
+use surroundings_loader::{SurroundingsLoader, LODChange};
 use terrain::terrain;
 use terrain::terrain_block::BlockPosition;
 use terrain::terrain_game_loader::TerrainGameLoader;
@@ -149,7 +149,7 @@ impl<'a> Player<'a> {
   pub fn update(
     &mut self,
     timers: &TimerSet,
-    view: &Sender<ServerToClient>,
+    client: &Sender<ServerToClient>,
     cl: &CL,
     terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
@@ -159,23 +159,67 @@ impl<'a> Player<'a> {
 
     timers.time("update.player.surroundings", || {
       self.surroundings_loader.update(
-        timers,
-        view,
-        cl,
-        terrain_game_loader,
-        id_allocator,
-        physics,
         block_position,
+        |lod_change| {
+          match lod_change {
+            LODChange::Increase(pos, lod, id) => {
+              terrain_game_loader.increase_lod(
+                timers,
+                client,
+                cl,
+                id_allocator,
+                physics,
+                &pos,
+                lod,
+                id,
+              );
+            },
+            LODChange::Decrease(pos, lod, id) => {
+              terrain_game_loader.decrease_lod(
+                timers,
+                client,
+                cl,
+                id_allocator,
+                physics,
+                &pos,
+                lod,
+                id,
+              );
+            },
+          }
+        },
       );
 
       self.solid_boundary.update(
-        timers,
-        view,
-        cl,
-        terrain_game_loader,
-        id_allocator,
-        physics,
         block_position,
+        |lod_change| {
+          match lod_change {
+            LODChange::Increase(pos, lod, id) => {
+              terrain_game_loader.increase_lod(
+                timers,
+                client,
+                cl,
+                id_allocator,
+                physics,
+                &pos,
+                lod,
+                id,
+              );
+            },
+            LODChange::Decrease(pos, lod, id) => {
+              terrain_game_loader.decrease_lod(
+                timers,
+                client,
+                cl,
+                id_allocator,
+                physics,
+                &pos,
+                lod,
+                id,
+              );
+            },
+          }
+        },
       );
     });
 
