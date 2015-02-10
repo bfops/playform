@@ -1,3 +1,5 @@
+use client_update::ViewToClient;
+use client_update::ViewToClient::*;
 use common::*;
 use nalgebra::{Vec2, Vec3};
 use view::View;
@@ -8,12 +10,10 @@ use sdl2::video;
 use stopwatch::TimerSet;
 use std::f32::consts::PI;
 use std::sync::mpsc::Sender;
-use world_update::WorldUpdate;
-use world_update::WorldUpdate::*;
 
 pub fn process_event (
   timers: &TimerSet,
-  world: &Sender<WorldUpdate>,
+  world: &Sender<ViewToClient>,
   view: &mut View,
   game_window: &mut video::Window,
   event: Event,
@@ -38,7 +38,7 @@ pub fn process_event (
 
 fn key_press<'a>(
   timers: &TimerSet,
-  world: &Sender<WorldUpdate>,
+  world: &Sender<ViewToClient>,
   view: &mut View,
   key: KeyCode,
 ) {
@@ -82,7 +82,7 @@ fn key_press<'a>(
 
 fn key_release<'a>(
   timers: &TimerSet,
-  world: &Sender<WorldUpdate>,
+  world: &Sender<ViewToClient>,
   key: KeyCode,
 ) {
   timers.time("event.key_release", || {
@@ -110,7 +110,7 @@ fn key_release<'a>(
 
 fn mouse_move<'a>(
   timers: &TimerSet,
-  world: &Sender<WorldUpdate>,
+  world: &Sender<ViewToClient>,
   view: &mut View,
   window: &mut video::Window,
   x: i32, y: i32,

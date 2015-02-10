@@ -30,6 +30,9 @@ extern crate time;
 extern crate yaglw;
 
 mod camera;
+mod client;
+mod client_thread;
+mod client_update;
 mod color;
 mod common;
 mod cube_shell;
@@ -51,6 +54,9 @@ mod player;
 mod process_event;
 mod range_abs;
 mod render;
+mod server;
+mod server_thread;
+mod server_update;
 mod shaders;
 mod stopwatch;
 mod sun;
@@ -63,9 +69,6 @@ mod vertex;
 mod view;
 mod view_thread;
 mod view_update;
-mod world;
-mod world_thread;
-mod world_update;
 
 #[allow(dead_code)]
 fn main() {

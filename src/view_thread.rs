@@ -1,8 +1,8 @@
+use client_update::ViewToClient;
 use common::*;
 use gl;
 use init::hud::make_hud;
 use interval_timer::IntervalTimer;
-use log;
 use process_event::process_event;
 use render::render;
 use sdl2;
@@ -14,15 +14,14 @@ use std::time::duration::Duration;
 use stopwatch::TimerSet;
 use time;
 use view::View;
-use view_update::ViewUpdate;
-use world_update::WorldUpdate;
+use view_update::ClientToView;
 use yaglw::gl_context::GLContext;
 
 pub const FRAMES_PER_SECOND: u64 = 30;
 
 pub fn view_thread(
-  world_updates: Sender<WorldUpdate>,
-  view_updates: Receiver<ViewUpdate>,
+  ups_from_client: Receiver<ClientToView>,
+  ups_to_client: Sender<ViewToClient>,
 ) {
   let timers = TimerSet::new();
 
@@ -81,11 +80,11 @@ pub fn view_thread(
           break 'event_loop;
         },
         Event::Quit{..} => {
-          world_updates.send(WorldUpdate::Quit).unwrap();
+          ups_to_client.send(ViewToClient::Quit).unwrap();
           break 'game_loop;
         }
         Event::AppTerminating{..} => {
-          world_updates.send(WorldUpdate::Quit).unwrap();
+          ups_to_client.send(ViewToClient::Quit).unwrap();
           break 'game_loop;
         }
         Event::Window{win_event_id: event_id, ..} => {
@@ -107,7 +106,7 @@ pub fn view_thread(
           if has_focus {
             process_event(
               &timers,
-              &world_updates,
+              &ups_to_client,
               &mut view,
               &mut window,
               event,
@@ -118,13 +117,13 @@ pub fn view_thread(
     }
 
     'event_loop:loop {
-      let event;
-      match view_updates.try_recv() {
+      let update;
+      match ups_from_client.try_recv() {
         Err(TryRecvError::Empty) => break 'event_loop,
         Err(e) => panic!("Error getting view updates: {:?}", e),
-        Ok(e) => event = e,
+        Ok(e) => update = e,
       };
-      event.apply(&mut view);
+      update.apply(&mut view);
     }
 
     let renders = render_timer.update(time::precise_time_ns());
@@ -137,7 +136,5 @@ pub fn view_thread(
     timer::sleep(Duration::milliseconds(0));
   }
 
-  info!("Update Stats");
-  info!("====================");
   timers.print();
 }

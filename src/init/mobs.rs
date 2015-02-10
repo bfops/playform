@@ -1,6 +1,8 @@
-use cube_shell::cube_diff;
+use client_update::ServerToClient;
+use client_update::ServerToClient::*;
 use color::Color4;
 use common::*;
+use cube_shell::cube_diff;
 use gl::types::*;
 use id_allocator::IdAllocator;
 use lod_map::{LOD, OwnerId};
@@ -15,16 +17,14 @@ use std::rc::Rc;
 use std::sync::mpsc::Sender;
 use surroundings_loader::SurroundingsLoader;
 use terrain::terrain;
-use view_update::ViewUpdate;
-use view_update::ViewUpdate::*;
-use world::{World, EntityId};
+use server::{World, EntityId};
 
 fn center(bounds: &AABB3<f32>) -> Pnt3<GLfloat> {
   (*bounds.mins() + bounds.maxs().to_vec()) / (2.0 as GLfloat)
 }
 
 pub fn make_mobs<'a>(
-  view: &Sender<ViewUpdate>,
+  view: &Sender<ServerToClient>,
   physics: &mut Physics,
   id_allocator: &mut IdAllocator<EntityId>,
   owner_allocator: &mut IdAllocator<OwnerId>,
@@ -76,7 +76,7 @@ pub fn make_mobs<'a>(
 }
 
 fn add_mob(
-  view: &Sender<ViewUpdate>,
+  view: &Sender<ServerToClient>,
   physics: &mut Physics,
   mobs: &mut HashMap<EntityId, Rc<RefCell<mob::Mob>>>,
   id_allocator: &mut IdAllocator<EntityId>,

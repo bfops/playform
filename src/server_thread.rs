@@ -1,27 +1,27 @@
+use client_update::ServerToClient;
 use init::world;
 use interval_timer::IntervalTimer;
 use opencl_context::CL;
+use server_update::ClientToServer;
 use std::time::duration::Duration;
 use std::old_io::timer;
 use std::sync::mpsc::{Sender, Receiver, TryRecvError};
 use stopwatch::TimerSet;
 use time;
 use update::update;
-use view_update::ViewUpdate;
-use world_update::WorldUpdate;
 
 pub const UPDATES_PER_SECOND: u64 = 30;
 
-pub fn world_thread(
-  world_updates: Receiver<WorldUpdate>,
-  view: Sender<ViewUpdate>,
+pub fn server_thread(
+  ups_from_client: Receiver<ClientToServer>,
+  ups_to_client: Sender<ServerToClient>,
 ) {
   let timers = TimerSet::new();
   let cl = unsafe {
     CL::new()
   };
 
-  let mut world = world::init(&cl, &view, &timers);
+  let mut world = world::init(&cl, &ups_to_client, &timers);
 
   let mut update_timer;
   {
@@ -33,7 +33,7 @@ pub fn world_thread(
   'game_loop:loop {
     'event_loop:loop {
       let update;
-      match world_updates.try_recv() {
+      match ups_from_client.try_recv() {
         Err(TryRecvError::Empty) => break 'event_loop,
         Err(e) => panic!("Error getting world updates: {:?}", e),
         Ok(e) => update = e,
@@ -45,7 +45,7 @@ pub fn world_thread(
 
     let updates = update_timer.update(time::precise_time_ns());
     if updates > 0 {
-      update(&timers, &mut world, &view, &cl);
+      update(&timers, &mut world, &ups_to_client, &cl);
     }
 
     timer::sleep(Duration::milliseconds(0));

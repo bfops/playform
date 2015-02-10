@@ -1,8 +1,8 @@
 use common::*;
 use nalgebra::{Pnt3, Vec3};
 use shaders::color::ColorShader;
-use world::World;
-use world::EntityId;
+use server::World;
+use server::EntityId;
 use std::collections::HashMap;
 use surroundings_loader::SurroundingsLoader;
 use vertex::ColoredVertex;

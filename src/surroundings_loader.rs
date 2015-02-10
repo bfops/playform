@@ -1,3 +1,4 @@
+use client_update::ServerToClient;
 use id_allocator::IdAllocator;
 use lod_map::{LOD, OwnerId};
 use opencl_context::CL;
@@ -11,8 +12,7 @@ use surroundings_iter::SurroundingsIter;
 use terrain::terrain_block::BlockPosition;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use time;
-use view_update::ViewUpdate;
-use world::EntityId;
+use server::EntityId;
 
 // Rough budget (in microseconds) for how long block updating can take PER SurroundingsLoader.
 pub const BLOCK_UPDATE_BUDGET: u64 = 20000;
@@ -64,7 +64,7 @@ impl<'a> SurroundingsLoader<'a> {
   pub fn update(
     &mut self,
     timers: &TimerSet,
-    view: &Sender<ViewUpdate>,
+    client: &Sender<ServerToClient>,
     cl: &CL,
     terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
@@ -90,7 +90,7 @@ impl<'a> SurroundingsLoader<'a> {
         if distance > self.max_load_distance {
           terrain_game_loader.decrease_lod(
             timers,
-            view,
+            client,
             cl,
             id_allocator,
             physics,
@@ -102,7 +102,7 @@ impl<'a> SurroundingsLoader<'a> {
           let lod = (self.lod)(distance);
           terrain_game_loader.decrease_lod(
             timers,
-            view,
+            client,
             cl,
             id_allocator,
             physics,
@@ -122,7 +122,7 @@ impl<'a> SurroundingsLoader<'a> {
 
         terrain_game_loader.increase_lod(
           timers,
-          view,
+          client,
           cl,
           id_allocator,
           physics,

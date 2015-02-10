@@ -4,15 +4,15 @@ use lod_map::{LOD, OwnerId, LODMap};
 use noise::Seed;
 use opencl_context::CL;
 use physics::Physics;
-use world::EntityId;
+use server::EntityId;
 use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
 use terrain::terrain::Terrain;
 use terrain::terrain_block::{BlockPosition, BLOCK_WIDTH};
 use terrain::texture_generator::TEXTURE_WIDTH;
 use terrain::texture_generator::TerrainTextureGenerator;
-use view_update::ViewUpdate;
-use view_update::ViewUpdate::*;
+use client_update::ServerToClient;
+use client_update::ServerToClient::*;
 
 /// Load and unload TerrainBlocks from the game.
 /// Each TerrainBlock can be owned by a set of owners, each of which can independently request LODs.
@@ -40,14 +40,11 @@ impl TerrainGameLoader {
     }
   }
 
-  // TODO: Disentangle the world logic from the view logic.
-  // The goal is to support multiple players.
-
   /// Returns false if pushing into buffers fails.
   fn re_lod_block(
     &mut self,
     timers: &TimerSet,
-    view: &Sender<ViewUpdate>,
+    client: &Sender<ServerToClient>,
     cl: &CL,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
@@ -71,10 +68,10 @@ impl TerrainGameLoader {
             let block = lods[loaded_lod as usize].as_ref().unwrap();
             for id in block.ids.iter() {
               physics.remove_terrain(*id);
-              view.send(RemoveTerrain(*id)).unwrap();
+              client.send(RemoveTerrain(*id)).unwrap();
             }
 
-            view.send(RemoveBlockData((*block_position, loaded_lod))).unwrap();
+            client.send(RemoveBlockData((*block_position, loaded_lod))).unwrap();
           });
         },
       };
@@ -105,7 +102,7 @@ impl TerrainGameLoader {
                 });
 
                 timers.time("terrain_game_loader.load.gpu", || {
-                  view.send(
+                  client.send(
                     AddBlock((*block_position, block.clone(), new_lod))
                   ).unwrap();
                 })
@@ -120,7 +117,7 @@ impl TerrainGameLoader {
   pub fn increase_lod(
     &mut self,
     timers: &TimerSet,
-    view: &Sender<ViewUpdate>,
+    client: &Sender<ServerToClient>,
     cl: &CL,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
@@ -134,7 +131,7 @@ impl TerrainGameLoader {
     lod_change.map(|lod_change| {
       self.re_lod_block(
         timers,
-        view,
+        client,
         cl,
         id_allocator,
         physics,
@@ -148,7 +145,7 @@ impl TerrainGameLoader {
   pub fn decrease_lod(
     &mut self,
     timers: &TimerSet,
-    view: &Sender<ViewUpdate>,
+    client: &Sender<ServerToClient>,
     cl: &CL,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
@@ -162,7 +159,7 @@ impl TerrainGameLoader {
     lod_change.map(|lod_change| {
       self.re_lod_block(
         timers,
-        view,
+        client,
         cl,
         id_allocator,
         physics,

@@ -1,8 +1,8 @@
 use nalgebra::{Vec2, Vec3};
-use world::World;
+use server::World;
 
 #[derive(Debug, Clone)]
-pub enum WorldUpdate {
+pub enum ClientToServer {
   Walk(Vec3<f32>),
   RotatePlayer(Vec2<f32>),
   StartJump,
@@ -10,37 +10,37 @@ pub enum WorldUpdate {
   Quit,
 }
 
-impl WorldUpdate {
+impl ClientToServer {
   pub fn apply(self, world: &mut World) -> bool {
     match self {
-      WorldUpdate::Quit => {
+      ClientToServer::Quit => {
         return false;
       },
-      WorldUpdate::StartJump => {
+      ClientToServer::StartJump => {
         if !world.player.is_jumping {
           world.player.is_jumping = true;
           // this 0.3 is duplicated in a few places
           world.player.accel.y = world.player.accel.y + 0.3;
         }
       },
-      WorldUpdate::StopJump => {
+      ClientToServer::StopJump => {
         if world.player.is_jumping {
           world.player.is_jumping = false;
           // this 0.3 is duplicated in a few places
           world.player.accel.y = world.player.accel.y - 0.3;
         }
       },
-      WorldUpdate::Walk(v) => {
+      ClientToServer::Walk(v) => {
         world.player.walk(v);
       },
-      WorldUpdate::RotatePlayer(v) => {
+      ClientToServer::RotatePlayer(v) => {
         world.player.rotate_lateral(v.x);
         world.player.rotate_vertical(v.y);
       },
     }
 
-    return true;
+    true
   }
 }
 
-unsafe impl Send for WorldUpdate {}
+unsafe impl Send for ClientToServer {}

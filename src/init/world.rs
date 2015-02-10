@@ -1,3 +1,4 @@
+use client_update::ServerToClient;
 use id_allocator::IdAllocator;
 use init::mobs::make_mobs;
 use nalgebra::{Pnt3, Vec3};
@@ -5,7 +6,7 @@ use ncollide_entities::bounding_volume::{AABB, AABB3};
 use opencl_context::CL;
 use physics::Physics;
 use player::Player;
-use world::World;
+use server::World;
 use std::f32::consts::PI;
 use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
@@ -13,7 +14,6 @@ use sun::Sun;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use terrain::terrain_vram_buffers;
-use view_update::ViewUpdate;
 
 const SUN_TICK_NS: u64 = 5000000;
 
@@ -23,7 +23,7 @@ fn center(bounds: &AABB3<f32>) -> Pnt3<f32> {
 
 pub fn init<'a, 'b:'a>(
   cl: &CL,
-  view: &Sender<ViewUpdate>,
+  view: &Sender<ServerToClient>,
   timers: &TimerSet,
 ) -> World<'b> {
   let terrain_game_loader = TerrainGameLoader::new(cl);

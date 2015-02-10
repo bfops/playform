@@ -1,7 +1,7 @@
 use id_allocator::IdAllocator;
 use noise::Seed;
 use opencl_context::CL;
-use world::EntityId;
+use server::EntityId;
 use std::collections::hash_map::{HashMap, Entry};
 use std::iter::range_inclusive;
 use stopwatch::TimerSet;

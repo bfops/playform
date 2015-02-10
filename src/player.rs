@@ -1,4 +1,5 @@
 use camera;
+use client_update::ServerToClient;
 use cube_shell::cube_diff;
 use id_allocator::IdAllocator;
 use lod_map::{LOD, OwnerId};
@@ -7,7 +8,7 @@ use ncollide_entities::bounding_volume::AABB;
 use ncollide_queries::ray::{Ray, Ray3};
 use opencl_context::CL;
 use physics::Physics;
-use world::EntityId;
+use server::EntityId;
 use std::f32::consts::PI;
 use std::iter::range_inclusive;
 use std::num;
@@ -17,7 +18,6 @@ use surroundings_loader::SurroundingsLoader;
 use terrain::terrain;
 use terrain::terrain_block::BlockPosition;
 use terrain::terrain_game_loader::TerrainGameLoader;
-use view_update::ViewUpdate;
 
 const LOD_THRESHOLDS: [i32; 3] = [1, 8, 32];
 
@@ -149,7 +149,7 @@ impl<'a> Player<'a> {
   pub fn update(
     &mut self,
     timers: &TimerSet,
-    view: &Sender<ViewUpdate>,
+    view: &Sender<ServerToClient>,
     cl: &CL,
     terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,

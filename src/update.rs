@@ -1,3 +1,5 @@
+use client_update::ServerToClient;
+use client_update::ServerToClient::*;
 use color::Color4;
 use common::*;
 use gl::types::*;
@@ -5,18 +7,16 @@ use mob;
 use nalgebra::Vec3;
 use opencl_context::CL;
 use physics::Physics;
-use world::World;
+use server::World;
 use std::ops::{Deref, DerefMut};
 use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
 use terrain::terrain_block::BlockPosition;
-use view_update::ViewUpdate;
-use view_update::ViewUpdate::*;
 
 pub fn update(
   timers: &TimerSet,
   world: &mut World,
-  view: &Sender<ViewUpdate>,
+  view: &Sender<ServerToClient>,
   cl: &CL,
 ) {
   timers.time("update", || {
@@ -88,7 +88,7 @@ pub fn update(
 }
 
 fn translate_mob(
-  view: &Sender<ViewUpdate>,
+  view: &Sender<ServerToClient>,
   physics: &mut Physics,
   mob: &mut mob::Mob,
   delta_p: Vec3<GLfloat>,

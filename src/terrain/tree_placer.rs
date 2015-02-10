@@ -5,7 +5,7 @@ use id_allocator::IdAllocator;
 use nalgebra::{Pnt2, Pnt3, Vec3, normalize};
 use ncollide_entities::bounding_volume::AABB;
 use rand::{Rng, SeedableRng, IsaacRng};
-use world::EntityId;
+use server::EntityId;
 use std::cmp::{partial_min, partial_max};
 use std::collections::RingBuf;
 use std::num::Float;
