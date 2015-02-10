@@ -4,9 +4,6 @@ use nalgebra::Pnt3;
 use ncollide_entities::bounding_volume::AABB3;
 use vertex::ColoredVertex;
 
-pub const WINDOW_WIDTH:  u32 = 800;
-pub const WINDOW_HEIGHT: u32 = 600;
-
 pub const TRIANGLES_PER_BOX: u32 = 12;
 pub const VERTICES_PER_TRIANGLE: u32 = 3;
 pub const TRIANGLE_VERTICES_PER_BOX: u32 = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;

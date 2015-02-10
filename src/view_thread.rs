@@ -1,5 +1,4 @@
 use client_update::ViewToClient;
-use common::*;
 use gl;
 use init::hud::make_hud;
 use interval_timer::IntervalTimer;
@@ -36,14 +35,17 @@ pub fn view_thread(
     video::GLProfile::GLCoreProfile as i32,
   );
 
+  let display_mode = video::get_desktop_display_mode(0).unwrap();
+
+  // Open the window as fullscreen at the current resolution.
   let mut window =
     video::Window::new(
       "Playform",
-      video::WindowPos::PosCentered,
-      video::WindowPos::PosCentered,
-      WINDOW_WIDTH as i32,
-      WINDOW_HEIGHT as i32,
-      video::OPENGL,
+      video::WindowPos::PosUndefined,
+      video::WindowPos::PosUndefined,
+      display_mode.w,
+      display_mode.h,
+      video::OPENGL | video::FULLSCREEN_DESKTOP,
     ).unwrap();
 
   // Send text input events.
