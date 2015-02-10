@@ -6,7 +6,7 @@ use ncollide_entities::bounding_volume::{AABB, AABB3};
 use opencl_context::CL;
 use physics::Physics;
 use player::Player;
-use server::World;
+use server::Server;
 use std::f32::consts::PI;
 use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
@@ -25,7 +25,7 @@ pub fn init<'a, 'b:'a>(
   cl: &CL,
   view: &Sender<ServerToClient>,
   timers: &TimerSet,
-) -> World<'b> {
+) -> Server<'b> {
   let terrain_game_loader = TerrainGameLoader::new(cl);
 
   let world_width: u32 = 1 << 11;
@@ -82,7 +82,7 @@ pub fn init<'a, 'b:'a>(
     player
   };
 
-  World {
+  Server {
     physics: physics,
     id_allocator: id_allocator,
     terrain_game_loader: terrain_game_loader,

@@ -29,7 +29,7 @@ impl Add<u32> for EntityId {
   }
 }
 
-pub struct World<'a> {
+pub struct Server<'a> {
   pub physics: Physics,
   pub player: Player<'a>,
   pub mobs: HashMap<EntityId, Rc<RefCell<mob::Mob<'a>>>>,
@@ -39,7 +39,7 @@ pub struct World<'a> {
   pub terrain_game_loader: TerrainGameLoader,
 }
 
-impl<'a> World<'a> {
+impl<'a> Server<'a> {
   #[inline]
   pub fn get_bounds(&self, id: EntityId) -> &AABB3<f32> {
     self.physics.get_bounds(id).unwrap()

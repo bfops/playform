@@ -79,7 +79,7 @@ impl TextureVertex {
 /// A point in the world with corresponding texture and normal data.
 ///
 /// The texture position is [0, 1].
-pub struct WorldTextureVertex {
+pub struct ServerTextureVertex {
   /// The position of this vertex in the world.
   pub world_position:  Vec3<GLfloat>,
 

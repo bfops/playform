@@ -7,7 +7,7 @@ use mob;
 use nalgebra::Vec3;
 use opencl_context::CL;
 use physics::Physics;
-use server::World;
+use server::Server;
 use std::ops::{Deref, DerefMut};
 use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
@@ -16,7 +16,7 @@ use terrain::terrain_block::BlockPosition;
 
 pub fn update(
   timers: &TimerSet,
-  world: &mut World,
+  world: &mut Server,
   client: &Sender<ServerToClient>,
   cl: &CL,
 ) {

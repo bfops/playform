@@ -1,5 +1,5 @@
 use nalgebra::{Vec2, Vec3};
-use server::World;
+use server::Server;
 
 #[derive(Debug, Clone)]
 pub enum ClientToServer {
@@ -11,7 +11,7 @@ pub enum ClientToServer {
 }
 
 impl ClientToServer {
-  pub fn apply(self, world: &mut World) -> bool {
+  pub fn apply(self, world: &mut Server) -> bool {
     match self {
       ClientToServer::Quit => {
         return false;

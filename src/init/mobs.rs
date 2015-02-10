@@ -17,7 +17,7 @@ use std::rc::Rc;
 use std::sync::mpsc::Sender;
 use surroundings_loader::SurroundingsLoader;
 use terrain::terrain;
-use server::{World, EntityId};
+use server::{Server, EntityId};
 
 fn center(bounds: &AABB3<f32>) -> Pnt3<GLfloat> {
   (*bounds.mins() + bounds.maxs().to_vec()) / (2.0 as GLfloat)
@@ -31,20 +31,20 @@ pub fn make_mobs<'a>(
 ) -> HashMap<EntityId, Rc<RefCell<mob::Mob<'a>>>> {
   let mut mobs = HashMap::new();
 
-  fn mob_behavior(world: &World, mob: &mut mob::Mob) {
+  fn mob_behavior(world: &Server, mob: &mut mob::Mob) {
     let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
     if nalgebra::norm(&to_player) < 2.0 {
       mob.behavior = wait_for_distance;
     }
 
-    fn wait_for_distance(world: &World, mob: &mut mob::Mob) {
+    fn wait_for_distance(world: &Server, mob: &mut mob::Mob) {
       let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
       if nalgebra::norm(&to_player) > 8.0 {
         mob.behavior = follow_player;
       }
     }
 
-    fn follow_player(world: &World, mob: &mut mob::Mob) {
+    fn follow_player(world: &Server, mob: &mut mob::Mob) {
       let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
       if to_player.sqnorm() < 4.0 {
         mob.behavior = wait_to_reset;
@@ -54,7 +54,7 @@ pub fn make_mobs<'a>(
       }
     }
 
-    fn wait_to_reset(world: &World, mob: &mut mob::Mob) {
+    fn wait_to_reset(world: &Server, mob: &mut mob::Mob) {
       let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
       if nalgebra::norm(&to_player) >= 2.0 {
         mob.behavior = mob_behavior;
