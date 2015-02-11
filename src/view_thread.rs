@@ -21,8 +21,8 @@ use yaglw::gl_context::GLContext;
 pub const FRAMES_PER_SECOND: u64 = 30;
 
 pub fn view_thread(
-  ups_from_client: Receiver<ClientToView>,
-  ups_to_client: Sender<ViewToClient>,
+  ups_from_client: &Receiver<ClientToView>,
+  ups_to_client: &Sender<ViewToClient>,
 ) {
   let timers = TimerSet::new();
 
@@ -124,15 +124,13 @@ pub fn view_thread(
       }
     }
 
-    'event_loop:loop {
-      let update;
-      match ups_from_client.try_recv() {
-        Err(TryRecvError::Empty) => break 'event_loop,
-        Err(e) => panic!("Error getting view updates: {:?}", e),
-        Ok(e) => update = e,
-      };
-      update.apply(&mut view);
-    }
+    match ups_from_client.try_recv() {
+      Err(TryRecvError::Empty) => {},
+      Err(e) => panic!("Error getting view updates: {:?}", e),
+      Ok(update) => {
+        update.apply(&mut view);
+      },
+    };
 
     let renders = render_timer.update(time::precise_time_ns());
     if renders > 0 {
@@ -145,4 +143,6 @@ pub fn view_thread(
   }
 
   timers.print();
+
+  debug!("view exiting.");
 }

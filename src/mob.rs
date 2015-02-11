@@ -16,6 +16,7 @@ pub struct Mob<'a> {
   pub position: Pnt3<f32>,
   pub speed: Vec3<f32>,
   pub behavior: Behavior,
+
   pub id: EntityId,
 
   // Nearby blocks should be made solid if they aren't loaded yet.

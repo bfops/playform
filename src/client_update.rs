@@ -4,6 +4,7 @@ use light::Light;
 use nalgebra::{Vec2, Vec3, Pnt3};
 use server_update::ClientToServer;
 use std::cmp::partial_max;
+use std::collections::hash_map::Entry::{Vacant, Occupied};
 use std::f32::consts::PI;
 use std::num::Float;
 use std::sync::mpsc::Sender;
@@ -25,6 +26,7 @@ impl ViewToClient {
   pub fn apply(self, ups_to_server: &Sender<ClientToServer>) -> bool {
     match self {
       ViewToClient::Quit => {
+        ups_to_server.send(ClientToServer::Quit).unwrap();
         return false;
       },
       ViewToClient::Walk(v) => {
@@ -55,8 +57,6 @@ pub enum ServerToClient {
   UpdateSun(f32),
 
   AddBlock((BlockPosition, TerrainBlock, u32)),
-  RemoveTerrain(EntityId),
-  RemoveBlockData((BlockPosition, u32)),
 }
 
 impl ServerToClient {
@@ -106,14 +106,26 @@ impl ServerToClient {
 
         ups_to_view.send(ClientToView::SetClearColor(sun_color)).unwrap();
       },
-      ServerToClient::AddBlock(v) => {
-        ups_to_view.send(ClientToView::AddBlock(v)).unwrap();
-      },
-      ServerToClient::RemoveTerrain(v) => {
-        ups_to_view.send(ClientToView::RemoveTerrain(v)).unwrap();
-      },
-      ServerToClient::RemoveBlockData(v) => {
-        ups_to_view.send(ClientToView::RemoveBlockData(v)).unwrap();
+      ServerToClient::AddBlock((position, block, lod)) => {
+        match client.loaded_blocks.entry(position) {
+          Vacant(entry) => {
+            entry.insert((block.clone(), lod));
+          },
+          Occupied(mut entry) => {
+            {
+              let &(ref prev_block, prev_lod) = entry.get();
+              for &id in prev_block.ids.iter() {
+                ups_to_view.send(ClientToView::RemoveTerrain(id)).unwrap();
+              }
+              ups_to_view.send(
+                ClientToView::RemoveBlockData((position, prev_lod))
+              ).unwrap();
+            }
+            entry.insert((block.clone(), lod));
+          },
+        };
+
+        ups_to_view.send(ClientToView::AddBlock((position, block, lod))).unwrap();
       },
     }
   }

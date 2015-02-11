@@ -16,35 +16,34 @@ use terrain::terrain_block::BlockPosition;
 
 pub fn update(
   timers: &TimerSet,
-  world: &mut Server,
+  server: &mut Server,
   client: &Sender<ServerToClient>,
   cl: &CL,
 ) {
   timers.time("update", || {
     timers.time("update.player", || {
-      world.player.update(
+      server.player.update(
         timers,
-        client,
         cl,
-        &mut world.terrain_game_loader,
-        &mut world.id_allocator,
-        &mut world.physics,
+        &mut server.terrain_game_loader,
+        &mut server.id_allocator,
+        &mut server.physics,
       );
 
-      client.send(UpdatePlayer(world.player.position)).unwrap();
+      client.send(UpdatePlayer(server.player.position)).unwrap();
     });
 
     timers.time("update.mobs", || {
-      for (_, mob) in world.mobs.iter() {
+      for (_, mob) in server.mobs.iter() {
         let mut mob_cell = mob.deref().borrow_mut();
         let mob = mob_cell.deref_mut();
 
         let block_position = BlockPosition::from_world_position(&mob.position);
 
         {
-          let terrain_game_loader = &mut world.terrain_game_loader;
-          let id_allocator = &mut world.id_allocator;
-          let physics = &mut world.physics;
+          let terrain_game_loader = &mut server.terrain_game_loader;
+          let id_allocator = &mut server.id_allocator;
+          let physics = &mut server.physics;
           mob.solid_boundary.update(
             block_position,
             |lod_change| {
@@ -52,7 +51,6 @@ pub fn update(
                 LODChange::Increase(pos, lod, id) => {
                   terrain_game_loader.increase_lod(
                     timers,
-                    &client,
                     cl,
                     id_allocator,
                     physics,
@@ -64,7 +62,6 @@ pub fn update(
                 LODChange::Decrease(pos, lod, id) => {
                   terrain_game_loader.decrease_lod(
                     timers,
-                    &client,
                     cl,
                     id_allocator,
                     physics,
@@ -80,7 +77,7 @@ pub fn update(
 
         {
           let behavior = mob.behavior;
-          (behavior)(world, mob);
+          (behavior)(server, mob);
         }
 
         mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as GLfloat);
@@ -89,7 +86,7 @@ pub fn update(
           ($v:expr) => (
             translate_mob(
               client,
-              &mut world.physics,
+              &mut server.physics,
               mob,
               $v
             );
@@ -109,7 +106,7 @@ pub fn update(
       }
     });
 
-    world.sun.update().map(|fraction| {
+    server.sun.update().map(|fraction| {
       client.send(UpdateSun(fraction)).unwrap();
     });
   })

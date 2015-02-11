@@ -1,6 +1,7 @@
 use client_update::ServerToClient;
 use id_allocator::IdAllocator;
 use init::mobs::make_mobs;
+use lod_map::OwnerId;
 use nalgebra::{Pnt3, Vec3};
 use ncollide_entities::bounding_volume::{AABB, AABB3};
 use opencl_context::CL;
@@ -13,7 +14,6 @@ use stopwatch::TimerSet;
 use sun::Sun;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
-use terrain::terrain_vram_buffers;
 
 const SUN_TICK_NS: u64 = 5000000;
 
@@ -24,6 +24,7 @@ fn center(bounds: &AABB3<f32>) -> Pnt3<f32> {
 pub fn init<'a, 'b:'a>(
   cl: &CL,
   view: &Sender<ServerToClient>,
+  owner_allocator: &mut IdAllocator<OwnerId>,
   timers: &TimerSet,
 ) -> Server<'b> {
   let terrain_game_loader = TerrainGameLoader::new(cl);
@@ -39,7 +40,6 @@ pub fn init<'a, 'b:'a>(
     );
 
   let mut id_allocator = IdAllocator::new();
-  let mut owner_allocator = IdAllocator::new();
 
   let mobs =
     timers.time("make_mobs", || {
@@ -47,27 +47,14 @@ pub fn init<'a, 'b:'a>(
         view,
         &mut physics,
         &mut id_allocator,
-        &mut owner_allocator,
+        owner_allocator,
       )
     });
-
-  let mut load_distance =
-    Player::load_distance(terrain_vram_buffers::POLYGON_BUDGET as i32);
-
-  // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-  let max_load_distance = 80;
-  if load_distance > max_load_distance {
-    info!("load_distance {} capped at {}", load_distance, max_load_distance);
-    load_distance = max_load_distance;
-  } else {
-    info!("load_distance {}", load_distance);
-  }
 
   let player = {
     let mut player = Player::new(
       &mut id_allocator,
-      &mut owner_allocator,
-      load_distance,
+      owner_allocator,
     );
 
     let min = Pnt3::new(0.0, terrain::AMPLITUDE as f32, 4.0);

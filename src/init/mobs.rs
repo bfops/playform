@@ -84,8 +84,6 @@ fn add_mob(
   low_corner: Pnt3<GLfloat>,
   behavior: mob::Behavior,
 ) {
-  // TODO: mob loader instead of pushing directly to gl buffers
-
   let id = id_allocator.allocate();
   let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as GLfloat));
 

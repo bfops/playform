@@ -1,5 +1,4 @@
 use camera;
-use client_update::ServerToClient;
 use cube_shell::cube_diff;
 use id_allocator::IdAllocator;
 use lod_map::{LOD, OwnerId};
@@ -12,14 +11,13 @@ use server::EntityId;
 use std::f32::consts::PI;
 use std::iter::range_inclusive;
 use std::num;
-use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
 use surroundings_loader::{SurroundingsLoader, LODChange};
 use terrain::terrain;
 use terrain::terrain_block::BlockPosition;
 use terrain::terrain_game_loader::TerrainGameLoader;
 
-const LOD_THRESHOLDS: [i32; 3] = [1, 8, 32];
+pub const LOD_THRESHOLDS: [i32; 3] = [1, 8, 32];
 
 const MAX_JUMP_FUEL: u32 = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;
@@ -52,7 +50,6 @@ impl<'a> Player<'a> {
   pub fn new(
     id_allocator: &mut IdAllocator<EntityId>,
     owner_allocator: &mut IdAllocator<OwnerId>,
-    load_distance: i32,
   ) -> Player<'a> {
     Player {
       position: Pnt3::new(0.0, 0.0, 0.0),
@@ -67,16 +64,9 @@ impl<'a> Player<'a> {
       surroundings_loader:
         SurroundingsLoader::new(
           owner_allocator.allocate(),
-          load_distance,
-          Box::new(|d| LOD::LodIndex(Player::lod_index(d))),
-          Box::new(move |last, cur| {
-            let mut vec = Vec::new();
-            for &r in LOD_THRESHOLDS.iter() {
-              vec.push_all(cube_diff(last, cur, r).as_slice());
-            }
-            vec.push_all(cube_diff(last, cur, load_distance).as_slice());
-            vec
-          }),
+          1,
+          Box::new(|_| LOD::LodIndex(0)),
+          Box::new(|&: last, cur| cube_diff(last, cur, 1)),
         ),
       solid_boundary:
         SurroundingsLoader::new(
@@ -149,7 +139,6 @@ impl<'a> Player<'a> {
   pub fn update(
     &mut self,
     timers: &TimerSet,
-    client: &Sender<ServerToClient>,
     cl: &CL,
     terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
@@ -165,7 +154,6 @@ impl<'a> Player<'a> {
             LODChange::Increase(pos, lod, id) => {
               terrain_game_loader.increase_lod(
                 timers,
-                client,
                 cl,
                 id_allocator,
                 physics,
@@ -177,7 +165,6 @@ impl<'a> Player<'a> {
             LODChange::Decrease(pos, lod, id) => {
               terrain_game_loader.decrease_lod(
                 timers,
-                client,
                 cl,
                 id_allocator,
                 physics,
@@ -197,7 +184,6 @@ impl<'a> Player<'a> {
             LODChange::Increase(pos, lod, id) => {
               terrain_game_loader.increase_lod(
                 timers,
-                client,
                 cl,
                 id_allocator,
                 physics,
@@ -209,7 +195,6 @@ impl<'a> Player<'a> {
             LODChange::Decrease(pos, lod, id) => {
               terrain_game_loader.decrease_lod(
                 timers,
-                client,
                 cl,
                 id_allocator,
                 physics,

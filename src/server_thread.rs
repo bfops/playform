@@ -1,6 +1,8 @@
 use client_update::ServerToClient;
+use id_allocator::IdAllocator;
 use init::world;
 use interval_timer::IntervalTimer;
+use lod_map::OwnerId;
 use opencl_context::CL;
 use server_update::ClientToServer;
 use std::time::duration::Duration;
@@ -13,15 +15,16 @@ use update::update;
 pub const UPDATES_PER_SECOND: u64 = 30;
 
 pub fn server_thread(
-  ups_from_client: Receiver<ClientToServer>,
-  ups_to_client: Sender<ServerToClient>,
+  owner_allocator: &mut IdAllocator<OwnerId>,
+  ups_from_client: &Receiver<ClientToServer>,
+  ups_to_client: &Sender<ServerToClient>,
 ) {
   let timers = TimerSet::new();
   let cl = unsafe {
     CL::new()
   };
 
-  let mut world = world::init(&cl, &ups_to_client, &timers);
+  let mut world = world::init(&cl, &ups_to_client, owner_allocator, &timers);
 
   let mut update_timer;
   {
@@ -31,17 +34,15 @@ pub fn server_thread(
   }
 
   'game_loop:loop {
-    'event_loop:loop {
-      let update;
-      match ups_from_client.try_recv() {
-        Err(TryRecvError::Empty) => break 'event_loop,
-        Err(e) => panic!("Error getting world updates: {:?}", e),
-        Ok(e) => update = e,
-      };
-      if !update.apply(&mut world) {
-        break 'game_loop;
-      }
-    }
+    match ups_from_client.try_recv() {
+      Err(TryRecvError::Empty) => {},
+      Err(e) => panic!("Error getting world updates: {:?}", e),
+      Ok(update) => {
+        if !update.apply(&timers, &cl, &mut world, ups_to_client) {
+          break 'game_loop;
+        }
+      },
+    };
 
     let updates = update_timer.update(time::precise_time_ns());
     if updates > 0 {
@@ -50,4 +51,6 @@ pub fn server_thread(
 
     timer::sleep(Duration::milliseconds(0));
   }
+
+  debug!("server exiting.");
 }
