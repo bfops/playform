@@ -3,6 +3,7 @@ use client_update::ServerToClient::*;
 use color::Color4;
 use common::*;
 use gl::types::*;
+use lod_map::LOD;
 use mob;
 use nalgebra::Vec3;
 use opencl_context::CL;
@@ -48,14 +49,14 @@ pub fn update(
             block_position,
             |lod_change| {
               match lod_change {
-                LODChange::Load(pos, lod, id) => {
+                LODChange::Load(pos, _, id) => {
                   terrain_game_loader.load(
                     timers,
                     cl,
                     id_allocator,
                     physics,
                     &pos,
-                    lod,
+                    LOD::Placeholder,
                     id,
                   );
                 },

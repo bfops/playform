@@ -65,14 +65,12 @@ impl<'a> Player<'a> {
         SurroundingsLoader::new(
           owner_allocator.allocate(),
           1,
-          Box::new(|_| LOD::LodIndex(0)),
           Box::new(|&: last, cur| cube_diff(last, cur, 1)),
         ),
       solid_boundary:
         SurroundingsLoader::new(
           owner_allocator.allocate(),
           1,
-          Box::new(|_| LOD::Placeholder),
           Box::new(|&: last, cur| cube_diff(last, cur, 1)),
         ),
     }
@@ -151,14 +149,14 @@ impl<'a> Player<'a> {
         block_position,
         |lod_change| {
           match lod_change {
-            LODChange::Load(pos, lod, id) => {
+            LODChange::Load(pos, _, id) => {
               terrain_game_loader.load(
                 timers,
                 cl,
                 id_allocator,
                 physics,
                 &pos,
-                lod,
+                LOD::LodIndex(0),
                 id,
               );
             },
@@ -178,14 +176,14 @@ impl<'a> Player<'a> {
         block_position,
         |lod_change| {
           match lod_change {
-            LODChange::Load(pos, lod, id) => {
+            LODChange::Load(pos, _, id) => {
               terrain_game_loader.load(
                 timers,
                 cl,
                 id_allocator,
                 physics,
                 &pos,
-                lod,
+                LOD::Placeholder,
                 id,
               );
             },

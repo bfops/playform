@@ -5,7 +5,7 @@ use common::*;
 use cube_shell::cube_diff;
 use gl::types::*;
 use id_allocator::IdAllocator;
-use lod_map::{LOD, OwnerId};
+use lod_map::OwnerId;
 use mob;
 use nalgebra::{Vec3, Pnt3, Norm};
 use nalgebra;
@@ -97,7 +97,6 @@ fn add_mob(
         SurroundingsLoader::new(
           owner_allocator.allocate(),
           1,
-          Box::new(|&: _| LOD::Placeholder),
           Box::new(|&: last, cur| cube_diff(last, cur, 1)),
         ),
     };

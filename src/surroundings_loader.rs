@@ -1,4 +1,4 @@
-use lod_map::{LOD, OwnerId};
+use lod_map::OwnerId;
 use std::cmp::max;
 use std::collections::RingBuf;
 use std::num::{Float, SignedInt};
@@ -16,10 +16,10 @@ pub fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
   max(max(dx, dy), dz)
 }
 
-// TODO: This should probably use a trait instead of boxed closures.
+// TODO: Should this use a trait instead of boxed closures?
 
 pub enum LODChange {
-  Load(BlockPosition, LOD, OwnerId),
+  Load(BlockPosition, i32, OwnerId),
   Unload(BlockPosition, OwnerId),
 }
 
@@ -27,7 +27,6 @@ pub enum LODChange {
 pub struct SurroundingsLoader<'a> {
   pub id: OwnerId,
   pub last_position: Option<BlockPosition>,
-  pub lod: Box<FnMut(i32) -> LOD + 'a>,
 
   pub max_load_distance: i32,
   pub to_load: Option<SurroundingsIter>,
@@ -40,7 +39,6 @@ impl<'a> SurroundingsLoader<'a> {
   pub fn new(
     id: OwnerId,
     max_load_distance: i32,
-    lod: Box<FnMut(i32) -> LOD + 'a>,
     lod_changes: Box<FnMut(&BlockPosition, &BlockPosition) -> Vec<BlockPosition> + 'a>,
   ) -> SurroundingsLoader<'a> {
     assert!(max_load_distance >= 0);
@@ -48,7 +46,6 @@ impl<'a> SurroundingsLoader<'a> {
     SurroundingsLoader {
       id: id,
       last_position: None,
-      lod: lod,
 
       to_load: None,
       max_load_distance: max_load_distance,
@@ -84,8 +81,7 @@ impl<'a> SurroundingsLoader<'a> {
         if distance > self.max_load_distance {
           lod_change(LODChange::Unload(block_position, self.id));
         } else {
-          let lod = (self.lod)(distance);
-          lod_change(LODChange::Load(block_position, lod, self.id));
+          lod_change(LODChange::Load(block_position, distance, self.id));
         }
       } else {
         let block_position =
@@ -94,8 +90,8 @@ impl<'a> SurroundingsLoader<'a> {
             Some(p) => p,
           };
 
-        let lod = (self.lod)(self.to_load.as_ref().unwrap().next_distance);
-        lod_change(LODChange::Load(block_position, lod, self.id));
+        let distance = self.to_load.as_ref().unwrap().next_distance;
+        lod_change(LODChange::Load(block_position, distance, self.id));
       }
     }
   }

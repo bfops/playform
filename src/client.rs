@@ -1,5 +1,5 @@
 use cube_shell::cube_diff;
-use lod_map::{LOD, OwnerId};
+use lod_map::OwnerId;
 use nalgebra::Pnt3;
 use player;
 use std::collections::HashMap;
@@ -33,7 +33,6 @@ impl<'a> Client<'a> {
         SurroundingsLoader::new(
           id,
           load_distance,
-          Box::new(|d| LOD::LodIndex(player::Player::lod_index(d))),
           Box::new(move |last, cur| {
             let mut vec = Vec::new();
             for &r in player::LOD_THRESHOLDS.iter() {

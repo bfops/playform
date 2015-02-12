@@ -1,6 +1,7 @@
 use client::Client;
 use client_update::{ServerToClient, ViewToClient};
-use lod_map::{LOD, OwnerId};
+use lod_map::OwnerId;
+use player;
 use server_update::ClientToServer;
 use std::old_io::timer;
 use std::sync::mpsc::{Sender, Receiver, TryRecvError};
@@ -47,12 +48,9 @@ pub fn client_thread(
       block_position,
       |lod_change| {
         match lod_change {
-          LODChange::Load(block_position, lod, _) => {
-            if let LOD::LodIndex(lod) = lod {
-              ups_to_server.send(ClientToServer::RequestBlock(block_position, lod)).unwrap();
-            } else {
-              panic!("Clients should not load placeholders.");
-            }
+          LODChange::Load(block_position, distance, _) => {
+            let lod = player::Player::lod_index(distance);
+            ups_to_server.send(ClientToServer::RequestBlock(block_position, lod)).unwrap();
           },
           LODChange::Unload(block_position, _) => {
             // If it wasn't loaded, don't unload anything.
