@@ -53,27 +53,25 @@ impl ClientToView {
         view.gl.set_background_color(color.r, color.g, color.b, 1.0);
       },
       ClientToView::AddBlock(block_position, block, lod) => {
-        if !block.ids.is_empty() {
-          let block_index =
-            view.terrain_buffers.push_block_data(
-              &mut view.gl,
-              block_position,
-              block.pixels.as_slice(),
-              lod,
-            );
-
-          let block_indices: Vec<_> =
-            repeat(block_index).take(block.ids.len()).collect();
-
-          view.terrain_buffers.push(
+        let block_index =
+          view.terrain_buffers.push_block_data(
             &mut view.gl,
-            block.vertex_coordinates.as_slice(),
-            block.normals.as_slice(),
-            block.coords.as_slice(),
-            block_indices.as_slice(),
-            block.ids.as_slice(),
+            block_position,
+            block.pixels.as_slice(),
+            lod,
           );
-        }
+
+        let block_indices: Vec<_> =
+          repeat(block_index).take(block.ids.len()).collect();
+
+        view.terrain_buffers.push(
+          &mut view.gl,
+          block.vertex_coordinates.as_slice(),
+          block.normals.as_slice(),
+          block.coords.as_slice(),
+          block_indices.as_slice(),
+          block.ids.as_slice(),
+        );
       },
       ClientToView::RemoveTerrain(id) => {
         view.terrain_buffers.swap_remove(&mut view.gl, id);

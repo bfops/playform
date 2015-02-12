@@ -47,17 +47,16 @@ pub fn client_thread(
       block_position,
       |lod_change| {
         match lod_change {
-          LODChange::Load(pos, lod, _) => {
-            match lod {
-              LOD::Placeholder => {},
-              LOD::LodIndex(lod) => {
-                ups_to_server.send(ClientToServer::RequestBlock(pos, lod)).unwrap();
-              },
-            };
+          LODChange::Load(block_position, lod, _) => {
+            if let LOD::LodIndex(lod) = lod {
+              ups_to_server.send(ClientToServer::RequestBlock(block_position, lod)).unwrap();
+            } else {
+              panic!("Clients should not load placeholders.");
+            }
           },
-          LODChange::Unload(pos, _) => {
+          LODChange::Unload(block_position, _) => {
             // If it wasn't loaded, don't unload anything.
-            loaded_blocks.remove(&pos).map(|(block, prev_lod)| {
+            loaded_blocks.remove(&block_position).map(|(block, prev_lod)| {
               for id in block.ids.iter() {
                 ups_to_view.send(RemoveTerrain(*id)).unwrap();
               }

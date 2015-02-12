@@ -125,7 +125,9 @@ impl ServerToClient {
           },
         };
 
-        ups_to_view.send(ClientToView::AddBlock(position, block, lod)).unwrap();
+        if !block.ids.is_empty() {
+          ups_to_view.send(ClientToView::AddBlock(position, block, lod)).unwrap();
+        }
       },
     }
   }
