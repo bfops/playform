@@ -5,7 +5,7 @@ use common::*;
 use cube_shell::cube_diff;
 use gl::types::*;
 use id_allocator::IdAllocator;
-use lod_map::OwnerId;
+use lod::OwnerId;
 use mob;
 use nalgebra::{Vec3, Pnt3, Norm};
 use nalgebra;

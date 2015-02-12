@@ -1,5 +1,5 @@
 use cube_shell::cube_diff;
-use lod_map::OwnerId;
+use lod::OwnerId;
 use nalgebra::Pnt3;
 use player;
 use std::collections::HashMap;

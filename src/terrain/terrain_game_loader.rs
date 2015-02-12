@@ -1,6 +1,6 @@
 use id_allocator::IdAllocator;
 use in_progress_terrain::InProgressTerrain;
-use lod_map::{LOD, OwnerId, LODMap};
+use lod::{LOD, OwnerId, LODMap};
 use noise::Seed;
 use opencl_context::CL;
 use physics::Physics;

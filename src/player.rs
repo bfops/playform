@@ -1,7 +1,7 @@
 use camera;
 use cube_shell::cube_diff;
 use id_allocator::IdAllocator;
-use lod_map::{LOD, OwnerId};
+use lod::{LOD, OwnerId};
 use nalgebra::{Pnt3, Vec3};
 use ncollide_entities::bounding_volume::AABB;
 use ncollide_queries::ray::{Ray, Ray3};

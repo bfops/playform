@@ -2,7 +2,7 @@ use client_update::ServerToClient;
 use id_allocator::IdAllocator;
 use init::world;
 use interval_timer::IntervalTimer;
-use lod_map::OwnerId;
+use lod::OwnerId;
 use opencl_context::CL;
 use server_update::ClientToServer;
 use std::time::duration::Duration;

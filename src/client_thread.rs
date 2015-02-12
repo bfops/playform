@@ -1,6 +1,6 @@
 use client::Client;
 use client_update::{ServerToClient, ViewToClient};
-use lod_map::OwnerId;
+use lod::OwnerId;
 use player;
 use server_update::ClientToServer;
 use std::old_io::timer;

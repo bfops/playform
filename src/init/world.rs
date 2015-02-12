@@ -1,7 +1,7 @@
 use client_update::ServerToClient;
 use id_allocator::IdAllocator;
 use init::mobs::make_mobs;
-use lod_map::OwnerId;
+use lod::OwnerId;
 use nalgebra::{Pnt3, Vec3};
 use ncollide_entities::bounding_volume::{AABB, AABB3};
 use opencl_context::CL;

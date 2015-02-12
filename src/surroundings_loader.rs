@@ -1,4 +1,4 @@
-use lod_map::OwnerId;
+use lod::OwnerId;
 use std::cmp::max;
 use std::collections::RingBuf;
 use std::num::{Float, SignedInt};

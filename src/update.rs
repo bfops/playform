@@ -3,7 +3,7 @@ use client_update::ServerToClient::*;
 use color::Color4;
 use common::*;
 use gl::types::*;
-use lod_map::LOD;
+use lod::LOD;
 use mob;
 use nalgebra::Vec3;
 use opencl_context::CL;
