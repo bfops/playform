@@ -3,17 +3,19 @@ use client_update::ServerToClient::*;
 use color::Color4;
 use common::*;
 use gl::types::*;
+use id_allocator::IdAllocator;
 use lod::LOD;
 use mob;
 use nalgebra::Vec3;
 use opencl_context::CL;
 use physics::Physics;
-use server::Server;
+use server::{EntityId, Server};
 use std::ops::{Deref, DerefMut};
 use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
 use surroundings_loader::LODChange;
 use terrain::terrain_block::BlockPosition;
+use terrain::terrain_game_loader::TerrainGameLoader;
 
 pub fn update(
   timers: &TimerSet,
@@ -47,29 +49,15 @@ pub fn update(
           let physics = &mut server.physics;
           mob.solid_boundary.update(
             block_position,
-            |lod_change| {
-              match lod_change {
-                LODChange::Load(pos, _, id) => {
-                  terrain_game_loader.load(
-                    timers,
-                    cl,
-                    id_allocator,
-                    physics,
-                    &pos,
-                    LOD::Placeholder,
-                    id,
-                  );
-                },
-                LODChange::Unload(pos, id) => {
-                  terrain_game_loader.unload(
-                    timers,
-                    physics,
-                    &pos,
-                    id,
-                  );
-                },
-              };
-            },
+            |lod_change|
+              load_placeholders(
+                timers,
+                cl,
+                id_allocator,
+                physics,
+                terrain_game_loader,
+                lod_change,
+              )
           );
         }
 
@@ -107,7 +95,7 @@ pub fn update(
     server.sun.update().map(|fraction| {
       client.send(UpdateSun(fraction)).unwrap();
     });
-  })
+  });
 }
 
 fn translate_mob(
@@ -128,5 +116,36 @@ fn translate_mob(
       .map(|&x| x)
       .collect();
     client.send(UpdateMob(mob.id, vec)).unwrap();
+  }
+}
+
+pub fn load_placeholders(
+  timers: &TimerSet,
+  cl: &CL,
+  id_allocator: &mut IdAllocator<EntityId>,
+  physics: &mut Physics,
+  terrain_game_loader: &mut TerrainGameLoader,
+  lod_change: LODChange,
+) {
+  match lod_change {
+    LODChange::Load(pos, _, id) => {
+      terrain_game_loader.load(
+        timers,
+        cl,
+        id_allocator,
+        physics,
+        &pos,
+        LOD::Placeholder,
+        id,
+      );
+    },
+    LODChange::Unload(pos, id) => {
+      terrain_game_loader.unload(
+        timers,
+        physics,
+        &pos,
+        id,
+      );
+    },
   }
 }

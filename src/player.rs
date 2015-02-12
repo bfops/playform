@@ -16,6 +16,7 @@ use surroundings_loader::{SurroundingsLoader, LODChange};
 use terrain::terrain;
 use terrain::terrain_block::BlockPosition;
 use terrain::terrain_game_loader::TerrainGameLoader;
+use update;
 
 pub const LOD_THRESHOLDS: [i32; 3] = [1, 8, 32];
 
@@ -174,29 +175,15 @@ impl<'a> Player<'a> {
 
       self.solid_boundary.update(
         block_position,
-        |lod_change| {
-          match lod_change {
-            LODChange::Load(pos, _, id) => {
-              terrain_game_loader.load(
-                timers,
-                cl,
-                id_allocator,
-                physics,
-                &pos,
-                LOD::Placeholder,
-                id,
-              );
-            },
-            LODChange::Unload(pos, id) => {
-              terrain_game_loader.unload(
-                timers,
-                physics,
-                &pos,
-                id,
-              );
-            },
-          }
-        },
+        |lod_change|
+          update::load_placeholders(
+            timers,
+            cl,
+            id_allocator,
+            physics,
+            terrain_game_loader,
+            lod_change,
+          )
       );
     });
 
