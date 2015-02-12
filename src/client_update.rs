@@ -50,13 +50,13 @@ impl ViewToClient {
 pub enum ServerToClient {
   UpdatePlayer(Pnt3<f32>),
 
-  AddMob((EntityId, Vec<ColoredVertex>)),
-  UpdateMob((EntityId, Vec<ColoredVertex>)),
+  AddMob(EntityId, Vec<ColoredVertex>),
+  UpdateMob(EntityId, Vec<ColoredVertex>),
 
   // The sun as a [0, 1) portion of its cycle.
   UpdateSun(f32),
 
-  AddBlock((BlockPosition, TerrainBlock, u32)),
+  AddBlock(BlockPosition, TerrainBlock, u32),
 }
 
 impl ServerToClient {
@@ -66,11 +66,11 @@ impl ServerToClient {
         client.player_position = position;
         ups_to_view.send(ClientToView::MoveCamera(position)).unwrap();
       },
-      ServerToClient::AddMob(v) => {
-        ups_to_view.send(ClientToView::AddMob(v)).unwrap();
+      ServerToClient::AddMob(id, v) => {
+        ups_to_view.send(ClientToView::AddMob(id, v)).unwrap();
       },
-      ServerToClient::UpdateMob(v) => {
-        ups_to_view.send(ClientToView::UpdateMob(v)).unwrap();
+      ServerToClient::UpdateMob(id, v) => {
+        ups_to_view.send(ClientToView::UpdateMob(id, v)).unwrap();
       },
       ServerToClient::UpdateSun(fraction) => {
         // Convert to radians.
@@ -106,7 +106,7 @@ impl ServerToClient {
 
         ups_to_view.send(ClientToView::SetClearColor(sun_color)).unwrap();
       },
-      ServerToClient::AddBlock((position, block, lod)) => {
+      ServerToClient::AddBlock(position, block, lod) => {
         match client.loaded_blocks.entry(position) {
           Vacant(entry) => {
             entry.insert((block.clone(), lod));
@@ -118,14 +118,14 @@ impl ServerToClient {
                 ups_to_view.send(ClientToView::RemoveTerrain(id)).unwrap();
               }
               ups_to_view.send(
-                ClientToView::RemoveBlockData((position, prev_lod))
+                ClientToView::RemoveBlockData(position, prev_lod)
               ).unwrap();
             }
             entry.insert((block.clone(), lod));
           },
         };
 
-        ups_to_view.send(ClientToView::AddBlock((position, block, lod))).unwrap();
+        ups_to_view.send(ClientToView::AddBlock(position, block, lod)).unwrap();
       },
     }
   }

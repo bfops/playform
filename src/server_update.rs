@@ -59,7 +59,7 @@ impl ClientToServer {
           lod,
           |block| {
             server_to_client.send(
-              ServerToClient::AddBlock((position, block.clone(), lod))
+              ServerToClient::AddBlock(position, block.clone(), lod)
             ).unwrap();
           },
         );

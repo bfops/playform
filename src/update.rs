@@ -126,6 +126,6 @@ fn translate_mob(
       .iter()
       .map(|&x| x)
       .collect();
-    client.send(UpdateMob((mob.id, vec))).unwrap();
+    client.send(UpdateMob(mob.id, vec)).unwrap();
   }
 }

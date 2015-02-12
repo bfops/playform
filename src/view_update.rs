@@ -11,16 +11,16 @@ use server::EntityId;
 pub enum ClientToView {
   MoveCamera(Pnt3<f32>),
 
-  AddMob((EntityId, Vec<ColoredVertex>)),
-  UpdateMob((EntityId, Vec<ColoredVertex>)),
+  AddMob(EntityId, Vec<ColoredVertex>),
+  UpdateMob(EntityId, Vec<ColoredVertex>),
 
   SetPointLight(Light),
   SetAmbientLight(Color3<f32>),
   SetClearColor(Color3<f32>),
 
-  AddBlock((BlockPosition, TerrainBlock, u32)),
+  AddBlock(BlockPosition, TerrainBlock, u32),
   RemoveTerrain(EntityId),
-  RemoveBlockData((BlockPosition, u32)),
+  RemoveBlockData(BlockPosition, u32),
 }
 
 impl ClientToView {
@@ -29,10 +29,10 @@ impl ClientToView {
       ClientToView::MoveCamera(position) => {
         view.camera.translate_to(position);
       },
-      ClientToView::AddMob((id, triangles)) => {
+      ClientToView::AddMob(id, triangles) => {
         view.mob_buffers.push(&mut view.gl, id, triangles.as_slice());
       },
-      ClientToView::UpdateMob((id, triangles)) => {
+      ClientToView::UpdateMob(id, triangles) => {
         view.mob_buffers.update(&mut view.gl, id, triangles.as_slice());
       },
       ClientToView::SetPointLight(light) => {
@@ -52,7 +52,7 @@ impl ClientToView {
       ClientToView::SetClearColor(color) => {
         view.gl.set_background_color(color.r, color.g, color.b, 1.0);
       },
-      ClientToView::AddBlock((block_position, block, lod)) => {
+      ClientToView::AddBlock(block_position, block, lod) => {
         if !block.ids.is_empty() {
           let block_index =
             view.terrain_buffers.push_block_data(
@@ -78,7 +78,7 @@ impl ClientToView {
       ClientToView::RemoveTerrain(id) => {
         view.terrain_buffers.swap_remove(&mut view.gl, id);
       },
-      ClientToView::RemoveBlockData((block_position, lod)) => {
+      ClientToView::RemoveBlockData(block_position, lod) => {
         view.terrain_buffers.free_block_data(lod, &block_position);
       },
     };

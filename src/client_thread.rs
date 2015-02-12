@@ -62,7 +62,7 @@ pub fn client_thread(
                 ups_to_view.send(RemoveTerrain(*id)).unwrap();
               }
 
-              ups_to_view.send(RemoveBlockData((block_position, prev_lod))).unwrap();
+              ups_to_view.send(RemoveBlockData(block_position, prev_lod)).unwrap();
             });
           },
         };
