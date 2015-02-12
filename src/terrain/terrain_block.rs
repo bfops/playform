@@ -1,6 +1,7 @@
 use color::Color3;
 use gl::types::*;
 use id_allocator::IdAllocator;
+use lod::LODIndex;
 use nalgebra::{Pnt2, Pnt3, Vec2, Vec3};
 use ncollide_entities::bounding_volume::{AABB, AABB3};
 use opencl_context::CL;
@@ -120,14 +121,14 @@ impl TerrainBlock {
     texture_generator: &TerrainTextureGenerator,
     treemap: &TreePlacer,
     position: &BlockPosition,
-    lod_index: u32,
+    lod_index: LODIndex,
   ) -> TerrainBlock {
     timers.time("update.generate_block", || {
       let mut block = TerrainBlock::empty();
 
       let position = position.to_world_position();
 
-      let lateral_samples = LOD_QUALITY[lod_index as usize] as u8;
+      let lateral_samples = LOD_QUALITY[lod_index.0 as usize] as u8;
       let sample_width = BLOCK_WIDTH as f32 / lateral_samples as f32;
 
       let mut any_tiles = false;
@@ -136,7 +137,7 @@ impl TerrainBlock {
         for dz in range(0, lateral_samples) {
           let dz = dz as f32;
           let tex_sample =
-            texture_generator::TEXTURE_WIDTH[lod_index as usize] as f32 / lateral_samples as f32;
+            texture_generator::TEXTURE_WIDTH[lod_index.0 as usize] as f32 / lateral_samples as f32;
           let tex_coord = Pnt2::new(dx, dz) * tex_sample;
           let tile_position = position + Vec3::new(dx, 0.0, dz) * sample_width;
           if TerrainBlock::add_tile(
@@ -179,7 +180,7 @@ impl TerrainBlock {
     tex_sample: f32,
     position: &Pnt3<f32>,
     tex_coord: Pnt2<f32>,
-    lod_index: u32,
+    lod_index: LODIndex,
   ) -> bool {
     let half_width = sample_width / 2.0;
     let center = hm.point_at(position.x + half_width, position.z + half_width);
@@ -255,7 +256,7 @@ impl TerrainBlock {
       );
 
       let polys =
-        (LOD_QUALITY[lod_index as usize] * LOD_QUALITY[lod_index as usize] * 4) as usize;
+        (LOD_QUALITY[lod_index.0 as usize] * LOD_QUALITY[lod_index.0 as usize] * 4) as usize;
       block.vertex_coordinates.reserve(polys);
       block.normals.reserve(polys);
       block.coords.reserve(polys);

@@ -5,9 +5,12 @@ use std::iter::IteratorExt;
 use std::ops::Add;
 use terrain::terrain_block::BlockPosition;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct LODIndex(pub u32);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LOD {
-  LodIndex(u32),
+  LodIndex(LODIndex),
   // An invisible solid block
   Placeholder,
 }

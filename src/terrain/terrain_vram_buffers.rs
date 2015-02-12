@@ -3,6 +3,7 @@ use color::Color3;
 use gl;
 use gl::types::*;
 use id_allocator::IdAllocator;
+use lod::LODIndex;
 use nalgebra::{Pnt2, Pnt3, Vec3};
 use shaders::terrain::TerrainShader;
 use server::EntityId;
@@ -210,7 +211,7 @@ impl<'a> TerrainVRAMBuffers<'a> {
     gl: &mut GLContext,
     id: BlockPosition,
     pixels: &[Color3<GLfloat>],
-    lod: u32,
+    lod: LODIndex,
   ) -> u32 {
     let block_idx;
     match self.free_list.pop() {
@@ -218,14 +219,14 @@ impl<'a> TerrainVRAMBuffers<'a> {
       Some(i) => block_idx = i,
     }
     self.lods.buffer.byte_buffer.bind(gl);
-    self.lods.buffer.update(gl, block_idx as usize, &[lod]);
+    self.lods.buffer.update(gl, block_idx as usize, &[lod.0]);
 
-    let len = texture_generator::TEXTURE_LEN[lod as usize];
+    let len = texture_generator::TEXTURE_LEN[lod.0 as usize];
     assert_eq!(len, pixels.len());
 
     let pixel_idx;
-    match self.pixels[lod as usize].push(gl, pixels, id) {
-      None => panic!("Ran out of texture VRAM for LOD: {}.", lod),
+    match self.pixels[lod.0 as usize].push(gl, pixels, id) {
+      None => panic!("Ran out of texture VRAM for LOD: {:?}.", lod),
       Some(i) => pixel_idx = i,
     };
 
@@ -237,13 +238,13 @@ impl<'a> TerrainVRAMBuffers<'a> {
     block_idx
   }
 
-  pub fn free_block_data(&mut self, lod: u32, id: &BlockPosition) -> bool {
+  pub fn free_block_data(&mut self, lod: LODIndex, id: &BlockPosition) -> bool {
     match self.block_to_index.remove(id) {
       None => false,
       Some(idx) => {
         self.free_list.push(idx);
-        let idx = self.pixels[lod as usize].block_to_index.remove(id).unwrap();
-        self.pixels[lod as usize].free_list.push(idx);
+        let idx = self.pixels[lod.0 as usize].block_to_index.remove(id).unwrap();
+        self.pixels[lod.0 as usize].free_list.push(idx);
         true
       }
     }

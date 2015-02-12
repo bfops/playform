@@ -1,4 +1,5 @@
 use client_update::ServerToClient;
+use lod::LODIndex;
 use nalgebra::{Vec2, Vec3};
 use opencl_context::CL;
 use server::Server;
@@ -12,7 +13,7 @@ pub enum ClientToServer {
   RotatePlayer(Vec2<f32>),
   StartJump,
   StopJump,
-  RequestBlock(BlockPosition, u32),
+  RequestBlock(BlockPosition, LODIndex),
   Quit,
 }
 
@@ -53,7 +54,7 @@ impl ClientToServer {
         server.terrain_game_loader.terrain.load(
           timers,
           cl,
-          &server.terrain_game_loader.texture_generators[lod as usize],
+          &server.terrain_game_loader.texture_generators[lod.0 as usize],
           &mut server.id_allocator,
           &position,
           lod,

@@ -1,5 +1,5 @@
 use cube_shell::cube_diff;
-use lod::OwnerId;
+use lod::{LODIndex, OwnerId};
 use nalgebra::Pnt3;
 use player;
 use std::collections::HashMap;
@@ -10,7 +10,7 @@ use terrain::terrain_vram_buffers;
 pub struct Client<'a> {
   pub player_position: Pnt3<f32>,
   pub surroundings_loader: SurroundingsLoader<'a>,
-  pub loaded_blocks: HashMap<BlockPosition, (TerrainBlock, u32)>,
+  pub loaded_blocks: HashMap<BlockPosition, (TerrainBlock, LODIndex)>,
 }
 
 impl<'a> Client<'a> {
@@ -19,7 +19,7 @@ impl<'a> Client<'a> {
       player::Player::load_distance(terrain_vram_buffers::POLYGON_BUDGET as i32);
 
     // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-    let max_load_distance = 80;
+    let max_load_distance = 10;
     if load_distance > max_load_distance {
       info!("load_distance {} capped at {}", load_distance, max_load_distance);
       load_distance = max_load_distance;

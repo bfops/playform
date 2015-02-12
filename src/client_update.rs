@@ -1,6 +1,7 @@
 use client::Client;
 use color::Color3;
 use light::Light;
+use lod::LODIndex;
 use nalgebra::{Vec2, Vec3, Pnt3};
 use server_update::ClientToServer;
 use std::cmp::partial_max;
@@ -56,7 +57,7 @@ pub enum ServerToClient {
   // The sun as a [0, 1) portion of its cycle.
   UpdateSun(f32),
 
-  AddBlock(BlockPosition, TerrainBlock, u32),
+  AddBlock(BlockPosition, TerrainBlock, LODIndex),
 }
 
 impl ServerToClient {

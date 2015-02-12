@@ -1,6 +1,7 @@
 use color::Color3;
-use nalgebra::Pnt3;
 use light::{Light, set_point_light, set_ambient_light};
+use lod::LODIndex;
+use nalgebra::Pnt3;
 use std::iter::repeat;
 use terrain::terrain_block::{BlockPosition, TerrainBlock};
 use vertex::ColoredVertex;
@@ -18,9 +19,9 @@ pub enum ClientToView {
   SetAmbientLight(Color3<f32>),
   SetClearColor(Color3<f32>),
 
-  AddBlock(BlockPosition, TerrainBlock, u32),
+  AddBlock(BlockPosition, TerrainBlock, LODIndex),
   RemoveTerrain(EntityId),
-  RemoveBlockData(BlockPosition, u32),
+  RemoveBlockData(BlockPosition, LODIndex),
 }
 
 impl ClientToView {

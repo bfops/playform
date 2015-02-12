@@ -1,4 +1,5 @@
 use id_allocator::IdAllocator;
+use lod::LODIndex;
 use noise::Seed;
 use opencl_context::CL;
 use server::EntityId;
@@ -57,7 +58,7 @@ impl Terrain {
     texture_generator: &TerrainTextureGenerator,
     id_allocator: &mut IdAllocator<EntityId>,
     position: &BlockPosition,
-    lod_index: u32,
+    lod_index: LODIndex,
     f: F,
   ) -> T
     where F: FnOnce(&TerrainBlock) -> T
@@ -67,12 +68,10 @@ impl Terrain {
 
     macro_rules! load_lod(
       ($mip_mesh: expr) => ({
-        let lod_index = lod_index as usize;
-        for _ in range_inclusive($mip_mesh.lods.len(), lod_index) {
+        for _ in range_inclusive($mip_mesh.lods.len(), lod_index.0 as usize) {
           $mip_mesh.lods.push(None);
         }
-        let mesh = $mip_mesh.lods.get_mut(lod_index).unwrap();
-        let lod_index = lod_index as u32;
+        let mesh = $mip_mesh.lods.get_mut(lod_index.0 as usize).unwrap();
         if mesh.is_none() {
           *mesh = Some(
             TerrainBlock::generate(

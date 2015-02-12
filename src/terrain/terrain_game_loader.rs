@@ -80,7 +80,7 @@ impl TerrainGameLoader {
           self.terrain.load(
             timers,
             cl,
-            &self.texture_generators[target_lod as usize],
+            &self.texture_generators[target_lod.0 as usize],
             id_allocator,
             block_position,
             target_lod,
@@ -115,7 +115,7 @@ impl TerrainGameLoader {
             .unwrap()
             .lods
             .as_slice();
-          let block = lods[loaded_lod as usize].as_ref().unwrap();
+          let block = lods[loaded_lod.0 as usize].as_ref().unwrap();
           for id in block.ids.iter() {
             physics.remove_terrain(*id);
           }

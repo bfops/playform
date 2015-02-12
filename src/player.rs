@@ -1,7 +1,7 @@
 use camera;
 use cube_shell::cube_diff;
 use id_allocator::IdAllocator;
-use lod::{LOD, OwnerId};
+use lod::{LOD, LODIndex, OwnerId};
 use nalgebra::{Pnt3, Vec3};
 use ncollide_entities::bounding_volume::AABB;
 use ncollide_queries::ray::{Ray, Ray3};
@@ -157,7 +157,7 @@ impl<'a> Player<'a> {
                 id_allocator,
                 physics,
                 &pos,
-                LOD::LodIndex(0),
+                LOD::LodIndex(LODIndex(0)),
                 id,
               );
             },
@@ -265,7 +265,7 @@ impl<'a> Player<'a> {
     Ray::new(self.position, self.forward())
   }
 
-  pub fn lod_index(distance: i32) -> u32 {
+  pub fn lod_index(distance: i32) -> LODIndex {
     assert!(distance >= 0);
     let mut lod = 0;
     while
@@ -274,7 +274,7 @@ impl<'a> Player<'a> {
     {
       lod += 1;
     }
-    num::cast(lod).unwrap()
+    LODIndex(num::cast(lod).unwrap())
   }
 
   pub fn load_distance(mut polygon_budget: i32) -> i32 {

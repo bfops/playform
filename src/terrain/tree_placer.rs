@@ -2,6 +2,7 @@
 // for the basic idea used to generate these trees!
 
 use id_allocator::IdAllocator;
+use lod::LODIndex;
 use nalgebra::{Pnt2, Pnt3, Vec3, normalize};
 use ncollide_entities::bounding_volume::AABB;
 use rand::{Rng, SeedableRng, IsaacRng};
@@ -59,9 +60,9 @@ impl TreePlacer {
     mut center: Pnt3<f32>,
     id_allocator: &mut IdAllocator<EntityId>,
     block: &mut TerrainBlock,
-    lod_index: u32,
+    lod_index: LODIndex,
   ) {
-    let lod_index = lod_index as usize;
+    let lod_index = lod_index.0 as usize;
     let normals = [
       normalize(&Vec3::new(-1.0, -1.0, -1.0)),
       normalize(&Vec3::new(-1.0, -1.0,  1.0)),
