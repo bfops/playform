@@ -19,8 +19,8 @@ pub fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
 // TODO: This should probably use a trait instead of boxed closures.
 
 pub enum LODChange {
-  Increase(BlockPosition, LOD, OwnerId),
-  Decrease(BlockPosition, Option<LOD>, OwnerId),
+  Load(BlockPosition, LOD, OwnerId),
+  Unload(BlockPosition, OwnerId),
 }
 
 /// Keep surroundings loaded around a given world position.
@@ -82,10 +82,10 @@ impl<'a> SurroundingsLoader<'a> {
       if let Some(block_position) = self.to_recheck.pop_front() {
         let distance = radius_between(&position, &block_position);
         if distance > self.max_load_distance {
-          lod_change(LODChange::Decrease(block_position, None, self.id));
+          lod_change(LODChange::Unload(block_position, self.id));
         } else {
           let lod = (self.lod)(distance);
-          lod_change(LODChange::Decrease(block_position, Some(lod), self.id));
+          lod_change(LODChange::Load(block_position, lod, self.id));
         }
       } else {
         let block_position =
@@ -95,7 +95,7 @@ impl<'a> SurroundingsLoader<'a> {
           };
 
         let lod = (self.lod)(self.to_load.as_ref().unwrap().next_distance);
-        lod_change(LODChange::Increase(block_position, lod, self.id));
+        lod_change(LODChange::Load(block_position, lod, self.id));
       }
     }
   }

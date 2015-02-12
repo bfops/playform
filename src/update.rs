@@ -48,8 +48,8 @@ pub fn update(
             block_position,
             |lod_change| {
               match lod_change {
-                LODChange::Increase(pos, lod, id) => {
-                  terrain_game_loader.increase_lod(
+                LODChange::Load(pos, lod, id) => {
+                  terrain_game_loader.load(
                     timers,
                     cl,
                     id_allocator,
@@ -59,14 +59,11 @@ pub fn update(
                     id,
                   );
                 },
-                LODChange::Decrease(pos, lod, id) => {
-                  terrain_game_loader.decrease_lod(
+                LODChange::Unload(pos, id) => {
+                  terrain_game_loader.unload(
                     timers,
-                    cl,
-                    id_allocator,
                     physics,
                     &pos,
-                    lod,
                     id,
                   );
                 },

@@ -47,7 +47,7 @@ pub fn client_thread(
       block_position,
       |lod_change| {
         match lod_change {
-          LODChange::Increase(pos, lod, _) => {
+          LODChange::Load(pos, lod, _) => {
             match lod {
               LOD::Placeholder => {},
               LOD::LodIndex(lod) => {
@@ -55,23 +55,15 @@ pub fn client_thread(
               },
             };
           },
-          LODChange::Decrease(pos, lod, _) => {
-            match lod {
-              None => {
-                // If it wasn't loaded, don't unload anything.
-                loaded_blocks.remove(&pos).map(|(block, prev_lod)| {
-                  for id in block.ids.iter() {
-                    ups_to_view.send(RemoveTerrain(*id)).unwrap();
-                  }
+          LODChange::Unload(pos, _) => {
+            // If it wasn't loaded, don't unload anything.
+            loaded_blocks.remove(&pos).map(|(block, prev_lod)| {
+              for id in block.ids.iter() {
+                ups_to_view.send(RemoveTerrain(*id)).unwrap();
+              }
 
-                  ups_to_view.send(RemoveBlockData((block_position, prev_lod))).unwrap();
-                });
-              },
-              Some(LOD::Placeholder) => {},
-              Some(LOD::LodIndex(lod)) => {
-                ups_to_server.send(ClientToServer::RequestBlock(pos, lod)).unwrap();
-              },
-            };
+              ups_to_view.send(RemoveBlockData((block_position, prev_lod))).unwrap();
+            });
           },
         };
       },
