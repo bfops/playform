@@ -52,24 +52,24 @@ impl LODMap {
   }
 
   // Returns (previous `owner` LOD, LOD change)
-  pub fn increase_lod(
+  pub fn insert(
     &mut self,
     position: BlockPosition,
-    new_lod: LOD,
+    lod: LOD,
     owner: OwnerId,
   ) -> (Option<LOD>, Option<LODChange>) {
     match self.loaded.entry(position) {
       Entry::Vacant(entry) => {
         entry.insert(BlockLoadState {
-          owner_lods: vec!((owner, new_lod)),
-          loaded_lod: new_lod,
+          owner_lods: vec!((owner, lod)),
+          loaded_lod: lod,
         });
 
         (
           None,
           Some(LODChange {
             loaded: None,
-            desired: Some(new_lod),
+            desired: Some(lod),
           }),
         )
       },
@@ -79,16 +79,16 @@ impl LODMap {
         let prev_lod;
         match block_load_state.owner_lods.iter().position(|&(o, _)| o == owner) {
           None => {
-            block_load_state.owner_lods.push((owner, new_lod));
+            block_load_state.owner_lods.push((owner, lod));
             prev_lod = None;
           },
           Some(position) => {
-            let &mut (_, ref mut lod) = block_load_state.owner_lods.get_mut(position).unwrap();
-            if new_lod <= *lod {
-              return (None, None);
+            let &mut (_, ref mut cur_lod) = block_load_state.owner_lods.get_mut(position).unwrap();
+            prev_lod = Some(*cur_lod);
+            if lod == *cur_lod {
+              return (prev_lod, None);
             }
-            prev_lod = Some(*lod);
-            *lod = new_lod;
+            *cur_lod = lod;
           },
         };
 
@@ -114,10 +114,9 @@ impl LODMap {
   }
 
   // Returns (previous `owner` LOD, LOD change)
-  pub fn decrease_lod(
+  pub fn remove(
     &mut self,
     position: BlockPosition,
-    new_lod: Option<LOD>,
     owner: OwnerId,
   ) -> (Option<LOD>, Option<LODChange>) {
     match self.loaded.entry(position) {
@@ -131,21 +130,8 @@ impl LODMap {
             return (None, None);
           },
           Some(position) => {
-            match new_lod {
-              None => {
-                block_load_state.owner_lods.swap_remove(position);
-                prev_lod = None;
-              },
-              Some(new_lod) => {
-                let &mut (_, ref mut lod) =
-                  block_load_state.owner_lods.get_mut(position).unwrap();
-                if new_lod >= *lod {
-                  return (None, None);
-                }
-                prev_lod = Some(*lod);
-                *lod = new_lod;
-              }
-            }
+            let (_, lod) = block_load_state.owner_lods.swap_remove(position);
+            prev_lod = Some(lod);
           },
         };
 

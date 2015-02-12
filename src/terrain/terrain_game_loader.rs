@@ -50,7 +50,7 @@ impl TerrainGameLoader {
     owner: OwnerId,
   ) {
     let (_, mlod_change) =
-      self.lod_map.increase_lod(*block_position, target_lod, owner);
+      self.lod_map.insert(*block_position, target_lod, owner);
 
     let lod_change;
     match mlod_change {
@@ -132,7 +132,7 @@ impl TerrainGameLoader {
     owner: OwnerId,
   ) {
     let (_, mlod_change) =
-      self.lod_map.decrease_lod(*block_position, None, owner);
+      self.lod_map.remove(*block_position, owner);
 
     let lod_change;
     match mlod_change {
