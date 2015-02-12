@@ -6,6 +6,8 @@ use terrain::terrain_block::BlockPosition;
 #[cfg(test)]
 use std::collections::HashSet;
 #[cfg(test)]
+use nalgebra::Vec3;
+#[cfg(test)]
 use test::Bencher;
 
 #[inline]
@@ -192,10 +194,75 @@ fn test_simple_shell() {
     .map(|p| p.clone() + center.as_pnt().to_vec())
     .collect();
 
-  assert_eq!(expected, cube_shell(&center, radius).into_iter().collect());
+  let actual = cube_shell(&center, radius);
+  assert_eq!(expected, actual.into_iter().collect());
+}
+
+#[test]
+fn test_shell_no_dups() {
+  let center = BlockPosition::new(2, 0, -3);
+  let radius = 2;
+  let expected = cube_shell(&center, radius);
+  let actual: HashSet<BlockPosition> = expected.iter().map(|&x| x).collect();
+  assert_eq!(expected.len(), actual.len());
 }
 
 #[bench]
 fn simple_bench(_: &mut Bencher) {
   let _ = cube_shell(&BlockPosition::new(0, 0, 0), 100);
+}
+
+#[test]
+fn test_simple_diff() {
+  let from = BlockPosition::new(2, 0, -3);
+  let to = from + Vec3::new(-1, 2, 0);
+  let radius = 1;
+
+  let expected: HashSet<BlockPosition> = [
+      BlockPosition::new( 1,  0,  0),
+      BlockPosition::new( 1,  1,  0),
+      BlockPosition::new( 1, -1,  0),
+      BlockPosition::new( 1,  0,  1),
+      BlockPosition::new( 1,  1,  1),
+      BlockPosition::new( 1, -1,  1),
+      BlockPosition::new( 1,  0, -1),
+      BlockPosition::new( 1,  1, -1),
+      BlockPosition::new( 1, -1, -1),
+
+      BlockPosition::new( 0, -1,  0),
+      BlockPosition::new( 0,  0,  0),
+      BlockPosition::new( 1, -1,  0),
+      BlockPosition::new( 1,  0,  0),
+      BlockPosition::new(-1, -1,  0),
+      BlockPosition::new(-1,  0,  0),
+      BlockPosition::new( 0, -1, -1),
+      BlockPosition::new( 0,  0, -1),
+      BlockPosition::new( 1, -1, -1),
+      BlockPosition::new( 1,  0, -1),
+      BlockPosition::new(-1, -1, -1),
+      BlockPosition::new(-1,  0, -1),
+      BlockPosition::new( 0, -1,  1),
+      BlockPosition::new( 0,  0,  1),
+      BlockPosition::new( 1, -1,  1),
+      BlockPosition::new( 1,  0,  1),
+      BlockPosition::new(-1, -1,  1),
+      BlockPosition::new(-1,  0,  1),
+    ]
+    .iter()
+    .map(|p| p.clone() + from.as_pnt().to_vec())
+    .collect();
+
+  let actual = cube_diff(&from, &to, radius);
+  assert_eq!(expected, actual.into_iter().collect());
+}
+
+#[test]
+fn test_diff_no_dups() {
+  let from = BlockPosition::new(2, 0, -3);
+  let to = from + Vec3::new(-1, 2, 0);
+  let radius = 2;
+
+  let expected = cube_diff(&from, &to, radius);
+  let actual: HashSet<BlockPosition> = expected.iter().map(|&x| x).collect();
+  assert_eq!(expected.len(), actual.len());
 }
