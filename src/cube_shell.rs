@@ -79,47 +79,47 @@ pub fn cube_diff(
   let from = *from.as_pnt();
   let to = *to.as_pnt();
 
-  if from.x < to.x {
-    add_square!(
-      range_inclusive(from.x - radius, min(from.x + radius, to.x - radius)),
-      range_inclusive(from.y - radius, from.y + radius),
-      range_inclusive(from.z - radius, from.z + radius)
-    );
-  } else {
-    add_square!(
-      range_inclusive(max(from.x - radius, to.x + radius), from.x + radius),
-      range_inclusive(from.y - radius, from.y + radius),
-      range_inclusive(from.z - radius, from.z + radius)
-    );
-  }
+  add_square!(
+    if from.x < to.x {
+      range_inclusive(from.x - radius, min(from.x + radius, to.x - radius - 1))
+    } else {
+      range_inclusive(max(from.x - radius, to.x + radius + 1), from.x + radius)
+    },
+    range_inclusive(from.y - radius, from.y + radius),
+    range_inclusive(from.z - radius, from.z + radius)
+  );
 
-  if from.y < to.y {
-    add_square!(
-      range_inclusive(from.x - radius, from.x + radius),
-      range_inclusive(from.y - radius, min(from.y + radius, to.y - radius)),
-      range_inclusive(from.z - radius, from.z + radius)
-    );
-  } else {
-    add_square!(
-      range_inclusive(from.x - radius, from.x + radius),
-      range_inclusive(max(from.y - radius, to.y + radius), from.y + radius),
-      range_inclusive(from.z - radius, from.z + radius)
-    );
-  }
+  add_square!(
+    if from.x < to.x {
+      range_inclusive(to.x - radius, from.x + radius)
+    } else {
+      range_inclusive(from.x - radius, to.x + radius)
+    },
+    if from.y < to.y {
+      range_inclusive(from.y - radius, min(from.y + radius, to.y - radius - 1))
+    } else {
+      range_inclusive(max(from.y - radius, to.y + radius + 1), from.y + radius)
+    },
+    range_inclusive(from.z - radius, from.z + radius)
+  );
 
-  if from.z < to.z {
-    add_square!(
-      range_inclusive(from.x - radius, from.x + radius),
-      range_inclusive(from.y - radius, from.y + radius),
-      range_inclusive(from.z - radius, min(from.z + radius, to.z - radius))
-    );
-  } else {
-    add_square!(
-      range_inclusive(from.x - radius, from.x + radius),
-      range_inclusive(from.y - radius, from.y + radius),
-      range_inclusive(max(from.z - radius, to.z + radius), from.z + radius)
-    );
-  }
+  add_square!(
+    if from.x < to.x {
+      range_inclusive(to.x - radius, from.x + radius)
+    } else {
+      range_inclusive(from.x - radius, to.x + radius)
+    },
+    if from.y < to.y {
+      range_inclusive(to.y - radius, from.y + radius)
+    } else {
+      range_inclusive(from.y - radius, to.y + radius)
+    },
+    if from.z < to.z {
+      range_inclusive(from.z - radius, min(from.z + radius, to.z - radius - 1))
+    } else {
+      range_inclusive(max(from.z - radius, to.z + radius + 1), from.z + radius)
+    }
+  );
 
   ret
 }
