@@ -1,6 +1,6 @@
 [package]
 
-name = "playform"
+name = "playform-common"
 version = "0.0.0"
 authors = [
     "Ben Foppa <benjamin.foppa@gmail.com>",
@@ -33,17 +33,19 @@ debug = true
 rpath = false
 lto = false
 
-[[bin]]
-name = "playform"
+[lib]
+name = "common"
 path = "./src/mod.rs"
 
 [dependencies]
 log = "*"
+time = "*"
 
-[dependencies.playform-client]
-path = "./client/"
-version = "*"
+[dependencies.gl]
+git = "https://github.com/bjz/gl-rs"
 
-[dependencies.playform-server]
-path = "./server/"
-version = "*"
+[dependencies.nalgebra]
+git = "https://github.com/sebcrozet/nalgebra"
+
+[dependencies.ncollide_entities]
+git = "https://github.com/bfops/ncollide"

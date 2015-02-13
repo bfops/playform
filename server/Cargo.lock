@@ -1,10 +1,16 @@
 [root]
-name = "playform"
+name = "playform-server"
 version = "0.0.0"
 dependencies = [
  "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "playform-client 0.0.0",
- "playform-server 0.0.0",
+ "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
+ "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "ncollide_queries 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "noise 0.0.3 (git+https://github.com/bfops/noise-rs)",
+ "opencl 0.3.0-dev (git+https://github.com/bfops/rust-opencl)",
+ "playform-common 0.0.0",
+ "rand 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -43,7 +49,7 @@ source = "git+https://github.com/bjz/gl-rs#64d26f54d46640eff237db9e1aba4254ca514
 dependencies = [
  "khronos_api 0.0.5 (git+https://github.com/bjz/gl-rs)",
  "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "xml-rs 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
+ "xml-rs 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -121,26 +127,6 @@ version = "0.3.0-dev"
 source = "git+https://github.com/bfops/rust-opencl#ed146c2e3d1d5e86ce489a20c6f4db7a6d4c18d1"
 
 [[package]]
-name = "pkg-config"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "playform-client"
-version = "0.0.0"
-dependencies = [
- "gl 0.0.8 (git+https://github.com/bjz/gl-rs)",
- "libc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
- "playform-common 0.0.0",
- "sdl2 0.0.24 (git+https://github.com/bfops/rust-sdl2)",
- "sdl2-sys 0.0.23 (git+https://github.com/bfops/rust-sdl2)",
- "time 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
- "yaglw 0.0.0 (git+https://github.com/bfops/yaglw)",
-]
-
-[[package]]
 name = "playform-common"
 version = "0.0.0"
 dependencies = [
@@ -148,21 +134,6 @@ dependencies = [
  "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
  "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
- "time 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "playform-server"
-version = "0.0.0"
-dependencies = [
- "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
- "ncollide_queries 0.1.0 (git+https://github.com/bfops/ncollide)",
- "noise 0.0.3 (git+https://github.com/bfops/noise-rs)",
- "opencl 0.3.0-dev (git+https://github.com/bfops/rust-opencl)",
- "playform-common 0.0.0",
- "rand 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -181,25 +152,6 @@ version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "sdl2"
-version = "0.0.24"
-source = "git+https://github.com/bfops/rust-sdl2#64c7dfc67c26eea3610078511e5ab18771097bba"
-dependencies = [
- "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "sdl2-sys 0.0.23 (git+https://github.com/bfops/rust-sdl2)",
-]
-
-[[package]]
-name = "sdl2-sys"
-version = "0.0.23"
-source = "git+https://github.com/bfops/rust-sdl2#64c7dfc67c26eea3610078511e5ab18771097bba"
-dependencies = [
- "libc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "pkg-config 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "time"
 version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -210,18 +162,9 @@ dependencies = [
 
 [[package]]
 name = "xml-rs"
-version = "0.1.17"
+version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "yaglw"
-version = "0.0.0"
-source = "git+https://github.com/bfops/yaglw#dda421fcde6d4b8e59d3aca101b13858f9752c01"
-dependencies = [
- "gl 0.0.8 (git+https://github.com/bjz/gl-rs)",
- "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

@@ -1,0 +1,25 @@
+TARGET = Some("x86_64-unknown-linux-gnu")
+OPT_LEVEL = Some("0")
+TARGET = Some("x86_64-unknown-linux-gnu")
+HOST = Some("x86_64-unknown-linux-gnu")
+CC_x86_64-unknown-linux-gnu = None
+CC_x86_64_unknown_linux_gnu = None
+HOST_CC = None
+CC = None
+TARGET = Some("x86_64-unknown-linux-gnu")
+HOST = Some("x86_64-unknown-linux-gnu")
+CFLAGS_x86_64-unknown-linux-gnu = None
+CFLAGS_x86_64_unknown_linux_gnu = None
+HOST_CFLAGS = None
+CFLAGS = None
+CARGO_MANIFEST_DIR = Some("/home/ben/.cargo/registry/src/github.com-1ecc6299db9ec823/time-0.1.17")
+OUT_DIR = Some("/home/ben/sync/devl/rust/playform/common/target/build/time-3fdd29c1b6f5cc42/out")
+running: "cc" '"-O0"' '"-c"' '"-ffunction-sections"' '"-fdata-sections"' '"-m64"' '"-fPIC"' '"/home/ben/.cargo/registry/src/github.com-1ecc6299db9ec823/time-0.1.17/src/time_helpers.c"' '"-o"' '"/home/ben/sync/devl/rust/playform/common/target/build/time-3fdd29c1b6f5cc42/out/src/time_helpers.o"'
+TARGET = Some("x86_64-unknown-linux-gnu")
+HOST = Some("x86_64-unknown-linux-gnu")
+AR_x86_64-unknown-linux-gnu = None
+AR_x86_64_unknown_linux_gnu = None
+HOST_AR = None
+AR = None
+running: "ar" '"crus"' '"/home/ben/sync/devl/rust/playform/common/target/build/time-3fdd29c1b6f5cc42/out/libtime_helpers.a"' '"/home/ben/sync/devl/rust/playform/common/target/build/time-3fdd29c1b6f5cc42/out/src/time_helpers.o"'
+cargo:rustc-flags=-L native=/home/ben/sync/devl/rust/playform/common/target/build/time-3fdd29c1b6f5cc42/out -l static=time_helpers

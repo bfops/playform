@@ -14,15 +14,7 @@
 *.dummy
 *.exe
 *-test
-/bin/main
-/bin/test-internal
-/bin/test-external
 /doc/
 /target/
-/build/
+*/target/
 /.rust/
-rusti.sh
-watch.sh
-/examples/**
-!/examples/*.rs
-!/examples/assets/
