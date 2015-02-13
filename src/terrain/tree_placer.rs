@@ -10,6 +10,7 @@ use server::EntityId;
 use std::cmp::{partial_min, partial_max};
 use std::collections::RingBuf;
 use std::num::Float;
+use std::sync::Mutex;
 use terrain::terrain::LOD_QUALITY;
 use terrain::terrain_block::{TerrainBlock, BLOCK_WIDTH};
 
@@ -58,7 +59,7 @@ impl TreePlacer {
   pub fn place_tree(
     &self,
     mut center: Pnt3<f32>,
-    id_allocator: &mut IdAllocator<EntityId>,
+    id_allocator: &Mutex<IdAllocator<EntityId>>,
     block: &mut TerrainBlock,
     lod_index: LODIndex,
   ) {
@@ -110,8 +111,8 @@ impl TreePlacer {
             Pnt3::new(maxx, v3.y, maxz),
           );
 
-        let id1 = id_allocator.allocate();
-        let id2 = id_allocator.allocate();
+        let id1 = id_allocator.lock().unwrap().allocate();
+        let id2 = id_allocator.lock().unwrap().allocate();
         block.ids.push_all(&[id1, id2]);
 
         block.bounds.push((id1, bounds.clone()));

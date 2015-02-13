@@ -51,6 +51,20 @@ impl LODMap {
     }
   }
 
+  pub fn get<'a>(
+    &'a self,
+    position: &BlockPosition,
+    owner: OwnerId,
+  ) -> Option<(Option<LOD>, &'a Vec<(OwnerId, LOD)>)> {
+    self.loaded.get(position).map(|bls| {
+      let p = bls.owner_lods.iter().position(|&(o, _)| o == owner);
+      let lod = p.map(|p| bls.owner_lods[p].1);
+      (lod, &bls.owner_lods)
+    })
+  }
+
+  // TODO: Can probably get rid of the LODChange returns; we only assert with em.
+
   // Returns (previous `owner` LOD, LOD change)
   pub fn insert(
     &mut self,
@@ -122,51 +136,64 @@ impl LODMap {
     match self.loaded.entry(position) {
       Entry::Vacant(_) => (None, None),
       Entry::Occupied(mut entry) => {
-        let block_load_state = entry.get_mut();
+        let mut remove = false;
+        let r = {
+          let mut r = || {
+            let block_load_state = entry.get_mut();
 
-        let prev_lod;
-        match block_load_state.owner_lods.iter().position(|&(o, _)| o == owner) {
-          None => {
-            return (None, None);
-          },
-          Some(position) => {
-            let (_, lod) = block_load_state.owner_lods.swap_remove(position);
-            prev_lod = Some(lod);
-          },
-        };
+            let prev_lod;
+            match block_load_state.owner_lods.iter().position(|&(o, _)| o == owner) {
+              None => {
+                return (None, None);
+              },
+              Some(position) => {
+                let (_, lod) = block_load_state.owner_lods.swap_remove(position);
+                prev_lod = Some(lod);
+              },
+            };
 
-        let loaded_lod = block_load_state.loaded_lod;
+            let loaded_lod = block_load_state.loaded_lod;
 
-        let new_lod;
-        match block_load_state.owner_lods.iter().max_by(|&&(_, x)| x) {
-          None => {
-            return (
+            let new_lod;
+            match block_load_state.owner_lods.iter().max_by(|&&(_, x)| x) {
+              None => {
+                remove = true;
+                return (
+                  prev_lod,
+                  Some(LODChange {
+                    desired: None,
+                    loaded: Some(loaded_lod),
+                  }),
+                )
+              },
+              Some(&(_, lod)) => {
+                new_lod = lod;
+              },
+            }
+
+            if new_lod == loaded_lod {
+              // Already loaded at the right LOD.
+              return (prev_lod, None);
+            }
+
+            block_load_state.loaded_lod = new_lod;
+
+            (
               prev_lod,
               Some(LODChange {
-                desired: None,
                 loaded: Some(loaded_lod),
+                desired: Some(new_lod),
               }),
             )
-          },
-          Some(&(_, lod)) => {
-            new_lod = lod;
-          },
+          };
+          r()
+        };
+
+        if remove {
+          entry.remove();
         }
 
-        if new_lod == loaded_lod {
-          // Already loaded at the right LOD.
-          return (prev_lod, None);
-        }
-
-        block_load_state.loaded_lod = new_lod;
-
-        (
-          prev_lod,
-          Some(LODChange {
-            loaded: Some(loaded_lod),
-            desired: Some(new_lod),
-          }),
-        )
+        r
       },
     }
   }

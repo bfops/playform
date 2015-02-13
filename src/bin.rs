@@ -37,6 +37,8 @@ mod color;
 mod common;
 mod cube_shell;
 mod fontloader;
+mod gaia_thread;
+mod gaia_update;
 mod id_allocator;
 mod in_progress_terrain;
 mod init;

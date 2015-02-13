@@ -1,16 +1,17 @@
 use camera;
 use cube_shell::cube_diff;
+use gaia_update::ServerToGaia;
 use id_allocator::IdAllocator;
 use lod::{LOD, LODIndex, OwnerId};
 use nalgebra::{Pnt3, Vec3};
 use ncollide_entities::bounding_volume::AABB;
 use ncollide_queries::ray::{Ray, Ray3};
-use opencl_context::CL;
 use physics::Physics;
 use server::EntityId;
 use std::f32::consts::PI;
 use std::iter::range_inclusive;
 use std::num;
+use std::sync::mpsc::Sender;
 use stopwatch::TimerSet;
 use surroundings_loader::{SurroundingsLoader, LODChange};
 use terrain::terrain;
@@ -141,10 +142,10 @@ impl<'a> Player<'a> {
   pub fn update(
     &mut self,
     timers: &TimerSet,
-    cl: &CL,
     terrain_game_loader: &mut TerrainGameLoader,
     id_allocator: &mut IdAllocator<EntityId>,
     physics: &mut Physics,
+    ups_to_gaia: &Sender<ServerToGaia>,
   ) {
     let block_position = BlockPosition::from_world_position(&self.position);
 
@@ -156,12 +157,12 @@ impl<'a> Player<'a> {
             LODChange::Load(pos, _, id) => {
               terrain_game_loader.load(
                 timers,
-                cl,
                 id_allocator,
                 physics,
                 &pos,
                 LOD::LodIndex(LODIndex(0)),
                 id,
+                ups_to_gaia,
               );
             },
             LODChange::Unload(pos, id) => {
@@ -181,10 +182,10 @@ impl<'a> Player<'a> {
         |lod_change|
           update::load_placeholders(
             timers,
-            cl,
             id_allocator,
             physics,
             terrain_game_loader,
+            ups_to_gaia,
             lod_change,
           )
       );

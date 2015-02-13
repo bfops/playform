@@ -4,7 +4,6 @@ use init::mobs::make_mobs;
 use lod::OwnerId;
 use nalgebra::{Pnt3, Vec3};
 use ncollide_entities::bounding_volume::{AABB, AABB3};
-use opencl_context::CL;
 use physics::Physics;
 use player::Player;
 use server::Server;
@@ -22,12 +21,11 @@ fn center(bounds: &AABB3<f32>) -> Pnt3<f32> {
 }
 
 pub fn init<'a, 'b:'a>(
-  cl: &CL,
   view: &Sender<ServerToClient>,
   owner_allocator: &mut IdAllocator<OwnerId>,
   timers: &TimerSet,
 ) -> Server<'b> {
-  let terrain_game_loader = TerrainGameLoader::new(cl);
+  let terrain_game_loader = TerrainGameLoader::new();
 
   let world_width: u32 = 1 << 11;
   let world_width = world_width as f32;
@@ -71,11 +69,12 @@ pub fn init<'a, 'b:'a>(
 
   Server {
     physics: physics,
-    id_allocator: id_allocator,
-    terrain_game_loader: terrain_game_loader,
     player: player,
     mobs: mobs,
     sun: Sun::new(SUN_TICK_NS),
+
+    id_allocator: id_allocator,
+    terrain_game_loader: terrain_game_loader,
   }
 }
 

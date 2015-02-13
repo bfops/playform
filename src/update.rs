@@ -2,12 +2,12 @@ use client_update::ServerToClient;
 use client_update::ServerToClient::*;
 use color::Color4;
 use common::*;
+use gaia_update::ServerToGaia;
 use gl::types::*;
 use id_allocator::IdAllocator;
 use lod::LOD;
 use mob;
 use nalgebra::Vec3;
-use opencl_context::CL;
 use physics::Physics;
 use server::{EntityId, Server};
 use std::ops::{Deref, DerefMut};
@@ -20,20 +20,20 @@ use terrain::terrain_game_loader::TerrainGameLoader;
 pub fn update(
   timers: &TimerSet,
   server: &mut Server,
-  client: &Sender<ServerToClient>,
-  cl: &CL,
+  ups_to_client: &Sender<ServerToClient>,
+  ups_to_gaia: &Sender<ServerToGaia>,
 ) {
   timers.time("update", || {
     timers.time("update.player", || {
       server.player.update(
         timers,
-        cl,
         &mut server.terrain_game_loader,
         &mut server.id_allocator,
         &mut server.physics,
+        ups_to_gaia,
       );
 
-      client.send(UpdatePlayer(server.player.position)).unwrap();
+      ups_to_client.send(UpdatePlayer(server.player.position)).unwrap();
     });
 
     timers.time("update.mobs", || {
@@ -52,10 +52,10 @@ pub fn update(
             |lod_change|
               load_placeholders(
                 timers,
-                cl,
                 id_allocator,
                 physics,
                 terrain_game_loader,
+                ups_to_gaia,
                 lod_change,
               )
           );
@@ -71,7 +71,7 @@ pub fn update(
         macro_rules! translate_mob(
           ($v:expr) => (
             translate_mob(
-              client,
+              ups_to_client,
               &mut server.physics,
               mob,
               $v
@@ -93,13 +93,13 @@ pub fn update(
     });
 
     server.sun.update().map(|fraction| {
-      client.send(UpdateSun(fraction)).unwrap();
+      ups_to_client.send(UpdateSun(fraction)).unwrap();
     });
   });
 }
 
 fn translate_mob(
-  client: &Sender<ServerToClient>,
+  ups_to_client: &Sender<ServerToClient>,
   physics: &mut Physics,
   mob: &mut mob::Mob,
   delta_p: Vec3<GLfloat>,
@@ -115,28 +115,29 @@ fn translate_mob(
       .iter()
       .map(|&x| x)
       .collect();
-    client.send(UpdateMob(mob.id, vec)).unwrap();
+    ups_to_client.send(UpdateMob(mob.id, vec)).unwrap();
   }
 }
 
+#[inline]
 pub fn load_placeholders(
   timers: &TimerSet,
-  cl: &CL,
   id_allocator: &mut IdAllocator<EntityId>,
   physics: &mut Physics,
   terrain_game_loader: &mut TerrainGameLoader,
+  ups_to_gaia: &Sender<ServerToGaia>,
   lod_change: LODChange,
 ) {
   match lod_change {
     LODChange::Load(pos, _, id) => {
       terrain_game_loader.load(
         timers,
-        cl,
         id_allocator,
         physics,
         &pos,
         LOD::Placeholder,
         id,
+        ups_to_gaia,
       );
     },
     LODChange::Unload(pos, id) => {

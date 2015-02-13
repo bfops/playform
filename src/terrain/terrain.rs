@@ -5,6 +5,7 @@ use opencl_context::CL;
 use server::EntityId;
 use std::collections::hash_map::{HashMap, Entry};
 use std::iter::range_inclusive;
+use std::sync::Mutex;
 use stopwatch::TimerSet;
 use terrain::heightmap::HeightMap;
 use terrain::terrain_block::{TerrainBlock, BlockPosition};
@@ -51,12 +52,13 @@ impl Terrain {
     }
   }
 
+  // TODO: Allow this to be performed in such a way that self is only briefly locked.
   pub fn load<F, T>(
     &mut self,
     timers: &TimerSet,
     cl: &CL,
     texture_generator: &TerrainTextureGenerator,
-    id_allocator: &mut IdAllocator<EntityId>,
+    id_allocator: &Mutex<IdAllocator<EntityId>>,
     position: &BlockPosition,
     lod_index: LODIndex,
     f: F,

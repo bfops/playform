@@ -9,6 +9,7 @@ use server::EntityId;
 use std::cmp::partial_max;
 use std::num::Float;
 use std::ops::Add;
+use std::sync::Mutex;
 use stopwatch::TimerSet;
 use terrain::terrain::LOD_QUALITY;
 use terrain::heightmap::HeightMap;
@@ -116,7 +117,7 @@ impl TerrainBlock {
   pub fn generate(
     timers: &TimerSet,
     cl: &CL,
-    id_allocator: &mut IdAllocator<EntityId>,
+    id_allocator: &Mutex<IdAllocator<EntityId>>,
     heightmap: &HeightMap,
     texture_generator: &TerrainTextureGenerator,
     treemap: &TreePlacer,
@@ -174,7 +175,7 @@ impl TerrainBlock {
     timers: &TimerSet,
     hm: &HeightMap,
     treemap: &TreePlacer,
-    id_allocator: &mut IdAllocator<EntityId>,
+    id_allocator: &Mutex<IdAllocator<EntityId>>,
     block: &mut TerrainBlock,
     sample_width: f32,
     tex_sample: f32,
@@ -239,7 +240,7 @@ impl TerrainBlock {
           let maxy = maxy.and_then(|m| partial_max(m, center.y));
           let maxy = maxy.unwrap();
 
-          let id = id_allocator.allocate();
+          let id = id_allocator.lock().unwrap().allocate();
 
           block.vertex_coordinates.push([*v1, *v2, center]);
           block.normals.push([*n1, *n2, center_normal]);
