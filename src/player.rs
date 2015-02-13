@@ -98,8 +98,11 @@ impl<'a> Player<'a> {
     loop {
       match physics.terrain_octree.intersect(&new_bounds, None) {
         None => {
-          Physics::reinsert(&mut physics.misc_octree, self.id, bounds, new_bounds);
-          self.position = self.position + v + Vec3::new(0.0, step_height, 0.0);
+          if Physics::reinsert(&mut physics.misc_octree, self.id, bounds, new_bounds).is_some() {
+            collided = true;
+          } else {
+            self.position = self.position + v + Vec3::new(0.0, step_height, 0.0);
+          }
           break;
         },
         Some((collision_bounds, _)) => {
