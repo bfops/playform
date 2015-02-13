@@ -44,7 +44,6 @@ mod in_progress_terrain;
 mod init;
 mod interval_timer;
 mod light;
-mod loader;
 mod lod;
 mod logger;
 mod main;
