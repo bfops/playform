@@ -107,6 +107,7 @@ impl ServerToClient {
 
         ups_to_view.send(ClientToView::SetClearColor(sun_color)).unwrap();
       },
+      // TODO: Is there a race where this block is stale by the time it gets to the client?
       ServerToClient::AddBlock(position, block, lod) => {
         match client.loaded_blocks.entry(position) {
           Vacant(entry) => {

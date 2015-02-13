@@ -74,6 +74,7 @@ impl<'a> SurroundingsLoader<'a> {
       self.last_position = Some(position);
     }
 
+    // TODO: figure out a better termination condition for this loop.
     let target_time = time::precise_time_ns() + BLOCK_UPDATE_BUDGET * 1000;
     while time::precise_time_ns() < target_time {
       if let Some(block_position) = self.to_recheck.pop_front() {

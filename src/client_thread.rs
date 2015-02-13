@@ -53,14 +53,15 @@ pub fn client_thread(
             ups_to_server.send(ClientToServer::RequestBlock(block_position, lod)).unwrap();
           },
           LODChange::Unload(block_position, _) => {
-            // If it wasn't loaded, don't unload anything.
-            loaded_blocks.remove(&block_position).map(|(block, prev_lod)| {
-              for id in block.ids.iter() {
-                ups_to_view.send(RemoveTerrain(*id)).unwrap();
-              }
+            loaded_blocks.remove(&block_position)
+              // If it wasn't loaded, don't unload anything.
+              .map(|(block, prev_lod)| {
+                for id in block.ids.iter() {
+                  ups_to_view.send(RemoveTerrain(*id)).unwrap();
+                }
 
-              ups_to_view.send(RemoveBlockData(block_position, prev_lod)).unwrap();
-            });
+                ups_to_view.send(RemoveBlockData(block_position, prev_lod)).unwrap();
+              });
           },
         };
       },

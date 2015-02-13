@@ -6,6 +6,7 @@ use server::EntityId;
 use std::collections::hash_map::{HashMap, Entry};
 use terrain::terrain_block::{BlockPosition, BLOCK_WIDTH};
 
+// TODO: Rename this to something more memorable.
 pub struct InProgressTerrain {
   pub blocks: HashMap<BlockPosition, EntityId>,
 }

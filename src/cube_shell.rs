@@ -57,6 +57,7 @@ pub fn cube_shell(center: &BlockPosition, radius: i32) -> Vec<BlockPosition> {
 }
 
 // TODO: This should return an iterator.
+// TODO: This should diff cube_shells instead of whole cubes.
 pub fn cube_diff(
   from: &BlockPosition,
   to: &BlockPosition,
@@ -265,4 +266,11 @@ fn test_diff_no_dups() {
   let expected = cube_diff(&from, &to, radius);
   let actual: HashSet<BlockPosition> = expected.iter().map(|&x| x).collect();
   assert_eq!(expected.len(), actual.len());
+}
+
+#[test]
+fn test_no_diff() {
+  let center = BlockPosition::new(-5, 1, -7);
+  let radius = 3;
+  assert!(cube_diff(&center, &center, radius).is_empty());
 }
