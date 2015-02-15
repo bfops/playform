@@ -1,13 +1,14 @@
 use common::communicate::{ClientToServer, ServerToClient};
 use common::id_allocator::IdAllocator;
 use common::interval_timer::IntervalTimer;
+use common::process_events::process_channel;
 use common::stopwatch::TimerSet;
 use gaia_thread::gaia_thread;
 use gaia_update::ServerToGaia;
 use server::Server;
 use server_update::{apply_client_to_server, apply_gaia_to_server};
 use std::old_io::timer;
-use std::sync::mpsc::{channel, Sender, Receiver, TryRecvError};
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::Mutex;
 use std::thread::Thread;
 use std::time::duration::Duration;
@@ -50,29 +51,24 @@ pub fn server_thread(
     update_timer = IntervalTimer::new(nanoseconds_per_second / UPDATES_PER_SECOND, now);
   }
 
-  'server_loop:loop {
-    'event_loop:loop {
-      match ups_from_client.try_recv() {
-        Err(TryRecvError::Empty) => break 'event_loop,
-        Err(e) => panic!("Error getting world updates: {:?}", e),
-        Ok(update) => {
-          if !apply_client_to_server(update, &mut world, &ups_to_client, &ups_to_gaia) {
-            ups_to_gaia.send(ServerToGaia::Quit).unwrap();
-            break 'server_loop;
-          }
-        },
-      }
-    };
-
-    'event_loop:loop {
-      match ups_from_gaia.try_recv() {
-        Err(TryRecvError::Empty) => break 'event_loop,
-        Err(e) => panic!("Error getting world updates: {:?}", e),
-        Ok(update) => {
-          apply_gaia_to_server(update, &timers, &mut world, &ups_to_client, &ups_to_gaia);
-        },
-      };
+  loop {
+    let quit =
+      !process_channel(
+        ups_from_client,
+        |update| apply_client_to_server(update, &mut world, &ups_to_client, &ups_to_gaia)
+      );
+    if quit {
+      ups_to_gaia.send(ServerToGaia::Quit).unwrap();
+      break;
     }
+
+    process_channel(
+      &ups_from_gaia,
+      |update| {
+        apply_gaia_to_server(update, &timers, &mut world, &ups_to_client, &ups_to_gaia);
+        true
+      },
+    );
 
     let updates = update_timer.update(time::precise_time_ns());
     if updates > 0 {

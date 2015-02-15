@@ -2,6 +2,7 @@
 
 use client_update::ViewToClient;
 use common::interval_timer::IntervalTimer;
+use common::process_events::process_channel;
 use common::stopwatch::TimerSet;
 use gl;
 use hud::make_hud;
@@ -13,7 +14,7 @@ use sdl2::event::Event;
 use sdl2::video;
 use std::mem;
 use std::old_io::timer;
-use std::sync::mpsc::{Sender, Receiver, TryRecvError};
+use std::sync::mpsc::{Sender, Receiver};
 use std::time::duration::Duration;
 use time;
 use view::View;
@@ -127,13 +128,13 @@ pub fn view_thread(
       }
     }
 
-    match ups_from_client.try_recv() {
-      Err(TryRecvError::Empty) => {},
-      Err(e) => panic!("Error getting view updates: {:?}", e),
-      Ok(update) => {
+    process_channel(
+      ups_from_client,
+      |update| {
         apply_client_to_view(update, &mut view);
+        true
       },
-    };
+    );
 
     let renders = render_timer.update(time::precise_time_ns());
     if renders > 0 {
