@@ -10,6 +10,8 @@ use vertex::ColoredVertex;
 #[derive(Debug, Clone)]
 /// Messages the client sends to the server.
 pub enum ClientToServer {
+  /// Notify the server that the client exists.
+  Init,
   /// Add a vector the player's acceleration.
   Walk(Vec3<f32>),
   /// Rotate the player by some amount.

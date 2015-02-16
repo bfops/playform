@@ -1,6 +1,3 @@
-use common::communicate::ServerToClient;
-use common::communicate::ServerToClient::*;
-use common::color::Color4;
 use common::cube_shell::cube_diff;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
@@ -13,7 +10,6 @@ use physics::Physics;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::sync::mpsc::Sender;
 use common::surroundings_loader::SurroundingsLoader;
 use terrain::terrain;
 use server::Server;
@@ -23,7 +19,6 @@ fn center(bounds: &AABB3<f32>) -> Pnt3<f32> {
 }
 
 pub fn init_mobs<'a>(
-  view: &Sender<ServerToClient>,
   physics: &mut Physics,
   id_allocator: &mut IdAllocator<EntityId>,
   owner_allocator: &mut IdAllocator<OwnerId>,
@@ -62,7 +57,6 @@ pub fn init_mobs<'a>(
   }
 
   add_mob(
-    view,
     physics,
     &mut mobs,
     id_allocator,
@@ -75,7 +69,6 @@ pub fn init_mobs<'a>(
 }
 
 fn add_mob(
-  view: &Sender<ServerToClient>,
   physics: &mut Physics,
   mobs: &mut HashMap<EntityId, Rc<RefCell<mob::Mob>>>,
   id_allocator: &mut IdAllocator<EntityId>,
@@ -100,13 +93,6 @@ fn add_mob(
         ),
     };
   let mob = Rc::new(RefCell::new(mob));
-
-  let triangles =
-    mob::Mob::to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
-    .iter()
-    .map(|&x| x)
-    .collect();
-  view.send(AddMob(id, triangles)).unwrap();
 
   physics.insert_misc(id, bounds);
   mobs.insert(id, mob);

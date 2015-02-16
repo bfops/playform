@@ -56,7 +56,7 @@ pub fn main(
 ) {
   let timers = TimerSet::new();
   let mut owner_allocator = IdAllocator::new();
-  let world = Server::new(&ups_to_client, &mut owner_allocator, &timers);
+  let world = Server::new(&mut owner_allocator, &timers);
 
   let (ups_to_gaia_send, ups_to_gaia_recv) = channel();
   let (ups_from_gaia_send, ups_from_gaia_recv) = channel();

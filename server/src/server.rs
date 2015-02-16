@@ -1,3 +1,4 @@
+use common::color::Color4;
 use common::communicate::ServerToClient;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
@@ -37,7 +38,6 @@ pub struct Server<'a> {
 impl<'a> Server<'a> {
   #[allow(missing_docs)]
   pub fn new<'b:'a>(
-    view: &Sender<ServerToClient>,
     owner_allocator: &mut IdAllocator<OwnerId>,
     timers: &TimerSet,
   ) -> Server<'b> {
@@ -58,7 +58,6 @@ impl<'a> Server<'a> {
     let mobs =
       timers.time("init_mobs", || {
         init_mobs(
-          view,
           &mut physics,
           &mut id_allocator,
           owner_allocator,
@@ -91,6 +90,18 @@ impl<'a> Server<'a> {
 
       id_allocator: id_allocator,
       terrain_game_loader: terrain_game_loader,
+    }
+  }
+
+  pub fn inform_client(&self, client: &Sender<ServerToClient>) {
+    for (&id, _) in self.mobs.iter() {
+      let bounds = self.physics.get_bounds(id).unwrap();
+      let triangles =
+        mob::Mob::to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
+        .iter()
+        .map(|&x| x)
+        .collect();
+      client.send(ServerToClient::AddMob(id, triangles)).unwrap();
     }
   }
 

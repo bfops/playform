@@ -29,6 +29,8 @@ pub fn client_thread(
 
   let mut client = Client::new(client_id);
 
+  ups_to_server.send(ClientToServer::Init).unwrap();
+
   loop {
     let quit =
       !process_channel(

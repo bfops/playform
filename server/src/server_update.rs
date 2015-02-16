@@ -13,6 +13,9 @@ pub fn apply_client_to_server(
   ups_to_gaia: &Sender<ServerToGaia>,
 ) -> bool {
   match up {
+    ClientToServer::Init => {
+      server.inform_client(ups_to_client);
+    },
     ClientToServer::Quit => {
       return false;
     },
