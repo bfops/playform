@@ -25,9 +25,12 @@ pub const FRAMES_PER_SECOND: u64 = 30;
 
 #[allow(missing_docs)]
 pub fn view_thread(
-  ups_from_client: &Receiver<ClientToView>,
-  ups_to_client: &Sender<ViewToClient>,
+  ups_from_client: Receiver<ClientToView>,
+  ups_to_client: Sender<ViewToClient>,
 ) {
+  let ups_from_client = &ups_from_client;
+  let ups_to_client = &ups_to_client;
+
   let timers = TimerSet::new();
 
   sdl2::init(sdl2::INIT_EVERYTHING);

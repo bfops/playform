@@ -65,15 +65,15 @@ pub fn main(
     Thread::spawn(move ||
       client_thread(
         client_id,
-        &ups_from_server,
-        &ups_to_server,
-        &view_to_client_recv,
-        &client_to_view_send,
+        ups_from_server,
+        ups_to_server,
+        view_to_client_recv,
+        client_to_view_send,
       )
     );
 
   view_thread(
-    &client_to_view_recv,
-    &view_to_client_send,
+    client_to_view_recv,
+    view_to_client_send,
   );
 }

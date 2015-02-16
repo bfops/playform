@@ -15,13 +15,18 @@ use view_update::ClientToView;
 use view_update::ClientToView::*;
 
 #[allow(missing_docs)]
-pub fn client_thread<'a, 'b>(
+pub fn client_thread(
   client_id: OwnerId,
-  ups_from_server: &'a Receiver<ServerToClient>,
-  ups_to_server: &'a Sender<ClientToServer>,
-  ups_from_view: &'b Receiver<ViewToClient>,
-  ups_to_view: &'b Sender<ClientToView>,
+  ups_from_server: Receiver<ServerToClient>,
+  ups_to_server: Sender<ClientToServer>,
+  ups_from_view: Receiver<ViewToClient>,
+  ups_to_view: Sender<ClientToView>,
 ) {
+  let ups_from_server = &ups_from_server;
+  let ups_to_server = &ups_to_server;
+  let ups_from_view = &ups_from_view;
+  let ups_to_view = &ups_to_view;
+
   let mut client = Client::new(client_id);
 
   loop {

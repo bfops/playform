@@ -1,6 +1,5 @@
 /// Creator of the earth.
 
-use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::process_events::process_channel;
 use common::stopwatch::TimerSet;
@@ -16,11 +15,15 @@ use terrain::terrain::Terrain;
 use terrain::texture_generator::TerrainTextureGenerator;
 
 pub fn gaia_thread(
-  ups_from_server: &Receiver<ServerToGaia>,
-  ups_to_server: &Sender<GaiaToServer>,
-  id_allocator: &Mutex<IdAllocator<EntityId>>,
+  ups_from_server: Receiver<ServerToGaia>,
+  ups_to_server: Sender<GaiaToServer>,
   terrain: Arc<Mutex<Terrain>>,
 ) {
+  let ups_from_server = &ups_from_server;
+  let ups_to_server = &ups_to_server;
+
+  let id_allocator = Mutex::new(IdAllocator::new());
+  let id_allocator = &id_allocator;
   let timers = TimerSet::new();
 
   let cl = unsafe {

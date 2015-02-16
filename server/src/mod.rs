@@ -42,15 +42,43 @@ mod terrain;
 mod update;
 
 use common::communicate::{ClientToServer, ServerToClient};
-use std::sync::mpsc::{Sender, Receiver};
+use common::id_allocator::IdAllocator;
+use common::stopwatch::TimerSet;
+use gaia_thread::gaia_thread;
+use server::Server;
+use std::sync::mpsc::{channel, Sender, Receiver};
+use std::thread::Thread;
 
 #[allow(missing_docs)]
 pub fn main(
   ups_from_client: Receiver<ClientToServer>,
   ups_to_client: Sender<ServerToClient>,
 ) {
+  let timers = TimerSet::new();
+  let mut owner_allocator = IdAllocator::new();
+  let world = Server::new(&ups_to_client, &mut owner_allocator, &timers);
+
+  let (ups_to_gaia_send, ups_to_gaia_recv) = channel();
+  let (ups_from_gaia_send, ups_from_gaia_recv) = channel();
+  let _gaia_thread = {
+    let terrain = world.terrain_game_loader.terrain.clone();
+    Thread::spawn(move || {
+      gaia_thread(
+        ups_to_gaia_recv,
+        ups_from_gaia_send,
+        terrain,
+      );
+    })
+  };
+  let ups_to_gaia = ups_to_gaia_send;
+  let ups_from_gaia = ups_from_gaia_recv;
+
   server_thread::server_thread(
-    &ups_from_client,
-    &ups_to_client,
+    timers,
+    world,
+    ups_from_client,
+    ups_to_client,
+    ups_from_gaia,
+    ups_to_gaia,
   )
 }
