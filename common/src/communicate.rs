@@ -2,12 +2,20 @@
 
 use block_position::BlockPosition;
 use entity::EntityId;
-use nalgebra::{Vec2, Vec3, Pnt3};
 use lod::LODIndex;
+use nalgebra::{Vec2, Vec3, Pnt3};
+use nanomsg::Socket;
+use process_events::{process_channel, process_socket};
+use rustc_serialize::{Encodable, Decodable, json};
+use std::old_io::timer;
+use std::sync::mpsc::{channel, Sender, Receiver};
+use std::thread::Thread;
+use std::time::duration::Duration;
 use terrain_block::TerrainBlock;
 use vertex::ColoredVertex;
 
 #[derive(Debug, Clone)]
+#[derive(RustcDecodable, RustcEncodable)]
 /// Messages the client sends to the server.
 pub enum ClientToServer {
   /// Notify the server that the client exists.
@@ -26,6 +34,8 @@ pub enum ClientToServer {
   Quit,
 }
 
+#[derive(Debug, Clone)]
+#[derive(RustcDecodable, RustcEncodable)]
 /// Messages the server sends to the client.
 pub enum ServerToClient {
   /// Update the player's position.
@@ -41,4 +51,72 @@ pub enum ServerToClient {
 
   /// Provide a block of terrain to a client.
   AddBlock(BlockPosition, TerrainBlock, LODIndex),
+}
+
+// TODO: This should be a struct SerialSocket<T> or something similar.
+// T should not vary for a given socket.
+/// Implements a function to serialize & send data.
+pub trait SendSerialized {
+  /// Serialize and send a request.
+  fn send<T>(&mut self, request: T) where T: Encodable;
+}
+
+impl SendSerialized for Socket {
+  fn send<T>(&mut self, request: T) where T: Encodable {
+    let request = json::encode(&request).unwrap();
+    if let Err(e) = self.write_all(request.as_bytes()) {
+      panic!("Error sending message: {:?}", e);
+    }
+    if let Err(e) = self.read_to_end() {
+      panic!("Error getting ack: {:?}", e);
+    }
+  }
+}
+
+/// Spawn a new thread to send messages to a socket and wait for acks.
+pub fn spark_socket_sender<T>(mut socket: Socket) -> Sender<T>
+  where T: Send + Encodable
+{
+  let (send, recv) = channel();
+
+  Thread::spawn(move || {
+    loop {
+      process_channel(
+        &recv,
+        |t| {
+          socket.send(t);
+          true
+        },
+      );
+
+      timer::sleep(Duration::milliseconds(0));
+    }
+  });
+
+  send
+}
+
+/// Spawn a new thread to read messages from a socket and ack.
+pub fn spark_socket_receiver<T>(mut socket: Socket) -> Receiver<T>
+  where T: Send + Decodable
+{
+  let (send, recv) = channel();
+
+  Thread::spawn(move || {
+    loop {
+      // TODO: This would run faster (i.e. clients would block less)
+      // if we sent the raw message and parsed it into T in the receiving thread.
+      process_socket(
+        &mut socket,
+        |t| {
+          send.send(t).unwrap();
+          true
+        },
+      );
+
+      timer::sleep(Duration::milliseconds(0));
+    }
+  });
+
+  recv
 }

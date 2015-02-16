@@ -17,11 +17,13 @@ extern crate common;
 #[macro_use]
 extern crate log;
 extern crate nalgebra;
+extern crate nanomsg;
 extern crate ncollide_entities;
 extern crate ncollide_queries;
 extern crate noise;
 extern crate opencl;
 extern crate rand;
+extern crate "rustc-serialize" as rustc_serialize;
 extern crate test;
 extern crate time;
 
@@ -41,25 +43,37 @@ mod sun;
 mod terrain;
 mod update;
 
-use common::communicate::{ClientToServer, ServerToClient};
+use common::communicate::{spark_socket_sender, spark_socket_receiver};
 use common::id_allocator::IdAllocator;
 use common::stopwatch::TimerSet;
 use gaia_thread::gaia_thread;
+use nanomsg::{Socket, Protocol};
 use server::Server;
-use std::sync::mpsc::{channel, Sender, Receiver};
+use std::sync::mpsc::channel;
 use std::thread::Thread;
 
 #[allow(missing_docs)]
 pub fn main(
-  ups_from_client: Receiver<ClientToServer>,
-  ups_to_client: Sender<ServerToClient>,
+  from_client_url: String,
+  to_client_url: String,
 ) {
   let timers = TimerSet::new();
   let mut owner_allocator = IdAllocator::new();
   let world = Server::new(&mut owner_allocator, &timers);
 
+  let mut ups_from_client = Socket::new(Protocol::Rep).unwrap();
+  let mut ups_to_client = Socket::new(Protocol::Req).unwrap();
+
+  let mut endpoints = Vec::new();
+  endpoints.push(ups_from_client.connect(from_client_url.as_slice()).unwrap());
+  endpoints.push(ups_to_client.connect(to_client_url.as_slice()).unwrap());
+
+  let ups_from_client = spark_socket_receiver(ups_from_client);
+  let ups_to_client = spark_socket_sender(ups_to_client);
+
   let (ups_to_gaia_send, ups_to_gaia_recv) = channel();
   let (ups_from_gaia_send, ups_from_gaia_recv) = channel();
+
   let _gaia_thread = {
     let terrain = world.terrain_game_loader.terrain.clone();
     Thread::spawn(move || {
@@ -70,15 +84,17 @@ pub fn main(
       );
     })
   };
-  let ups_to_gaia = ups_to_gaia_send;
-  let ups_from_gaia = ups_from_gaia_recv;
 
   server_thread::server_thread(
     timers,
     world,
     ups_from_client,
     ups_to_client,
-    ups_from_gaia,
-    ups_to_gaia,
-  )
+    ups_from_gaia_recv,
+    ups_to_gaia_send,
+  );
+
+  for mut endpoint in endpoints.into_iter() {
+    endpoint.shutdown().unwrap();
+  }
 }

@@ -5,7 +5,7 @@ use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::LODIndex;
 use common::block_position::BlockPosition;
-use common::terrain_block::{TEXTURE_WIDTH, TEXTURE_LEN};
+use common::terrain_block::{TEXTURE_WIDTH, TEXTURE_LEN, Triangle};
 use gl;
 use gl::types::*;
 use nalgebra::{Pnt2, Pnt3, Vec3};
@@ -26,9 +26,6 @@ use std::mem;
 pub const BYTE_BUDGET: usize = 64_000_000;
 pub const POLYGON_COST: usize = 100;
 pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
-
-/// A `T` for every vertex of a triangle.
-pub type Triangle<T> = [T; 3];
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
 pub struct TerrainBuffers<'a> {

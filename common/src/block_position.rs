@@ -7,6 +7,7 @@ use std::ops::Add;
 pub const BLOCK_WIDTH: i32 = 8;
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(RustcDecodable, RustcEncodable)]
 /// Position of blocks on an "infinite" regular grid.
 pub struct BlockPosition(Pnt3<i32>);
 

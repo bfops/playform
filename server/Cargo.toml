@@ -40,6 +40,7 @@ path = "./src/mod.rs"
 [dependencies]
 log = "*"
 rand = "*"
+rustc-serialize = "*"
 time = "*"
 
 [dependencies.playform-common]
@@ -60,3 +61,6 @@ git = "https://github.com/bfops/noise-rs"
 
 [dependencies.opencl]
 git = "https://github.com/bfops/rust-opencl"
+
+[dependencies.nanomsg]
+git = "https://github.com/thehydroimpulse/nanomsg.rs"

@@ -19,17 +19,39 @@ pub const TEXTURE_LEN: [usize; 4] = [
 /// Quality is the number of times the noise function is sampled along each axis.
 pub const LOD_QUALITY: [u16; 4] = [8, 4, 2, 1];
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
+#[derive(RustcDecodable, RustcEncodable)]
+/// [T; 3], but deriving RustcDecodable.
+pub struct Triangle<T> {
+  #[allow(missing_docs)]
+  pub v1: T,
+  #[allow(missing_docs)]
+  pub v2: T,
+  #[allow(missing_docs)]
+  pub v3: T,
+}
+
+/// Construct a triangle.
+pub fn tri<T>(v1: T, v2: T, v3: T) -> Triangle<T> {
+  Triangle {
+    v1: v1,
+    v2: v2,
+    v3: v3,
+  }
+}
+
+#[derive(Debug, Clone)]
+#[derive(RustcDecodable, RustcEncodable)]
 /// A small continguous chunk of terrain.
 pub struct TerrainBlock {
   // These Vecs must all be ordered the same way; each entry is the next triangle.
 
   /// Position of each vertex.
-  pub vertex_coordinates: Vec<[Pnt3<GLfloat>; 3]>,
+  pub vertex_coordinates: Vec<Triangle<Pnt3<GLfloat>>>,
   /// Vertex normals. These should be normalized!
-  pub normals: Vec<[Vec3<GLfloat>; 3]>,
+  pub normals: Vec<Triangle<Vec3<GLfloat>>>,
   /// Per-vertex indices into an array in `pixels`.
-  pub coords: Vec<[Pnt2<f32>; 3]>,
+  pub coords: Vec<Triangle<Pnt2<f32>>>,
   /// Entity IDs for each triangle.
   pub ids: Vec<EntityId>,
   // TODO: Change this back to a HashMap once initial capacity is zero for those.

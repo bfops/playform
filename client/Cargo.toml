@@ -40,6 +40,7 @@ path = "./src/mod.rs"
 [dependencies]
 libc = "*"
 log = "*"
+rustc-serialize = "*"
 time = "*"
 
 [dependencies.playform-common]
@@ -60,3 +61,6 @@ git = "https://github.com/bfops/yaglw"
 
 [dependencies.nalgebra]
 git = "https://github.com/sebcrozet/nalgebra"
+
+[dependencies.nanomsg]
+git = "https://github.com/thehydroimpulse/nanomsg.rs"

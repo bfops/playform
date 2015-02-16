@@ -6,6 +6,7 @@ use nalgebra::{Pnt2,Pnt3,Vec2,Vec3};
 use std::mem;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(RustcDecodable, RustcEncodable)]
 /// An untextured rendering vertex, with position and color.
 pub struct ColoredVertex {
   /// The 3-d position of this vertex in world space.
@@ -76,6 +77,7 @@ impl TextureVertex {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(RustcDecodable, RustcEncodable)]
 /// A point in the world with corresponding texture and normal data.
 ///
 /// The texture position is [0, 1].

@@ -3,7 +3,7 @@ use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::LODIndex;
 use common::stopwatch::TimerSet;
-use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, TEXTURE_WIDTH};
+use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, TEXTURE_WIDTH, tri};
 use nalgebra::{Pnt2, Pnt3, Vec2, Vec3};
 use ncollide_entities::bounding_volume::AABB;
 use opencl_context::CL;
@@ -141,9 +141,9 @@ fn add_tile<'a>(
 
         let id = id_allocator.lock().unwrap().allocate();
 
-        block.vertex_coordinates.push([*v1, *v2, center]);
-        block.normals.push([*n1, *n2, center_normal]);
-        block.coords.push([*t1, *t2, center_tex_coord]);
+        block.vertex_coordinates.push(tri(*v1, *v2, center));
+        block.normals.push(tri(*n1, *n2, center_normal));
+        block.coords.push(tri(*t1, *t2, center_tex_coord));
         block.ids.push(id);
         block.bounds.push((
           id,

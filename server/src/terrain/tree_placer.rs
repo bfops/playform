@@ -4,7 +4,7 @@
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::LODIndex;
-use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY};
+use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, tri};
 use nalgebra::{Pnt2, Pnt3, Vec3, normalize};
 use ncollide_entities::bounding_volume::AABB;
 use rand::{Rng, SeedableRng, IsaacRng};
@@ -95,9 +95,9 @@ impl TreePlacer {
         let v3 = corners[idx3];
         let v4 = corners[idx4];
 
-        block.vertex_coordinates.push_all(&[[v1, v2, v4], [v1, v4, v3]]);
-        block.normals.push_all(&[[n1, n2, n4], [n1, n4, n3]]);
-        block.coords.push_all(&[[coords, coords, coords], [coords, coords, coords]]);
+        block.vertex_coordinates.push_all(&[tri(v1, v2, v4), tri(v1, v4, v3)]);
+        block.normals.push_all(&[tri(n1, n2, n4), tri(n1, n4, n3)]);
+        block.coords.push_all(&[tri(coords, coords, coords), tri(coords, coords, coords)]);
 
         let minx = partial_min(v1.x, v2.x).unwrap();
         let maxx = partial_max(v1.x, v2.x).unwrap();

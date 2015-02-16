@@ -3,6 +3,7 @@ name = "playform"
 version = "0.0.0"
 dependencies = [
  "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nanomsg 0.3.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
  "playform-client 0.0.0",
  "playform-server 0.0.0",
 ]
@@ -68,6 +69,19 @@ source = "git+https://github.com/sebcrozet/nalgebra#4065341aa0967606e01e42820782
 dependencies = [
  "rustc-serialize 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "nanomsg"
+version = "0.3.1"
+source = "git+https://github.com/thehydroimpulse/nanomsg.rs#9f335991be9cd5dca51fa7154401e3d7da3e2d22"
+dependencies = [
+ "nanomsg-sys 0.1.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
+]
+
+[[package]]
+name = "nanomsg-sys"
+version = "0.1.1"
+source = "git+https://github.com/thehydroimpulse/nanomsg.rs#9f335991be9cd5dca51fa7154401e3d7da3e2d22"
 
 [[package]]
 name = "ncollide_entities"
@@ -139,7 +153,9 @@ dependencies = [
  "libc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
+ "nanomsg 0.3.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
  "playform-common 0.0.0",
+ "rustc-serialize 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "sdl2 0.0.25 (git+https://github.com/bfops/rust-sdl2)",
  "sdl2-sys 0.0.25 (git+https://github.com/bfops/rust-sdl2)",
  "time 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -153,7 +169,9 @@ dependencies = [
  "gl 0.0.8 (git+https://github.com/bjz/gl-rs)",
  "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
+ "nanomsg 0.3.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
  "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
+ "rustc-serialize 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -163,12 +181,14 @@ version = "0.0.0"
 dependencies = [
  "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
+ "nanomsg 0.3.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
  "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
  "ncollide_queries 0.1.0 (git+https://github.com/bfops/ncollide)",
  "noise 0.1.2 (git+https://github.com/bfops/noise-rs)",
  "opencl 0.3.0-dev (git+https://github.com/bfops/rust-opencl)",
  "playform-common 0.0.0",
  "rand 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

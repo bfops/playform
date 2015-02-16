@@ -47,3 +47,6 @@ version = "*"
 [dependencies.playform-server]
 path = "./server/"
 version = "*"
+
+[dependencies.nanomsg]
+git = "https://github.com/thehydroimpulse/nanomsg.rs"

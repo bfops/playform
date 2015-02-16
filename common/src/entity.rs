@@ -4,6 +4,7 @@ use std::default::Default;
 use std::ops::Add;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(RustcDecodable, RustcEncodable)]
 /// Unique ID for a loaded entity.
 pub struct EntityId(u32);
 

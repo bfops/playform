@@ -6,6 +6,7 @@
 #![feature(core)]
 #![feature(collections)]
 #![feature(hash)]
+#![feature(io)]
 #![feature(slicing_syntax)]
 #![feature(std_misc)]
 #![feature(test)]
@@ -16,7 +17,9 @@ extern crate gl;
 #[macro_use]
 extern crate log;
 extern crate nalgebra;
+extern crate nanomsg;
 extern crate ncollide_entities;
+extern crate "rustc-serialize" as rustc_serialize;
 extern crate test;
 extern crate time;
 

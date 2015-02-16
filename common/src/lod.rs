@@ -8,6 +8,7 @@ use std::ops::Add;
 use block_position::BlockPosition;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(RustcDecodable, RustcEncodable)]
 /// A strongly-typed index into various LOD-indexed arrays.
 /// 0 is the highest LOD.
 pub struct LODIndex(pub u32);

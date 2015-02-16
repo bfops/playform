@@ -1,5 +1,5 @@
 use common::color::Color4;
-use common::communicate::ServerToClient;
+use common::communicate::{ServerToClient, SendSerialized};
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::OwnerId;

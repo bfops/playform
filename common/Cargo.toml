@@ -39,6 +39,7 @@ path = "./src/mod.rs"
 
 [dependencies]
 log = "*"
+rustc-serialize = "*"
 time = "*"
 
 [dependencies.gl]
@@ -49,3 +50,6 @@ git = "https://github.com/sebcrozet/nalgebra"
 
 [dependencies.ncollide_entities]
 git = "https://github.com/bfops/ncollide"
+
+[dependencies.nanomsg]
+git = "https://github.com/thehydroimpulse/nanomsg.rs"
