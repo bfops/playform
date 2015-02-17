@@ -110,7 +110,10 @@ source = "git+https://github.com/bfops/noise-rs#11ea60395d187d7d6fb6932d1f01e4b4
 [[package]]
 name = "opencl"
 version = "0.3.0-dev"
-source = "git+https://github.com/bfops/rust-opencl#ed146c2e3d1d5e86ce489a20c6f4db7a6d4c18d1"
+source = "git+https://github.com/bfops/rust-opencl#aa693b710daff52e1253eebf6d87298a7167fa2b"
+dependencies = [
+ "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "playform-common"
