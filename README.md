@@ -12,8 +12,22 @@ Help is great! PRs and [issues](https://github.com/bfops/playform/issues) are ap
 
 ## Making it work
 
-Install the Rust compiler and `cargo`, as well as `libpng`, `SDL2` and `SDL2_ttf`.
-Run `cargo run`! `cargo run --release` for a slower build, but faster playform.
+Make sure you have:
+
+  * The Rust compiler and package manager, `cargo`.
+  * `libpng`
+  * `SDL2`
+  * `SDL2_ttf`
+  * libnanomsg
+
+At any point, `--release` can be appended onto `cargo build` or `cargo run` for a slower
+build, but a much more optimized result.
+
+Playform has a client and server, each of which have one socket to talk, and one to listen.
+
+The `device` folder contains a binary to forward packets between the client/server sockets.
+Once that's running, the server can be run from the `server` folder, and then the client
+can be run from the `client` folder.
 
 **Some dependencies may not build**. Look for forks that are updated for your `rustc`,
 and then point your `~/.cargo/config` at them.
@@ -32,9 +46,4 @@ One mob spawns that will play "tag" with you: tag it and it will chase you until
 
 If things are broken, like compile errors, problems getting it to start, crashes, etc.
 please consider opening an issue! If you can take the time to do it in a non-optimized
-build with `RUST_BACKTRACE` set, it would be much appreciated.
-
-If things are laggy, there are some constants scattered around that you can tweak;
-there are LOD settings in `player.rs`, `terrain/terrain.rs`, `terrain/tree_placer.rs`,
-`terrain/texture_generator.rs`, and probably other places. Also consider setting a (lower)
-`max_load_distance` in `init/mod.rs`.
+build with `RUST_BACKTRACE=1` and `RUST_LOG=debug` set, it would be much appreciated.
