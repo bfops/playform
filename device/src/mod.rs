@@ -1,12 +1,12 @@
 #![feature(std_misc)]
 
+extern crate env_logger;
 #[macro_use]
 extern crate log;
 extern crate nanomsg;
 
 extern crate common;
 
-use common::logger::Logger;
 use nanomsg::{Socket, Protocol};
 use std::thread::Thread;
 
@@ -16,10 +16,7 @@ const SERVER_TO_CLIENT_URL: &'static str = "ipc:///tmp/server_to_client.ipc";
 const CLIENT_FROM_SERVER_URL: &'static str = "ipc:///tmp/client_from_server.ipc";
 
 pub fn main() {
-  log::set_logger(|max_log_level| {
-    max_log_level.set(log::LogLevelFilter::Debug);
-    Box::new(Logger)
-  }).unwrap();
+  env_logger::init().unwrap();
 
   debug!("starting");
 

@@ -34,6 +34,7 @@ rpath = false
 lto = false
 
 [dependencies]
+env_logger = "*"
 log = "*"
 
 [[bin]]
