@@ -23,16 +23,18 @@ Make sure you have:
 At any point, `--release` can be appended onto `cargo build` or `cargo run` for a slower
 build, but a much more optimized result.
 
-Playform has a client and server, each of which have one socket to talk, and one to listen.
+Run the Playform server using `cargo run` in the `server` folder. It takes one parameter:
+the listen URL for the server. If you're only running locally, you can use something like
+`ipc:///tmp/server.ipc`.
 
-The `device` folder contains a binary to forward packets between the client/server sockets.
-Once that's running, the server can be run from the `server` folder, and then the client
-can be run from the `client` folder.
+The client can similarly be run with `cargo run` in the `client` folder. It takes two
+parameters: the listen URL of the client, and the listen URL of the server. Again, if
+running locally, you can use something like `ipc:///tmp/client.ipc` for the client.
 
 **Some dependencies may not build**. Look for forks that are updated for your `rustc`,
 and then point your `~/.cargo/config` at them.
 
-If you find `playform` itself won't build on the latest nightly, please open an issue or file a PR!
+If you find `playform` itself won't build on the latest `rustc`, please open an issue or file a PR!
 
 ## How to play
 

@@ -64,14 +64,14 @@ pub fn main() {
     panic!("Need only server listen URL as a parameter");
   }
 
-  let from_client_url = args.pop().unwrap();
+  let listen_url = args.pop().unwrap();
 
-  let mut ups_from_client = Socket::new(Protocol::Rep).unwrap();
+  let mut incoming = Socket::new(Protocol::Rep).unwrap();
 
   let mut endpoints = Vec::new();
-  endpoints.push(ups_from_client.connect(from_client_url.as_slice()).unwrap());
+  endpoints.push(incoming.bind(listen_url.as_slice()).unwrap());
 
-  let ups_from_client = spark_socket_receiver(ups_from_client);
+  let incoming = spark_socket_receiver(incoming);
 
   let timers = TimerSet::new();
   let world = Server::new(&timers);
@@ -96,7 +96,7 @@ pub fn main() {
     &timers,
     world,
     &mut endpoints,
-    ups_from_client,
+    incoming,
     ups_from_gaia_recv,
     ups_to_gaia_send,
   );

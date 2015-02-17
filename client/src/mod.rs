@@ -60,11 +60,10 @@ pub fn main() {
   debug!("starting");
 
   let mut args: Vec<String> = std::env::args().collect();
-  if args.len() != 4 {
-    panic!("Args sgould be: listen url, talk url, and the server's url to talk to us");
+  if args.len() != 3 {
+    panic!("Args should be: server's talk url, server's listen url.");
   }
 
-  let my_url = args.pop().unwrap();
   let to_server_url = args.pop().unwrap();
   let from_server_url = args.pop().unwrap();
 
@@ -75,7 +74,7 @@ pub fn main() {
   let mut ups_to_server = Socket::new(Protocol::Req).unwrap();
 
   let mut endpoints = Vec::new();
-  endpoints.push(ups_from_server.connect(from_server_url.as_slice()).unwrap());
+  endpoints.push(ups_from_server.bind(from_server_url.as_slice()).unwrap());
   endpoints.push(ups_to_server.connect(to_server_url.as_slice()).unwrap());
 
   let ups_from_server = spark_socket_receiver(ups_from_server);
@@ -84,7 +83,7 @@ pub fn main() {
   let _client_thread =
     Thread::spawn(move || {
       client_thread(
-        my_url,
+        from_server_url,
         ups_from_server,
         ups_to_server,
         view_to_client_recv,
