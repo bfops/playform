@@ -96,7 +96,7 @@ pub fn main() {
   };
 
   server_thread::server_thread(
-    timers,
+    &timers,
     world,
     &mut endpoints,
     ups_from_client,
@@ -107,6 +107,8 @@ pub fn main() {
   for mut endpoint in endpoints.into_iter() {
     endpoint.shutdown().unwrap();
   }
+
+  timers.print();
 
   debug!("finished");
 }

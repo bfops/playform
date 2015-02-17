@@ -58,4 +58,6 @@ pub fn gaia_thread(
 
     timer::sleep(Duration::milliseconds(0));
   }
+
+  timers.print();
 }
