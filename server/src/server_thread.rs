@@ -1,8 +1,9 @@
-use common::communicate::{ClientToServer, ServerToClient};
+use common::communicate::ClientToServer;
 use common::interval_timer::IntervalTimer;
 use common::process_events::process_channel;
 use common::stopwatch::TimerSet;
 use gaia_update::ServerToGaia;
+use nanomsg::Endpoint;
 use server::Server;
 use server_update::{GaiaToServer, apply_client_to_server, apply_gaia_to_server};
 use std::old_io::timer;
@@ -16,14 +17,13 @@ pub const UPDATES_PER_SECOND: u64 = 30;
 pub fn server_thread(
   timers: TimerSet,
   mut world: Server,
+  endpoints: &mut Vec<Endpoint>,
   ups_from_client: Receiver<ClientToServer>,
-  ups_to_client: Sender<ServerToClient>,
   ups_from_gaia: Receiver<GaiaToServer>,
   ups_to_gaia: Sender<ServerToGaia>,
 ) {
   let timers = &timers;
   let ups_from_client = &ups_from_client;
-  let ups_to_client = &ups_to_client;
   let ups_from_gaia = &ups_from_gaia;
   let ups_to_gaia = &ups_to_gaia;
 
@@ -38,7 +38,7 @@ pub fn server_thread(
     let quit =
       !process_channel(
         ups_from_client,
-        |update| apply_client_to_server(update, &mut world, ups_to_client, ups_to_gaia)
+        |update| apply_client_to_server(update, &mut world, endpoints, ups_to_gaia)
       );
     if quit {
       ups_to_gaia.send(ServerToGaia::Quit).unwrap();
@@ -48,14 +48,14 @@ pub fn server_thread(
     process_channel(
       &ups_from_gaia,
       |update| {
-        apply_gaia_to_server(update, &timers, &mut world, &ups_to_client, &ups_to_gaia);
+        apply_gaia_to_server(update, &timers, &mut world, &ups_to_gaia);
         true
       },
     );
 
     let updates = update_timer.update(time::precise_time_ns());
     if updates > 0 {
-      update(&timers, &mut world, &ups_to_client, &ups_to_gaia);
+      update(&timers, &mut world, &ups_to_gaia);
     }
 
     timer::sleep(Duration::milliseconds(0));

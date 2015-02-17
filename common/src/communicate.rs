@@ -2,7 +2,7 @@
 
 use block_position::BlockPosition;
 use entity::EntityId;
-use lod::LODIndex;
+use lod::{LODIndex, OwnerId};
 use nalgebra::{Vec2, Vec3, Pnt3};
 use nanomsg::Socket;
 use process_events::{process_channel, process_socket};
@@ -18,8 +18,8 @@ use vertex::ColoredVertex;
 #[derive(RustcDecodable, RustcEncodable)]
 /// Messages the client sends to the server.
 pub enum ClientToServer {
-  /// Notify the server that the client exists.
-  Init,
+  /// Notify the server that the client exists, and provide a "return address".
+  Init(String),
   /// Add a vector the player's acceleration.
   Walk(Vec3<f32>),
   /// Rotate the player by some amount.
@@ -38,6 +38,9 @@ pub enum ClientToServer {
 #[derive(RustcDecodable, RustcEncodable)]
 /// Messages the server sends to the client.
 pub enum ServerToClient {
+  /// Give the client an OwnerId for terrain load requests.
+  LeaseId(OwnerId),
+
   /// Update the player's position.
   UpdatePlayer(Pnt3<f32>),
 

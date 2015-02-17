@@ -1,10 +1,10 @@
 //! The client's "main" thread.
 
-use client::{Client, LOD_THRESHOLDS};
+use client::LOD_THRESHOLDS;
 use client_update::{ViewToClient, apply_view_to_client, apply_server_to_client};
 use common::block_position::BlockPosition;
 use common::communicate::{ClientToServer, ServerToClient};
-use common::lod::{LODIndex, OwnerId};
+use common::lod::LODIndex;
 use common::process_events::process_channel;
 use common::surroundings_loader::LODChange;
 use std::num;
@@ -16,7 +16,7 @@ use view_update::ClientToView::*;
 
 #[allow(missing_docs)]
 pub fn client_thread(
-  client_id: OwnerId,
+  my_url: String,
   ups_from_server: Receiver<ServerToClient>,
   ups_to_server: Sender<ClientToServer>,
   ups_from_view: Receiver<ViewToClient>,
@@ -27,9 +27,9 @@ pub fn client_thread(
   let ups_from_view = &ups_from_view;
   let ups_to_view = &ups_to_view;
 
-  let mut client = Client::new(client_id);
+  ups_to_server.send(ClientToServer::Init(my_url)).unwrap();
 
-  ups_to_server.send(ClientToServer::Init).unwrap();
+  let mut client = None;
 
   loop {
     let quit =
@@ -52,31 +52,33 @@ pub fn client_thread(
       },
     );
 
-    let block_position = BlockPosition::from_world_position(&client.player_position);
+    client.as_mut().map(|client| {
+      let block_position = BlockPosition::from_world_position(&client.player_position);
 
-    let loaded_blocks = &mut client.loaded_blocks;
-    client.surroundings_loader.update(
-      block_position,
-      |lod_change| {
-        match lod_change {
-          LODChange::Load(block_position, distance, _) => {
-            let lod = lod_index(distance);
-            ups_to_server.send(ClientToServer::RequestBlock(block_position, lod)).unwrap();
-          },
-          LODChange::Unload(block_position, _) => {
-            loaded_blocks.remove(&block_position)
-              // If it wasn't loaded, don't unload anything.
-              .map(|(block, prev_lod)| {
-                for id in block.ids.iter() {
-                  ups_to_view.send(RemoveTerrain(*id)).unwrap();
-                }
+      let loaded_blocks = &mut client.loaded_blocks;
+      client.surroundings_loader.update(
+        block_position,
+        |lod_change| {
+          match lod_change {
+            LODChange::Load(block_position, distance, _) => {
+              let lod = lod_index(distance);
+              ups_to_server.send(ClientToServer::RequestBlock(block_position, lod)).unwrap();
+            },
+            LODChange::Unload(block_position, _) => {
+              loaded_blocks.remove(&block_position)
+                // If it wasn't loaded, don't unload anything.
+                .map(|(block, prev_lod)| {
+                  for id in block.ids.iter() {
+                    ups_to_view.send(RemoveTerrain(*id)).unwrap();
+                  }
 
-                ups_to_view.send(RemoveBlockData(block_position, prev_lod)).unwrap();
-              });
-          },
-        };
-      },
-    );
+                  ups_to_view.send(RemoveBlockData(block_position, prev_lod)).unwrap();
+                });
+            },
+          };
+        },
+      );
+    });
 
     timer::sleep(Duration::milliseconds(0));
   }

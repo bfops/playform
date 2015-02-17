@@ -19,7 +19,6 @@ use terrain::terrain_game_loader::TerrainGameLoader;
 pub fn update(
   timers: &TimerSet,
   server: &mut Server,
-  ups_to_client: &Sender<ServerToClient>,
   ups_to_gaia: &Sender<ServerToGaia>,
 ) {
   timers.time("update", || {
@@ -32,7 +31,10 @@ pub fn update(
         ups_to_gaia,
       );
 
-      ups_to_client.send(UpdatePlayer(server.player.position)).unwrap();
+      let player_position = server.player.position;
+      server.to_client.as_mut().map(|client| {
+        client.send(UpdatePlayer(player_position)).unwrap();
+      });
     });
 
     timers.time("update.mobs", || {
@@ -70,7 +72,7 @@ pub fn update(
         macro_rules! translate_mob(
           ($v:expr) => (
             translate_mob(
-              ups_to_client,
+              server.to_client.as_mut(),
               &mut server.physics,
               mob,
               $v
@@ -92,13 +94,15 @@ pub fn update(
     });
 
     server.sun.update().map(|fraction| {
-      ups_to_client.send(UpdateSun(fraction)).unwrap();
+      server.to_client.as_mut().map(|client| {
+        client.send(UpdateSun(fraction)).unwrap();
+      });
     });
   });
 }
 
 fn translate_mob(
-  ups_to_client: &Sender<ServerToClient>,
+  to_client: Option<&mut Sender<ServerToClient>>,
   physics: &mut Physics,
   mob: &mut mob::Mob,
   delta_p: Vec3<f32>,
@@ -114,7 +118,7 @@ fn translate_mob(
       .iter()
       .map(|&x| x)
       .collect();
-    ups_to_client.send(UpdateMob(mob.id, vec)).unwrap();
+    to_client.map(|client| client.send(UpdateMob(mob.id, vec)).unwrap());
   }
 }
 

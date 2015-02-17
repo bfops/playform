@@ -46,7 +46,6 @@ mod view_update;
 
 use client_thread::client_thread;
 use common::communicate::{spark_socket_sender, spark_socket_receiver};
-use common::id_allocator::IdAllocator;
 use nanomsg::{Socket, Protocol};
 use std::sync::mpsc::channel;
 use std::thread::Thread;
@@ -56,13 +55,10 @@ use view_thread::view_thread;
 pub fn main(
   from_server_url: String,
   to_server_url: String,
+  my_url: String,
 ) {
   let (view_to_client_send, view_to_client_recv) = channel();
   let (client_to_view_send, client_to_view_recv) = channel();
-
-  let mut owner_alloc = IdAllocator::new();
-
-  let client_id = owner_alloc.allocate();
 
   let mut ups_from_server = Socket::new(Protocol::Rep).unwrap();
   let mut ups_to_server = Socket::new(Protocol::Req).unwrap();
@@ -77,7 +73,7 @@ pub fn main(
   let _client_thread =
     Thread::spawn(move || {
       client_thread(
-        client_id,
+        my_url,
         ups_from_server,
         ups_to_server,
         view_to_client_recv,

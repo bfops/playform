@@ -43,8 +43,7 @@ mod sun;
 mod terrain;
 mod update;
 
-use common::communicate::{spark_socket_sender, spark_socket_receiver};
-use common::id_allocator::IdAllocator;
+use common::communicate::spark_socket_receiver;
 use common::stopwatch::TimerSet;
 use gaia_thread::gaia_thread;
 use nanomsg::{Socket, Protocol};
@@ -55,21 +54,16 @@ use std::thread::Thread;
 #[allow(missing_docs)]
 pub fn main(
   from_client_url: String,
-  to_client_url: String,
 ) {
-  let timers = TimerSet::new();
-  let mut owner_allocator = IdAllocator::new();
-  let world = Server::new(&mut owner_allocator, &timers);
-
   let mut ups_from_client = Socket::new(Protocol::Rep).unwrap();
-  let mut ups_to_client = Socket::new(Protocol::Req).unwrap();
 
   let mut endpoints = Vec::new();
   endpoints.push(ups_from_client.connect(from_client_url.as_slice()).unwrap());
-  endpoints.push(ups_to_client.connect(to_client_url.as_slice()).unwrap());
 
   let ups_from_client = spark_socket_receiver(ups_from_client);
-  let ups_to_client = spark_socket_sender(ups_to_client);
+
+  let timers = TimerSet::new();
+  let world = Server::new(&timers);
 
   let (ups_to_gaia_send, ups_to_gaia_recv) = channel();
   let (ups_from_gaia_send, ups_from_gaia_recv) = channel();
@@ -88,8 +82,8 @@ pub fn main(
   server_thread::server_thread(
     timers,
     world,
+    &mut endpoints,
     ups_from_client,
-    ups_to_client,
     ups_from_gaia_recv,
     ups_to_gaia_send,
   );

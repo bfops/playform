@@ -49,13 +49,13 @@ pub fn main() {
     Thread::spawn(||
       server::main(
         String::from_str(SERVER_FROM_CLIENT_URL),
-        String::from_str(SERVER_TO_CLIENT_URL),
       )
     );
 
   client::main(
     String::from_str(CLIENT_FROM_SERVER_URL),
     String::from_str(CLIENT_TO_SERVER_URL),
+    String::from_str(SERVER_TO_CLIENT_URL),
   );
 
   debug!("finished");

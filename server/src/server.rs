@@ -32,13 +32,15 @@ pub struct Server<'a> {
   pub sun: Sun,
 
   pub id_allocator: IdAllocator<EntityId>,
+  pub owner_allocator: IdAllocator<OwnerId>,
   pub terrain_game_loader: TerrainGameLoader,
+
+  pub to_client: Option<Sender<ServerToClient>>,
 }
 
 impl<'a> Server<'a> {
   #[allow(missing_docs)]
   pub fn new<'b:'a>(
-    owner_allocator: &mut IdAllocator<OwnerId>,
     timers: &TimerSet,
   ) -> Server<'b> {
     let terrain_game_loader = TerrainGameLoader::new();
@@ -54,20 +56,21 @@ impl<'a> Server<'a> {
       );
 
     let mut id_allocator = IdAllocator::new();
+    let mut owner_allocator = IdAllocator::new();
 
     let mobs =
       timers.time("init_mobs", || {
         init_mobs(
           &mut physics,
           &mut id_allocator,
-          owner_allocator,
+          &mut owner_allocator,
         )
       });
 
     let player = {
       let mut player = Player::new(
         &mut id_allocator,
-        owner_allocator,
+        &mut owner_allocator,
       );
 
       let min = Pnt3::new(0.0, terrain::AMPLITUDE as f32, 4.0);
@@ -89,7 +92,10 @@ impl<'a> Server<'a> {
       sun: Sun::new(SUN_TICK_NS),
 
       id_allocator: id_allocator,
+      owner_allocator: owner_allocator,
       terrain_game_loader: terrain_game_loader,
+
+      to_client: None,
     }
   }
 

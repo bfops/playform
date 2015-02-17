@@ -14,6 +14,7 @@ use block_position::BlockPosition;
 pub struct LODIndex(pub u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(RustcDecodable, RustcEncodable)]
 /// Level of detail a block can be loaded at.
 pub enum LOD {
   /// Variable detail as an index into various LOD arrays.
@@ -221,6 +222,7 @@ pub struct LODChange {
 
 /// These are used to identify the owners of terrain load operations.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(RustcDecodable, RustcEncodable)]
 pub struct OwnerId(u32);
 
 impl Add<u32> for OwnerId {
