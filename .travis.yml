@@ -7,15 +7,10 @@ before_install:
 install:
   - wget http://download.nanomsg.org/nanomsg-0.5-beta.tar.gz
   - tar -xvzf nanomsg-0.5-beta.tar.gz
-  - cd nanomsg-0.5-beta && ./configure && make && sudo make install
-  - sudo ldconfig
-  - cd -
+  - ( cd nanomsg-0.5-beta && ./configure && make && sudo make install && sudo ldconfig )
   - sudo apt-get install -qq libportaudio-dev libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev opencl-headers fglrx
 
 script:
-  - cd device && cargo build --verbose
-  - cd -
-  - cd client && cargo test --verbose
-  - cd -
-  - cd server && cargo test --verbose
-  - cd -
+  - ( cd device && cargo build --verbose )
+  - ( cd client && cargo test --verbose )
+  - ( cd server && cargo test --verbose )
