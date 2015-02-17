@@ -38,6 +38,7 @@ name = "client"
 path = "./src/mod.rs"
 
 [dependencies]
+env_logger= "*"
 libc = "*"
 log = "*"
 rustc-serialize = "*"

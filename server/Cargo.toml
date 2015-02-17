@@ -38,6 +38,7 @@ name = "server"
 path = "./src/mod.rs"
 
 [dependencies]
+env_logger= "*"
 log = "*"
 rand = "*"
 rustc-serialize = "*"

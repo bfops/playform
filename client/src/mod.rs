@@ -15,6 +15,7 @@
 #![feature(unsafe_destructor)]
 
 extern crate common;
+extern crate env_logger;
 extern crate gl;
 #[macro_use]
 extern crate log;
@@ -47,7 +48,6 @@ mod view_update;
 
 use client_thread::client_thread;
 use common::communicate::{spark_socket_sender, spark_socket_receiver};
-use common::logger::Logger;
 use nanomsg::{Socket, Protocol};
 use std::sync::mpsc::channel;
 use std::thread::Thread;
@@ -55,10 +55,7 @@ use view_thread::view_thread;
 
 /// Entry point.
 pub fn main() {
-  log::set_logger(|max_log_level| {
-    max_log_level.set(log::LogLevelFilter::Debug);
-    Box::new(Logger)
-  }).unwrap();
+  env_logger::init().unwrap();
 
   debug!("starting");
 

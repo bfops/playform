@@ -15,6 +15,7 @@
 #![feature(unsafe_destructor)]
 
 extern crate common;
+extern crate env_logger;
 #[macro_use]
 extern crate log;
 extern crate nalgebra;
@@ -45,7 +46,6 @@ mod terrain;
 mod update;
 
 use common::communicate::spark_socket_receiver;
-use common::logger::Logger;
 use common::stopwatch::TimerSet;
 use gaia_thread::gaia_thread;
 use nanomsg::{Socket, Protocol};
@@ -55,10 +55,7 @@ use std::thread::Thread;
 
 #[allow(missing_docs)]
 pub fn main() {
-  log::set_logger(|max_log_level| {
-    max_log_level.set(log::LogLevelFilter::Debug);
-    Box::new(Logger)
-  }).unwrap();
+  env_logger::init().unwrap();
 
   debug!("starting");
 

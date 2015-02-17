@@ -30,7 +30,6 @@ pub mod entity;
 pub mod id_allocator;
 pub mod interval_timer;
 pub mod lod;
-pub mod logger;
 pub mod matrix;
 pub mod process_events;
 pub mod range_abs;
