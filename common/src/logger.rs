@@ -1,5 +1,8 @@
+//! Minimal logging struct.
+
 use log::{Log, LogLevel, LogRecord};
 
+/// Minimal logging struct.
 pub struct Logger;
 
 impl Log for Logger {

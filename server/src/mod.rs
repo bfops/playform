@@ -5,6 +5,7 @@
 
 #![feature(core)]
 #![feature(collections)]
+#![feature(env)]
 #![feature(hash)]
 #![feature(io)]
 #![feature(slicing_syntax)]
@@ -44,6 +45,7 @@ mod terrain;
 mod update;
 
 use common::communicate::spark_socket_receiver;
+use common::logger::Logger;
 use common::stopwatch::TimerSet;
 use gaia_thread::gaia_thread;
 use nanomsg::{Socket, Protocol};
@@ -52,9 +54,21 @@ use std::sync::mpsc::channel;
 use std::thread::Thread;
 
 #[allow(missing_docs)]
-pub fn main(
-  from_client_url: String,
-) {
+pub fn main() {
+  log::set_logger(|max_log_level| {
+    max_log_level.set(log::LogLevelFilter::Debug);
+    Box::new(Logger)
+  }).unwrap();
+
+  debug!("starting");
+
+  let mut args: Vec<String> = std::env::args().collect();
+  if args.len() != 2 {
+    panic!("Need only server listen URL as a parameter");
+  }
+
+  let from_client_url = args.pop().unwrap();
+
   let mut ups_from_client = Socket::new(Protocol::Rep).unwrap();
 
   let mut endpoints = Vec::new();
@@ -70,8 +84,10 @@ pub fn main(
 
   let _gaia_thread = {
     let terrain = world.terrain_game_loader.terrain.clone();
+    let id_allocator = world.id_allocator.clone();
     Thread::spawn(move || {
       gaia_thread(
+        id_allocator,
         ups_to_gaia_recv,
         ups_from_gaia_send,
         terrain,
@@ -91,4 +107,6 @@ pub fn main(
   for mut endpoint in endpoints.into_iter() {
     endpoint.shutdown().unwrap();
   }
+
+  debug!("finished");
 }

@@ -13,7 +13,6 @@
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 
-extern crate gl;
 #[macro_use]
 extern crate log;
 extern crate nalgebra;
@@ -31,6 +30,7 @@ pub mod entity;
 pub mod id_allocator;
 pub mod interval_timer;
 pub mod lod;
+pub mod logger;
 pub mod matrix;
 pub mod process_events;
 pub mod range_abs;

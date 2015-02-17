@@ -14,6 +14,7 @@ use physics::Physics;
 use server::Server;
 use std::ops::{Deref, DerefMut};
 use std::sync::mpsc::Sender;
+use std::sync::Mutex;
 use terrain::terrain_game_loader::TerrainGameLoader;
 
 pub fn update(
@@ -113,19 +114,21 @@ fn translate_mob(
     let bounds = physics.get_bounds(mob.id).unwrap();
     mob.position = mob.position + delta_p;
 
-    let vec =
-      mob::Mob::to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
-      .iter()
-      .map(|&x| x)
-      .collect();
-    to_client.map(|client| client.send(UpdateMob(mob.id, vec)).unwrap());
+    to_client.map(|client| {
+      let vec =
+        mob::Mob::to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
+        .iter()
+        .map(|&x| x)
+        .collect();
+      client.send(UpdateMob(mob.id, vec)).unwrap();
+    });
   }
 }
 
 #[inline]
 pub fn load_placeholders(
   timers: &TimerSet,
-  id_allocator: &mut IdAllocator<EntityId>,
+  id_allocator: &Mutex<IdAllocator<EntityId>>,
   physics: &mut Physics,
   terrain_game_loader: &mut TerrainGameLoader,
   ups_to_gaia: &Sender<ServerToGaia>,

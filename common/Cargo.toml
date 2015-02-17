@@ -42,9 +42,6 @@ log = "*"
 rustc-serialize = "*"
 time = "*"
 
-[dependencies.gl]
-git = "https://github.com/bjz/gl-rs"
-
 [dependencies.nalgebra]
 git = "https://github.com/sebcrozet/nalgebra"
 

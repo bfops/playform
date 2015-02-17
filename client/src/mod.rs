@@ -5,6 +5,7 @@
 
 #![feature(core)]
 #![feature(collections)]
+#![feature(env)]
 #![feature(io)]
 #![feature(path)]
 #![feature(slicing_syntax)]
@@ -46,17 +47,30 @@ mod view_update;
 
 use client_thread::client_thread;
 use common::communicate::{spark_socket_sender, spark_socket_receiver};
+use common::logger::Logger;
 use nanomsg::{Socket, Protocol};
 use std::sync::mpsc::channel;
 use std::thread::Thread;
 use view_thread::view_thread;
 
 /// Entry point.
-pub fn main(
-  from_server_url: String,
-  to_server_url: String,
-  my_url: String,
-) {
+pub fn main() {
+  log::set_logger(|max_log_level| {
+    max_log_level.set(log::LogLevelFilter::Debug);
+    Box::new(Logger)
+  }).unwrap();
+
+  debug!("starting");
+
+  let mut args: Vec<String> = std::env::args().collect();
+  if args.len() != 4 {
+    panic!("Args sgould be: listen url, talk url, and the server's url to talk to us");
+  }
+
+  let my_url = args.pop().unwrap();
+  let to_server_url = args.pop().unwrap();
+  let from_server_url = args.pop().unwrap();
+
   let (view_to_client_send, view_to_client_recv) = channel();
   let (client_to_view_send, client_to_view_recv) = channel();
 
@@ -89,4 +103,6 @@ pub fn main(
     client_to_view_recv,
     view_to_client_send,
   );
+
+  debug!("finished");
 }

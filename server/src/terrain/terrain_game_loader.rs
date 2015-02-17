@@ -34,7 +34,7 @@ impl TerrainGameLoader {
   pub fn load(
     &mut self,
     timers: &TimerSet,
-    id_allocator: &mut IdAllocator<EntityId>,
+    id_allocator: &Mutex<IdAllocator<EntityId>>,
     physics: &mut Physics,
     block_position: &BlockPosition,
     new_lod: LOD,

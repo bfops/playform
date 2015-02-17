@@ -2,7 +2,6 @@
 
 use color::Color3;
 use entity::EntityId;
-use gl::types::*;
 use nalgebra::{Pnt2, Pnt3, Vec3};
 use ncollide_entities::bounding_volume::AABB3;
 
@@ -47,16 +46,16 @@ pub struct TerrainBlock {
   // These Vecs must all be ordered the same way; each entry is the next triangle.
 
   /// Position of each vertex.
-  pub vertex_coordinates: Vec<Triangle<Pnt3<GLfloat>>>,
+  pub vertex_coordinates: Vec<Triangle<Pnt3<f32>>>,
   /// Vertex normals. These should be normalized!
-  pub normals: Vec<Triangle<Vec3<GLfloat>>>,
+  pub normals: Vec<Triangle<Vec3<f32>>>,
   /// Per-vertex indices into an array in `pixels`.
   pub coords: Vec<Triangle<Pnt2<f32>>>,
   /// Entity IDs for each triangle.
   pub ids: Vec<EntityId>,
   // TODO: Change this back to a HashMap once initial capacity is zero for those.
   /// Per-triangle bounding boxes.
-  pub bounds: Vec<(EntityId, AABB3<GLfloat>)>,
+  pub bounds: Vec<(EntityId, AABB3<f32>)>,
 
   /// Textures for this block.
   pub pixels: Vec<Color3<f32>>,

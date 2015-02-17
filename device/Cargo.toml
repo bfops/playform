@@ -1,6 +1,6 @@
 [package]
 
-name = "playform"
+name = "playform-device"
 version = "0.0.0"
 authors = [
     "Ben Foppa <benjamin.foppa@gmail.com>",
@@ -33,19 +33,15 @@ debug = true
 rpath = false
 lto = false
 
-[[bin]]
-name = "playform"
-path = "./src/mod.rs"
-
 [dependencies]
 log = "*"
 
-[dependencies.playform-client]
-path = "./client/"
-version = "*"
+[[bin]]
+name = "device"
+path = "./src/mod.rs"
 
-[dependencies.playform-server]
-path = "./server/"
+[dependencies.playform-common]
+path = "../common"
 version = "*"
 
 [dependencies.nanomsg]

@@ -13,6 +13,7 @@ use ncollide_queries::ray::{Ray, Ray3};
 use physics::Physics;
 use std::f32::consts::PI;
 use std::sync::mpsc::Sender;
+use std::sync::Mutex;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use update;
 
@@ -45,7 +46,7 @@ pub struct Player<'a> {
 
 impl<'a> Player<'a> {
   pub fn new(
-    id_allocator: &mut IdAllocator<EntityId>,
+    id: EntityId,
     owner_allocator: &mut IdAllocator<OwnerId>,
   ) -> Player<'a> {
     Player {
@@ -55,7 +56,7 @@ impl<'a> Player<'a> {
       walk_accel: Vec3::new(0.0, 0.0, 0.0),
       jump_fuel: 0,
       is_jumping: false,
-      id: id_allocator.allocate(),
+      id: id,
       lateral_rotation: 0.0,
       vertical_rotation: 0.0,
       surroundings_loader:
@@ -138,7 +139,7 @@ impl<'a> Player<'a> {
     &mut self,
     timers: &TimerSet,
     terrain_game_loader: &mut TerrainGameLoader,
-    id_allocator: &mut IdAllocator<EntityId>,
+    id_allocator: &Mutex<IdAllocator<EntityId>>,
     physics: &mut Physics,
     ups_to_gaia: &Sender<ServerToGaia>,
   ) {

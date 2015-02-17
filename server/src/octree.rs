@@ -271,7 +271,7 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
       OctreeContents::Leaf(ref mut vs) => {
         match vs.iter().position(|&(_, ref x)| *x == v) {
           None => {
-            warn!("{:?} was not found in the octree", v);
+            panic!("{:?} was not found in the octree", v);
           },
           Some(i) => {
             vs.swap_remove(i);

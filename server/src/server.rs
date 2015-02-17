@@ -13,8 +13,10 @@ use player::Player;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::f32::consts::PI;
+use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
 use sun::Sun;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
@@ -31,7 +33,7 @@ pub struct Server<'a> {
   pub mobs: HashMap<EntityId, Rc<RefCell<mob::Mob<'a>>>>,
   pub sun: Sun,
 
-  pub id_allocator: IdAllocator<EntityId>,
+  pub id_allocator: Arc<Mutex<IdAllocator<EntityId>>>,
   pub owner_allocator: IdAllocator<OwnerId>,
   pub terrain_game_loader: TerrainGameLoader,
 
@@ -55,21 +57,21 @@ impl<'a> Server<'a> {
         )
       );
 
-    let mut id_allocator = IdAllocator::new();
+    let id_allocator = Arc::new(Mutex::new(IdAllocator::new()));
     let mut owner_allocator = IdAllocator::new();
 
     let mobs =
       timers.time("init_mobs", || {
         init_mobs(
           &mut physics,
-          &mut id_allocator,
+          id_allocator.deref(),
           &mut owner_allocator,
         )
       });
 
     let player = {
       let mut player = Player::new(
-        &mut id_allocator,
+        id_allocator.lock().unwrap().allocate(),
         &mut owner_allocator,
       );
 

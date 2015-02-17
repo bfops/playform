@@ -33,7 +33,7 @@ debug = true
 rpath = false
 lto = false
 
-[lib]
+[[bin]]
 name = "server"
 path = "./src/mod.rs"
 

@@ -5,6 +5,7 @@ use common::stopwatch::TimerSet;
 use gaia_update::{ServerToGaia, LoadReason};
 use nanomsg::{Socket, Protocol, Endpoint};
 use server::Server;
+use std::ops::Deref;
 use std::sync::mpsc::Sender;
 
 pub fn apply_client_to_server(
@@ -20,6 +21,10 @@ pub fn apply_client_to_server(
       let client = spark_socket_sender(ups_to_client);
       // LeaseId should be the first message the client receives.
       client.send(ServerToClient::LeaseId(server.owner_allocator.allocate())).unwrap();
+      let player_position = server.player.position;
+      server.to_client.as_mut().map(|client| {
+        client.send(ServerToClient::UpdatePlayer(player_position)).unwrap();
+      });
       server.inform_client(&client);
       server.to_client = Some(client);
     },
@@ -97,7 +102,7 @@ pub fn apply_gaia_to_server(
         LoadReason::Local(owner) => {
           server.terrain_game_loader.load(
             timers,
-            &mut server.id_allocator,
+            server.id_allocator.deref(),
             &mut server.physics,
             &position,
             LOD::LodIndex(lod_index),

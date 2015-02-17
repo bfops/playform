@@ -6,6 +6,7 @@ use nalgebra::Vec3;
 use ncollide_entities::bounding_volume::AABB;
 use physics::Physics;
 use std::collections::hash_map::{HashMap, Entry};
+use std::sync::Mutex;
 
 // TODO: Rename this to something more memorable.
 pub struct InProgressTerrain {
@@ -22,14 +23,17 @@ impl InProgressTerrain {
   /// Mark a block as in-progress by making it solid.
   pub fn insert(
     &mut self,
-    id_allocator: &mut IdAllocator<EntityId>,
+    id_allocator: &Mutex<IdAllocator<EntityId>>,
     physics: &mut Physics,
     block_position: &BlockPosition,
   ) -> bool {
     match self.blocks.entry(*block_position) {
-      Entry::Occupied(_) => false,
+      Entry::Occupied(_) => {
+        warn!("Re-inserting {:?}", block_position);
+        false
+      },
       Entry::Vacant(entry) => {
-        let id = id_allocator.allocate();
+        let id = id_allocator.lock().unwrap().allocate();
         entry.insert(id);
 
         let low_corner = block_position.to_world_position();

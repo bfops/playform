@@ -10,6 +10,7 @@ use physics::Physics;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::Mutex;
 use common::surroundings_loader::SurroundingsLoader;
 use terrain::terrain;
 use server::Server;
@@ -20,7 +21,7 @@ fn center(bounds: &AABB3<f32>) -> Pnt3<f32> {
 
 pub fn init_mobs<'a>(
   physics: &mut Physics,
-  id_allocator: &mut IdAllocator<EntityId>,
+  id_allocator: &Mutex<IdAllocator<EntityId>>,
   owner_allocator: &mut IdAllocator<OwnerId>,
 ) -> HashMap<EntityId, Rc<RefCell<mob::Mob<'a>>>> {
   let mut mobs = HashMap::new();
@@ -71,12 +72,12 @@ pub fn init_mobs<'a>(
 fn add_mob(
   physics: &mut Physics,
   mobs: &mut HashMap<EntityId, Rc<RefCell<mob::Mob>>>,
-  id_allocator: &mut IdAllocator<EntityId>,
+  id_allocator: &Mutex<IdAllocator<EntityId>>,
   owner_allocator: &mut IdAllocator<OwnerId>,
   low_corner: Pnt3<f32>,
   behavior: mob::Behavior,
 ) {
-  let id = id_allocator.allocate();
+  let id = id_allocator.lock().unwrap().allocate();
   let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as f32));
 
   let mob =

@@ -1,5 +1,6 @@
 /// Creator of the earth.
 
+use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::process_events::process_channel;
 use common::stopwatch::TimerSet;
@@ -8,6 +9,7 @@ use gaia_update::ServerToGaia;
 use opencl_context::CL;
 use server_update::GaiaToServer;
 use std::old_io::timer;
+use std::ops::Deref;
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::{Arc, Mutex};
 use std::time::duration::Duration;
@@ -15,6 +17,7 @@ use terrain::terrain::Terrain;
 use terrain::texture_generator::TerrainTextureGenerator;
 
 pub fn gaia_thread(
+  id_allocator: Arc<Mutex<IdAllocator<EntityId>>>,
   ups_from_server: Receiver<ServerToGaia>,
   ups_to_server: Sender<GaiaToServer>,
   terrain: Arc<Mutex<Terrain>>,
@@ -22,8 +25,6 @@ pub fn gaia_thread(
   let ups_from_server = &ups_from_server;
   let ups_to_server = &ups_to_server;
 
-  let id_allocator = Mutex::new(IdAllocator::new());
-  let id_allocator = &id_allocator;
   let timers = TimerSet::new();
 
   let cl = unsafe {
@@ -45,7 +46,7 @@ pub fn gaia_thread(
           update.apply(
             &timers,
             &cl,
-            id_allocator,
+            id_allocator.deref(),
             terrain.clone(),
             &texture_generators,
             ups_to_server,
