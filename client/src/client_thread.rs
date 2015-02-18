@@ -36,8 +36,7 @@ pub fn client_thread(
       !process_channel(
         ups_from_view,
         |update| {
-          apply_view_to_client(update, ups_to_server);
-          true
+          apply_view_to_client(update, ups_to_server)
         },
       );
     if quit {
