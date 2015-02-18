@@ -59,12 +59,10 @@ pub fn main() {
 
   debug!("starting");
 
-  let mut args: Vec<String> = std::env::args().collect();
-  if args.len() != 2 {
-    panic!("Need only server listen URL as a parameter");
-  }
-
-  let listen_url = args.pop().unwrap();
+  let mut args = std::env::args();
+  args.next().unwrap();
+  let listen_url = args.next().unwrap_or(String::from_str("ipc:///tmp/server.ipc"));
+  assert!(args.next().is_none());
 
   let mut incoming = Socket::new(Protocol::Rep).unwrap();
 

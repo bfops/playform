@@ -59,13 +59,11 @@ pub fn main() {
 
   debug!("starting");
 
-  let mut args: Vec<String> = std::env::args().collect();
-  if args.len() != 3 {
-    panic!("Args should be: server's talk url, server's listen url.");
-  }
-
-  let to_server_url = args.pop().unwrap();
-  let from_server_url = args.pop().unwrap();
+  let mut args = std::env::args();
+  args.next().unwrap();
+  let listen_url = args.next().unwrap_or(String::from_str("ipc:///tmp/client.ipc"));
+  let server_listen_url = args.next().unwrap_or(String::from_str("ipc:///tmp/server.ipc"));
+  assert!(args.next().is_none());
 
   let (view_to_client_send, view_to_client_recv) = channel();
   let (client_to_view_send, client_to_view_recv) = channel();
@@ -74,8 +72,8 @@ pub fn main() {
   let mut ups_to_server = Socket::new(Protocol::Req).unwrap();
 
   let mut endpoints = Vec::new();
-  endpoints.push(ups_from_server.bind(from_server_url.as_slice()).unwrap());
-  endpoints.push(ups_to_server.connect(to_server_url.as_slice()).unwrap());
+  endpoints.push(ups_from_server.bind(listen_url.as_slice()).unwrap());
+  endpoints.push(ups_to_server.connect(server_listen_url.as_slice()).unwrap());
 
   let ups_from_server = spark_socket_receiver(ups_from_server);
   let ups_to_server = spark_socket_sender(ups_to_server);
@@ -83,7 +81,7 @@ pub fn main() {
   let _client_thread =
     Thread::spawn(move || {
       client_thread(
-        from_server_url,
+        listen_url,
         ups_from_server,
         ups_to_server,
         view_to_client_recv,
