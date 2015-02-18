@@ -4,13 +4,14 @@ use block_position::BlockPosition;
 use entity::EntityId;
 use lod::{LODIndex, OwnerId};
 use nalgebra::{Vec2, Vec3, Pnt3};
-use nanomsg::Socket;
+use nanomsg::{Endpoint, Socket, Protocol};
 use process_events::{process_channel, process_socket};
 use rustc_serialize::{Encodable, Decodable, json};
+use std::fmt::Debug;
 use std::old_io::timer;
 use std::sync::mpsc::{channel, Sender, Receiver};
-use std::thread::Thread;
 use std::time::duration::Duration;
+use std::thread::Thread;
 use terrain_block::TerrainBlock;
 use vertex::ColoredVertex;
 
@@ -56,53 +57,47 @@ pub enum ServerToClient {
   AddBlock(BlockPosition, TerrainBlock, LODIndex),
 }
 
-// TODO: This should be a struct SerialSocket<T> or something similar.
-// T should not vary for a given socket.
-/// Implements a function to serialize & send data.
-pub trait SendSerialized {
-  /// Serialize and send a request.
-  fn send<T>(&mut self, request: T) where T: Encodable;
-}
-
-impl SendSerialized for Socket {
-  fn send<T>(&mut self, request: T) where T: Encodable {
-    let request = json::encode(&request).unwrap();
-    if let Err(e) = self.write_all(request.as_bytes()) {
-      panic!("Error sending message: {:?}", e);
-    }
-    if let Err(e) = self.read_to_end() {
-      panic!("Error getting ack: {:?}", e);
-    }
-  }
-}
-
 /// Spawn a new thread to send messages to a socket and wait for acks.
-pub fn spark_socket_sender<T>(mut socket: Socket) -> Sender<T>
-  where T: Send + Encodable
+pub fn spark_socket_sender<T>(url: String) -> (Sender<T>, Endpoint)
+  where T: Send + Encodable + Debug
 {
+  let mut socket = Socket::new(Protocol::Req).unwrap();
+  let endpoint = socket.connect(url.as_slice()).unwrap();
+
   let (send, recv) = channel();
 
   Thread::spawn(move || {
     loop {
       process_channel(
         &recv,
-        |t| {
-          socket.send(t);
+        |request| {
+          let request = json::encode(&request).unwrap();
+          if let Err(e) = socket.write_all(request.as_bytes()) {
+            panic!("Error sending message: {:?}", e);
+          }
+          if let Err(e) = socket.read_to_end() {
+            panic!("Error getting ack: {:?}", e);
+          }
           true
-        },
+        }
       );
+
+      println!("thread done!");
 
       timer::sleep(Duration::milliseconds(0));
     }
   });
 
-  send
+  (send, endpoint)
 }
 
 /// Spawn a new thread to read messages from a socket and ack.
-pub fn spark_socket_receiver<T>(mut socket: Socket) -> Receiver<T>
+pub fn spark_socket_receiver<T>(url: String) -> (Receiver<T>, Endpoint)
   where T: Send + Decodable
 {
+  let mut socket = Socket::new(Protocol::Rep).unwrap();
+  let endpoint = socket.bind(url.as_slice()).unwrap();
+
   let (send, recv) = channel();
 
   Thread::spawn(move || {
@@ -121,5 +116,5 @@ pub fn spark_socket_receiver<T>(mut socket: Socket) -> Receiver<T>
     }
   });
 
-  recv
+  (recv, endpoint)
 }

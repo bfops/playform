@@ -17,15 +17,11 @@ use view_update::ClientToView::*;
 #[allow(missing_docs)]
 pub fn client_thread(
   my_url: String,
-  ups_from_server: Receiver<ServerToClient>,
-  ups_to_server: Sender<ClientToServer>,
-  ups_from_view: Receiver<ViewToClient>,
-  ups_to_view: Sender<ClientToView>,
+  ups_from_server: &Receiver<ServerToClient>,
+  ups_to_server: &Sender<ClientToServer>,
+  ups_from_view: &Receiver<ViewToClient>,
+  ups_to_view: &Sender<ClientToView>,
 ) {
-  let ups_from_server = &ups_from_server;
-  let ups_to_server = &ups_to_server;
-  let ups_from_view = &ups_from_view;
-  let ups_to_view = &ups_to_view;
 
   ups_to_server.send(ClientToServer::Init(my_url)).unwrap();
 

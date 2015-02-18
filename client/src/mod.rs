@@ -48,9 +48,8 @@ mod view_update;
 
 use client_thread::client_thread;
 use common::communicate::{spark_socket_sender, spark_socket_receiver};
-use nanomsg::{Socket, Protocol};
 use std::sync::mpsc::channel;
-use std::thread::Thread;
+use std::sync::Future;
 use view_thread::view_thread;
 
 /// Entry point.
@@ -68,35 +67,32 @@ pub fn main() {
   let (view_to_client_send, view_to_client_recv) = channel();
   let (client_to_view_send, client_to_view_recv) = channel();
 
-  let mut ups_from_server = Socket::new(Protocol::Rep).unwrap();
-  let mut ups_to_server = Socket::new(Protocol::Req).unwrap();
+  let (ups_from_server, mut listen_endpoint) = spark_socket_receiver(listen_url.clone());
+  let (ups_to_server, mut talk_endpoint) = spark_socket_sender(server_listen_url);
 
-  let mut endpoints = Vec::new();
-  endpoints.push(ups_from_server.bind(listen_url.as_slice()).unwrap());
-  endpoints.push(ups_to_server.connect(server_listen_url.as_slice()).unwrap());
-
-  let ups_from_server = spark_socket_receiver(ups_from_server);
-  let ups_to_server = spark_socket_sender(ups_to_server);
-
-  let _client_thread =
-    Thread::spawn(move || {
+  let client_thread =
+    Future::spawn(move || {
       client_thread(
         listen_url,
-        ups_from_server,
-        ups_to_server,
-        view_to_client_recv,
-        client_to_view_send,
+        &ups_from_server,
+        &ups_to_server,
+        &view_to_client_recv,
+        &client_to_view_send,
       );
 
-      for mut endpoint in endpoints.into_iter() {
-        endpoint.shutdown().unwrap();
-      }
+      (ups_from_server, ups_to_server, view_to_client_recv, client_to_view_send)
     });
 
   view_thread(
-    client_to_view_recv,
-    view_to_client_send,
+    &client_to_view_recv,
+    &view_to_client_send,
   );
 
-  debug!("finished");
+  let (_ups_from_server, _ups_to_server, _view_to_client_recv, _client_to_view_send) =
+    client_thread.into_inner();
+
+  listen_endpoint.shutdown().unwrap();
+  talk_endpoint.shutdown().unwrap();
+
+  debug!("Done.");
 }

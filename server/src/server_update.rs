@@ -3,7 +3,7 @@ use common::communicate::{ClientToServer, ServerToClient, spark_socket_sender};
 use common::lod::{LOD, LODIndex};
 use common::stopwatch::TimerSet;
 use gaia_update::{ServerToGaia, LoadReason};
-use nanomsg::{Socket, Protocol, Endpoint};
+use nanomsg::Endpoint;
 use server::Server;
 use std::ops::Deref;
 use std::sync::mpsc::Sender;
@@ -11,14 +11,13 @@ use std::sync::mpsc::Sender;
 pub fn apply_client_to_server(
   up: ClientToServer,
   server: &mut Server,
-  endpoints: &mut Vec<Endpoint>,
+  client_endpoints: &mut Vec<Endpoint>,
   ups_to_gaia: &Sender<ServerToGaia>,
 ) -> bool {
   match up {
     ClientToServer::Init(client_url) => {
-      let mut ups_to_client = Socket::new(Protocol::Req).unwrap();
-      endpoints.push(ups_to_client.connect(client_url.as_slice()).unwrap());
-      let client = spark_socket_sender(ups_to_client);
+      let (client, socket_thread) = spark_socket_sender(client_url);
+      client_endpoints.push(socket_thread);
       // LeaseId should be the first message the client receives.
       client.send(ServerToClient::LeaseId(server.owner_allocator.allocate())).unwrap();
       let player_position = server.player.position;

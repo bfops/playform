@@ -48,10 +48,9 @@ mod update;
 use common::communicate::spark_socket_receiver;
 use common::stopwatch::TimerSet;
 use gaia_thread::gaia_thread;
-use nanomsg::{Socket, Protocol};
 use server::Server;
 use std::sync::mpsc::channel;
-use std::thread::Thread;
+use std::sync::Future;
 
 #[allow(missing_docs)]
 pub fn main() {
@@ -64,12 +63,7 @@ pub fn main() {
   let listen_url = args.next().unwrap_or(String::from_str("ipc:///tmp/server.ipc"));
   assert!(args.next().is_none());
 
-  let mut incoming = Socket::new(Protocol::Rep).unwrap();
-
-  let mut endpoints = Vec::new();
-  endpoints.push(incoming.bind(listen_url.as_slice()).unwrap());
-
-  let incoming = spark_socket_receiver(incoming);
+  let (incoming, mut listen_endpoint) = spark_socket_receiver(listen_url);
 
   let timers = TimerSet::new();
   let world = Server::new(&timers);
@@ -77,29 +71,36 @@ pub fn main() {
   let (ups_to_gaia_send, ups_to_gaia_recv) = channel();
   let (ups_from_gaia_send, ups_from_gaia_recv) = channel();
 
-  let _gaia_thread = {
-    let terrain = world.terrain_game_loader.terrain.clone();
+  let gaia_thread = {
     let id_allocator = world.id_allocator.clone();
-    Thread::spawn(move || {
+    let terrain = world.terrain_game_loader.terrain.clone();
+    Future::spawn(move || {
       gaia_thread(
         id_allocator,
-        ups_to_gaia_recv,
-        ups_from_gaia_send,
+        &ups_to_gaia_recv,
+        &ups_from_gaia_send,
         terrain,
       );
+
+      (ups_to_gaia_recv, ups_from_gaia_send)
     })
   };
+
+  let mut client_endpoints = Vec::new();
 
   server_thread::server_thread(
     &timers,
     world,
-    &mut endpoints,
-    incoming,
-    ups_from_gaia_recv,
-    ups_to_gaia_send,
+    &mut client_endpoints,
+    &incoming,
+    &ups_from_gaia_recv,
+    &ups_to_gaia_send,
   );
 
-  for mut endpoint in endpoints.into_iter() {
+  let (_ups_to_gaia_recv, _ups_from_gaia_send) = gaia_thread.into_inner();
+
+  listen_endpoint.shutdown().unwrap();
+  for mut endpoint in client_endpoints.into_iter() {
     endpoint.shutdown().unwrap();
   }
 

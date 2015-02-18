@@ -17,15 +17,11 @@ pub const UPDATES_PER_SECOND: u64 = 30;
 pub fn server_thread(
   timers: &TimerSet,
   mut world: Server,
-  endpoints: &mut Vec<Endpoint>,
-  ups_from_client: Receiver<ClientToServer>,
-  ups_from_gaia: Receiver<GaiaToServer>,
-  ups_to_gaia: Sender<ServerToGaia>,
+  client_endpoints: &mut Vec<Endpoint>,
+  ups_from_client: &Receiver<ClientToServer>,
+  ups_from_gaia: &Receiver<GaiaToServer>,
+  ups_to_gaia: &Sender<ServerToGaia>,
 ) {
-  let ups_from_client = &ups_from_client;
-  let ups_from_gaia = &ups_from_gaia;
-  let ups_to_gaia = &ups_to_gaia;
-
   let mut update_timer;
   {
     let now = time::precise_time_ns();
@@ -37,7 +33,13 @@ pub fn server_thread(
     let quit =
       !process_channel(
         ups_from_client,
-        |update| apply_client_to_server(update, &mut world, endpoints, ups_to_gaia)
+        |update|
+          apply_client_to_server(
+            update,
+            &mut world,
+            client_endpoints,
+            ups_to_gaia,
+          )
       );
     if quit {
       ups_to_gaia.send(ServerToGaia::Quit).unwrap();
