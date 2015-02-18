@@ -11,6 +11,5 @@ install:
     sudo apt-get install -qq libportaudio-dev libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev opencl-headers fglrx
 
 script:
-  - ( cd device && cargo build --verbose ) &&
-    ( cd client && cargo test --verbose ) &&
+  - ( cd client && cargo test --verbose ) &&
     ( cd server && cargo test --verbose )
