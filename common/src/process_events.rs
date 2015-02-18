@@ -41,9 +41,6 @@ pub fn process_socket<T, Apply>(socket: &mut Socket, mut apply: Apply) -> bool
       }
       Err(e) => panic!("Error getting message from socket: {:?}", e),
       Ok(s) => {
-        // Send an ack.
-        socket.write_all(&[]).unwrap();
-
         let s = String::from_utf8(s).unwrap();
         let update = rustc_serialize::json::decode(s.as_slice()).unwrap();
         if !apply(update) {

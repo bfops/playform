@@ -59,7 +59,7 @@ pub enum ServerToClient {
 pub fn spark_socket_sender<T>(url: String) -> (Sender<T>, Endpoint)
   where T: Send + Encodable + Debug
 {
-  let mut socket = Socket::new(Protocol::Req).unwrap();
+  let mut socket = Socket::new(Protocol::Push).unwrap();
   let endpoint = socket.connect(url.as_slice()).unwrap();
 
   let (send, recv) = channel();
@@ -72,9 +72,6 @@ pub fn spark_socket_sender<T>(url: String) -> (Sender<T>, Endpoint)
           let request = json::encode(&request).unwrap();
           if let Err(e) = socket.write_all(request.as_bytes()) {
             panic!("Error sending message: {:?}", e);
-          }
-          if let Err(e) = socket.read_to_end() {
-            panic!("Error getting ack: {:?}", e);
           }
           true
         }
@@ -93,15 +90,13 @@ pub fn spark_socket_sender<T>(url: String) -> (Sender<T>, Endpoint)
 pub fn spark_socket_receiver<T>(url: String) -> (Receiver<T>, Endpoint)
   where T: Send + Decodable
 {
-  let mut socket = Socket::new(Protocol::Rep).unwrap();
+  let mut socket = Socket::new(Protocol::Pull).unwrap();
   let endpoint = socket.bind(url.as_slice()).unwrap();
 
   let (send, recv) = channel();
 
   Thread::spawn(move || {
     loop {
-      // TODO: This would run faster (i.e. clients would block less)
-      // if we sent the raw message and parsed it into T in the receiving thread.
       process_socket(
         &mut socket,
         |t| {
