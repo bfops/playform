@@ -31,7 +31,6 @@ pub enum ViewToClient {
 pub fn apply_view_to_client(up: ViewToClient, ups_to_server: &Sender<ClientToServer>) -> bool {
   match up {
     ViewToClient::Quit => {
-      ups_to_server.send(ClientToServer::Quit).unwrap();
       return false;
     },
     ViewToClient::Walk(v) => {

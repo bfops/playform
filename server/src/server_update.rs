@@ -27,9 +27,6 @@ pub fn apply_client_to_server(
       server.inform_client(&client);
       server.to_client = Some(client);
     },
-    ClientToServer::Quit => {
-      return false;
-    },
     ClientToServer::StartJump => {
       if !server.player.is_jumping {
         server.player.is_jumping = true;

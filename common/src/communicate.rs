@@ -31,8 +31,6 @@ pub enum ClientToServer {
   StopJump,
   /// Ask the server to send a block of terrain.
   RequestBlock(BlockPosition, LODIndex),
-  /// Kill the server.
-  Quit,
 }
 
 #[derive(Debug, Clone)]
