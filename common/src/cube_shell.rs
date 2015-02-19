@@ -10,7 +10,7 @@ use std::collections::HashSet;
 #[cfg(test)]
 use nalgebra::Vec3;
 #[cfg(test)]
-use test::Bencher;
+use test::{Bencher, black_box};
 
 #[inline]
 // TODO: This should return an iterator.
@@ -212,11 +212,6 @@ fn test_shell_no_dups() {
   assert_eq!(expected.len(), actual.len());
 }
 
-#[bench]
-fn simple_bench(_: &mut Bencher) {
-  let _ = cube_shell(&BlockPosition::new(0, 0, 0), 100);
-}
-
 #[test]
 fn test_simple_diff() {
   let from = BlockPosition::new(2, 0, -3);
@@ -277,4 +272,14 @@ fn test_no_diff() {
   let center = BlockPosition::new(-5, 1, -7);
   let radius = 3;
   assert!(cube_diff(&center, &center, radius).is_empty());
+}
+
+#[bench]
+fn simple_shell_bench(_: &mut Bencher) {
+  black_box(cube_shell(&BlockPosition::new(0, 0, 0), 400));
+}
+
+#[bench]
+fn simple_diff_bench(_: &mut Bencher) {
+  black_box(cube_diff(&BlockPosition::new(-1, 1, -1), &BlockPosition::new(0, 0, 0), 400));
 }
