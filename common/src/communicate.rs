@@ -5,7 +5,6 @@ use entity::EntityId;
 use lod::LODIndex;
 use nalgebra::{Vec2, Vec3, Pnt3};
 use nanomsg::{Endpoint, Socket, Protocol};
-use process_events::{process_channel, process_socket};
 use rustc_serialize::{Encodable, Decodable, json};
 use std::fmt::Debug;
 use std::old_io::timer;
@@ -63,18 +62,15 @@ pub fn spark_socket_sender<T>(url: String) -> (Sender<T>, Endpoint)
 
   Thread::spawn(move || {
     loop {
-      let mut n = 0;
-      process_channel(
-        &recv,
-        |request| {
-          let request = json::encode(&request).unwrap();
-          if let Err(e) = socket.write_all(request.as_bytes()) {
+      match recv.recv() {
+        Err(e) => panic!("Error receiving from channel: {:?}", e),
+        Ok(msg) => {
+          let msg = json::encode(&msg).unwrap();
+          if let Err(e) = socket.write_all(msg.as_bytes()) {
             panic!("Error sending message: {:?}", e);
           }
-          n += 1;
-          true
         }
-      );
+      };
 
       timer::sleep(Duration::milliseconds(0));
     }
@@ -94,13 +90,14 @@ pub fn spark_socket_receiver<T>(url: String) -> (Receiver<T>, Endpoint)
 
   Thread::spawn(move || {
     loop {
-      process_socket(
-        &mut socket,
-        |t| {
-          send.send(t).unwrap();
-          true
+      match socket.read_to_end() {
+        Err(e) => panic!("Error reading from socket: {:?}", e),
+        Ok(s) => {
+          let s = String::from_utf8(s).unwrap();
+          let msg = json::decode(s.as_slice()).unwrap();
+          send.send(msg).unwrap();
         },
-      );
+      }
 
       timer::sleep(Duration::milliseconds(0));
     }
