@@ -1,38 +1,28 @@
-//! The client's "main" thread.
-
 use client::{Client, LOD_THRESHOLDS};
-use client_update::{ViewToClient, apply_view_to_client, apply_server_to_client};
 use common::block_position::BlockPosition;
-use common::communicate::{ClientToServer, ServerToClient};
+use common::communicate::ClientToServer;
 use common::cube_shell::cube_diff;
 use common::lod::LODIndex;
-use common::process_events::process_channel;
 use common::stopwatch::TimerSet;
 use common::surroundings_loader::{LODChange, SurroundingsLoader};
 use common::terrain_block::LOD_QUALITY;
 use std::iter::range_inclusive;
 use std::num;
 use std::old_io::timer;
-use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc::Sender;
+use std::sync::Mutex;
 use std::time::duration::Duration;
 use terrain_buffers;
 use view_update::ClientToView;
 use view_update::ClientToView::*;
 
-#[allow(missing_docs)]
-pub fn client_thread(
-  my_url: String,
-  ups_from_server: &Receiver<ServerToClient>,
-  ups_to_server: &Sender<ClientToServer>,
-  ups_from_view: &Receiver<ViewToClient>,
-  ups_to_view: &Sender<ClientToView>,
+pub fn surroundings_thread(
+  client: &Client,
+  ups_to_view: &Mutex<Sender<ClientToView>>,
+  ups_to_server: &Mutex<Sender<ClientToServer>>,
 ) {
   let timers = TimerSet::new();
   let timers = &timers;
-
-  ups_to_server.send(ClientToServer::Init(my_url)).unwrap();
-
-  let client = Client::new();
 
   let mut surroundings_loader = {
     let mut load_distance = load_distance(terrain_buffers::POLYGON_BUDGET as i32);
@@ -60,25 +50,6 @@ pub fn client_thread(
   };
 
   loop {
-    let quit =
-      !process_channel(
-        ups_from_view,
-        |update| {
-          apply_view_to_client(update, ups_to_server)
-        },
-      );
-    if quit {
-      break;
-    }
-
-    process_channel(
-      ups_from_server,
-      |update| {
-        apply_server_to_client(update, &client, &ups_to_view);
-        true
-      },
-    );
-
     let block_position = BlockPosition::from_world_position(&client.player_position.lock().unwrap().clone());
 
     surroundings_loader.update(
@@ -88,10 +59,12 @@ pub fn client_thread(
           LODChange::Load(block_position, distance) => {
             timers.time("request_block", || {
               let lod = lod_index(distance);
-              ups_to_server.send(ClientToServer::RequestBlock(block_position, lod)).unwrap();
+              ups_to_server.lock().unwrap().send(ClientToServer::RequestBlock(block_position, lod)).unwrap();
             });
           },
           LODChange::Unload(block_position) => {
+            // The block removal code is duplicated elsewhere.
+
             client.loaded_blocks
               .lock().unwrap()
               .remove(&block_position)
@@ -99,10 +72,10 @@ pub fn client_thread(
               .map(|(block, prev_lod)| {
                 timers.time("remove_block", || {
                   for id in block.ids.iter() {
-                    ups_to_view.send(RemoveTerrain(*id)).unwrap();
+                    ups_to_view.lock().unwrap().send(RemoveTerrain(*id)).unwrap();
                   }
 
-                  ups_to_view.send(RemoveBlockData(block_position, prev_lod)).unwrap();
+                  ups_to_view.lock().unwrap().send(RemoveBlockData(block_position, prev_lod)).unwrap();
                 });
               });
           },
@@ -110,12 +83,11 @@ pub fn client_thread(
       },
     );
 
-    timer::sleep(Duration::milliseconds(0));
+    timer::sleep(Duration::milliseconds(1));
   }
 
-  timers.print();
-
-  debug!("client exiting.");
+  // TODO: This thread should exit nicely.
+  // i.e. reach this point and print `timers`.
 }
 
 fn lod_index(distance: i32) -> LODIndex {

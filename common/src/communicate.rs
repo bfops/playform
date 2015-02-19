@@ -63,6 +63,7 @@ pub fn spark_socket_sender<T>(url: String) -> (Sender<T>, Endpoint)
 
   Thread::spawn(move || {
     loop {
+      let mut n = 0;
       process_channel(
         &recv,
         |request| {
@@ -70,6 +71,7 @@ pub fn spark_socket_sender<T>(url: String) -> (Sender<T>, Endpoint)
           if let Err(e) = socket.write_all(request.as_bytes()) {
             panic!("Error sending message: {:?}", e);
           }
+          n += 1;
           true
         }
       );

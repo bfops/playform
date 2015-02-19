@@ -1,21 +1,22 @@
-use gaia_update::{ServerToGaia, LoadReason};
+use common::block_position::BlockPosition;
+use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
+use common::lod::{LOD, LODIndex, OwnerId, LODMap};
+use common::stopwatch::TimerSet;
+use common::terrain_block::TerrainBlock;
+use gaia_thread::{ServerToGaia, LoadReason};
 use in_progress_terrain::InProgressTerrain;
-use common::lod::{LOD, OwnerId, LODMap};
 use noise::Seed;
 use physics::Physics;
-use common::entity::EntityId;
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
-use common::stopwatch::TimerSet;
+use std::sync::Mutex;
 use terrain::terrain::Terrain;
-use common::block_position::BlockPosition;
 
 /// Load and unload TerrainBlocks from the game.
 /// Each TerrainBlock can be owned by a set of owners, each of which can independently request LODs.
 /// The maximum LOD requested is the one that is actually loaded.
 pub struct TerrainGameLoader {
-  pub terrain: Arc<Mutex<Terrain>>,
+  pub terrain: Terrain,
   pub in_progress_terrain: InProgressTerrain,
   pub lod_map: LODMap,
 }
@@ -23,7 +24,7 @@ pub struct TerrainGameLoader {
 impl TerrainGameLoader {
   pub fn new() -> TerrainGameLoader {
     TerrainGameLoader {
-      terrain: Arc::new(Mutex::new(Terrain::new(Seed::new(0), 0))),
+      terrain: Terrain::new(Seed::new(0), 0),
       in_progress_terrain: InProgressTerrain::new(),
       lod_map: LODMap::new(),
     }
@@ -35,13 +36,12 @@ impl TerrainGameLoader {
     &mut self,
     timers: &TimerSet,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
-    physics: &mut Physics,
+    physics: &Mutex<Physics>,
     block_position: &BlockPosition,
     new_lod: LOD,
     owner: OwnerId,
-    ups_to_gaia: &Sender<ServerToGaia>,
+    ups_to_gaia: &Mutex<Sender<ServerToGaia>>,
   ) {
-
     let prev_lod;
     let max_lod_changed;
     match self.lod_map.get(block_position, owner) {
@@ -84,10 +84,9 @@ impl TerrainGameLoader {
         self.in_progress_terrain.insert(id_allocator, physics, block_position);
       },
       LOD::LodIndex(new_lod) => {
-        let terrain = self.terrain.lock().unwrap();
-        match terrain.all_blocks.get(block_position) {
+        match self.terrain.all_blocks.get(block_position) {
           None => {
-            ups_to_gaia.send(
+            ups_to_gaia.lock().unwrap().send(
               ServerToGaia::Load(*block_position, new_lod, LoadReason::Local(owner))
             ).unwrap();
           },
@@ -95,50 +94,71 @@ impl TerrainGameLoader {
             match mipmesh.lods[new_lod.0 as usize].as_ref() {
               None => {
                 debug!("{:?} requested from gaia", block_position);
-                ups_to_gaia.send(
+                ups_to_gaia.lock().unwrap().send(
                   ServerToGaia::Load(*block_position, new_lod, LoadReason::Local(owner))
                 ).unwrap();
               },
               Some(block) => {
-                let new_lod = LOD::LodIndex(new_lod);
-                let (_, change) =
-                  self.lod_map.insert(*block_position, new_lod, owner);
-                let change = change.unwrap();
-                assert!(change.desired == Some(new_lod));
-                let in_progress_terrain = &mut self.in_progress_terrain;
-                change.loaded.map(|loaded_lod|
-                  match loaded_lod {
-                    LOD::Placeholder => {
-                      in_progress_terrain.remove(physics, block_position);
-                    }
-                    LOD::LodIndex(loaded_lod) => {
-                      let block = mipmesh.lods[loaded_lod.0 as usize].as_ref().unwrap();
-                      timers.time("terrain_game_loader.load.unload", || {
-                        for id in block.ids.iter() {
-                          physics.remove_terrain(*id);
-                        }
-                      });
-                    },
-                  }
+                TerrainGameLoader::insert_block(
+                  timers,
+                  block,
+                  block_position,
+                  new_lod,
+                  owner,
+                  physics,
+                  &mut self.lod_map,
+                  &mut self.in_progress_terrain,
                 );
-
-                timers.time("terrain_game_loader.load.physics", || {
-                  for &(ref id, ref bounds) in block.bounds.iter() {
-                    physics.insert_terrain(*id, bounds.clone());
-                  }
-                });
               },
             }
           }
-        }
+        };
       },
     };
+  }
+
+  pub fn insert_block(
+    timers: &TimerSet,
+    block: &TerrainBlock,
+    position: &BlockPosition,
+    lod: LODIndex,
+    owner: OwnerId,
+    physics: &Mutex<Physics>,
+    lod_map: &mut LODMap,
+    in_progress_terrain: &mut InProgressTerrain,
+  ) {
+    let lod = LOD::LodIndex(lod);
+    let (_, change) = lod_map.insert(*position, lod, owner);
+    let change = change.unwrap();
+    assert!(change.desired == Some(lod));
+    change.loaded.map(|loaded_lod|
+      match loaded_lod {
+        LOD::Placeholder => {
+          in_progress_terrain.remove(physics, position);
+        }
+        LOD::LodIndex(_) => {
+          timers.time("terrain_game_loader.load.unload", || {
+            let mut physics = physics.lock().unwrap();
+            for id in block.ids.iter() {
+              physics.remove_terrain(*id);
+            }
+          });
+        },
+      }
+    );
+
+    timers.time("terrain_game_loader.load.physics", || {
+      let mut physics = physics.lock().unwrap();
+      for &(ref id, ref bounds) in block.bounds.iter() {
+        physics.insert_terrain(*id, bounds.clone());
+      }
+    });
   }
 
   pub fn unload(
     &mut self,
     timers: &TimerSet,
-    physics: &mut Physics,
+    physics: &Mutex<Physics>,
     block_position: &BlockPosition,
     owner: OwnerId,
   ) {
@@ -160,14 +180,14 @@ impl TerrainGameLoader {
         }
         LOD::LodIndex(loaded_lod) => {
           timers.time("terrain_game_loader.unload", || {
-            let terrain = self.terrain.lock().unwrap();
-            match terrain.all_blocks.get(block_position) {
+            match self.terrain.all_blocks.get(block_position) {
               None => {
                 // Unloaded before the load request completed.
               },
               Some(block) => {
                 match block.lods.get(loaded_lod.0 as usize) {
                   Some(&Some(ref block)) => {
+                    let mut physics = physics.lock().unwrap();
                     for id in block.ids.iter() {
                       physics.remove_terrain(*id);
                     }

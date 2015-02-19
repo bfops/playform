@@ -1,6 +1,6 @@
 //! This module defines the main function for the view/render/event thread.
 
-use client_update::ViewToClient;
+use common::communicate::ClientToServer;
 use common::interval_timer::IntervalTimer;
 use common::process_events::process_channel;
 use common::stopwatch::TimerSet;
@@ -15,6 +15,7 @@ use sdl2::video;
 use std::mem;
 use std::old_io::timer;
 use std::sync::mpsc::{Sender, Receiver};
+use std::sync::Mutex;
 use std::time::duration::Duration;
 use time;
 use view::View;
@@ -26,7 +27,7 @@ pub const FRAMES_PER_SECOND: u64 = 30;
 #[allow(missing_docs)]
 pub fn view_thread(
   ups_from_client: &Receiver<ClientToView>,
-  ups_to_client: &Sender<ViewToClient>,
+  ups_to_server: &Mutex<Sender<ClientToServer>>,
 ) {
   let timers = TimerSet::new();
 
@@ -39,17 +40,14 @@ pub fn view_thread(
     video::GLProfile::GLCoreProfile as i32,
   );
 
-  let display_mode = video::get_desktop_display_mode(0).unwrap();
-
   // Open the window as fullscreen at the current resolution.
   let mut window =
     video::Window::new(
       "Playform",
-      video::WindowPos::PosUndefined,
-      video::WindowPos::PosUndefined,
-      display_mode.w,
-      display_mode.h,
-      video::OPENGL | video::FULLSCREEN_DESKTOP,
+      video::WindowPos::Positioned(0),
+      video::WindowPos::Positioned(0),
+      800, 600,
+      video::OPENGL,
     ).unwrap();
 
   // Send text input events.
@@ -92,11 +90,9 @@ pub fn view_thread(
           break 'event_loop;
         },
         Event::Quit{..} => {
-          ups_to_client.send(ViewToClient::Quit).unwrap();
           break 'game_loop;
         }
         Event::AppTerminating{..} => {
-          ups_to_client.send(ViewToClient::Quit).unwrap();
           break 'game_loop;
         }
         Event::Window{win_event_id: event_id, ..} => {
@@ -118,7 +114,7 @@ pub fn view_thread(
           if has_focus {
             process_event(
               &timers,
-              &ups_to_client,
+              ups_to_server,
               &mut view,
               &mut window,
               event,
@@ -143,7 +139,7 @@ pub fn view_thread(
       window.gl_swap_window();
     }
 
-    timer::sleep(Duration::milliseconds(0));
+    timer::sleep(Duration::milliseconds(1));
   }
 
   timers.print();

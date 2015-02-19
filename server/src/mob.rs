@@ -1,7 +1,6 @@
 use common::color::Color4;
 use common::entity::EntityId;
 use common::lod::OwnerId;
-use common::surroundings_loader::SurroundingsLoader;
 use common::vertex::ColoredVertex;
 use nalgebra::{Pnt3, Vec3};
 use ncollide_entities::bounding_volume::AABB3;
@@ -13,19 +12,16 @@ pub const TRIANGLE_VERTICES_PER_BOX: u32 = TRIANGLES_PER_BOX * VERTICES_PER_TRIA
 
 pub type Behavior = fn(&Server, &mut Mob);
 
-pub struct Mob<'a> {
+pub struct Mob {
   pub position: Pnt3<f32>,
   pub speed: Vec3<f32>,
   pub behavior: Behavior,
 
   pub entity_id: EntityId,
   pub owner_id: OwnerId,
-
-  // Nearby blocks should be made solid if they aren't loaded yet.
-  pub solid_boundary: SurroundingsLoader<'a>,
 }
 
-impl<'a> Mob<'a> {
+impl Mob {
   pub fn to_triangles(
     bounds: &AABB3<f32>,
     c: &Color4<f32>,

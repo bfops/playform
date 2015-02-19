@@ -30,7 +30,6 @@ extern crate yaglw;
 
 mod camera;
 mod client;
-mod client_thread;
 mod client_update;
 mod fontloader;
 mod hud;
@@ -38,17 +37,20 @@ mod light;
 mod mob_buffers;
 mod process_event;
 mod render;
+mod server_thread;
 mod shaders;
+mod surroundings_thread;
 mod terrain_buffers;
 mod ttf;
 mod view;
 mod view_thread;
 mod view_update;
 
-use client_thread::client_thread;
-use common::communicate::{spark_socket_sender, spark_socket_receiver};
+use client::Client;
+use common::communicate::{ClientToServer, spark_socket_sender, spark_socket_receiver};
+use std::ops::Deref;
 use std::sync::mpsc::channel;
-use std::sync::Future;
+use std::sync::{Arc, Future, Mutex};
 use view_thread::view_thread;
 
 /// Entry point.
@@ -63,32 +65,54 @@ pub fn main() {
   let server_listen_url = args.next().unwrap_or(String::from_str("ipc:///tmp/server.ipc"));
   assert!(args.next().is_none());
 
-  let (view_to_client_send, view_to_client_recv) = channel();
   let (client_to_view_send, client_to_view_recv) = channel();
 
   let (ups_from_server, mut listen_endpoint) = spark_socket_receiver(listen_url.clone());
   let (ups_to_server, mut talk_endpoint) = spark_socket_sender(server_listen_url);
 
-  let client_thread =
+  ups_to_server.send(ClientToServer::Init(listen_url)).unwrap();
+
+  let client = Client::new();
+  let client = Arc::new(client);
+
+  let ups_to_server = Arc::new(Mutex::new(ups_to_server));
+  let client_to_view_send = Arc::new(Mutex::new(client_to_view_send));
+
+  let server_thread = {
+    let client = client.clone();
+    let client_to_view_send = client_to_view_send.clone();
+
     Future::spawn(move || {
-      client_thread(
-        listen_url,
+      server_thread::server_thread(
+        client.deref(),
         &ups_from_server,
-        &ups_to_server,
-        &view_to_client_recv,
-        &client_to_view_send,
+        client_to_view_send.deref(),
       );
 
-      (ups_from_server, ups_to_server, view_to_client_recv, client_to_view_send)
-    });
+      ups_from_server
+    })
+  };
+
+  let _surroundings_thread = {
+    let client = client.clone();
+    let ups_to_server = ups_to_server.clone();
+    let client_to_view_send = client_to_view_send.clone();
+
+    Future::spawn(move || {
+      surroundings_thread::surroundings_thread(
+        client.deref(),
+        client_to_view_send.deref(),
+        ups_to_server.deref(),
+      );
+    })
+  };
 
   view_thread(
     &client_to_view_recv,
-    &view_to_client_send,
+    ups_to_server.deref(),
   );
 
-  let (_ups_from_server, _ups_to_server, _view_to_client_recv, _client_to_view_send) =
-    client_thread.into_inner();
+  let _ups_from_server = server_thread.into_inner();
 
   listen_endpoint.shutdown().unwrap();
   talk_endpoint.shutdown().unwrap();

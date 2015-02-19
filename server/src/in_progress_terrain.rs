@@ -24,7 +24,7 @@ impl InProgressTerrain {
   pub fn insert(
     &mut self,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
-    physics: &mut Physics,
+    physics: &Mutex<Physics>,
     block_position: &BlockPosition,
   ) -> bool {
     match self.blocks.entry(*block_position) {
@@ -38,7 +38,7 @@ impl InProgressTerrain {
 
         let low_corner = block_position.to_world_position();
         let block_span = Vec3::new(BLOCK_WIDTH as f32, BLOCK_WIDTH as f32, BLOCK_WIDTH as f32);
-        physics.insert_misc(id, AABB::new(low_corner, low_corner + block_span));
+        physics.lock().unwrap().insert_misc(id, AABB::new(low_corner, low_corner + block_span));
         true
       }
     }
@@ -47,9 +47,9 @@ impl InProgressTerrain {
   /// Unmark an in-progress block, either because loading is done, or the block was unloaded.
   pub fn remove(
     &mut self,
-    physics: &mut Physics,
+    physics: &Mutex<Physics>,
     block_position: &BlockPosition,
   ) -> bool {
-    self.blocks.remove(block_position).map(|id| physics.remove_misc(id)).is_some()
+    self.blocks.remove(block_position).map(|id| physics.lock().unwrap().remove_misc(id)).is_some()
   }
 }

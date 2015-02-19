@@ -107,6 +107,8 @@ pub struct Octree<V> {
   contents: OctreeContents<V>,
 }
 
+unsafe impl<V: 'static> Send for Octree<V> {}
+
 // TODO: fix shaky octree outline insertion/removal conditions.
 
 impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {

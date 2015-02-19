@@ -1,26 +1,18 @@
-use common::block_position::BlockPosition;
-use common::cube_shell::cube_diff;
 use common::entity::EntityId;
-use common::id_allocator::IdAllocator;
-use common::lod::{LOD, LODIndex, OwnerId};
 use common::matrix;
-use common::stopwatch::TimerSet;
-use common::surroundings_loader::{SurroundingsLoader, LODChange};
-use gaia_update::ServerToGaia;
 use nalgebra::{Pnt3, Vec3};
 use ncollide_entities::bounding_volume::AABB;
 use ncollide_queries::ray::{Ray, Ray3};
 use physics::Physics;
+use server::Server;
 use std::f32::consts::PI;
-use std::sync::mpsc::Sender;
+use std::ops::DerefMut;
 use std::sync::Mutex;
-use terrain::terrain_game_loader::TerrainGameLoader;
-use update;
 
 const MAX_JUMP_FUEL: u32 = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;
 
-pub struct Player<'a> {
+pub struct Player {
   pub position: Pnt3<f32>,
   // speed; units are world coordinates
   pub speed: Vec3<f32>,
@@ -34,24 +26,16 @@ pub struct Player<'a> {
   pub is_jumping: bool,
   pub entity_id: EntityId,
 
-  pub surroundings_owner: OwnerId,
-  pub solid_owner: OwnerId,
-
   // rotation around the y-axis, in radians
   pub lateral_rotation: f32,
   // "pitch", in radians
   pub vertical_rotation: f32,
-
-  pub surroundings_loader: SurroundingsLoader<'a>,
-  // Nearby blocks should be made solid if they aren't loaded yet.
-  pub solid_boundary: SurroundingsLoader<'a>,
 }
 
-impl<'a> Player<'a> {
+impl Player {
   pub fn new(
     entity_id: EntityId,
-    owner_allocator: &mut IdAllocator<OwnerId>,
-  ) -> Player<'a> {
+  ) -> Player {
     Player {
       position: Pnt3::new(0.0, 0.0, 0.0),
       speed: Vec3::new(0.0, 0.0, 0.0),
@@ -60,20 +44,8 @@ impl<'a> Player<'a> {
       jump_fuel: 0,
       is_jumping: false,
       entity_id: entity_id,
-      surroundings_owner: owner_allocator.allocate(),
-      solid_owner: owner_allocator.allocate(),
       lateral_rotation: 0.0,
       vertical_rotation: 0.0,
-      surroundings_loader:
-        SurroundingsLoader::new(
-          1,
-          Box::new(|&: last, cur| cube_diff(last, cur, 1)),
-        ),
-      solid_boundary:
-        SurroundingsLoader::new(
-          1,
-          Box::new(|&: last, cur| cube_diff(last, cur, 1)),
-        ),
     }
   }
 
@@ -82,9 +54,11 @@ impl<'a> Player<'a> {
   /// Returns the actual amount moved by.
   pub fn translate(
     &mut self,
-    physics: &mut Physics,
+    physics: &Mutex<Physics>,
     v: Vec3<f32>,
   ) {
+    let mut physics = physics.lock().unwrap();
+    let physics = physics.deref_mut();
     let bounds = physics.bounds.get_mut(&self.entity_id).unwrap();
     let init_bounds =
       AABB::new(
@@ -95,33 +69,35 @@ impl<'a> Player<'a> {
     // The height of the player's "step".
     let mut step_height = 0.0;
     let mut collided = false;
-    loop {
-      match physics.terrain_octree.intersect(&new_bounds, None) {
-        None => {
-          if Physics::reinsert(&mut physics.misc_octree, self.entity_id, bounds, new_bounds).is_some() {
-            collided = true;
-          } else {
-            self.position = self.position + v + Vec3::new(0.0, step_height, 0.0);
-          }
-          break;
-        },
-        Some((collision_bounds, _)) => {
-          collided = true;
-          // Step to the top of whatever we hit.
-          step_height = collision_bounds.maxs().y - init_bounds.mins().y;
-          assert!(step_height > 0.0);
-
-          if step_height > MAX_STEP_HEIGHT {
-            // Step is too big; we just ran into something.
+    {
+      loop {
+        match physics.terrain_octree.intersect(&new_bounds, None) {
+          None => {
+            if Physics::reinsert(&mut physics.misc_octree, self.entity_id, bounds, new_bounds).is_some() {
+              collided = true;
+            } else {
+              self.position = self.position + v + Vec3::new(0.0, step_height, 0.0);
+            }
             break;
-          }
+          },
+          Some((collision_bounds, _)) => {
+            collided = true;
+            // Step to the top of whatever we hit.
+            step_height = collision_bounds.maxs().y - init_bounds.mins().y;
+            assert!(step_height > 0.0);
 
-          new_bounds =
-            AABB::new(
-              *init_bounds.mins() + Vec3::new(0.0, step_height, 0.0),
-              *init_bounds.maxs() + Vec3::new(0.0, step_height, 0.0),
-            );
-        },
+            if step_height > MAX_STEP_HEIGHT {
+              // Step is too big; we just ran into something.
+              break;
+            }
+
+            new_bounds =
+              AABB::new(
+                *init_bounds.mins() + Vec3::new(0.0, step_height, 0.0),
+                *init_bounds.maxs() + Vec3::new(0.0, step_height, 0.0),
+              );
+          },
+        }
       }
     }
 
@@ -140,59 +116,8 @@ impl<'a> Player<'a> {
 
   pub fn update(
     &mut self,
-    timers: &TimerSet,
-    terrain_game_loader: &mut TerrainGameLoader,
-    id_allocator: &Mutex<IdAllocator<EntityId>>,
-    physics: &mut Physics,
-    ups_to_gaia: &Sender<ServerToGaia>,
+    server: &Server,
   ) {
-    let block_position = BlockPosition::from_world_position(&self.position);
-
-    timers.time("update.player.surroundings", || {
-      let surroundings_owner = self.surroundings_owner;
-      self.surroundings_loader.update(
-        block_position,
-        |lod_change| {
-          match lod_change {
-            LODChange::Load(pos, _) => {
-              terrain_game_loader.load(
-                timers,
-                id_allocator,
-                physics,
-                &pos,
-                LOD::LodIndex(LODIndex(0)),
-                surroundings_owner,
-                ups_to_gaia,
-              );
-            },
-            LODChange::Unload(pos) => {
-              terrain_game_loader.unload(
-                timers,
-                physics,
-                &pos,
-                surroundings_owner,
-              );
-            },
-          }
-        },
-      );
-
-      let solid_owner = self.solid_owner;
-      self.solid_boundary.update(
-        block_position,
-        |lod_change|
-          update::load_placeholders(
-            timers,
-            solid_owner,
-            id_allocator,
-            physics,
-            terrain_game_loader,
-            ups_to_gaia,
-            lod_change,
-          )
-      );
-    });
-
     if self.is_jumping {
       if self.jump_fuel > 0 {
         self.jump_fuel -= 1;
@@ -205,13 +130,13 @@ impl<'a> Player<'a> {
 
     let delta_p = self.speed;
     if delta_p.x != 0.0 {
-      self.translate(physics, Vec3::new(delta_p.x, 0.0, 0.0));
+      self.translate(&server.physics, Vec3::new(delta_p.x, 0.0, 0.0));
     }
     if delta_p.y != 0.0 {
-      self.translate(physics, Vec3::new(0.0, delta_p.y, 0.0));
+      self.translate(&server.physics, Vec3::new(0.0, delta_p.y, 0.0));
     }
     if delta_p.z != 0.0 {
-      self.translate(physics, Vec3::new(0.0, 0.0, delta_p.z));
+      self.translate(&server.physics, Vec3::new(0.0, 0.0, delta_p.z));
     }
 
     let y_axis = Vec3::new(0.0, 1.0, 0.0);
