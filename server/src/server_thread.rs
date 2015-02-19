@@ -35,6 +35,7 @@ pub fn server_thread(
         ups_from_client,
         |update|
           apply_client_to_server(
+            timers,
             update,
             &mut world,
             client_endpoints,

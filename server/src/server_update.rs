@@ -9,6 +9,7 @@ use std::ops::Deref;
 use std::sync::mpsc::Sender;
 
 pub fn apply_client_to_server(
+  timers: &TimerSet,
   up: ClientToServer,
   server: &mut Server,
   client_endpoints: &mut Vec<Endpoint>,
@@ -49,31 +50,33 @@ pub fn apply_client_to_server(
       server.player.rotate_vertical(v.y);
     },
     ClientToServer::RequestBlock(position, lod) => {
-      let terrain = server.terrain_game_loader.terrain.lock().unwrap();
-      let block = terrain.all_blocks.get(&position);
-      match block {
-        None => {
-          ups_to_gaia.send(
-            ServerToGaia::Load(position, lod, LoadReason::ForClient)
-          ).unwrap();
-        },
-        Some(block) => {
-          match block.lods.get(lod.0 as usize) {
-            Some(&Some(ref block)) => {
-              server.to_client.as_mut().map(|client| {
-                client.send(
-                  ServerToClient::AddBlock(position, block.clone(), lod)
+      timers.time("update.request_block", || {
+        let terrain = server.terrain_game_loader.terrain.lock().unwrap();
+        let block = terrain.all_blocks.get(&position);
+        match block {
+          None => {
+            ups_to_gaia.send(
+              ServerToGaia::Load(position, lod, LoadReason::ForClient)
+            ).unwrap();
+          },
+          Some(block) => {
+            match block.lods.get(lod.0 as usize) {
+              Some(&Some(ref block)) => {
+                server.to_client.as_mut().map(|client| {
+                  client.send(
+                    ServerToClient::AddBlock(position, block.clone(), lod)
+                  ).unwrap();
+                });
+              },
+              _ => {
+                ups_to_gaia.send(
+                  ServerToGaia::Load(position, lod, LoadReason::ForClient)
                 ).unwrap();
-              });
-            },
-            _ => {
-              ups_to_gaia.send(
-                ServerToGaia::Load(position, lod, LoadReason::ForClient)
-              ).unwrap();
-            },
-          }
-        },
-      }
+              },
+            }
+          },
+        }
+      })
     },
   }
 

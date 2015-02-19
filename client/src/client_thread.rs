@@ -6,6 +6,7 @@ use common::block_position::BlockPosition;
 use common::communicate::{ClientToServer, ServerToClient};
 use common::lod::LODIndex;
 use common::process_events::process_channel;
+use common::stopwatch::TimerSet;
 use common::surroundings_loader::LODChange;
 use std::num;
 use std::old_io::timer;
@@ -22,6 +23,8 @@ pub fn client_thread(
   ups_from_view: &Receiver<ViewToClient>,
   ups_to_view: &Sender<ClientToView>,
 ) {
+  let timers = TimerSet::new();
+  let timers = &timers;
 
   ups_to_server.send(ClientToServer::Init(my_url)).unwrap();
 
@@ -56,18 +59,22 @@ pub fn client_thread(
         |lod_change| {
           match lod_change {
             LODChange::Load(block_position, distance, _) => {
-              let lod = lod_index(distance);
-              ups_to_server.send(ClientToServer::RequestBlock(block_position, lod)).unwrap();
+              timers.time("request_block", || {
+                let lod = lod_index(distance);
+                ups_to_server.send(ClientToServer::RequestBlock(block_position, lod)).unwrap();
+              });
             },
             LODChange::Unload(block_position, _) => {
               loaded_blocks.remove(&block_position)
                 // If it wasn't loaded, don't unload anything.
                 .map(|(block, prev_lod)| {
-                  for id in block.ids.iter() {
-                    ups_to_view.send(RemoveTerrain(*id)).unwrap();
-                  }
+                  timers.time("remove_block", || {
+                    for id in block.ids.iter() {
+                      ups_to_view.send(RemoveTerrain(*id)).unwrap();
+                    }
 
-                  ups_to_view.send(RemoveBlockData(block_position, prev_lod)).unwrap();
+                    ups_to_view.send(RemoveBlockData(block_position, prev_lod)).unwrap();
+                  });
                 });
             },
           };
@@ -77,6 +84,8 @@ pub fn client_thread(
 
     timer::sleep(Duration::milliseconds(0));
   }
+
+  timers.print();
 
   debug!("client exiting.");
 }
