@@ -16,6 +16,7 @@ use std::time::duration::Duration;
 use terrain::terrain::Terrain;
 use terrain::texture_generator::TerrainTextureGenerator;
 
+// TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
 pub fn gaia_thread(
   id_allocator: Arc<Mutex<IdAllocator<EntityId>>>,
   ups_from_server: &Receiver<ServerToGaia>,

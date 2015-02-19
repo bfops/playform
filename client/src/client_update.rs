@@ -53,12 +53,12 @@ pub fn apply_view_to_client(up: ViewToClient, ups_to_server: &Sender<ClientToSer
 /// Apply a `ServerToClient` update to a `Client`.
 pub fn apply_server_to_client(
   up: ServerToClient,
-  client: &mut Client,
+  client: &Client,
   ups_to_view: &Sender<ClientToView>,
 ) {
   match up {
     ServerToClient::UpdatePlayer(position) => {
-      client.player_position = position;
+      *client.player_position.lock().unwrap() = position;
       ups_to_view.send(ClientToView::MoveCamera(position)).unwrap();
     },
     ServerToClient::AddMob(id, v) => {
@@ -84,7 +84,7 @@ pub fn apply_server_to_client(
 
       ups_to_view.send(ClientToView::SetPointLight(
         Light {
-          position: client.player_position + rel_position,
+          position: *client.player_position.lock().unwrap() + rel_position,
           intensity: sun_color,
         }
       )).unwrap();
@@ -103,7 +103,7 @@ pub fn apply_server_to_client(
     },
     // TODO: Is there a race where this block is stale by the time it gets to the client?
     ServerToClient::AddBlock(position, block, lod) => {
-      match client.loaded_blocks.entry(position) {
+      match client.loaded_blocks.lock().unwrap().entry(position) {
         Vacant(entry) => {
           entry.insert((block.clone(), lod));
         },
