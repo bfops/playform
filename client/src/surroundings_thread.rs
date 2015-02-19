@@ -5,14 +5,11 @@ use common::cube_shell::cube_diff;
 use common::lod::LODIndex;
 use common::stopwatch::TimerSet;
 use common::surroundings_loader::{LODChange, SurroundingsLoader};
-use common::terrain_block::LOD_QUALITY;
-use std::iter::range_inclusive;
 use std::num;
 use std::old_io::timer;
 use std::sync::mpsc::Sender;
 use std::sync::Mutex;
 use std::time::duration::Duration;
-use terrain_buffers;
 use view_update::ClientToView;
 use view_update::ClientToView::*;
 
@@ -25,25 +22,14 @@ pub fn surroundings_thread(
   let timers = &timers;
 
   let mut surroundings_loader = {
-    let mut load_distance = load_distance(terrain_buffers::POLYGON_BUDGET as i32);
-
-    // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-    let max_load_distance = 10;
-    if load_distance > max_load_distance {
-      info!("load_distance {} capped at {}", load_distance, max_load_distance);
-      load_distance = max_load_distance;
-    } else {
-      info!("load_distance {}", load_distance);
-    }
-
     SurroundingsLoader::new(
-      load_distance,
+      client.max_load_distance,
       Box::new(move |last, cur| {
         let mut vec = Vec::new();
         for &r in LOD_THRESHOLDS.iter() {
           vec.push_all(cube_diff(last, cur, r).as_slice());
         }
-        vec.push_all(cube_diff(last, cur, load_distance).as_slice());
+        vec.push_all(cube_diff(last, cur, client.max_load_distance).as_slice());
         vec
       }),
     )
@@ -90,7 +76,7 @@ pub fn surroundings_thread(
   // i.e. reach this point and print `timers`.
 }
 
-fn lod_index(distance: i32) -> LODIndex {
+pub fn lod_index(distance: i32) -> LODIndex {
   assert!(distance >= 0);
   let mut lod = 0;
   while
@@ -100,48 +86,4 @@ fn lod_index(distance: i32) -> LODIndex {
     lod += 1;
   }
   LODIndex(num::cast(lod).unwrap())
-}
-
-fn load_distance(mut polygon_budget: i32) -> i32 {
-  // TODO: This should try to account for VRAM not used on a per-poly basis.
-
-  let mut load_distance = 0;
-  let mut prev_threshold = 0;
-  let mut prev_square = 0;
-  for (&threshold, &quality) in LOD_THRESHOLDS.iter().zip(LOD_QUALITY.iter()) {
-    let polygons_per_block = (quality * quality * 4) as i32;
-    for i in range_inclusive(prev_threshold, threshold) {
-      let i = 2 * i + 1;
-      let square = i * i;
-      let polygons_in_layer = (square - prev_square) * polygons_per_block;
-      polygon_budget -= polygons_in_layer;
-      if polygon_budget < 0 {
-        break;
-      }
-
-      load_distance += 1;
-      prev_square = square;
-    }
-    prev_threshold = threshold + 1;
-  }
-
-  let mut width = 2 * prev_threshold + 1;
-  loop {
-    let square = width * width;
-    // The "to infinity and beyond" quality.
-    let quality = LOD_QUALITY[LOD_THRESHOLDS.len()];
-    let polygons_per_block = (quality * quality * 4) as i32;
-    let polygons_in_layer = (square - prev_square) * polygons_per_block;
-    polygon_budget -= polygons_in_layer;
-
-    if polygon_budget < 0 {
-      break;
-    }
-
-    width += 2;
-    load_distance += 1;
-    prev_square = square;
-  }
-
-  load_distance
 }

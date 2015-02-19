@@ -74,6 +74,7 @@ pub fn gaia_thread(
                   |block| {
                     match load_reason {
                       LoadReason::Local(owner) => {
+                        // TODO: Check that this block isn't stale; i.e. should still be loaded.
                         TerrainGameLoader::insert_block(
                           timers,
                           block,

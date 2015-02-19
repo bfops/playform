@@ -1,7 +1,9 @@
 use client::Client;
+use common::block_position::BlockPosition;
 use common::color::Color3;
 use common::communicate::ServerToClient;
 use common::process_events::process_channel;
+use common::surroundings_loader::radius_between;
 use light::Light;
 use nalgebra::Vec3;
 use std::cmp::partial_max;
@@ -12,6 +14,7 @@ use std::old_io::timer;
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::Mutex;
 use std::time::duration::Duration;
+use surroundings_thread::lod_index;
 use view_update::ClientToView;
 
 #[allow(missing_docs)]
@@ -71,28 +74,33 @@ pub fn server_thread(
           },
           // TODO: Is there a race where this block is stale by the time it gets to the client?
           ServerToClient::AddBlock(position, block, lod) => {
-            match client.loaded_blocks.lock().unwrap().entry(position) {
-              Vacant(entry) => {
-                entry.insert((block.clone(), lod));
-              },
-              Occupied(mut entry) => {
-                {
-                  // The block removal code is duplicated elsewhere.
+            let player_position =
+              BlockPosition::from_world_position(&client.player_position.lock().unwrap().clone());
+            let distance = radius_between(&player_position, &position);
+            if distance <= client.max_load_distance && lod_index(distance) == lod {
+              match client.loaded_blocks.lock().unwrap().entry(position) {
+                Vacant(entry) => {
+                  entry.insert((block.clone(), lod));
+                },
+                Occupied(mut entry) => {
+                  {
+                    // The block removal code is duplicated elsewhere.
 
-                  let &(ref prev_block, prev_lod) = entry.get();
-                  for &id in prev_block.ids.iter() {
-                    ups_to_view.lock().unwrap().send(ClientToView::RemoveTerrain(id)).unwrap();
+                    let &(ref prev_block, prev_lod) = entry.get();
+                    for &id in prev_block.ids.iter() {
+                      ups_to_view.lock().unwrap().send(ClientToView::RemoveTerrain(id)).unwrap();
+                    }
+                    ups_to_view.lock().unwrap().send(
+                      ClientToView::RemoveBlockData(position, prev_lod)
+                    ).unwrap();
                   }
-                  ups_to_view.lock().unwrap().send(
-                    ClientToView::RemoveBlockData(position, prev_lod)
-                  ).unwrap();
-                }
-                entry.insert((block.clone(), lod));
-              },
-            };
+                  entry.insert((block.clone(), lod));
+                },
+              };
 
-            if !block.ids.is_empty() {
-              ups_to_view.lock().unwrap().send(ClientToView::AddBlock(position, block, lod)).unwrap();
+              if !block.ids.is_empty() {
+                ups_to_view.lock().unwrap().send(ClientToView::AddBlock(position, block, lod)).unwrap();
+              }
             }
           },
         };

@@ -129,6 +129,9 @@ impl TerrainGameLoader {
   ) {
     let lod = LOD::LodIndex(lod);
     let (_, change) = lod_map.insert(*position, lod, owner);
+    // TODO: This should be an unwrap, but the preconditions of another TODO aren't
+    // satisfied in src/gaia_thread.rs.
+    // (i.e. blocks sometimes get here when they're stale).
     let change = match change {
       None => return,
       Some(change) => change,
