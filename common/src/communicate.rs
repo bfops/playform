@@ -74,8 +74,6 @@ pub fn spark_socket_sender<T>(url: String) -> (Sender<T>, Endpoint)
         }
       );
 
-      println!("thread done!");
-
       timer::sleep(Duration::milliseconds(0));
     }
   });
