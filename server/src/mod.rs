@@ -8,7 +8,6 @@
 #![feature(env)]
 #![feature(hash)]
 #![feature(io)]
-#![feature(slicing_syntax)]
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(unboxed_closures)]
