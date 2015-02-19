@@ -129,7 +129,10 @@ impl TerrainGameLoader {
   ) {
     let lod = LOD::LodIndex(lod);
     let (_, change) = lod_map.insert(*position, lod, owner);
-    let change = change.unwrap();
+    let change = match change {
+      None => return,
+      Some(change) => change,
+    };
     assert!(change.desired == Some(lod));
     change.loaded.map(|loaded_lod|
       match loaded_lod {
