@@ -18,3 +18,5 @@
 /target/
 */target/
 /.rust/
+
+common/Cargo.lock
