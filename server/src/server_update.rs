@@ -19,8 +19,6 @@ pub fn apply_client_to_server(
     ClientToServer::Init(client_url) => {
       let (client, socket_thread) = spark_socket_sender(client_url);
       client_endpoints.push(socket_thread);
-      // LeaseId should be the first message the client receives.
-      client.send(ServerToClient::LeaseId(server.owner_allocator.allocate())).unwrap();
       let player_position = server.player.position;
       server.to_client.as_mut().map(|client| {
         client.send(ServerToClient::UpdatePlayer(player_position)).unwrap();

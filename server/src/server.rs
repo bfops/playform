@@ -78,7 +78,7 @@ impl<'a> Server<'a> {
       let min = Pnt3::new(0.0, terrain::AMPLITUDE as f32, 4.0);
       let max = min + Vec3::new(1.0, 2.0, 1.0);
       let bounds = AABB::new(min, max);
-      physics.insert_misc(player.id, bounds.clone());
+      physics.insert_misc(player.entity_id, bounds.clone());
 
       player.position = center(&bounds);
 

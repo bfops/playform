@@ -4,7 +4,7 @@ use common::communicate::ServerToClient;
 use common::communicate::ServerToClient::*;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
-use common::lod::LOD;
+use common::lod::{LOD, OwnerId};
 use common::stopwatch::TimerSet;
 use common::surroundings_loader::LODChange;
 use gaia_update::ServerToGaia;
@@ -49,11 +49,13 @@ pub fn update(
           let terrain_game_loader = &mut server.terrain_game_loader;
           let id_allocator = &mut server.id_allocator;
           let physics = &mut server.physics;
+          let owner_id = mob.owner_id;
           mob.solid_boundary.update(
             block_position,
             |lod_change|
               load_placeholders(
                 timers,
+                owner_id,
                 id_allocator,
                 physics,
                 terrain_game_loader,
@@ -108,10 +110,10 @@ fn translate_mob(
   mob: &mut mob::Mob,
   delta_p: Vec3<f32>,
 ) {
-  if physics.translate_misc(mob.id, delta_p).is_some() {
+  if physics.translate_misc(mob.entity_id, delta_p).is_some() {
     mob.speed = mob.speed - delta_p;
   } else {
-    let bounds = physics.get_bounds(mob.id).unwrap();
+    let bounds = physics.get_bounds(mob.entity_id).unwrap();
     mob.position = mob.position + delta_p;
 
     to_client.map(|client| {
@@ -120,7 +122,7 @@ fn translate_mob(
         .iter()
         .map(|&x| x)
         .collect();
-      client.send(UpdateMob(mob.id, vec)).unwrap();
+      client.send(UpdateMob(mob.entity_id, vec)).unwrap();
     });
   }
 }
@@ -128,6 +130,7 @@ fn translate_mob(
 #[inline]
 pub fn load_placeholders(
   timers: &TimerSet,
+  owner: OwnerId,
   id_allocator: &Mutex<IdAllocator<EntityId>>,
   physics: &mut Physics,
   terrain_game_loader: &mut TerrainGameLoader,
@@ -135,23 +138,23 @@ pub fn load_placeholders(
   lod_change: LODChange,
 ) {
   match lod_change {
-    LODChange::Load(pos, _, id) => {
+    LODChange::Load(pos, _) => {
       terrain_game_loader.load(
         timers,
         id_allocator,
         physics,
         &pos,
         LOD::Placeholder,
-        id,
+        owner,
         ups_to_gaia,
       );
     },
-    LODChange::Unload(pos, id) => {
+    LODChange::Unload(pos) => {
       terrain_game_loader.unload(
         timers,
         physics,
         &pos,
-        id,
+        owner,
       );
     },
   }

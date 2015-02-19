@@ -2,7 +2,7 @@
 
 use block_position::BlockPosition;
 use entity::EntityId;
-use lod::{LODIndex, OwnerId};
+use lod::LODIndex;
 use nalgebra::{Vec2, Vec3, Pnt3};
 use nanomsg::{Endpoint, Socket, Protocol};
 use process_events::{process_channel, process_socket};
@@ -37,9 +37,6 @@ pub enum ClientToServer {
 #[derive(RustcDecodable, RustcEncodable)]
 /// Messages the server sends to the client.
 pub enum ServerToClient {
-  /// Give the client an OwnerId for terrain load requests.
-  LeaseId(OwnerId),
-
   /// Update the player's position.
   UpdatePlayer(Pnt3<f32>),
 

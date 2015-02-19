@@ -27,20 +27,20 @@ pub fn init_mobs<'a>(
   let mut mobs = HashMap::new();
 
   fn mob_behavior(world: &Server, mob: &mut mob::Mob) {
-    let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
+    let to_player = center(world.get_bounds(world.player.entity_id)) - center(world.get_bounds(mob.entity_id));
     if nalgebra::norm(&to_player) < 2.0 {
       mob.behavior = wait_for_distance;
     }
 
     fn wait_for_distance(world: &Server, mob: &mut mob::Mob) {
-      let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
+      let to_player = center(world.get_bounds(world.player.entity_id)) - center(world.get_bounds(mob.entity_id));
       if nalgebra::norm(&to_player) > 8.0 {
         mob.behavior = follow_player;
       }
     }
 
     fn follow_player(world: &Server, mob: &mut mob::Mob) {
-      let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
+      let to_player = center(world.get_bounds(world.player.entity_id)) - center(world.get_bounds(mob.entity_id));
       if to_player.sqnorm() < 4.0 {
         mob.behavior = wait_to_reset;
         mob.speed = Vec3::new(0.0, 0.0, 0.0);
@@ -50,7 +50,7 @@ pub fn init_mobs<'a>(
     }
 
     fn wait_to_reset(world: &Server, mob: &mut mob::Mob) {
-      let to_player = center(world.get_bounds(world.player.id)) - center(world.get_bounds(mob.id));
+      let to_player = center(world.get_bounds(world.player.entity_id)) - center(world.get_bounds(mob.entity_id));
       if nalgebra::norm(&to_player) >= 2.0 {
         mob.behavior = mob_behavior;
       }
@@ -63,7 +63,7 @@ pub fn init_mobs<'a>(
     id_allocator,
     owner_allocator,
     Pnt3::new(0.0, terrain::AMPLITUDE as f32, -1.0),
-    mob_behavior
+    mob_behavior,
   );
 
   mobs
@@ -77,7 +77,7 @@ fn add_mob(
   low_corner: Pnt3<f32>,
   behavior: mob::Behavior,
 ) {
-  let id = id_allocator.lock().unwrap().allocate();
+  let entity_id = id_allocator.lock().unwrap().allocate();
   let bounds = AABB::new(low_corner, low_corner + Vec3::new(1.0, 2.0, 1.0 as f32));
 
   let mob =
@@ -85,16 +85,16 @@ fn add_mob(
       position: (*bounds.mins() + bounds.maxs().to_vec()) / 2.0,
       speed: Vec3::new(0.0, 0.0, 0.0),
       behavior: behavior,
-      id: id,
+      entity_id: entity_id,
+      owner_id: owner_allocator.allocate(),
       solid_boundary:
         SurroundingsLoader::new(
-          owner_allocator.allocate(),
           1,
           Box::new(|&: last, cur| cube_diff(last, cur, 1)),
         ),
     };
   let mob = Rc::new(RefCell::new(mob));
 
-  physics.insert_misc(id, bounds);
-  mobs.insert(id, mob);
+  physics.insert_misc(entity_id, bounds);
+  mobs.insert(entity_id, mob);
 }

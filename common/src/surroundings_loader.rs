@@ -2,7 +2,6 @@
 //! loaded state (e.g. to keep player surroundings loaded, or to keep unloaded blocks
 //! solid near the player).
 
-use lod::OwnerId;
 use std::cmp::max;
 use std::collections::RingBuf;
 use std::num::{Float, SignedInt};
@@ -25,9 +24,9 @@ pub fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
 /// an owner's desired surroundings.
 pub enum LODChange {
   /// Acquire/update an owner's handle on a given location. The distance is also passed.
-  Load(BlockPosition, i32, OwnerId),
+  Load(BlockPosition, i32),
   /// Release an owner's handle on a given location.
-  Unload(BlockPosition, OwnerId),
+  Unload(BlockPosition),
 }
 
 // TODO: Should this use a trait instead of boxed closures?
@@ -36,7 +35,6 @@ pub enum LODChange {
 /// That point can be updated with calls to `update`.
 /// What "load" exactly means depends on the closures provided.
 pub struct SurroundingsLoader<'a> {
-  id: OwnerId,
   last_position: Option<BlockPosition>,
 
   max_load_distance: i32,
@@ -49,14 +47,12 @@ pub struct SurroundingsLoader<'a> {
 impl<'a> SurroundingsLoader<'a> {
   #[allow(missing_docs)]
   pub fn new(
-    id: OwnerId,
     max_load_distance: i32,
     lod_changes: Box<FnMut(&BlockPosition, &BlockPosition) -> Vec<BlockPosition> + 'a>,
   ) -> SurroundingsLoader<'a> {
     assert!(max_load_distance >= 0);
 
     SurroundingsLoader {
-      id: id,
       last_position: None,
 
       to_load: None,
@@ -93,9 +89,9 @@ impl<'a> SurroundingsLoader<'a> {
       if let Some(block_position) = self.to_recheck.pop_front() {
         let distance = radius_between(&position, &block_position);
         if distance > self.max_load_distance {
-          lod_change(LODChange::Unload(block_position, self.id));
+          lod_change(LODChange::Unload(block_position));
         } else {
-          lod_change(LODChange::Load(block_position, distance, self.id));
+          lod_change(LODChange::Load(block_position, distance));
         }
       } else {
         let block_position;
@@ -108,7 +104,7 @@ impl<'a> SurroundingsLoader<'a> {
           },
         };
 
-        lod_change(LODChange::Load(block_position, distance, self.id));
+        lod_change(LODChange::Load(block_position, distance));
       }
     }
   }

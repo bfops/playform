@@ -32,7 +32,10 @@ pub struct Player<'a> {
   pub jump_fuel: u32,
   // are we currently trying to jump? (e.g. holding the key).
   pub is_jumping: bool,
-  pub id: EntityId,
+  pub entity_id: EntityId,
+
+  pub surroundings_owner: OwnerId,
+  pub solid_owner: OwnerId,
 
   // rotation around the y-axis, in radians
   pub lateral_rotation: f32,
@@ -46,7 +49,7 @@ pub struct Player<'a> {
 
 impl<'a> Player<'a> {
   pub fn new(
-    id: EntityId,
+    entity_id: EntityId,
     owner_allocator: &mut IdAllocator<OwnerId>,
   ) -> Player<'a> {
     Player {
@@ -56,18 +59,18 @@ impl<'a> Player<'a> {
       walk_accel: Vec3::new(0.0, 0.0, 0.0),
       jump_fuel: 0,
       is_jumping: false,
-      id: id,
+      entity_id: entity_id,
+      surroundings_owner: owner_allocator.allocate(),
+      solid_owner: owner_allocator.allocate(),
       lateral_rotation: 0.0,
       vertical_rotation: 0.0,
       surroundings_loader:
         SurroundingsLoader::new(
-          owner_allocator.allocate(),
           1,
           Box::new(|&: last, cur| cube_diff(last, cur, 1)),
         ),
       solid_boundary:
         SurroundingsLoader::new(
-          owner_allocator.allocate(),
           1,
           Box::new(|&: last, cur| cube_diff(last, cur, 1)),
         ),
@@ -82,7 +85,7 @@ impl<'a> Player<'a> {
     physics: &mut Physics,
     v: Vec3<f32>,
   ) {
-    let bounds = physics.bounds.get_mut(&self.id).unwrap();
+    let bounds = physics.bounds.get_mut(&self.entity_id).unwrap();
     let init_bounds =
       AABB::new(
         *bounds.mins() + v,
@@ -95,7 +98,7 @@ impl<'a> Player<'a> {
     loop {
       match physics.terrain_octree.intersect(&new_bounds, None) {
         None => {
-          if Physics::reinsert(&mut physics.misc_octree, self.id, bounds, new_bounds).is_some() {
+          if Physics::reinsert(&mut physics.misc_octree, self.entity_id, bounds, new_bounds).is_some() {
             collided = true;
           } else {
             self.position = self.position + v + Vec3::new(0.0, step_height, 0.0);
@@ -146,38 +149,41 @@ impl<'a> Player<'a> {
     let block_position = BlockPosition::from_world_position(&self.position);
 
     timers.time("update.player.surroundings", || {
+      let surroundings_owner = self.surroundings_owner;
       self.surroundings_loader.update(
         block_position,
         |lod_change| {
           match lod_change {
-            LODChange::Load(pos, _, id) => {
+            LODChange::Load(pos, _) => {
               terrain_game_loader.load(
                 timers,
                 id_allocator,
                 physics,
                 &pos,
                 LOD::LodIndex(LODIndex(0)),
-                id,
+                surroundings_owner,
                 ups_to_gaia,
               );
             },
-            LODChange::Unload(pos, id) => {
+            LODChange::Unload(pos) => {
               terrain_game_loader.unload(
                 timers,
                 physics,
                 &pos,
-                id,
+                surroundings_owner,
               );
             },
           }
         },
       );
 
+      let solid_owner = self.solid_owner;
       self.solid_boundary.update(
         block_position,
         |lod_change|
           update::load_placeholders(
             timers,
+            solid_owner,
             id_allocator,
             physics,
             terrain_game_loader,

@@ -2,7 +2,7 @@
 
 use common::block_position::BlockPosition;
 use common::cube_shell::cube_diff;
-use common::lod::{LODIndex, OwnerId};
+use common::lod::LODIndex;
 use common::surroundings_loader::SurroundingsLoader;
 use common::terrain_block::{TerrainBlock, LOD_QUALITY};
 use nalgebra::Pnt3;
@@ -25,7 +25,7 @@ pub struct Client<'a> {
 
 impl<'a> Client<'a> {
   #[allow(missing_docs)]
-  pub fn new(id: OwnerId) -> Client<'a> {
+  pub fn new() -> Client<'a> {
     let mut load_distance = load_distance(terrain_buffers::POLYGON_BUDGET as i32);
 
     // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
@@ -41,7 +41,6 @@ impl<'a> Client<'a> {
       player_position: Pnt3::new(0.0, 0.0, 0.0),
       surroundings_loader:
         SurroundingsLoader::new(
-          id,
           load_distance,
           Box::new(move |last, cur| {
             let mut vec = Vec::new();

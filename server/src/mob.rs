@@ -1,7 +1,8 @@
 use common::color::Color4;
-use common::vertex::ColoredVertex;
 use common::entity::EntityId;
+use common::lod::OwnerId;
 use common::surroundings_loader::SurroundingsLoader;
+use common::vertex::ColoredVertex;
 use nalgebra::{Pnt3, Vec3};
 use ncollide_entities::bounding_volume::AABB3;
 use server::Server;
@@ -17,7 +18,8 @@ pub struct Mob<'a> {
   pub speed: Vec3<f32>,
   pub behavior: Behavior,
 
-  pub id: EntityId,
+  pub entity_id: EntityId,
+  pub owner_id: OwnerId,
 
   // Nearby blocks should be made solid if they aren't loaded yet.
   pub solid_boundary: SurroundingsLoader<'a>,
