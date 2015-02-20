@@ -1,10 +1,10 @@
 //! Define the updates passed from the client to the view.
 
 use common::color::Color3;
+use common::communicate::TerrainBlockSend;
 use common::entity::EntityId;
 use common::lod::LODIndex;
 use common::block_position::BlockPosition;
-use common::terrain_block::TerrainBlock;
 use common::vertex::ColoredVertex;
 use light::{Light, set_point_light, set_ambient_light};
 use nalgebra::Pnt3;
@@ -30,7 +30,7 @@ pub enum ClientToView {
   SetClearColor(Color3<f32>),
 
   /// Add a terrain block to the view.
-  AddBlock(BlockPosition, TerrainBlock, LODIndex),
+  AddBlock(TerrainBlockSend),
   /// Remove a terrain entity.
   RemoveTerrain(EntityId),
   /// Remove block-specific data.
@@ -68,25 +68,25 @@ pub fn apply_client_to_view(up: ClientToView, view: &mut View) {
     ClientToView::SetClearColor(color) => {
       view.gl.set_background_color(color.r, color.g, color.b, 1.0);
     },
-    ClientToView::AddBlock(block_position, block, lod) => {
+    ClientToView::AddBlock(block) => {
       let block_index =
         view.terrain_buffers.push_block_data(
           &mut view.gl,
-          block_position,
-          block.pixels.as_slice(),
-          lod,
+          block.position,
+          block.block.pixels.as_slice(),
+          block.lod,
         );
 
       let block_indices: Vec<_> =
-        repeat(block_index).take(block.ids.len()).collect();
+        repeat(block_index).take(block.block.ids.len()).collect();
 
       view.terrain_buffers.push(
         &mut view.gl,
-        block.vertex_coordinates.as_slice(),
-        block.normals.as_slice(),
-        block.coords.as_slice(),
+        block.block.vertex_coordinates.as_slice(),
+        block.block.normals.as_slice(),
+        block.block.coords.as_slice(),
         block_indices.as_slice(),
-        block.ids.as_slice(),
+        block.block.ids.as_slice(),
       );
     },
     ClientToView::RemoveTerrain(id) => {

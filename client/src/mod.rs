@@ -41,6 +41,7 @@ mod server_thread;
 mod shaders;
 mod surroundings_thread;
 mod terrain_buffers;
+mod terrain_thread;
 mod ttf;
 mod view;
 mod view_thread;
@@ -66,6 +67,7 @@ pub fn main() {
   assert!(args.next().is_none());
 
   let (client_to_view_send, client_to_view_recv) = channel();
+  let (terrain_to_load_send, terrain_to_load_recv) = channel();
 
   let (ups_from_server, mut listen_endpoint) = spark_socket_receiver(listen_url.clone());
   let (ups_to_server, mut talk_endpoint) = spark_socket_sender(server_listen_url);
@@ -87,6 +89,7 @@ pub fn main() {
         client.deref(),
         &ups_from_server,
         client_to_view_send.deref(),
+        &terrain_to_load_send,
       );
 
       ups_from_server
@@ -103,6 +106,19 @@ pub fn main() {
         client.deref(),
         client_to_view_send.deref(),
         ups_to_server.deref(),
+      );
+    })
+  };
+
+  let _terrain_thread = {
+    let client = client.clone();
+    let client_to_view_send = client_to_view_send.clone();
+
+    Future::spawn(move || {
+      terrain_thread::terrain_thread(
+        client.deref(),
+        &terrain_to_load_recv,
+        client_to_view_send.deref(),
       );
     })
   };

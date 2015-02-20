@@ -1,19 +1,13 @@
 use client::Client;
-use common::block_position::BlockPosition;
 use common::color::Color3;
-use common::communicate::ServerToClient;
-use common::surroundings_loader::radius_between;
+use common::communicate::{ServerToClient, TerrainBlockSend};
 use light::Light;
 use nalgebra::Vec3;
 use std::cmp::partial_max;
-use std::collections::hash_map::Entry::{Vacant, Occupied};
 use std::f32::consts::PI;
 use std::num::Float;
-use std::old_io::timer;
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::Mutex;
-use std::time::duration::Duration;
-use surroundings_thread::lod_index;
 use view_update::ClientToView;
 
 #[allow(missing_docs)]
@@ -21,6 +15,7 @@ pub fn server_thread(
   client: &Client,
   ups_from_server: &Receiver<ServerToClient>,
   ups_to_view: &Mutex<Sender<ClientToView>>,
+  terrain_updates: &Sender<TerrainBlockSend>,
 ) {
   loop {
     let update = ups_from_server.recv().unwrap();
@@ -69,39 +64,9 @@ pub fn server_thread(
 
         ups_to_view.lock().unwrap().send(ClientToView::SetClearColor(sun_color)).unwrap();
       },
-      // TODO: Is there a race where this block is stale by the time it gets to the client?
-      ServerToClient::AddBlock(position, block, lod) => {
-        let player_position =
-          BlockPosition::from_world_position(&client.player_position.lock().unwrap().clone());
-        let distance = radius_between(&player_position, &position);
-        if distance <= client.max_load_distance && lod_index(distance) == lod {
-          match client.loaded_blocks.lock().unwrap().entry(position) {
-            Vacant(entry) => {
-              entry.insert((block.clone(), lod));
-            },
-            Occupied(mut entry) => {
-              {
-                // The block removal code is duplicated elsewhere.
-
-                let &(ref prev_block, prev_lod) = entry.get();
-                for &id in prev_block.ids.iter() {
-                  ups_to_view.lock().unwrap().send(ClientToView::RemoveTerrain(id)).unwrap();
-                }
-                ups_to_view.lock().unwrap().send(
-                  ClientToView::RemoveBlockData(position, prev_lod)
-                ).unwrap();
-              }
-              entry.insert((block.clone(), lod));
-            },
-          };
-
-          if !block.ids.is_empty() {
-            ups_to_view.lock().unwrap().send(ClientToView::AddBlock(position, block, lod)).unwrap();
-          }
-        }
+      ServerToClient::AddBlock(block) => {
+        terrain_updates.send(block).unwrap();
       },
     };
-
-    timer::sleep(Duration::milliseconds(0));
   }
 }

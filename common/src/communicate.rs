@@ -16,6 +16,18 @@ use vertex::ColoredVertex;
 
 #[derive(Debug, Clone)]
 #[derive(RustcDecodable, RustcEncodable)]
+/// TerrainBlock plus identifying info, e.g. for transmission between server and client.
+pub struct TerrainBlockSend {
+  #[allow(missing_docs)]
+  pub position: BlockPosition,
+  #[allow(missing_docs)]
+  pub block: TerrainBlock,
+  #[allow(missing_docs)]
+  pub lod: LODIndex,
+}
+
+#[derive(Debug, Clone)]
+#[derive(RustcDecodable, RustcEncodable)]
 /// Messages the client sends to the server.
 pub enum ClientToServer {
   /// Notify the server that the client exists, and provide a "return address".
@@ -48,7 +60,7 @@ pub enum ServerToClient {
   UpdateSun(f32),
 
   /// Provide a block of terrain to a client.
-  AddBlock(BlockPosition, TerrainBlock, LODIndex),
+  AddBlock(TerrainBlockSend),
 }
 
 /// Spawn a new thread to send messages to a socket and wait for acks.

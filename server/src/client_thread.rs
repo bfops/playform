@@ -1,4 +1,4 @@
-use common::communicate::{ClientToServer, ServerToClient, spark_socket_sender};
+use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend, spark_socket_sender};
 use common::process_events::process_channel;
 use common::stopwatch::TimerSet;
 use gaia_thread::{ServerToGaia, LoadReason};
@@ -74,7 +74,11 @@ pub fn client_thread(
                     Some(&Some(ref block)) => {
                       server.to_client.lock().unwrap().as_mut().map(|client| {
                         client.send(
-                          ServerToClient::AddBlock(position, block.clone(), lod)
+                          ServerToClient::AddBlock(TerrainBlockSend {
+                            position: position,
+                            block: block.clone(),
+                            lod: lod,
+                          })
                         ).unwrap();
                       });
                     },

@@ -1,6 +1,6 @@
 /// Creator of the earth.
 
-use common::communicate::ServerToClient;
+use common::communicate::{ServerToClient, TerrainBlockSend};
 use common::lod::{LODIndex, OwnerId};
 use common::process_events::process_channel;
 use common::stopwatch::TimerSet;
@@ -88,7 +88,11 @@ pub fn gaia_thread(
                       },
                       LoadReason::ForClient => {
                         server.to_client.lock().unwrap().as_mut().unwrap().send(
-                          ServerToClient::AddBlock(position, block.clone(), lod)
+                          ServerToClient::AddBlock(TerrainBlockSend {
+                            position: position,
+                            block: block.clone(),
+                            lod: lod,
+                          })
                         ).unwrap();
                       },
                     }
