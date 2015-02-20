@@ -1,11 +1,9 @@
-use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend, spark_socket_sender};
-use common::process_events::process_channel;
+use common::communicate::{ClientToServer, ServerToClient, spark_socket_sender};
 use gaia_thread::{ServerToGaia, LoadReason};
 use nanomsg::Endpoint;
 use server::Server;
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::Mutex;
-use time;
 
 pub fn client_thread(
   client_endpoints: &mut Vec<Endpoint>,
