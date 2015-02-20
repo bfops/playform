@@ -19,6 +19,8 @@ use std::time::duration::Duration;
 use sun::Sun;
 use time;
 
+// TODO: Consider removing the IntervalTimer.
+
 const UPDATES_PER_SECOND: u64 = 30;
 const SUN_TICK_NS: u64 = 5000000;
 
