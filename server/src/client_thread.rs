@@ -44,7 +44,6 @@ pub fn client_thread(
         }
       },
       ClientToServer::Walk(v) => {
-        println!("{} got walk", time::precise_time_ns());
         let mut player = server.player.lock().unwrap();
         player.walk(v);
       },
