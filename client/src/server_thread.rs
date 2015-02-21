@@ -2,7 +2,7 @@ use client::Client;
 use common::color::Color3;
 use common::communicate::{ServerToClient, TerrainBlockSend};
 use light::Light;
-use nalgebra::Vec3;
+use cgmath::{Point, Vector, Vector3};
 use std::cmp::partial_max;
 use std::f32::consts::PI;
 use std::num::Float;
@@ -43,11 +43,12 @@ pub fn server_thread(
           );
 
         let radius = 1024.0;
-        let rel_position = Vec3::new(c, s, 0.0) * radius;
+        let rel_position = Vector3::new(c, s, 0.0);
+        rel_position.mul_s(radius);
 
         ups_to_view.lock().unwrap().send(ClientToView::SetPointLight(
           Light {
-            position: *client.player_position.lock().unwrap() + rel_position,
+            position: client.player_position.lock().unwrap().add_v(&rel_position),
             intensity: sun_color,
           }
         )).unwrap();

@@ -8,7 +8,7 @@ use common::block_position::BlockPosition;
 use common::terrain_block::{TEXTURE_WIDTH, TEXTURE_LEN, Triangle};
 use gl;
 use gl::types::*;
-use nalgebra::{Pnt2, Pnt3, Vec3};
+use cgmath::{Point2, Point3, Vector3};
 use shaders::terrain::TerrainShader;
 use std::collections::HashMap;
 use std::iter::{IteratorExt, repeat};
@@ -38,12 +38,12 @@ pub struct TerrainBuffers<'a> {
 
   // Per-triangle buffers
 
-  vertex_positions: BufferTexture<'a, Triangle<Pnt3<GLfloat>>>,
-  normals: BufferTexture<'a, Triangle<Vec3<GLfloat>>>,
+  vertex_positions: BufferTexture<'a, Triangle<Point3<GLfloat>>>,
+  normals: BufferTexture<'a, Triangle<Vector3<GLfloat>>>,
   // Index into `pixels`.
   block_indices: BufferTexture<'a, GLuint>,
   // 2D coordinates into a texture in `pixels`.
-  coords: BufferTexture<'a, Triangle<Pnt2<GLfloat>>>,
+  coords: BufferTexture<'a, Triangle<Point2<GLfloat>>>,
 
   // Per-block buffers
 
@@ -57,10 +57,10 @@ pub struct TerrainBuffers<'a> {
 
 #[test]
 fn correct_size() {
-  assert!(mem::size_of::<Triangle<Pnt3<GLfloat>>>() == 3 * mem::size_of::<Pnt3<GLfloat>>());
-  assert!(mem::size_of::<Pnt2<GLfloat>>() == 2 * mem::size_of::<GLfloat>());
-  assert!(mem::size_of::<Pnt3<GLfloat>>() == 3 * mem::size_of::<GLfloat>());
-  assert!(mem::size_of::<Vec3<GLfloat>>() == 3 * mem::size_of::<GLfloat>());
+  assert!(mem::size_of::<Triangle<Point3<GLfloat>>>() == 3 * mem::size_of::<Point3<GLfloat>>());
+  assert!(mem::size_of::<Point2<GLfloat>>() == 2 * mem::size_of::<GLfloat>());
+  assert!(mem::size_of::<Point3<GLfloat>>() == 3 * mem::size_of::<GLfloat>());
+  assert!(mem::size_of::<Vector3<GLfloat>>() == 3 * mem::size_of::<GLfloat>());
 }
 
 impl<'a> TerrainBuffers<'a> {
@@ -144,9 +144,9 @@ impl<'a> TerrainBuffers<'a> {
   pub fn push(
     &mut self,
     gl: &mut GLContext,
-    vertices: &[Triangle<Pnt3<GLfloat>>],
-    normals: &[Triangle<Vec3<GLfloat>>],
-    coords: &[Triangle<Pnt2<f32>>],
+    vertices: &[Triangle<Point3<GLfloat>>],
+    normals: &[Triangle<Vector3<GLfloat>>],
+    coords: &[Triangle<Point2<f32>>],
     block_indices: &[u32],
     ids: &[EntityId],
   ) -> bool {

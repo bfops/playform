@@ -6,20 +6,20 @@
 #![feature(core)]
 #![feature(collections)]
 #![feature(env)]
-#![feature(io)]
-#![feature(path)]
+#![feature(old_io)]
+#![feature(old_path)]
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 
+extern crate cgmath;
 extern crate common;
 extern crate env_logger;
 extern crate gl;
 #[macro_use]
 extern crate log;
 extern crate libc;
-extern crate nalgebra;
 extern crate nanomsg;
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate sdl2;

@@ -88,7 +88,7 @@ impl Font {
   pub fn new(font: &Path, point_size: u32) -> Font {
     ensure_init();
 
-    let c_path = CString::from_slice(font.container_as_bytes());
+    let c_path = CString::new(font.container_as_bytes()).unwrap();
     let ptr = c_path.as_ptr() as *const i8;
     let p = unsafe { ffi::TTF_OpenFont(ptr, point_size as ffi::c_int) };
 
@@ -98,12 +98,12 @@ impl Font {
   }
 
   /// Color is rgba
-  pub fn render<'a>(
+  pub fn render<'a, 'b:'a>(
     &self,
     gl: &'a GLContext,
     txt: &str,
     color: Color4<u8>,
-  ) -> Texture2D<'a> {
+  ) -> Texture2D<'b> {
     let sdl_color = SDL_Color {
       r: color.r,
       g: color.g,
@@ -112,7 +112,7 @@ impl Font {
     };
 
     let surface_ptr = {
-      let c_str = CString::from_slice(txt.as_bytes());
+      let c_str = CString::new(txt.as_bytes()).unwrap();
       let ptr = c_str.as_ptr() as *const i8;
       unsafe {
         ffi::TTF_RenderUTF8_Blended(self.p as *const ffi::c_void, ptr, sdl_color)

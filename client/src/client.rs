@@ -3,7 +3,7 @@
 use common::block_position::BlockPosition;
 use common::lod::LODIndex;
 use common::terrain_block::{TerrainBlock, LOD_QUALITY};
-use nalgebra::Pnt3;
+use cgmath::Point3;
 use std::collections::HashMap;
 use std::iter::range_inclusive;
 use std::sync::Mutex;
@@ -13,18 +13,18 @@ use terrain_buffers;
 pub const LOD_THRESHOLDS: [i32; 3] = [1, 8, 32];
 
 /// The main client state.
-pub struct Client<'a> {
+pub struct Client {
   #[allow(missing_docs)]
-  pub player_position: Mutex<Pnt3<f32>>,
+  pub player_position: Mutex<Point3<f32>>,
   #[allow(missing_docs)]
   pub max_load_distance: i32,
   /// A record of all the blocks that have been loaded.
   pub loaded_blocks: Mutex<HashMap<BlockPosition, (TerrainBlock, LODIndex)>>,
 }
 
-impl<'a> Client<'a> {
+impl Client {
   #[allow(missing_docs)]
-  pub fn new() -> Client<'a> {
+  pub fn new() -> Client {
     let mut load_distance = load_distance(terrain_buffers::POLYGON_BUDGET as i32);
 
     // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
@@ -37,7 +37,7 @@ impl<'a> Client<'a> {
     }
 
     Client {
-      player_position: Mutex::new(Pnt3::new(0.0, 0.0, 0.0)),
+      player_position: Mutex::new(Point3::new(0.0, 0.0, 0.0)),
       max_load_distance: load_distance,
       loaded_blocks: Mutex::new(HashMap::new()),
     }

@@ -7,7 +7,7 @@ use common::lod::LODIndex;
 use common::block_position::BlockPosition;
 use common::vertex::ColoredVertex;
 use light::{Light, set_point_light, set_ambient_light};
-use nalgebra::Pnt3;
+use cgmath::Point3;
 use std::iter::repeat;
 use view::View;
 
@@ -15,7 +15,7 @@ use view::View;
 /// Messages from the client to the view.
 pub enum ClientToView {
   /// Set the camera location.
-  MoveCamera(Pnt3<f32>),
+  MoveCamera(Point3<f32>),
 
   /// Add a mob mesh to the view.
   AddMob(EntityId, Vec<ColoredVertex>),

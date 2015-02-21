@@ -60,8 +60,8 @@ git = "https://github.com/bfops/rust-sdl2"
 [dependencies.yaglw]
 git = "https://github.com/bfops/yaglw"
 
-[dependencies.nalgebra]
-git = "https://github.com/sebcrozet/nalgebra"
+[dependencies.cgmath]
+git = "https://github.com/bfops/cgmath-rs"
 
 [dependencies.nanomsg]
 git = "https://github.com/thehydroimpulse/nanomsg.rs"

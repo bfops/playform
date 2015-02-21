@@ -6,7 +6,7 @@ use common::process_events::process_channel;
 use common::stopwatch::TimerSet;
 use gl;
 use hud::make_hud;
-use nalgebra::Vec2;
+use cgmath::Vector2;
 use process_event::process_event;
 use render::render;
 use sdl2;
@@ -68,8 +68,9 @@ pub fn view_thread(
 
   let window_size = {
     let (w, h) = window.get_size();
-    Vec2::new(w, h)
+    Vector2::new(w, h)
   };
+
   let mut view = View::new(gl, window_size);
 
   make_hud(&mut view);

@@ -1,14 +1,14 @@
 //! The state associated with perceiving the world state.
 
 use camera::Camera;
+use cgmath;
+use cgmath::Vector2;
 use common::id_allocator::IdAllocator;
-use common::matrix;
 use common::vertex::{ColoredVertex, TextureVertex};
 use fontloader::FontLoader;
 use gl;
 use gl::types::*;
 use mob_buffers::MobBuffers;
-use nalgebra::Vec2;
 use shaders::Shaders;
 use std::f32::consts::PI;
 use terrain_buffers::TerrainBuffers;
@@ -47,7 +47,7 @@ pub struct View<'a> {
 
 impl<'a> View<'a> {
   #[allow(missing_docs)]
-  pub fn new(mut gl: GLContext, window_size: Vec2<i32>) -> View<'a> {
+  pub fn new(mut gl: GLContext, window_size: Vector2<i32>) -> View<'a> {
     let mut texture_unit_alloc = IdAllocator::new();
 
     let mut shaders = Shaders::new(&mut gl, window_size);
@@ -133,9 +133,11 @@ impl<'a> View<'a> {
       fontloader: FontLoader::new(),
 
       camera: {
+        let fovy = cgmath::rad(3.14 / 3.0);
+        let aspect = window_size.x as f32 / window_size.y as f32;
         let mut camera = Camera::unit();
         // Initialize the projection matrix.
-        camera.fov = matrix::perspective(3.14/3.0, 4.0/3.0, 0.1, 2048.0);
+        camera.fov = cgmath::perspective(fovy, aspect, 0.1, 2048.0);
         camera.rotate_lateral(PI / 2.0);
         camera
       },

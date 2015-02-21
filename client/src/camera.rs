@@ -1,10 +1,9 @@
 //! Camera structure and manipulation functions.
 
-use common::matrix;
 use gl;
 use gl::types::*;
-use nalgebra::{Mat4, Vec3, Pnt3};
-use nalgebra;
+use cgmath;
+use cgmath::{Matrix, Matrix3, Matrix4, Vector3, Point, Point3};
 use std::f32::consts::PI;
 use std::mem;
 use yaglw::gl_context::GLContext;
@@ -13,7 +12,7 @@ use yaglw::shader::Shader;
 /// Camera representation as 3 distinct matrices, as well as a position + two rotations.
 pub struct Camera {
   #[allow(missing_docs)]
-  pub position: Pnt3<f32>,
+  pub position: Point3<f32>,
   #[allow(missing_docs)]
   pub lateral_rotation: f32,
   #[allow(missing_docs)]
@@ -22,11 +21,11 @@ pub struct Camera {
   // Projection matrix components
 
   #[allow(missing_docs)]
-  pub translation: Mat4<GLfloat>,
+  pub translation: Matrix4<GLfloat>,
   #[allow(missing_docs)]
-  pub rotation: Mat4<GLfloat>,
+  pub rotation: Matrix4<GLfloat>,
   #[allow(missing_docs)]
-  pub fov: Mat4<GLfloat>,
+  pub fov: Matrix4<GLfloat>,
 }
 
 impl Camera {
@@ -36,36 +35,44 @@ impl Camera {
   /// and [0, -1] in z in depth.
   pub fn unit() -> Camera {
     Camera {
-      position: Pnt3::new(0.0, 0.0, 0.0),
+      position: Point3::new(0.0, 0.0, 0.0),
       lateral_rotation: 0.0,
       vertical_rotation: 0.0,
 
-      translation: nalgebra::new_identity(4),
-      rotation: nalgebra::new_identity(4),
-      fov: nalgebra::new_identity(4),
+      translation: Matrix4::identity(),
+      rotation: Matrix4::identity(),
+      fov: Matrix4::identity(),
     }
   }
 
   #[allow(missing_docs)]
-  pub fn projection_matrix(&self) -> Mat4<GLfloat> {
+  pub fn projection_matrix(&self) -> Matrix4<GLfloat> {
     self.fov * self.rotation * self.translation
   }
 
   #[allow(missing_docs)]
-  pub fn translate_to(&mut self, p: Pnt3<f32>) {
+  pub fn translate_to(&mut self, p: Point3<f32>) {
     self.position = p;
-    self.translation = matrix::translation(-p.to_vec());
+    self.translation = Matrix4::from_translation(&-p.to_vec());
   }
 
   /// Rotate about a given vector, by `r` radians.
-  pub fn rotate(&mut self, v: Vec3<f32>, r: f32) {
-    self.rotation = self.rotation * matrix::from_axis_angle4(v, -r);
+  pub fn rotate(&mut self, v: &Vector3<f32>, r: f32) {
+    let mat = Matrix3::from_axis_angle(v, -cgmath::rad(r));
+    let mat =
+      Matrix4::new(
+        mat.x.x, mat.x.y, mat.x.z, 0.0,
+        mat.y.x, mat.y.y, mat.y.z, 0.0,
+        mat.z.x, mat.z.y, mat.z.z, 0.0,
+        0.0,     0.0,     0.0,     1.0,
+      );
+    self.rotation = self.rotation * mat;
   }
 
   /// Rotate the camera around the y axis, by `r` radians. Positive is counterclockwise.
   pub fn rotate_lateral(&mut self, r: GLfloat) {
     self.lateral_rotation = self.lateral_rotation + r;
-    self.rotate(Vec3::new(0.0, 1.0, 0.0), r);
+    self.rotate(&Vector3::new(0.0, 1.0, 0.0), r);
   }
 
   /// Changes the camera pitch by `r` radians. Positive is up.
@@ -82,9 +89,12 @@ impl Camera {
     self.vertical_rotation = new_rotation;
 
     let axis =
-      matrix::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation) *
-      Vec3::new(1.0, 0.0, 0.0);
-    self.rotate(axis, r);
+      Matrix3::from_axis_angle(
+        &Vector3::new(0.0, 1.0, 0.0),
+        cgmath::rad(self.lateral_rotation),
+      );
+    let axis = axis.mul_v(&Vector3::new(1.0, 0.0, 0.0));
+    self.rotate(&axis, r);
   }
 }
 

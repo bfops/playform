@@ -3,7 +3,7 @@
 use common::color::Color3;
 use gl;
 use gl::types::GLfloat;
-use nalgebra::Pnt3;
+use cgmath::Point3;
 use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 
@@ -11,7 +11,7 @@ use yaglw::shader::Shader;
 /// Colored light data structure.
 pub struct Light {
   #[allow(missing_docs)]
-  pub position: Pnt3<GLfloat>,
+  pub position: Point3<GLfloat>,
   #[allow(missing_docs)]
   pub intensity: Color3<GLfloat>,
 }

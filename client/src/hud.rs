@@ -2,18 +2,18 @@
 
 use common::color::Color4;
 use common::vertex::{ColoredVertex, TextureVertex};
-use nalgebra::Pnt2;
-use nalgebra::Vec2;
+use cgmath::Point2;
+use cgmath::Vector2;
 use view::View;
 
 /// Add HUD data into `view`.
-pub fn make_hud(view: &mut View) {
+pub fn make_hud<'a, 'b:'a>(view: &'a mut View<'b>) {
   let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
 
   let triangles: Vec<_> =
     ColoredVertex::square(
-      Pnt2 { x: -0.02, y: -0.02 },
-      Pnt2 { x:  0.02, y:  0.02 },
+      Point2 { x: -0.02, y: -0.02 },
+      Point2 { x:  0.02, y:  0.02 },
       cursor_color
     ).iter().map(|&x| x).collect();
 
@@ -37,8 +37,8 @@ pub fn make_hud(view: &mut View) {
 
     let triangles: Vec<_> =
       TextureVertex::square(
-        Vec2 { x: -0.97, y: y - 0.2 },
-        Vec2 { x: 0.0,   y: y       }
+        Vector2 { x: -0.97, y: y - 0.2 },
+        Vector2 { x: 0.0,   y: y       }
       )
       .iter()
       .map(|&x| x)

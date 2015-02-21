@@ -6,10 +6,10 @@ pub mod texture;
 
 use camera;
 use common::color::Color3;
-use common::matrix;
+use cgmath;
 use gl;
 use light::{Light, set_point_light, set_ambient_light};
-use nalgebra::{Pnt3, Vec2};
+use cgmath::{Point3, Vector2};
 use yaglw::gl_context::GLContext;
 
 /// The game's custom shader structs.
@@ -26,7 +26,7 @@ pub struct Shaders<'a> {
 
 impl<'a> Shaders<'a> {
   #[allow(missing_docs)]
-  pub fn new<'b:'a>(gl: &'a mut GLContext, window_size: Vec2<i32>) -> Shaders<'b> {
+  pub fn new<'b:'a>(gl: &'a mut GLContext, window_size: Vector2<i32>) -> Shaders<'b> {
     let mut terrain_shader = self::terrain::TerrainShader::new(gl);
     let mob_shader = self::color::ColorShader::new(gl);
     let mut hud_color_shader = self::color::ColorShader::new(gl);
@@ -36,7 +36,7 @@ impl<'a> Shaders<'a> {
       &mut terrain_shader.shader,
       gl,
       &Light {
-        position: Pnt3::new(0.0, 0.0, 0.0),
+        position: Point3::new(0.0, 0.0, 0.0),
         intensity: Color3::of_rgb(0.0, 0.0, 0.0),
       }
     );
@@ -48,7 +48,9 @@ impl<'a> Shaders<'a> {
 
     let hud_camera = {
       let mut c = camera::Camera::unit();
-      c.fov = matrix::sortho(window_size.x as f32 / window_size.y as f32, 1.0, -1.0, 1.0);
+      let dx = window_size.x as f32 / window_size.y as f32;
+      let dy = 1.0;
+      c.fov = cgmath::ortho(-dx, dx, -dy, dy, -1.0, 1.0);
       c
     };
 
