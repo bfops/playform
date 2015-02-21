@@ -8,7 +8,7 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 // TODO: This could probably be an iterator.
 pub fn process_channel<T, Apply>(chan: &Receiver<T>, mut apply: Apply) -> bool
   where
-    T: Send,
+    T: Send + 'static,
     Apply: FnMut(T) -> bool,
 {
   loop {

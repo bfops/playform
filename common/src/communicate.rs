@@ -3,14 +3,13 @@
 use block_position::BlockPosition;
 use entity::EntityId;
 use lod::LODIndex;
-use nalgebra::{Vec2, Vec3, Pnt3};
+use cgmath::{Vector2, Vector3, Point3};
 use nanomsg::{Endpoint, Socket, Protocol};
 use rustc_serialize::{Encodable, Decodable, json};
-use std::fmt::Debug;
 use std::old_io::timer;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::time::duration::Duration;
-use std::thread::Thread;
+use std::thread;
 use terrain_block::TerrainBlock;
 use vertex::ColoredVertex;
 
@@ -33,9 +32,9 @@ pub enum ClientToServer {
   /// Notify the server that the client exists, and provide a "return address".
   Init(String),
   /// Add a vector the player's acceleration.
-  Walk(Vec3<f32>),
+  Walk(Vector3<f32>),
   /// Rotate the player by some amount.
-  RotatePlayer(Vec2<f32>),
+  RotatePlayer(Vector2<f32>),
   /// [Try to] start a jump for the player.
   StartJump,
   /// [Try to] stop a jump for the player.
@@ -49,7 +48,7 @@ pub enum ClientToServer {
 /// Messages the server sends to the client.
 pub enum ServerToClient {
   /// Update the player's position.
-  UpdatePlayer(Pnt3<f32>),
+  UpdatePlayer(Point3<f32>),
 
   /// Tell the client to add a new mob with the given mesh.
   AddMob(EntityId, Vec<ColoredVertex>),
@@ -65,14 +64,14 @@ pub enum ServerToClient {
 
 /// Spawn a new thread to send messages to a socket and wait for acks.
 pub fn spark_socket_sender<T>(url: String) -> (Sender<T>, Endpoint)
-  where T: Send + Encodable + Debug
+  where T: Send + Encodable + 'static
 {
   let mut socket = Socket::new(Protocol::Push).unwrap();
   let endpoint = socket.connect(url.as_slice()).unwrap();
 
   let (send, recv) = channel();
 
-  Thread::spawn(move || {
+  thread::spawn(move || {
     loop {
       match recv.recv() {
         Err(e) => panic!("Error receiving from channel: {:?}", e),
@@ -93,14 +92,14 @@ pub fn spark_socket_sender<T>(url: String) -> (Sender<T>, Endpoint)
 
 /// Spawn a new thread to read messages from a socket and ack.
 pub fn spark_socket_receiver<T>(url: String) -> (Receiver<T>, Endpoint)
-  where T: Send + Decodable
+  where T: Send + Decodable + 'static
 {
   let mut socket = Socket::new(Protocol::Pull).unwrap();
   let endpoint = socket.bind(url.as_slice()).unwrap();
 
   let (send, recv) = channel();
 
-  Thread::spawn(move || {
+  thread::spawn(move || {
     loop {
       match socket.read_to_end() {
         Err(e) => panic!("Error reading from socket: {:?}", e),

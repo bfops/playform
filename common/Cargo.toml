@@ -42,11 +42,8 @@ log = "*"
 rustc-serialize = "*"
 time = "*"
 
-[dependencies.nalgebra]
-git = "https://github.com/sebcrozet/nalgebra"
-
-[dependencies.ncollide_entities]
-git = "https://github.com/bfops/ncollide"
+[dependencies.cgmath]
+git = "https://github.com/bfops/cgmath-rs"
 
 [dependencies.nanomsg]
 git = "https://github.com/thehydroimpulse/nanomsg.rs"

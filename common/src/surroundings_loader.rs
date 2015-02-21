@@ -3,7 +3,7 @@
 //! solid near the player).
 
 use std::cmp::max;
-use std::collections::RingBuf;
+use std::collections::VecDeque;
 use std::num::{Float, SignedInt};
 use surroundings_iter::SurroundingsIter;
 use block_position::BlockPosition;
@@ -40,7 +40,7 @@ pub struct SurroundingsLoader<'a> {
   max_load_distance: i32,
   to_load: Option<SurroundingsIter>,
 
-  to_recheck: RingBuf<BlockPosition>,
+  to_recheck: VecDeque<BlockPosition>,
   lod_changes: Box<FnMut(&BlockPosition, &BlockPosition) -> Vec<BlockPosition> + 'a>,
 }
 
@@ -58,7 +58,7 @@ impl<'a> SurroundingsLoader<'a> {
       to_load: None,
       max_load_distance: max_load_distance,
 
-      to_recheck: RingBuf::new(),
+      to_recheck: VecDeque::new(),
       lod_changes: lod_changes,
     }
   }

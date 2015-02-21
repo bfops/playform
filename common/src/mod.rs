@@ -5,18 +5,16 @@
 
 #![feature(core)]
 #![feature(collections)]
-#![feature(hash)]
-#![feature(io)]
+#![feature(old_io)]
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 
+extern crate cgmath;
 #[macro_use]
 extern crate log;
-extern crate nalgebra;
 extern crate nanomsg;
-extern crate ncollide_entities;
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate test;
 extern crate time;
@@ -29,7 +27,6 @@ pub mod entity;
 pub mod id_allocator;
 pub mod interval_timer;
 pub mod lod;
-pub mod matrix;
 pub mod process_events;
 pub mod range_abs;
 pub mod stopwatch;

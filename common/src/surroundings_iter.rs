@@ -1,7 +1,7 @@
 //! This iterator emits `BlockPositions` in cube-shaped layers outward around a point.
 
 use cube_shell::cube_shell;
-use std::collections::RingBuf;
+use std::collections::VecDeque;
 use block_position::BlockPosition;
 
 #[cfg(test)]
@@ -16,13 +16,13 @@ pub struct SurroundingsIter {
   center: BlockPosition,
   next_distance: i32,
   max_distance: i32,
-  to_load_buffer: RingBuf<BlockPosition>,
+  to_load_buffer: VecDeque<BlockPosition>,
 }
 
 impl SurroundingsIter {
   #[allow(missing_docs)]
   pub fn new(center: BlockPosition, max_distance: i32) -> SurroundingsIter {
-    let mut to_load_buffer = RingBuf::new();
+    let mut to_load_buffer = VecDeque::new();
     to_load_buffer.push_back(center);
 
     SurroundingsIter {

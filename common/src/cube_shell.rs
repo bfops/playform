@@ -8,7 +8,7 @@ use block_position::BlockPosition;
 #[cfg(test)]
 use std::collections::HashSet;
 #[cfg(test)]
-use nalgebra::Vec3;
+use cgmath::Vector3;
 #[cfg(test)]
 use test::{Bencher, black_box};
 
@@ -215,7 +215,7 @@ fn test_shell_no_dups() {
 #[test]
 fn test_simple_diff() {
   let from = BlockPosition::new(2, 0, -3);
-  let to = from + Vec3::new(-1, 2, 0);
+  let to = from + Vector3::new(-1, 2, 0);
   let radius = 1;
 
   let expected: HashSet<BlockPosition> = [
@@ -259,7 +259,7 @@ fn test_simple_diff() {
 #[test]
 fn test_diff_no_dups() {
   let from = BlockPosition::new(2, 0, -3);
-  let to = from + Vec3::new(-1, 2, 0);
+  let to = from + Vector3::new(-1, 2, 0);
   let radius = 2;
 
   let expected = cube_diff(&from, &to, radius);
