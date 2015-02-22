@@ -65,7 +65,6 @@ pub fn update_thread<'a>(
       timers.time("update", || {
         timers.time("update.player", || {
           let block_position = BlockPosition::from_world_position(&server.player.lock().unwrap().position);
-          println!("still fine");
 
           timers.time("update.player.surroundings", || {
             player_surroundings_loader.update(
@@ -108,12 +107,9 @@ pub fn update_thread<'a>(
             );
           });
 
-          println!("goin fine");
           server.player.lock().unwrap().update(server);
-          println!("done fine");
 
           let player_position = server.player.lock().unwrap().position;
-          println!("oh man still fine");
           server.to_client.lock().unwrap().as_mut().map(|client| {
             client.send(UpdatePlayer(player_position)).unwrap();
           });

@@ -55,9 +55,7 @@ impl Player {
     physics: &Mutex<Physics>,
     v: Vector3<f32>,
   ) {
-    println!("physics plz");
     let mut physics = physics.lock().unwrap();
-    println!("thx");
     let physics = physics.deref_mut();
     let bounds = physics.bounds.get_mut(&self.entity_id).unwrap();
     let init_bounds =
@@ -129,7 +127,6 @@ impl Player {
     }
 
     let delta_p = self.speed;
-    println!("delta_p: {:?}", delta_p);
     if delta_p.x != 0.0 {
       self.translate(&server.physics, Vector3::new(delta_p.x, 0.0, 0.0));
     }
@@ -141,15 +138,12 @@ impl Player {
     }
 
     let y_axis = Vector3::new(0.0, 1.0, 0.0);
-    println!("self.walk_accel: {:?}", self.walk_accel);
     let walk_v =
         Matrix3::from_axis_angle(&y_axis, cgmath::rad(self.lateral_rotation))
         .mul_v(&self.walk_accel);
-    println!("walk_v: {:?}", walk_v);
     self.speed = self.speed + walk_v + self.accel;
     // friction
     self.speed = self.speed * Vector3::new(0.7, 0.99, 0.7 as f32);
-    println!("self.speed: {:?}", self.speed);
   }
 
   /// Changes the player's acceleration by the given `da`.
