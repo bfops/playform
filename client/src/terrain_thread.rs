@@ -20,7 +20,7 @@ pub fn terrain_thread(
     let distance = radius_between(&player_position, &block.position);
 
     if distance > client.max_load_distance {
-      info!(
+      debug!(
         "Not loading {:?}: too far away from player at {:?}.",
         block.position,
         player_position,
@@ -30,7 +30,7 @@ pub fn terrain_thread(
 
     let lod = lod_index(distance);
     if lod != block.lod {
-      info!(
+      debug!(
         "Not loading {:?}: given LOD {:?} is not the desired LOD {:?}.",
         block.position,
         block.lod,
