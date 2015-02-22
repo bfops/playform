@@ -66,6 +66,9 @@ pub fn main() {
   let server_listen_url = args.next().unwrap_or(String::from_str("ipc:///tmp/server.ipc"));
   assert!(args.next().is_none());
 
+  info!("Sending to {}.", server_listen_url);
+  info!("Listening on {}.", listen_url);
+
   let (client_to_view_send, client_to_view_recv) = channel();
   let (terrain_to_load_send, terrain_to_load_recv) = channel();
 
@@ -92,7 +95,7 @@ pub fn main() {
         &terrain_to_load_send,
       );
 
-      ups_from_server
+      (ups_from_server, terrain_to_load_send)
     })
   };
 
@@ -120,6 +123,8 @@ pub fn main() {
         &terrain_to_load_recv,
         client_to_view_send.deref(),
       );
+
+      terrain_to_load_recv
     })
   };
 
