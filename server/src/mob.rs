@@ -2,8 +2,8 @@ use common::color::Color4;
 use common::entity::EntityId;
 use common::lod::OwnerId;
 use common::vertex::ColoredVertex;
-use nalgebra::{Pnt3, Vec3};
-use ncollide_entities::bounding_volume::AABB3;
+use cgmath::{Point3, Vector3};
+use cgmath::Aabb3;
 use server::Server;
 
 pub const TRIANGLES_PER_BOX: u32 = 12;
@@ -13,8 +13,8 @@ pub const TRIANGLE_VERTICES_PER_BOX: u32 = TRIANGLES_PER_BOX * VERTICES_PER_TRIA
 pub type Behavior = fn(&Server, &mut Mob);
 
 pub struct Mob {
-  pub position: Pnt3<f32>,
-  pub speed: Vec3<f32>,
+  pub position: Point3<f32>,
+  pub speed: Vector3<f32>,
   pub behavior: Behavior,
 
   pub entity_id: EntityId,
@@ -23,15 +23,15 @@ pub struct Mob {
 
 impl Mob {
   pub fn to_triangles(
-    bounds: &AABB3<f32>,
+    bounds: &Aabb3<f32>,
     c: &Color4<f32>,
   ) -> [ColoredVertex; TRIANGLE_VERTICES_PER_BOX as usize] {
-    let (x1, y1, z1) = (bounds.mins().x, bounds.mins().y, bounds.mins().z);
-    let (x2, y2, z2) = (bounds.maxs().x, bounds.maxs().y, bounds.maxs().z);
+    let (x1, y1, z1) = (bounds.min.x, bounds.min.y, bounds.min.z);
+    let (x2, y2, z2) = (bounds.max.x, bounds.max.y, bounds.max.z);
 
     let vtx = |&:x, y, z| {
       ColoredVertex {
-        position: Pnt3::new(x, y, z),
+        position: Point3::new(x, y, z),
         color: c.clone(),
       }
     };

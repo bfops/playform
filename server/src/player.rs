@@ -1,8 +1,6 @@
 use common::entity::EntityId;
-use common::matrix;
-use nalgebra::{Pnt3, Vec3};
-use ncollide_entities::bounding_volume::AABB;
-use ncollide_queries::ray::{Ray, Ray3};
+use cgmath;
+use cgmath::{Aabb3, Point, Point3, Matrix, Matrix3, Ray, Ray3, Vector, Vector3};
 use physics::Physics;
 use server::Server;
 use std::f32::consts::PI;
@@ -13,13 +11,13 @@ const MAX_JUMP_FUEL: u32 = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;
 
 pub struct Player {
-  pub position: Pnt3<f32>,
+  pub position: Point3<f32>,
   // speed; units are world coordinates
-  pub speed: Vec3<f32>,
+  pub speed: Vector3<f32>,
   // acceleration; units are world coordinates
-  pub accel: Vec3<f32>,
+  pub accel: Vector3<f32>,
   // acceleration; x/z units are relative to player facing
-  pub walk_accel: Vec3<f32>,
+  pub walk_accel: Vector3<f32>,
   // this is depleted as we jump and replenished as we stand.
   pub jump_fuel: u32,
   // are we currently trying to jump? (e.g. holding the key).
@@ -37,10 +35,10 @@ impl Player {
     entity_id: EntityId,
   ) -> Player {
     Player {
-      position: Pnt3::new(0.0, 0.0, 0.0),
-      speed: Vec3::new(0.0, 0.0, 0.0),
-      accel: Vec3::new(0.0, -0.1, 0.0),
-      walk_accel: Vec3::new(0.0, 0.0, 0.0),
+      position: Point3::new(0.0, 0.0, 0.0),
+      speed: Vector3::new(0.0, 0.0, 0.0),
+      accel: Vector3::new(0.0, -0.1, 0.0),
+      walk_accel: Vector3::new(0.0, 0.0, 0.0),
       jump_fuel: 0,
       is_jumping: false,
       entity_id: entity_id,
@@ -55,15 +53,17 @@ impl Player {
   pub fn translate(
     &mut self,
     physics: &Mutex<Physics>,
-    v: Vec3<f32>,
+    v: Vector3<f32>,
   ) {
+    println!("physics plz");
     let mut physics = physics.lock().unwrap();
+    println!("thx");
     let physics = physics.deref_mut();
     let bounds = physics.bounds.get_mut(&self.entity_id).unwrap();
     let init_bounds =
-      AABB::new(
-        *bounds.mins() + v,
-        *bounds.maxs() + v,
+      Aabb3::new(
+        bounds.min.add_v(&v),
+        bounds.max.add_v(&v),
       );
     let mut new_bounds = init_bounds.clone();
     // The height of the player's "step".
@@ -76,14 +76,14 @@ impl Player {
             if Physics::reinsert(&mut physics.misc_octree, self.entity_id, bounds, new_bounds).is_some() {
               collided = true;
             } else {
-              self.position = self.position + v + Vec3::new(0.0, step_height, 0.0);
+              self.position.add_self_v(&(v + Vector3::new(0.0, step_height, 0.0)));
             }
             break;
           },
           Some((collision_bounds, _)) => {
             collided = true;
             // Step to the top of whatever we hit.
-            step_height = collision_bounds.maxs().y - init_bounds.mins().y;
+            step_height = collision_bounds.max.y - init_bounds.min.y;
             assert!(step_height > 0.0);
 
             if step_height > MAX_STEP_HEIGHT {
@@ -92,9 +92,9 @@ impl Player {
             }
 
             new_bounds =
-              AABB::new(
-                *init_bounds.mins() + Vec3::new(0.0, step_height, 0.0),
-                *init_bounds.maxs() + Vec3::new(0.0, step_height, 0.0),
+              Aabb3::new(
+                init_bounds.min.add_v(&Vector3::new(0.0, step_height, 0.0)),
+                init_bounds.max.add_v(&Vector3::new(0.0, step_height, 0.0)),
               );
           },
         }
@@ -129,27 +129,32 @@ impl Player {
     }
 
     let delta_p = self.speed;
+    println!("delta_p: {:?}", delta_p);
     if delta_p.x != 0.0 {
-      self.translate(&server.physics, Vec3::new(delta_p.x, 0.0, 0.0));
+      self.translate(&server.physics, Vector3::new(delta_p.x, 0.0, 0.0));
     }
     if delta_p.y != 0.0 {
-      self.translate(&server.physics, Vec3::new(0.0, delta_p.y, 0.0));
+      self.translate(&server.physics, Vector3::new(0.0, delta_p.y, 0.0));
     }
     if delta_p.z != 0.0 {
-      self.translate(&server.physics, Vec3::new(0.0, 0.0, delta_p.z));
+      self.translate(&server.physics, Vector3::new(0.0, 0.0, delta_p.z));
     }
 
-    let y_axis = Vec3::new(0.0, 1.0, 0.0);
+    let y_axis = Vector3::new(0.0, 1.0, 0.0);
+    println!("self.walk_accel: {:?}", self.walk_accel);
     let walk_v =
-        matrix::from_axis_angle3(y_axis, self.lateral_rotation) * self.walk_accel;
+        Matrix3::from_axis_angle(&y_axis, cgmath::rad(self.lateral_rotation))
+        .mul_v(&self.walk_accel);
+    println!("walk_v: {:?}", walk_v);
     self.speed = self.speed + walk_v + self.accel;
     // friction
-    self.speed = self.speed * Vec3::new(0.7, 0.99, 0.7 as f32);
+    self.speed = self.speed * Vector3::new(0.7, 0.99, 0.7 as f32);
+    println!("self.speed: {:?}", self.speed);
   }
 
   /// Changes the player's acceleration by the given `da`.
-  pub fn walk(&mut self, da: Vec3<f32>) {
-    self.walk_accel = self.walk_accel + da * 0.2 as f32;
+  pub fn walk(&mut self, da: Vector3<f32>) {
+    self.walk_accel.add_self_v(&da.mul_s(0.2));
   }
 
   /// Rotate the player around the y axis, by `r` radians. Positive is counterclockwise.
@@ -174,21 +179,19 @@ impl Player {
   // axes
 
   /// Return the "right" axis (i.e. the x-axis rotated to match you).
-  pub fn right(&self) -> Vec3<f32> {
-    return
-      matrix::from_axis_angle3(Vec3::new(0.0, 1.0, 0.0), self.lateral_rotation) *
-      Vec3::new(1.0, 0.0, 0.0)
+  pub fn right(&self) -> Vector3<f32> {
+    Matrix3::from_axis_angle(&Vector3::new(0.0, 1.0, 0.0), cgmath::rad(self.lateral_rotation)).mul_v(&Vector3::new(1.0, 0.0, 0.0))
   }
 
   /// Return the "Ray axis (i.e. the z-axis rotated to match you).
-  pub fn forward(&self) -> Vec3<f32> {
-    let y_axis = Vec3::new(0.0, 1.0, 0.0);
+  pub fn forward(&self) -> Vector3<f32> {
+    let y_axis = Vector3::new(0.0, 1.0, 0.0);
     let transform =
-      matrix::from_axis_angle3(self.right(), self.vertical_rotation) *
-      matrix::from_axis_angle3(y_axis, self.lateral_rotation);
-    let forward_orig = Vec3::new(0.0, 0.0, -1.0);
+      Matrix3::from_axis_angle(&self.right(), cgmath::rad(self.vertical_rotation))
+      .mul_m(&Matrix3::from_axis_angle(&y_axis, cgmath::rad(self.lateral_rotation)));
+    let forward_orig = Vector3::new(0.0, 0.0, -1.0);
 
-    transform * forward_orig
+    transform.mul_v(&forward_orig)
   }
 
   #[allow(dead_code)]

@@ -1,3 +1,4 @@
+use cgmath::{Point, Vector, Vector3};
 use common::block_position::BlockPosition;
 use common::color::Color4;
 use common::communicate::ServerToClient::*;
@@ -9,10 +10,10 @@ use common::surroundings_loader::{SurroundingsLoader, LODChange};
 use gaia_thread::ServerToGaia;
 use init_mobs::init_mobs;
 use mob;
-use nalgebra::Vec3;
 use server::Server;
 use std::collections::HashMap;
 use std::old_io::timer;
+use std::ops::Neg;
 use std::sync::mpsc::Sender;
 use std::sync::Mutex;
 use std::time::duration::Duration;
@@ -64,6 +65,7 @@ pub fn update_thread<'a>(
       timers.time("update", || {
         timers.time("update.player", || {
           let block_position = BlockPosition::from_world_position(&server.player.lock().unwrap().position);
+          println!("still fine");
 
           timers.time("update.player.surroundings", || {
             player_surroundings_loader.update(
@@ -106,9 +108,12 @@ pub fn update_thread<'a>(
             );
           });
 
+          println!("goin fine");
           server.player.lock().unwrap().update(server);
+          println!("done fine");
 
           let player_position = server.player.lock().unwrap().position;
+          println!("oh man still fine");
           server.to_client.lock().unwrap().as_mut().map(|client| {
             client.send(UpdatePlayer(player_position)).unwrap();
           });
@@ -137,27 +142,18 @@ pub fn update_thread<'a>(
               (behavior)(server, mob);
             }
 
-            mob.speed = mob.speed - Vec3::new(0.0, 0.1, 0.0 as f32);
+            mob.speed = mob.speed - Vector3::new(0.0, 0.1, 0.0 as f32);
 
-            macro_rules! translate_mob(
-              ($v:expr) => (
-                translate_mob(
-                  server,
-                  mob,
-                  $v
-                );
-              );
-            );
-
+            // TODO: This logic is dumb (isolating along components shouldn't be a thing). Change it.
             let delta_p = mob.speed;
             if delta_p.x != 0.0 {
-              translate_mob!(Vec3::new(delta_p.x, 0.0, 0.0));
+              translate_mob(server, mob, &Vector3::new(delta_p.x, 0.0, 0.0));
             }
             if delta_p.y != 0.0 {
-              translate_mob!(Vec3::new(0.0, delta_p.y, 0.0));
+              translate_mob(server, mob, &Vector3::new(0.0, delta_p.y, 0.0));
             }
             if delta_p.z != 0.0 {
-              translate_mob!(Vec3::new(0.0, 0.0, delta_p.z));
+              translate_mob(server, mob, &Vector3::new(0.0, 0.0, delta_p.z));
             }
           }
         });
@@ -173,23 +169,24 @@ pub fn update_thread<'a>(
     timer::sleep(Duration::milliseconds(1));
   }
 }
+
 fn translate_mob(
   server: &Server,
   mob: &mut mob::Mob,
-  delta_p: Vec3<f32>,
+  delta_p: &Vector3<f32>,
 ) {
   let bounds;
   {
     let mut physics = server.physics.lock().unwrap();
-    if physics.translate_misc(mob.entity_id, delta_p).is_some() {
-      mob.speed = mob.speed - delta_p;
+    if physics.translate_misc(mob.entity_id, *delta_p).is_some() {
+      mob.speed.add_self_v(&delta_p.neg());
       return;
     } else {
       bounds = physics.get_bounds(mob.entity_id).unwrap().clone();
     }
   }
 
-  mob.position = mob.position + delta_p;
+  mob.position.add_self_v(delta_p);
 
   // TODO: Just send new position. Mesh remains the same.
   server.to_client.lock().unwrap().as_ref().map(|client| {

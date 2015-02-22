@@ -1,5 +1,4 @@
-use nalgebra::{normalize, cross};
-use nalgebra::{Pnt3, Vec3};
+use cgmath::{Point, Point3, EuclideanVector, Vector3};
 use noise::{Seed, Brownian2, perlin2, Point2};
 
 pub struct HeightMap {
@@ -35,19 +34,17 @@ impl HeightMap {
   }
 
   /// The coordinate of the tile at a given x/z.
-  pub fn point_at(&self, x: f32, z: f32) -> Pnt3<f32> {
+  pub fn point_at(&self, x: f32, z: f32) -> Point3<f32> {
     let y = self.height_at(x, z);
-    Pnt3::new(x, y, z)
+    Point3::new(x, y, z)
   }
 
   /// The lighting normal of the tile at a given x/z.
-  pub fn normal_at(&self, delta: f32, x: f32, z: f32) -> Vec3<f32> {
+  pub fn normal_at(&self, delta: f32, x: f32, z: f32) -> Vector3<f32> {
     let dx =
-      self.point_at(x + delta, z).to_vec()
-      - self.point_at(x - delta, z).to_vec();
+      self.point_at(x + delta, z).sub_p(&self.point_at(x - delta, z));
     let dz =
-      self.point_at(x, z + delta).to_vec()
-      - self.point_at(x, z - delta).to_vec();
-    normalize(&cross(&dz, &dx))
+      self.point_at(x, z + delta).sub_p(&self.point_at(x, z - delta));
+    dz.cross(&dx).normalize()
   }
 }

@@ -16,13 +16,15 @@ pub fn client_thread(
     let update = ups_from_client.recv().unwrap();
     match update {
       ClientToServer::Init(client_url) => {
+        info!("Sending to {}.", client_url);
+
         let (client, endpoint) = spark_socket_sender(client_url);
         client_endpoints.push(endpoint);
         let player_position = server.player.lock().unwrap().position;
-        server.to_client.lock().unwrap().as_mut().map(|client| {
-          client.send(ServerToClient::UpdatePlayer(player_position)).unwrap();
-        });
+
+        client.send(ServerToClient::UpdatePlayer(player_position)).unwrap();
         server.inform_client(&client);
+
         *server.to_client.lock().unwrap() = Some(client);
       },
       ClientToServer::StartJump => {

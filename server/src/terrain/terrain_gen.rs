@@ -4,8 +4,8 @@ use common::id_allocator::IdAllocator;
 use common::lod::LODIndex;
 use common::stopwatch::TimerSet;
 use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, TEXTURE_WIDTH, tri};
-use nalgebra::{Pnt2, Pnt3, Vec2, Vec3};
-use ncollide_entities::bounding_volume::AABB;
+use cgmath::{Point, Point2, Point3, Vector, Vector2, Vector3};
+use cgmath::Aabb3;
 use opencl_context::CL;
 use std::cmp::partial_max;
 use std::sync::Mutex;
@@ -38,8 +38,8 @@ pub fn generate_block(
         let dz = dz as f32;
         let tex_sample =
           TEXTURE_WIDTH[lod_index.0 as usize] as f32 / lateral_samples as f32;
-        let tex_coord = Pnt2::new(dx, dz) * tex_sample;
-        let tile_position = position + Vec3::new(dx, 0.0, dz) * sample_width;
+        let tex_coord = Point2::new(dx, dz).mul_s(tex_sample);
+        let tile_position = position.add_v(&Vector3::new(dx, 0.0, dz).mul_s(sample_width));
         if add_tile(
           timers,
           heightmap,
@@ -78,8 +78,8 @@ fn add_tile<'a>(
   block: &mut TerrainBlock,
   sample_width: f32,
   tex_sample: f32,
-  position: &Pnt3<f32>,
-  tex_coord: Pnt2<f32>,
+  position: &Point3<f32>,
+  tex_coord: Point2<f32>,
   lod_index: LODIndex,
 ) -> bool {
   let half_width = sample_width / 2.0;
@@ -97,29 +97,29 @@ fn add_tile<'a>(
     let x2 = position.x + sample_width;
     let z2 = position.z + sample_width;
 
-    let ps: [Pnt3<_>; 4] = [
+    let ps: [Point3<_>; 4] = [
       hm.point_at(position.x, position.z),
       hm.point_at(position.x, z2),
       hm.point_at(x2, z2),
       hm.point_at(x2, position.z),
     ];
 
-    let ns: [Vec3<_>; 4] = [
+    let ns: [Vector3<_>; 4] = [
       hm.normal_at(normal_delta, position.x, position.z),
       hm.normal_at(normal_delta, position.x, z2),
       hm.normal_at(normal_delta, x2, z2),
       hm.normal_at(normal_delta, x2, position.z),
     ];
 
-    let ts: [Pnt2<_>; 4] = [
-      (tex_coord.to_vec() + Vec2::new(0.0, 0.0)).to_pnt(),
-      (tex_coord.to_vec() + Vec2::new(0.0, tex_sample)).to_pnt(),
-      (tex_coord.to_vec() + Vec2::new(tex_sample, tex_sample)).to_pnt(),
-      (tex_coord.to_vec() + Vec2::new(tex_sample, 0.0)).to_pnt(),
+    let ts: [Point2<_>; 4] = [
+      tex_coord.add_v(&Vector2::new(0.0, 0.0)),
+      tex_coord.add_v(&Vector2::new(0.0, tex_sample)),
+      tex_coord.add_v(&Vector2::new(tex_sample, tex_sample)),
+      tex_coord.add_v(&Vector2::new(tex_sample, 0.0)),
     ];
 
     let center_tex_coord =
-      (tex_coord.to_vec() + Pnt2::new(tex_sample, tex_sample).to_vec() / 2.0).to_pnt();
+      tex_coord.add_v(&Vector2::new(tex_sample, tex_sample).mul_s(1.0 / 2.0));
 
     macro_rules! place_terrain(
       ($v1: expr,
@@ -147,9 +147,9 @@ fn add_tile<'a>(
         block.ids.push(id);
         block.bounds.push((
           id,
-          AABB::new(
-            Pnt3::new($minx, v1.y, $minz),
-            Pnt3::new($maxx, maxy, $maxz),
+          Aabb3::new(
+            Point3::new($minx, v1.y, $minz),
+            Point3::new($maxx, maxy, $maxz),
           ),
         ));
       });

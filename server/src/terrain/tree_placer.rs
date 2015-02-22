@@ -5,11 +5,11 @@ use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::LODIndex;
 use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, tri};
-use nalgebra::{Pnt2, Pnt3, Vec3, normalize};
-use ncollide_entities::bounding_volume::AABB;
+use cgmath::{Point, Point2, Point3, EuclideanVector, Vector, Vector3};
+use cgmath::Aabb3;
 use rand::{Rng, SeedableRng, IsaacRng};
 use std::cmp::{partial_min, partial_max};
-use std::collections::RingBuf;
+use std::collections::VecDeque;
 use std::num::Float;
 use std::sync::Mutex;
 
@@ -27,8 +27,8 @@ fn fmod(mut dividend: f64, divisor: f64) -> f64 {
   dividend
 }
 
-fn sqr_distance(p1: &Pnt3<f32>, p2: &Pnt3<f32>) -> f32 {
-  let d = *p1 - *p2.as_vec();
+fn sqr_distance(p1: &Point3<f32>, p2: &Point3<f32>) -> f32 {
+  let d = p1.sub_p(p2);
   d.x*d.x + d.y*d.y + d.z*d.z
 }
 
@@ -44,42 +44,42 @@ impl TreePlacer {
     }
   }
 
-  fn rng_at(&self, center: &Pnt3<f32>, mut seed: Vec<u32>) -> IsaacRng {
-    let center = *center * (LOD_QUALITY[0] as f32) / (BLOCK_WIDTH as f32);
+  fn rng_at(&self, center: &Point3<f32>, mut seed: Vec<u32>) -> IsaacRng {
+    let center = center.mul_s((LOD_QUALITY[0] as f32) / (BLOCK_WIDTH as f32));
     seed.push_all(&[self.seed, center.x as u32, center.z as u32]);
     SeedableRng::from_seed(seed.as_slice())
   }
 
-  pub fn should_place_tree(&self, center: &Pnt3<f32>) -> bool {
+  pub fn should_place_tree(&self, center: &Point3<f32>) -> bool {
     let mut rng = self.rng_at(center, vec!(0));
     rng.next_u32() > 0xFF7FFFFF
   }
 
   pub fn place_tree(
     &self,
-    mut center: Pnt3<f32>,
+    mut center: Point3<f32>,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
     block: &mut TerrainBlock,
     lod_index: LODIndex,
   ) {
     let lod_index = lod_index.0 as usize;
     let normals = [
-      normalize(&Vec3::new(-1.0, -1.0, -1.0)),
-      normalize(&Vec3::new(-1.0, -1.0,  1.0)),
-      normalize(&Vec3::new( 1.0, -1.0,  1.0)),
-      normalize(&Vec3::new( 1.0, -1.0, -1.0)),
-      normalize(&Vec3::new(-1.0,  1.0, -1.0)),
-      normalize(&Vec3::new(-1.0,  1.0,  1.0)),
-      normalize(&Vec3::new( 1.0,  1.0,  1.0)),
-      normalize(&Vec3::new( 1.0,  1.0, -1.0)),
+      Vector3::new(-1.0, -1.0, -1.0).normalize(),
+      Vector3::new(-1.0, -1.0,  1.0).normalize(),
+      Vector3::new( 1.0, -1.0,  1.0).normalize(),
+      Vector3::new( 1.0, -1.0, -1.0).normalize(),
+      Vector3::new(-1.0,  1.0, -1.0).normalize(),
+      Vector3::new(-1.0,  1.0,  1.0).normalize(),
+      Vector3::new( 1.0,  1.0,  1.0).normalize(),
+      Vector3::new( 1.0,  1.0, -1.0).normalize(),
     ];
 
-    let wood_coords = Pnt2::new(0.0, 3.0);
-    let leaf_coords = Pnt2::new(0.0, 4.0);
+    let wood_coords = Point2::new(0.0, 3.0);
+    let leaf_coords = Point2::new(0.0, 4.0);
 
     let mut place_side = |
-        corners: &[Pnt3<f32>],
-        coords: Pnt2<f32>,
+        corners: &[Point3<f32>],
+        coords: Point2<f32>,
         idx1: usize,
         idx2: usize,
         idx3: usize,
@@ -105,9 +105,9 @@ impl TreePlacer {
         let maxz = partial_max(v1.z, v2.z).unwrap();
 
         let bounds =
-          AABB::new(
-            Pnt3::new(minx, v1.y, minz),
-            Pnt3::new(maxx, v3.y, maxz),
+          Aabb3::new(
+            Point3::new(minx, v1.y, minz),
+            Point3::new(maxx, v3.y, maxz),
           );
 
         let id1 = id_allocator.lock().unwrap().allocate();
@@ -119,19 +119,19 @@ impl TreePlacer {
       };
 
     let mut place_block = |
-        coords: Pnt2<f32>,
-        low_center: &Pnt3<f32>, low_radius: f32,
-        high_center: &Pnt3<f32>, high_radius: f32,
+        coords: Point2<f32>,
+        low_center: &Point3<f32>, low_radius: f32,
+        high_center: &Point3<f32>, high_radius: f32,
       | {
         let corners = [
-          *low_center + Vec3::new(-low_radius, 0.0, -low_radius),
-          *low_center + Vec3::new(-low_radius, 0.0,  low_radius),
-          *low_center + Vec3::new( low_radius, 0.0,  low_radius),
-          *low_center + Vec3::new( low_radius, 0.0, -low_radius),
-          *high_center + Vec3::new(-high_radius, 0.0, -high_radius),
-          *high_center + Vec3::new(-high_radius, 0.0,  high_radius),
-          *high_center + Vec3::new( high_radius, 0.0,  high_radius),
-          *high_center + Vec3::new( high_radius, 0.0, -high_radius),
+          low_center.add_v(&Vector3::new(-low_radius, 0.0, -low_radius)),
+          low_center.add_v(&Vector3::new(-low_radius, 0.0,  low_radius)),
+          low_center.add_v(&Vector3::new( low_radius, 0.0,  low_radius)),
+          low_center.add_v(&Vector3::new( low_radius, 0.0, -low_radius)),
+          high_center.add_v(&Vector3::new(-high_radius, 0.0, -high_radius)),
+          high_center.add_v(&Vector3::new(-high_radius, 0.0,  high_radius)),
+          high_center.add_v(&Vector3::new( high_radius, 0.0,  high_radius)),
+          high_center.add_v(&Vector3::new( high_radius, 0.0, -high_radius)),
         ];
 
         place_side(&corners, coords, 0, 1, 4, 5);
@@ -155,9 +155,9 @@ impl TreePlacer {
       place_block(
         wood_coords,
         &center, trunk_radius,
-        &(center + Vec3::new(0.0, trunk_height, 0.0)), trunk_radius,
+        &(center.add_v(&Vector3::new(0.0, trunk_height, 0.0))), trunk_radius,
       );
-      center = center + Vec3::new(0.0, trunk_height, 0.0);
+      center = center.add_v(&Vector3::new(0.0, trunk_height, 0.0));
     }
 
     {
@@ -165,7 +165,7 @@ impl TreePlacer {
       let crown_height = sqr_mass * 16.0;
       let crown_width = crown_radius * 2.0;
 
-      let mut points: Vec<Pnt3<_>> = {
+      let mut points: Vec<Point3<_>> = {
         let n_points =
           (crown_width * crown_width * crown_height * TREE_NODES[lod_index]) as u32;
         range(0, n_points)
@@ -173,17 +173,17 @@ impl TreePlacer {
           let x = rng.next_u32();
           let y = rng.next_u32();
           let z = rng.next_u32();
-          Pnt3::new(
+          Point3::new(
             fmod(x as f64, crown_width as f64) as f32 - crown_radius,
             fmod(y as f64, crown_height as f64) as f32,
             fmod(z as f64, crown_width as f64) as f32 - crown_radius,
           )
         })
-        .map(|p| p + *center.as_vec())
+        .map(|p| p.add_v(&center.to_vec()))
         .collect()
       };
 
-      let mut fringe = RingBuf::new();
+      let mut fringe = VecDeque::new();
       fringe.push_back((center, trunk_radius));
 
       while let Some((center, thickness)) = fringe.pop_front() {
@@ -216,7 +216,7 @@ impl TreePlacer {
           place_block(
             leaf_coords,
             &center, radius,
-            &(center + Vec3::new(0.0, height, 0.0)), radius,
+            &(center.add_v(&Vector3::new(0.0, height, 0.0))), radius,
           );
         }
       }

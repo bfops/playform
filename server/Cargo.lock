@@ -2,18 +2,26 @@
 name = "playform-server"
 version = "0.0.0"
 dependencies = [
+ "cgmath 0.0.6 (git+https://github.com/bfops/cgmath-rs)",
  "env_logger 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
+ "log 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.3.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
- "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
- "ncollide_queries 0.1.0 (git+https://github.com/bfops/ncollide)",
- "noise 0.0.3 (git+https://github.com/bfops/noise-rs)",
+ "noise 0.1.2 (git+https://github.com/bfops/noise-rs)",
  "opencl 0.3.0-dev (git+https://github.com/bfops/rust-opencl)",
  "playform-common 0.0.0",
- "rand 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "cgmath"
+version = "0.0.6"
+source = "git+https://github.com/bfops/cgmath-rs#1705cf74d0fc51e5c2fb51ee54d13929a9269865"
+dependencies = [
+ "rand 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_macros 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -21,8 +29,8 @@ name = "env_logger"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -37,16 +45,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "log"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "nalgebra"
-version = "0.2.2"
-source = "git+https://github.com/sebcrozet/nalgebra#4065341aa0967606e01e42820782bd418a1e7041"
-dependencies = [
- "rustc-serialize 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "nanomsg"
@@ -62,88 +62,54 @@ version = "0.1.1"
 source = "git+https://github.com/thehydroimpulse/nanomsg.rs#9f335991be9cd5dca51fa7154401e3d7da3e2d22"
 
 [[package]]
-name = "ncollide_entities"
-version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#90e7c5cbc57b45d33d0748f9c06a913660124e65"
-dependencies = [
- "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
- "ncollide_utils 0.1.0 (git+https://github.com/bfops/ncollide)",
- "rustc-serialize 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "ncollide_math"
-version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#90e7c5cbc57b45d33d0748f9c06a913660124e65"
-dependencies = [
- "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
-]
-
-[[package]]
-name = "ncollide_queries"
-version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#90e7c5cbc57b45d33d0748f9c06a913660124e65"
-dependencies = [
- "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
- "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
- "ncollide_utils 0.1.0 (git+https://github.com/bfops/ncollide)",
- "rustc-serialize 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "ncollide_utils"
-version = "0.1.0"
-source = "git+https://github.com/bfops/ncollide#90e7c5cbc57b45d33d0748f9c06a913660124e65"
-dependencies = [
- "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
- "ncollide_math 0.1.0 (git+https://github.com/bfops/ncollide)",
- "rustc-serialize 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "noise"
-version = "0.0.3"
-source = "git+https://github.com/bfops/noise-rs#11ea60395d187d7d6fb6932d1f01e4b4a5d109b8"
+version = "0.1.2"
+source = "git+https://github.com/bfops/noise-rs#7c29b73b4da3595dbaf5c0a7e850176ec6c8fc92"
+dependencies = [
+ "rand 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "opencl"
 version = "0.3.0-dev"
-source = "git+https://github.com/bfops/rust-opencl#aa693b710daff52e1253eebf6d87298a7167fa2b"
+source = "git+https://github.com/bfops/rust-opencl#56added1de3f4b3c3fdb07485371bd6c6b47a7b1"
 dependencies = [
- "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "playform-common"
 version = "0.0.0"
 dependencies = [
- "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "nalgebra 0.2.2 (git+https://github.com/sebcrozet/nalgebra)",
+ "cgmath 0.0.6 (git+https://github.com/bfops/cgmath-rs)",
+ "log 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.3.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
- "ncollide_entities 0.1.0 (git+https://github.com/bfops/ncollide)",
- "rustc-serialize 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "rand"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
+name = "rand_macros"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "regex"
-version = "0.1.14"
+version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustc-serialize"
-version = "0.2.12"
+version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]

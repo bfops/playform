@@ -4,8 +4,7 @@ use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::OwnerId;
 use mob;
-use nalgebra::{Pnt3, Vec3};
-use ncollide_entities::bounding_volume::{AABB, AABB3};
+use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
 use physics::Physics;
 use player::Player;
 use std::collections::HashMap;
@@ -15,8 +14,8 @@ use std::sync::Mutex;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
 
-fn center(bounds: &AABB3<f32>) -> Pnt3<f32> {
-  (*bounds.mins() + bounds.maxs().to_vec()) / (2.0 as f32)
+fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
+  bounds.min.add_v(&bounds.max.to_vec()).mul_s(1.0 / 2.0)
 }
 
 // TODO: Audit for s/Mutex/RwLock.
@@ -39,9 +38,9 @@ impl Server {
     let world_width = world_width as f32;
     let mut physics =
       Physics::new(
-        AABB::new(
-          Pnt3 { x: -world_width, y: -2.0 * terrain::AMPLITUDE as f32, z: -world_width },
-          Pnt3 { x: world_width, y: 2.0 * terrain::AMPLITUDE as f32, z: world_width },
+        Aabb3::new(
+          Point3 { x: -world_width, y: -2.0 * terrain::AMPLITUDE as f32, z: -world_width },
+          Point3 { x: world_width, y: 2.0 * terrain::AMPLITUDE as f32, z: world_width },
         )
       );
 
@@ -51,9 +50,9 @@ impl Server {
     let player = {
       let mut player = Player::new(id_allocator.allocate());
 
-      let min = Pnt3::new(0.0, terrain::AMPLITUDE as f32, 4.0);
-      let max = min + Vec3::new(1.0, 2.0, 1.0);
-      let bounds = AABB::new(min, max);
+      let min = Point3::new(0.0, terrain::AMPLITUDE as f32, 4.0);
+      let max = min.add_v(&Vector3::new(1.0, 2.0, 1.0));
+      let bounds = Aabb3::new(min, max);
       physics.insert_misc(player.entity_id, bounds.clone());
 
       player.position = center(&bounds);

@@ -2,8 +2,7 @@ use common::block_position::BlockPosition;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::terrain_block::BLOCK_WIDTH;
-use nalgebra::Vec3;
-use ncollide_entities::bounding_volume::AABB;
+use cgmath::{Aabb3, Point, Vector, Vector3};
 use physics::Physics;
 use std::collections::hash_map::{HashMap, Entry};
 use std::sync::Mutex;
@@ -37,8 +36,8 @@ impl InProgressTerrain {
         entry.insert(id);
 
         let low_corner = block_position.to_world_position();
-        let block_span = Vec3::new(BLOCK_WIDTH as f32, BLOCK_WIDTH as f32, BLOCK_WIDTH as f32);
-        physics.lock().unwrap().insert_misc(id, AABB::new(low_corner, low_corner + block_span));
+        let block_span = Vector3::new(BLOCK_WIDTH as f32, BLOCK_WIDTH as f32, BLOCK_WIDTH as f32);
+        physics.lock().unwrap().insert_misc(id, Aabb3::new(low_corner, low_corner.add_v(&block_span)));
         true
       }
     }

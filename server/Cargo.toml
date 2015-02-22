@@ -48,14 +48,8 @@ time = "*"
 path = "../common"
 version = "*"
 
-[dependencies.nalgebra]
-git = "https://github.com/sebcrozet/nalgebra"
-
-[dependencies.ncollide_entities]
-git = "https://github.com/bfops/ncollide"
-
-[dependencies.ncollide_queries]
-git = "https://github.com/bfops/ncollide"
+[dependencies.cgmath]
+git = "https://github.com/bfops/cgmath-rs"
 
 [dependencies.noise]
 git = "https://github.com/bfops/noise-rs"

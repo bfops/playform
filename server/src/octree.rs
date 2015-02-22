@@ -1,29 +1,37 @@
-use nalgebra::Pnt3;
-use nalgebra::partial_lt;
-use ncollide_entities::bounding_volume::{AABB, AABB3};
-use ncollide_entities::bounding_volume::BoundingVolume;
-use ncollide_queries::ray::{Ray3, LocalRayCast};
-use std::cmp::Ordering::{Greater, Less, Equal};
+use cgmath::{Aabb, Aabb3, Point3};
 use std::fmt::Debug;
 use std::num::NumCast;
 use std::ptr;
 
 pub const MIN_CELL_WIDTH: f32 = 0.1;
 
-fn aabb_overlap(aabb1: &AABB3<f32>, aabb2: &AABB3<f32>) -> bool {
-  partial_lt(aabb1.mins(), aabb2.maxs()) &&
-  partial_lt(aabb2.mins(), aabb1.maxs())
+fn aabb_overlap(aabb1: &Aabb3<f32>, aabb2: &Aabb3<f32>) -> bool {
+  aabb1.min.x < aabb2.max.x &&
+  aabb1.min.y < aabb2.max.y &&
+  aabb1.min.z < aabb2.max.z &&
+  aabb2.min.x < aabb1.max.x &&
+  aabb2.min.y < aabb1.max.y &&
+  aabb2.min.z < aabb1.max.z
 }
 
-fn length(bounds: &AABB3<f32>, d: Dimension) -> f32 {
-  get(d, bounds.maxs()) - get(d, bounds.mins())
+fn contains(aabb1: &Aabb3<f32>, aabb2: &Aabb3<f32>) -> bool {
+  aabb1.min.x <= aabb2.min.x &&
+  aabb1.min.y <= aabb2.min.y &&
+  aabb1.min.z <= aabb2.min.z &&
+  aabb2.max.x <= aabb1.max.x &&
+  aabb2.max.y <= aabb1.max.y &&
+  aabb2.max.z <= aabb1.max.z
 }
 
-fn middle(bounds: &AABB3<f32>, d: Dimension) -> f32 {
-  (get(d, bounds.maxs()) + get(d, bounds.mins())) / 2.0
+fn length(bounds: &Aabb3<f32>, d: Dimension) -> f32 {
+  get(d, &bounds.max) - get(d, &bounds.min)
 }
 
-fn get(d: Dimension, p: &Pnt3<f32>) -> f32 {
+fn middle(bounds: &Aabb3<f32>, d: Dimension) -> f32 {
+  (get(d, &bounds.max) + get(d, &bounds.min)) / 2.0
+}
+
+fn get(d: Dimension, p: &Point3<f32>) -> f32 {
   match d {
     Dimension::X => p.x,
     Dimension::Y => p.y,
@@ -31,7 +39,7 @@ fn get(d: Dimension, p: &Pnt3<f32>) -> f32 {
   }
 }
 
-fn set(d: Dimension, p: &mut Pnt3<f32>, v: f32) {
+fn set(d: Dimension, p: &mut Point3<f32>, v: f32) {
   match d {
     Dimension::X => p.x = v,
     Dimension::Y => p.y = v,
@@ -39,49 +47,23 @@ fn set(d: Dimension, p: &mut Pnt3<f32>, v: f32) {
   }
 }
 
-fn split(mid: f32, d: Dimension, bounds: AABB3<f32>) -> (Option<AABB3<f32>>, Option<AABB3<f32>>) {
-  if get(d, bounds.maxs()) <= mid {
+fn split(mid: f32, d: Dimension, bounds: Aabb3<f32>) -> (Option<Aabb3<f32>>, Option<Aabb3<f32>>) {
+  if get(d, &bounds.max) <= mid {
     (Some(bounds), None)
-  } else if get(d, bounds.mins()) >= mid {
+  } else if get(d, &bounds.min) >= mid {
     (None, Some(bounds))
   } else {
     let (new_min, new_max) = {
-      let (mut new_min, mut new_max) = (bounds.mins().clone(), bounds.maxs().clone());
+      let (mut new_min, mut new_max) = (bounds.min.clone(), bounds.max.clone());
       set(d, &mut new_min, mid.clone());
       set(d, &mut new_max, mid);
       (new_min, new_max)
     };
     (
-      Some(AABB::new(*bounds.mins(), new_max)),
-      Some(AABB::new(new_min, *bounds.maxs()))
+      Some(Aabb3::new(bounds.min, new_max)),
+      Some(Aabb3::new(new_min, bounds.max))
     )
   }
-}
-
-fn partial_min_by<A, I, B, F>(mut iter: I, f: F) -> Vec<A>
-    where A: Copy, I: Iterator<Item=A>, B: PartialOrd, F: Fn(A) -> B {
-  let mut min_a = Vec::new();
-  let mut min_b = {
-    match iter.next() {
-      None => return min_a,
-      Some(a) => {
-        min_a.push(a);
-        f(a)
-      }
-    }
-  };
-  for a in iter {
-    let b = f(a);
-    if b < min_b {
-      min_a.truncate(0);
-      min_a.push(a);
-      min_b = b;
-    } else if b == min_b {
-      min_a.push(a);
-    }
-  }
-
-  min_a
 }
 
 #[derive(Copy)]
@@ -92,7 +74,7 @@ struct Branches<V> {
   high_tree: Box<Octree<V>>,
 }
 
-type LeafContents<V> = Vec<(AABB3<f32>, V)>;
+type LeafContents<V> = Vec<(Aabb3<f32>, V)>;
 
 enum OctreeContents<V> {
   Leaf(LeafContents<V>),
@@ -103,7 +85,7 @@ enum OctreeContents<V> {
 pub struct Octree<V> {
   parent: *mut Octree<V>,
   dimension: Dimension,
-  bounds: AABB3<f32>,
+  bounds: Aabb3<f32>,
   contents: OctreeContents<V>,
 }
 
@@ -112,7 +94,7 @@ unsafe impl<V: 'static> Send for Octree<V> {}
 // TODO: fix shaky octree outline insertion/removal conditions.
 
 impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
-  pub fn new(bounds: &AABB3<f32>) -> Octree<V> {
+  pub fn new(bounds: &Aabb3<f32>) -> Octree<V> {
     Octree {
       parent: ptr::null_mut(),
       dimension: Dimension::X,
@@ -121,8 +103,8 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
     }
   }
 
-  pub fn insert(&mut self, bounds: AABB3<f32>, v: V) {
-    assert!(self.bounds.contains(&bounds));
+  pub fn insert(&mut self, bounds: Aabb3<f32>, v: V) {
+    assert!(contains(&self.bounds, &bounds));
     let contents = match self.contents {
       OctreeContents::Leaf(ref mut vs) => {
         vs.push((bounds, v));
@@ -167,7 +149,7 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
   // Split a leaf into two subtrees.
   fn bisect(
     parent: *mut Octree<V>,
-    bounds: &AABB3<f32>,
+    bounds: &Aabb3<f32>,
     dimension: Dimension,
     vs: &LeafContents<V>
   ) -> (Octree<V>, Octree<V>) {
@@ -204,10 +186,10 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
   }
 
   #[allow(dead_code)]
-  fn on_ancestor<T, F>(&self, bounds: &AABB3<f32>, mut f: F) -> T
+  fn on_ancestor<T, F>(&self, bounds: &Aabb3<f32>, mut f: F) -> T
     where F: FnMut(&Octree<V>) -> T
   {
-    if self.bounds.contains(bounds) {
+    if contains(&self.bounds, bounds) {
       f(self)
     } else {
       unsafe {
@@ -217,10 +199,10 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
     }
   }
 
-  fn on_mut_ancestor<T, F>(&mut self, bounds: &AABB3<f32>, mut f: F) -> T
+  fn on_mut_ancestor<T, F>(&mut self, bounds: &Aabb3<f32>, mut f: F) -> T
     where F: FnMut(&mut Octree<V>) -> T
   {
-    if self.bounds.contains(bounds) {
+    if contains(&self.bounds, bounds) {
       f(self)
     } else {
       unsafe {
@@ -233,7 +215,7 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
   // Find whether there are objects overlapping the object & bounds provided in
   // this/child trees. Uses equality comparison on V to ignore "same" objects.
   // Returns the value associated with the first object intersected.
-  pub fn intersect(&self, bounds: &AABB3<f32>, self_v: Option<V>) -> Option<(AABB3<f32>, V)> {
+  pub fn intersect(&self, bounds: &Aabb3<f32>, self_v: Option<V>) -> Option<(Aabb3<f32>, V)> {
     match self.contents {
       OctreeContents::Leaf(ref vs) => {
         vs.iter()
@@ -263,12 +245,12 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
 
   // like insert, but before recursing downward, we recurse up the parents
   // until the bounds provided are inside the tree.
-  fn insert_from(&mut self, bounds: AABB3<f32>, v: V) {
+  fn insert_from(&mut self, bounds: Aabb3<f32>, v: V) {
     self.on_mut_ancestor(&bounds, |t| t.insert(bounds.clone(), v))
   }
 
-  pub fn remove(&mut self, bounds: &AABB3<f32>, v: V) {
-    assert!(self.bounds.contains(bounds));
+  pub fn remove(&mut self, bounds: &Aabb3<f32>, v: V) {
+    assert!(contains(&self.bounds, bounds));
     let collapse_contents = match self.contents {
       OctreeContents::Leaf(ref mut vs) => {
         match vs.iter().position(|&(_, ref x)| *x == v) {
@@ -301,55 +283,8 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
     }
   }
 
-  pub fn reinsert(&mut self, v: V, bounds: &AABB3<f32>, new_bounds: AABB3<f32>) {
+  pub fn reinsert(&mut self, v: V, bounds: &Aabb3<f32>, new_bounds: Aabb3<f32>) {
     self.remove(bounds, v);
     self.insert_from(new_bounds, v)
-  }
-
-  #[allow(dead_code)]
-  pub fn cast_ray(&self, ray: &Ray3<f32>, self_v: V) -> Vec<V> {
-    match self.contents {
-      OctreeContents::Leaf(ref vs) => {
-        // find the time of intersection (TOI) of the ray with each object in
-        // this leaf; filter out the objects it doesn't intersect at all. Then
-        // find the object with the lowest TOI.
-        partial_min_by(
-          vs.iter().filter_map(|&(ref bounds, v)| {
-              if v == self_v {
-                None
-              } else {
-                bounds.toi_with_ray(ray, true).map(|x| (x, v))
-              }
-            }
-          ),
-          |(toi, _)| toi
-        )
-        .into_iter().map(|(_, v)| v).collect()
-      },
-      OctreeContents::Branch(ref bs) => {
-        let mut trees: Vec<(f32, &Box<Octree<V>>)> = Vec::new();
-        let ref l = bs.low_tree;
-        let ref h = bs.high_tree;
-        for &t in [l, h].iter() {
-          (**t).bounds.toi_with_ray(ray, true).map(|toi| trees.push((toi, t)));
-        }
-        trees.sort_by(|&(t1, _), &(t2, _)| {
-          if t1 < t2 {
-            Less
-          } else if t1 > t2 {
-            Greater
-          } else {
-            Equal
-          }
-        });
-        for &(_, t) in trees.iter() {
-          let r = t.cast_ray(ray, self_v);
-          if !r.is_empty() {
-            return r;
-          }
-        }
-        Vec::new()
-      }
-    }
   }
 }

@@ -6,21 +6,18 @@
 #![feature(core)]
 #![feature(collections)]
 #![feature(env)]
-#![feature(hash)]
-#![feature(io)]
+#![feature(old_io)]
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 
+extern crate cgmath;
 extern crate common;
 extern crate env_logger;
 #[macro_use]
 extern crate log;
-extern crate nalgebra;
 extern crate nanomsg;
-extern crate ncollide_entities;
-extern crate ncollide_queries;
 extern crate noise;
 extern crate opencl;
 extern crate rand;
@@ -59,6 +56,8 @@ pub fn main() {
   args.next().unwrap();
   let listen_url = args.next().unwrap_or(String::from_str("ipc:///tmp/server.ipc"));
   assert!(args.next().is_none());
+
+  info!("Listening on {}.", listen_url);
 
   let (incoming, mut listen_endpoint) = spark_socket_receiver(listen_url);
 
