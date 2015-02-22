@@ -6,9 +6,7 @@ use lod::LODIndex;
 use cgmath::{Vector2, Vector3, Point3};
 use nanomsg::{Endpoint, Socket, Protocol};
 use rustc_serialize::{Encodable, Decodable, json};
-use std::old_io::timer;
 use std::sync::mpsc::{channel, Sender, Receiver};
-use std::time::duration::Duration;
 use std::thread;
 use terrain_block::TerrainBlock;
 use vertex::ColoredVertex;
@@ -82,8 +80,6 @@ pub fn spark_socket_sender<T>(url: String) -> (Sender<T>, Endpoint)
           }
         }
       };
-
-      timer::sleep(Duration::milliseconds(0));
     }
   });
 
@@ -109,8 +105,6 @@ pub fn spark_socket_receiver<T>(url: String) -> (Receiver<T>, Endpoint)
           send.send(msg).unwrap();
         },
       }
-
-      timer::sleep(Duration::milliseconds(0));
     }
   });
 
