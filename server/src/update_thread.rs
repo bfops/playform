@@ -2,7 +2,6 @@ use cgmath::{Point, Vector, Vector3};
 use common::block_position::BlockPosition;
 use common::color::Color4;
 use common::communicate::ServerToClient::*;
-use common::cube_shell::cube_diff;
 use common::interval_timer::IntervalTimer;
 use common::lod::{LOD, LODIndex, OwnerId};
 use common::stopwatch::TimerSet;
@@ -45,17 +44,9 @@ pub fn update_thread<UpdateGaia>(
   // TODO: Make a struct for these.
   let player_surroundings_owner = server.owner_allocator.lock().unwrap().allocate();
   let player_solid_owner = server.owner_allocator.lock().unwrap().allocate();
-  let mut player_surroundings_loader =
-    SurroundingsLoader::new(
-      1,
-      Box::new(|&: last, cur| cube_diff(last, cur, 1)),
-    );
+  let mut player_surroundings_loader = SurroundingsLoader::new(1, Vec::new());
   // Nearby blocks should be made solid if they aren't loaded yet.
-  let mut player_solid_boundary =
-    SurroundingsLoader::new(
-      1,
-      Box::new(|&: last, cur| cube_diff(last, cur, 1)),
-    );
+  let mut player_solid_boundary = SurroundingsLoader::new(1, Vec::new());
 
   loop {
     let updates = update_timer.update(time::precise_time_ns());

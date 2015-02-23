@@ -1,5 +1,4 @@
 use cgmath::{Aabb3, Point, Point3, EuclideanVector, Vector, Vector3};
-use common::cube_shell::cube_diff;
 use common::entity::EntityId;
 use common::surroundings_loader::SurroundingsLoader;
 use mob;
@@ -11,12 +10,12 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
   bounds.min.add_v(&bounds.max.to_vec()).mul_s(0.5)
 }
 
-// TODO: Locking is hard to reason about.
-// Make it saner. Goal should be to prevent deadlock.
+// TODO: Locking is hard to reason about. Make it saner.
+// The goal should be to prevent coder error causing deadlock.
 
-pub fn init_mobs<'a>(
+pub fn init_mobs(
   server: &Server,
-  mob_loaders: &mut HashMap<EntityId, SurroundingsLoader<'a>>,
+  mob_loaders: &mut HashMap<EntityId, SurroundingsLoader>,
 ) {
   fn mob_behavior(world: &Server, mob: &mut mob::Mob) {
     fn to_player(world: &Server, mob: &mob::Mob) -> Vector3<f32> {
@@ -67,9 +66,9 @@ pub fn init_mobs<'a>(
   );
 }
 
-fn add_mob<'a>(
+fn add_mob(
   server: &Server,
-  loaders: &mut HashMap<EntityId, SurroundingsLoader<'a>>,
+  loaders: &mut HashMap<EntityId, SurroundingsLoader>,
   low_corner: Point3<f32>,
   behavior: mob::Behavior,
 ) {
@@ -87,10 +86,7 @@ fn add_mob<'a>(
 
   loaders.insert(
     entity_id,
-    SurroundingsLoader::new(
-      1,
-      Box::new(|&: last, cur| cube_diff(last, cur, 1)),
-    ),
+    SurroundingsLoader::new(1, Vec::new()),
   );
 
   server.physics.lock().unwrap().insert_misc(entity_id, bounds);

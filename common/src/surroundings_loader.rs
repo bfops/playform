@@ -2,11 +2,12 @@
 //! loaded state (e.g. to keep player surroundings loaded, or to keep unloaded blocks
 //! solid near the player).
 
+use block_position::BlockPosition;
+use cube_shell::cube_diff;
 use std::cmp::max;
 use std::collections::VecDeque;
 use std::num::{Float, SignedInt};
 use surroundings_iter::SurroundingsIter;
-use block_position::BlockPosition;
 use time;
 
 // Rough budget (in microseconds) for how long block updating can take PER SurroundingsLoader.
@@ -29,27 +30,36 @@ pub enum LODChange {
   Unload(BlockPosition),
 }
 
+/// Given a previous location and current location, determine which blocks should
+/// be checked for LOD changes.
+pub trait GetLODChanges:
+  FnMut(&BlockPosition, &BlockPosition) -> Vec<BlockPosition> {}
+
+impl<F> GetLODChanges for F
+  where F: FnMut(&BlockPosition, &BlockPosition) -> Vec<BlockPosition> {}
+
 // TODO: Should this use a trait instead of boxed closures?
 
 /// Iteratively load BlockPositions in cube-shaped layers around the some point.
 /// That point can be updated with calls to `update`.
 /// What "load" exactly means depends on the closures provided.
-pub struct SurroundingsLoader<'a> {
+pub struct SurroundingsLoader {
   last_position: Option<BlockPosition>,
 
   max_load_distance: i32,
   to_load: Option<SurroundingsIter>,
 
   to_recheck: VecDeque<BlockPosition>,
-  lod_changes: Box<FnMut(&BlockPosition, &BlockPosition) -> Vec<BlockPosition> + 'a>,
+  // The distances to the switches between LODs.
+  lod_thresholds: Vec<i32>,
 }
 
-impl<'a> SurroundingsLoader<'a> {
+impl SurroundingsLoader {
   #[allow(missing_docs)]
   pub fn new(
     max_load_distance: i32,
-    lod_changes: Box<FnMut(&BlockPosition, &BlockPosition) -> Vec<BlockPosition> + 'a>,
-  ) -> SurroundingsLoader<'a> {
+    lod_thresholds: Vec<i32>,
+  ) -> SurroundingsLoader {
     assert!(max_load_distance >= 0);
 
     SurroundingsLoader {
@@ -59,7 +69,7 @@ impl<'a> SurroundingsLoader<'a> {
       max_load_distance: max_load_distance,
 
       to_recheck: VecDeque::new(),
-      lod_changes: lod_changes,
+      lod_thresholds: lod_thresholds,
     }
   }
 
@@ -75,8 +85,13 @@ impl<'a> SurroundingsLoader<'a> {
     if position_changed {
       self.to_load = Some(SurroundingsIter::new(position, self.max_load_distance));
       self.last_position.map(|last_position| {
+        for &distance in self.lod_thresholds.iter() {
+          self.to_recheck.extend(
+            cube_diff(&last_position, &position, distance).into_iter()
+          );
+        }
         self.to_recheck.extend(
-          (self.lod_changes)(&last_position, &position).into_iter()
+          cube_diff(&last_position, &position, self.max_load_distance).into_iter()
         );
       });
 
@@ -109,3 +124,5 @@ impl<'a> SurroundingsLoader<'a> {
     }
   }
 }
+
+unsafe impl Send for SurroundingsLoader {}

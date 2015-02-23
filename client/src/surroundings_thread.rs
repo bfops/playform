@@ -1,7 +1,6 @@
 use client::{Client, LOD_THRESHOLDS};
 use common::block_position::BlockPosition;
 use common::communicate::ClientToServer;
-use common::cube_shell::cube_diff;
 use common::lod::LODIndex;
 use common::stopwatch::TimerSet;
 use common::surroundings_loader::{LODChange, SurroundingsLoader};
@@ -25,14 +24,7 @@ pub fn surroundings_thread<UpdateView, UpdateServer>(
   let mut surroundings_loader = {
     SurroundingsLoader::new(
       client.max_load_distance,
-      Box::new(move |last, cur| {
-        let mut vec = Vec::new();
-        for &r in LOD_THRESHOLDS.iter() {
-          vec.push_all(cube_diff(last, cur, r).as_slice());
-        }
-        vec.push_all(cube_diff(last, cur, client.max_load_distance).as_slice());
-        vec
-      }),
+      LOD_THRESHOLDS.iter().map(|&x| x).collect(),
     )
   };
 
