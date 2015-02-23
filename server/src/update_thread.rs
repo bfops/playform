@@ -14,8 +14,6 @@ use server::Server;
 use std::collections::HashMap;
 use std::old_io::timer;
 use std::ops::Neg;
-use std::sync::mpsc::Sender;
-use std::sync::Mutex;
 use std::time::duration::Duration;
 use sun::Sun;
 use time;
@@ -25,11 +23,11 @@ use time;
 const UPDATES_PER_SECOND: u64 = 30;
 const SUN_TICK_NS: u64 = 5000000;
 
-pub fn update_thread<'a>(
+pub fn update_thread<UpdateGaia>(
   timers: &TimerSet,
   server: &Server,
-  ups_to_gaia: &Mutex<Sender<ServerToGaia>>,
-) {
+  update_gaia: &mut UpdateGaia,
+) where UpdateGaia: FnMut(ServerToGaia) {
   let mut mob_loaders = HashMap::new();
   timers.time("init_mobs", || {
     init_mobs(server, &mut mob_loaders);
@@ -79,7 +77,7 @@ pub fn update_thread<'a>(
                       &pos,
                       LOD::LodIndex(LODIndex(0)),
                       player_surroundings_owner,
-                      ups_to_gaia,
+                      update_gaia,
                     );
                   },
                   LODChange::Unload(pos) => {
@@ -101,7 +99,7 @@ pub fn update_thread<'a>(
                   timers,
                   player_solid_owner,
                   server,
-                  ups_to_gaia,
+                  update_gaia,
                   lod_change,
                 )
             );
@@ -127,7 +125,7 @@ pub fn update_thread<'a>(
                     timers,
                     mob.owner_id,
                     server,
-                    ups_to_gaia,
+                    update_gaia,
                     lod_change,
                   )
               );
@@ -196,13 +194,13 @@ fn translate_mob(
 }
 
 #[inline]
-pub fn load_placeholders(
+pub fn load_placeholders<UpdateGaia>(
   timers: &TimerSet,
   owner: OwnerId,
   server: &Server,
-  ups_to_gaia: &Mutex<Sender<ServerToGaia>>,
+  update_gaia: &mut UpdateGaia,
   lod_change: LODChange,
-) {
+) where UpdateGaia: FnMut(ServerToGaia) {
   match lod_change {
     LODChange::Load(pos, _) => {
       server.terrain_game_loader.lock().unwrap().load(
@@ -212,7 +210,7 @@ pub fn load_placeholders(
         &pos,
         LOD::Placeholder,
         owner,
-        ups_to_gaia,
+        update_gaia,
       );
     },
     LODChange::Unload(pos) => {

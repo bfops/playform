@@ -6,29 +6,31 @@ use cgmath::{Point, Vector, Vector3};
 use std::cmp::partial_max;
 use std::f32::consts::PI;
 use std::num::Float;
-use std::sync::mpsc::{Sender, Receiver};
-use std::sync::Mutex;
+use std::sync::mpsc::Receiver;
 use view_update::ClientToView;
 
 #[allow(missing_docs)]
-pub fn server_thread(
+pub fn server_thread<UpdateView, UpdateTerrain>(
   client: &Client,
   ups_from_server: &Receiver<ServerToClient>,
-  ups_to_view: &Mutex<Sender<ClientToView>>,
-  terrain_updates: &Sender<TerrainBlockSend>,
-) {
+  update_view: &mut UpdateView,
+  update_terrain: &mut UpdateTerrain,
+) where
+    UpdateView: FnMut(ClientToView),
+    UpdateTerrain: FnMut(TerrainBlockSend),
+{
   loop {
     let update = ups_from_server.recv().unwrap();
     match update {
       ServerToClient::UpdatePlayer(position) => {
         *client.player_position.lock().unwrap() = position;
-        ups_to_view.lock().unwrap().send(ClientToView::MoveCamera(position)).unwrap();
+        update_view(ClientToView::MoveCamera(position));
       },
       ServerToClient::AddMob(id, v) => {
-        ups_to_view.lock().unwrap().send(ClientToView::AddMob(id, v)).unwrap();
+        update_view(ClientToView::AddMob(id, v));
       },
       ServerToClient::UpdateMob(id, v) => {
-        ups_to_view.lock().unwrap().send(ClientToView::UpdateMob(id, v)).unwrap();
+        update_view(ClientToView::UpdateMob(id, v));
       },
       ServerToClient::UpdateSun(fraction) => {
         // Convert to radians.
@@ -46,27 +48,27 @@ pub fn server_thread(
         let rel_position = Vector3::new(c, s, 0.0);
         rel_position.mul_s(radius);
 
-        ups_to_view.lock().unwrap().send(ClientToView::SetPointLight(
+        update_view(ClientToView::SetPointLight(
           Light {
             position: client.player_position.lock().unwrap().add_v(&rel_position),
             intensity: sun_color,
           }
-        )).unwrap();
+        ));
 
         let ambient_light = partial_max(0.4, s / 2.0).unwrap();
 
-        ups_to_view.lock().unwrap().send(ClientToView::SetAmbientLight(
+        update_view(ClientToView::SetAmbientLight(
           Color3::of_rgb(
             sun_color.r * ambient_light,
             sun_color.g * ambient_light,
             sun_color.b * ambient_light,
           ),
-        )).unwrap();
+        ));
 
-        ups_to_view.lock().unwrap().send(ClientToView::SetClearColor(sun_color)).unwrap();
+        update_view(ClientToView::SetClearColor(sun_color));
       },
       ServerToClient::AddBlock(block) => {
-        terrain_updates.send(block).unwrap();
+        update_terrain(block);
       },
     };
   }

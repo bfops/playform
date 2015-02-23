@@ -87,7 +87,7 @@ pub fn main() {
       update_thread::update_thread(
         &TimerSet::new(),
         &server,
-        &ups_to_gaia_send,
+        &mut |msg| { ups_to_gaia_send.lock().unwrap().send(msg).unwrap() },
       );
     })
   };
@@ -98,7 +98,7 @@ pub fn main() {
     &mut client_endpoints,
     &server,
     &incoming,
-    &ups_to_gaia_send,
+    &mut |msg| { ups_to_gaia_send.lock().unwrap().send(msg).unwrap() },
   );
 
   let _ups_to_gaia_recv = gaia_thread.into_inner();

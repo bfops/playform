@@ -7,17 +7,18 @@ use common::stopwatch::TimerSet;
 use common::surroundings_loader::{LODChange, SurroundingsLoader};
 use std::num;
 use std::old_io::timer;
-use std::sync::mpsc::Sender;
-use std::sync::Mutex;
 use std::time::duration::Duration;
 use view_update::ClientToView;
 use view_update::ClientToView::*;
 
-pub fn surroundings_thread(
+pub fn surroundings_thread<UpdateView, UpdateServer>(
   client: &Client,
-  ups_to_view: &Mutex<Sender<ClientToView>>,
-  ups_to_server: &Mutex<Sender<ClientToServer>>,
-) {
+  update_view: &mut UpdateView,
+  update_server: &mut UpdateServer,
+) where
+    UpdateView: FnMut(ClientToView),
+    UpdateServer: FnMut(ClientToServer),
+{
   let timers = TimerSet::new();
   let timers = &timers;
 
@@ -45,7 +46,7 @@ pub fn surroundings_thread(
           LODChange::Load(block_position, distance) => {
             timers.time("request_block", || {
               let lod = lod_index(distance);
-              ups_to_server.lock().unwrap().send(ClientToServer::RequestBlock(block_position, lod)).unwrap();
+              update_server(ClientToServer::RequestBlock(block_position, lod));
             });
           },
           LODChange::Unload(block_position) => {
@@ -58,10 +59,10 @@ pub fn surroundings_thread(
               .map(|(block, prev_lod)| {
                 timers.time("remove_block", || {
                   for id in block.ids.iter() {
-                    ups_to_view.lock().unwrap().send(RemoveTerrain(*id)).unwrap();
+                    update_view(RemoveTerrain(*id));
                   }
 
-                  ups_to_view.lock().unwrap().send(RemoveBlockData(block_position, prev_lod)).unwrap();
+                  update_view(RemoveBlockData(block_position, prev_lod));
                 });
               });
           },

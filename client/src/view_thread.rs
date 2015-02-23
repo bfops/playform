@@ -14,8 +14,7 @@ use sdl2::event::Event;
 use sdl2::video;
 use std::mem;
 use std::old_io::timer;
-use std::sync::mpsc::{Sender, Receiver};
-use std::sync::Mutex;
+use std::sync::mpsc::Receiver;
 use std::time::duration::Duration;
 use time;
 use view::View;
@@ -25,10 +24,11 @@ use yaglw::gl_context::GLContext;
 pub const FRAMES_PER_SECOND: u64 = 30;
 
 #[allow(missing_docs)]
-pub fn view_thread(
+pub fn view_thread<UpdateServer>(
   ups_from_client: &Receiver<ClientToView>,
-  ups_to_server: &Mutex<Sender<ClientToServer>>,
-) {
+  update_server: &mut UpdateServer,
+) where UpdateServer: FnMut(ClientToServer)
+{
   let timers = TimerSet::new();
 
   sdl2::init(sdl2::INIT_EVERYTHING);
@@ -115,7 +115,7 @@ pub fn view_thread(
           if has_focus {
             process_event(
               &timers,
-              ups_to_server,
+              update_server,
               &mut view,
               &mut window,
               event,

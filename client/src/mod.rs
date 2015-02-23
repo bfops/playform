@@ -91,8 +91,8 @@ pub fn main() {
       server_thread::server_thread(
         client.deref(),
         &ups_from_server,
-        client_to_view_send.deref(),
-        &terrain_to_load_send,
+        &mut |msg| { client_to_view_send.lock().unwrap().send(msg).unwrap() },
+        &mut |msg| { terrain_to_load_send.send(msg).unwrap() },
       );
 
       (ups_from_server, terrain_to_load_send)
@@ -107,8 +107,8 @@ pub fn main() {
     Future::spawn(move || {
       surroundings_thread::surroundings_thread(
         client.deref(),
-        client_to_view_send.deref(),
-        ups_to_server.deref(),
+        &mut |msg| { client_to_view_send.lock().unwrap().send(msg).unwrap() },
+        &mut |msg| { ups_to_server.lock().unwrap().send(msg).unwrap() },
       );
     })
   };
@@ -121,7 +121,7 @@ pub fn main() {
       terrain_thread::terrain_thread(
         client.deref(),
         &terrain_to_load_recv,
-        client_to_view_send.deref(),
+        &mut |msg| { client_to_view_send.lock().unwrap().send(msg).unwrap() },
       );
 
       terrain_to_load_recv
@@ -130,7 +130,7 @@ pub fn main() {
 
   view_thread(
     &client_to_view_recv,
-    ups_to_server.deref(),
+    &mut |msg| { ups_to_server.lock().unwrap().send(msg).unwrap() },
   );
 
   let _ups_from_server = server_thread.into_inner();

@@ -2,15 +2,15 @@ use common::communicate::{ClientToServer, ServerToClient, spark_socket_sender};
 use gaia_thread::{ServerToGaia, LoadReason};
 use nanomsg::Endpoint;
 use server::Server;
-use std::sync::mpsc::{Sender, Receiver};
-use std::sync::Mutex;
+use std::sync::mpsc::Receiver;
 
-pub fn client_thread(
+pub fn client_thread<UpdateGaia>(
   client_endpoints: &mut Vec<Endpoint>,
   server: &Server,
   ups_from_client: &Receiver<ClientToServer>,
-  ups_to_gaia: &Mutex<Sender<ServerToGaia>>,
-) {
+  update_gaia: &mut UpdateGaia,
+) where UpdateGaia: FnMut(ServerToGaia)
+{
   // TODO: Proper exit semantics for this and other threads.
   loop {
     let update = ups_from_client.recv().unwrap();
@@ -53,9 +53,7 @@ pub fn client_thread(
         player.rotate_vertical(v.y);
       },
       ClientToServer::RequestBlock(position, lod) => {
-        ups_to_gaia.lock().unwrap().send(
-          ServerToGaia::Load(position, lod, LoadReason::ForClient)
-        ).unwrap();
+        update_gaia(ServerToGaia::Load(position, lod, LoadReason::ForClient));
       },
     };
   }

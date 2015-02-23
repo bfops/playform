@@ -10,72 +10,72 @@ use sdl2::keycode::KeyCode;
 use sdl2::mouse;
 use sdl2::video;
 use std::f32::consts::PI;
-use std::sync::mpsc::Sender;
-use std::sync::Mutex;
 
 #[allow(missing_docs)]
-pub fn process_event (
+pub fn process_event<UpdateServer>(
   timers: &TimerSet,
-  ups_to_server: &Mutex<Sender<ClientToServer>>,
+  update_server: &mut UpdateServer,
   view: &mut View,
   game_window: &mut video::Window,
   event: Event,
-) {
+) where UpdateServer: FnMut(ClientToServer)
+{
   match event {
     Event::KeyDown{keycode, repeat, ..} => {
       if !repeat {
-        key_press(timers, ups_to_server, view, keycode);
+        key_press(timers, update_server, view, keycode);
       }
     },
     Event::KeyUp{keycode, repeat, ..} => {
       if !repeat {
-        key_release(timers, ups_to_server, keycode);
+        key_release(timers, update_server, keycode);
       }
     },
     Event::MouseMotion{x, y, ..} => {
-      mouse_move(timers, ups_to_server, view, game_window, x, y);
+      mouse_move(timers, update_server, view, game_window, x, y);
     },
     _ => {},
   }
 }
 
-fn key_press<'a>(
+fn key_press<UpdateServer>(
   timers: &TimerSet,
-  ups_to_server: &Mutex<Sender<ClientToServer>>,
+  update_server: &mut UpdateServer,
   view: &mut View,
   key: KeyCode,
-) {
+) where UpdateServer: FnMut(ClientToServer)
+{
   timers.time("event.key_press", || {
     match key {
       KeyCode::A => {
-        ups_to_server.lock().unwrap().send(Walk(Vector3::new(-1.0, 0.0, 0.0))).unwrap();
+        update_server(Walk(Vector3::new(-1.0, 0.0, 0.0)));
       },
       KeyCode::D => {
-        ups_to_server.lock().unwrap().send(Walk(Vector3::new(1.0, 0.0, 0.0))).unwrap();
+        update_server(Walk(Vector3::new(1.0, 0.0, 0.0)));
       },
       KeyCode::Space => {
-        ups_to_server.lock().unwrap().send(StartJump).unwrap();
+        update_server(StartJump);
       },
       KeyCode::W => {
-        ups_to_server.lock().unwrap().send(Walk(Vector3::new(0.0, 0.0, -1.0))).unwrap();
+        update_server(Walk(Vector3::new(0.0, 0.0, -1.0)));
       },
       KeyCode::S => {
-        ups_to_server.lock().unwrap().send(Walk(Vector3::new(0.0, 0.0, 1.0))).unwrap();
+        update_server(Walk(Vector3::new(0.0, 0.0, 1.0)));
       },
       KeyCode::Left => {
-        ups_to_server.lock().unwrap().send(RotatePlayer(Vector2::new(PI / 12.0, 0.0))).unwrap();
+        update_server(RotatePlayer(Vector2::new(PI / 12.0, 0.0)));
         view.camera.rotate_lateral(PI / 12.0);
       },
       KeyCode::Right => {
-        ups_to_server.lock().unwrap().send(RotatePlayer(Vector2::new(-PI / 12.0, 0.0))).unwrap();
+        update_server(RotatePlayer(Vector2::new(-PI / 12.0, 0.0)));
         view.camera.rotate_lateral(-PI / 12.0);
       },
       KeyCode::Up => {
-        ups_to_server.lock().unwrap().send(RotatePlayer(Vector2::new(0.0, PI / 12.0))).unwrap();
+        update_server(RotatePlayer(Vector2::new(0.0, PI / 12.0)));
         view.camera.rotate_vertical(PI / 12.0);
       },
       KeyCode::Down => {
-        ups_to_server.lock().unwrap().send(RotatePlayer(Vector2::new(0.0, -PI / 12.0))).unwrap();
+        update_server(RotatePlayer(Vector2::new(0.0, -PI / 12.0)));
         view.camera.rotate_vertical(-PI / 12.0);
       },
       _ => {},
@@ -83,41 +83,43 @@ fn key_press<'a>(
   })
 }
 
-fn key_release<'a>(
+fn key_release<UpdateServer>(
   timers: &TimerSet,
-  ups_to_server: &Mutex<Sender<ClientToServer>>,
+  update_server: &mut UpdateServer,
   key: KeyCode,
-) {
+) where UpdateServer: FnMut(ClientToServer)
+{
   timers.time("event.key_release", || {
     match key {
       // accelerations are negated from those in key_press.
       KeyCode::A => {
-        ups_to_server.lock().unwrap().send(Walk(Vector3::new(1.0, 0.0, 0.0))).unwrap();
+        update_server(Walk(Vector3::new(1.0, 0.0, 0.0)));
       },
       KeyCode::D => {
-        ups_to_server.lock().unwrap().send(Walk(Vector3::new(-1.0, 0.0, 0.0))).unwrap();
+        update_server(Walk(Vector3::new(-1.0, 0.0, 0.0)));
       },
       KeyCode::Space => {
-        ups_to_server.lock().unwrap().send(StopJump).unwrap();
+        update_server(StopJump);
       },
       KeyCode::W => {
-        ups_to_server.lock().unwrap().send(Walk(Vector3::new(0.0, 0.0, 1.0))).unwrap();
+        update_server(Walk(Vector3::new(0.0, 0.0, 1.0)));
       },
       KeyCode::S => {
-        ups_to_server.lock().unwrap().send(Walk(Vector3::new(0.0, 0.0, -1.0))).unwrap();
+        update_server(Walk(Vector3::new(0.0, 0.0, -1.0)));
       },
       _ => {}
     }
   })
 }
 
-fn mouse_move<'a>(
+fn mouse_move<UpdateServer>(
   timers: &TimerSet,
-  ups_to_server: &Mutex<Sender<ClientToServer>>,
+  update_server: &mut UpdateServer,
   view: &mut View,
   window: &mut video::Window,
   x: i32, y: i32,
-) {
+) where UpdateServer: FnMut(ClientToServer)
+{
   // x and y are measured from the top-left corner.
 
   timers.time("event.mouse_move", || {
@@ -128,7 +130,7 @@ fn mouse_move<'a>(
     let to_radians = Vector2::new(-1.0 / 1000.0, 1.0 / 1600.0);
     let r = Vector2::new(d.x as f32 * to_radians.x, d.y as f32 * to_radians.y);
 
-    ups_to_server.lock().unwrap().send(RotatePlayer(r)).unwrap();
+    update_server(RotatePlayer(r));
     view.camera.rotate_lateral(r.x);
     view.camera.rotate_vertical(r.y);
 

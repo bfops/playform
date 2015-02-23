@@ -8,7 +8,6 @@ use gaia_thread::{ServerToGaia, LoadReason};
 use in_progress_terrain::InProgressTerrain;
 use noise::Seed;
 use physics::Physics;
-use std::sync::mpsc::Sender;
 use std::sync::Mutex;
 use terrain::terrain::Terrain;
 
@@ -32,7 +31,7 @@ impl TerrainGameLoader {
 
   // TODO: Avoid the double-lookup when unload and load the same index.
 
-  pub fn load(
+  pub fn load<LoadBlock>(
     &mut self,
     timers: &TimerSet,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
@@ -40,8 +39,9 @@ impl TerrainGameLoader {
     block_position: &BlockPosition,
     new_lod: LOD,
     owner: OwnerId,
-    ups_to_gaia: &Mutex<Sender<ServerToGaia>>,
-  ) {
+    load_block: &mut LoadBlock,
+  ) where LoadBlock: FnMut(ServerToGaia)
+  {
     let prev_lod;
     let max_lod_changed;
     match self.lod_map.get(block_position, owner) {
@@ -86,17 +86,17 @@ impl TerrainGameLoader {
       LOD::LodIndex(new_lod) => {
         match self.terrain.all_blocks.get(block_position) {
           None => {
-            ups_to_gaia.lock().unwrap().send(
+            load_block(
               ServerToGaia::Load(*block_position, new_lod, LoadReason::Local(owner))
-            ).unwrap();
+            );
           },
           Some(mipmesh) => {
             match mipmesh.lods[new_lod.0 as usize].as_ref() {
               None => {
                 debug!("{:?} requested from gaia", block_position);
-                ups_to_gaia.lock().unwrap().send(
+                load_block(
                   ServerToGaia::Load(*block_position, new_lod, LoadReason::Local(owner))
-                ).unwrap();
+                );
               },
               Some(block) => {
                 TerrainGameLoader::insert_block(

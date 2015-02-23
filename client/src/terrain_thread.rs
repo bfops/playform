@@ -3,16 +3,16 @@ use common::block_position::BlockPosition;
 use common::communicate::TerrainBlockSend;
 use common::surroundings_loader::radius_between;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
-use std::sync::mpsc::{Sender, Receiver};
-use std::sync::Mutex;
+use std::sync::mpsc::Receiver;
 use surroundings_thread::lod_index;
 use view_update::ClientToView;
 
-pub fn terrain_thread(
+pub fn terrain_thread<UpdateView>(
   client: &Client,
   to_load: &Receiver<TerrainBlockSend>,
-  ups_to_view: &Mutex<Sender<ClientToView>>,
-) {
+  update_view: &mut UpdateView,
+) where UpdateView: FnMut(ClientToView),
+{
   loop {
     let block = to_load.recv().unwrap();
     let player_position =
@@ -49,20 +49,16 @@ pub fn terrain_thread(
 
           let &(ref prev_block, prev_lod) = entry.get();
           for &id in prev_block.ids.iter() {
-            ups_to_view.lock().unwrap().send(ClientToView::RemoveTerrain(id)).unwrap();
+            update_view(ClientToView::RemoveTerrain(id));
           }
-          ups_to_view.lock().unwrap().send(
-            ClientToView::RemoveBlockData(block.position, prev_lod)
-          ).unwrap();
+          update_view(ClientToView::RemoveBlockData(block.position, prev_lod));
         }
         entry.insert((block.block.clone(), block.lod));
       },
     };
 
     if !block.block.ids.is_empty() {
-      ups_to_view.lock().unwrap().send(
-        ClientToView::AddBlock(block),
-      ).unwrap();
+      update_view(ClientToView::AddBlock(block));
     }
   }
 }
