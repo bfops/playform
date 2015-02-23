@@ -109,7 +109,7 @@ pub fn update_thread<UpdateGaia>(
 
           let player_position = server.player.lock().unwrap().position;
           server.to_client.lock().unwrap().as_mut().map(|client| {
-            client.send(UpdatePlayer(player_position)).unwrap();
+            client.send(UpdatePlayer(player_position));
           });
         });
 
@@ -154,7 +154,7 @@ pub fn update_thread<UpdateGaia>(
 
         sun.update().map(|fraction| {
           server.to_client.lock().unwrap().as_mut().map(|client| {
-            client.send(UpdateSun(fraction)).unwrap();
+            client.send(UpdateSun(fraction));
           });
         });
       });
@@ -189,7 +189,7 @@ fn translate_mob(
       .iter()
       .map(|&x| x)
       .collect();
-    client.send(UpdateMob(mob.entity_id, vec)).unwrap();
+    client.send(UpdateMob(mob.entity_id, vec));
   });
 }
 

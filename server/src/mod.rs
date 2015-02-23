@@ -39,7 +39,7 @@ mod sun;
 mod terrain;
 mod update_thread;
 
-use common::communicate::spark_socket_receiver;
+use common::socket::ReceiveSocket;
 use common::stopwatch::TimerSet;
 use gaia_thread::gaia_thread;
 use server::Server;
@@ -54,12 +54,18 @@ pub fn main() {
 
   let mut args = std::env::args();
   args.next().unwrap();
-  let listen_url = args.next().unwrap_or(String::from_str("ipc:///tmp/server.ipc"));
+  let listen_url
+    = args.next().unwrap_or(String::from_str("ipc:///tmp/server.ipc"));
   assert!(args.next().is_none());
 
   info!("Listening on {}.", listen_url);
 
-  let (incoming, mut listen_endpoint) = spark_socket_receiver(listen_url);
+  let (socket_sender, incoming) = channel();
+  let listen =
+    ReceiveSocket::spawn(
+      listen_url.as_slice(),
+      move |msg| socket_sender.send(msg).unwrap(),
+    );
 
   let server = Server::new();
   let server = Arc::new(server);
@@ -92,10 +98,7 @@ pub fn main() {
     })
   };
 
-  let mut client_endpoints = Vec::new();
-
   client_thread::client_thread(
-    &mut client_endpoints,
     &server,
     &incoming,
     &mut |msg| { ups_to_gaia_send.lock().unwrap().send(msg).unwrap() },
@@ -103,10 +106,7 @@ pub fn main() {
 
   let _ups_to_gaia_recv = gaia_thread.into_inner();
 
-  listen_endpoint.shutdown().unwrap();
-  for mut endpoint in client_endpoints.into_iter() {
-    endpoint.shutdown().unwrap();
-  }
+  listen.close();
 
   debug!("finished");
 }

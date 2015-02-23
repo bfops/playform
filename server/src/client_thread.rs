@@ -1,11 +1,10 @@
-use common::communicate::{ClientToServer, ServerToClient, spark_socket_sender};
+use common::communicate::{ClientToServer, ServerToClient};
+use common::socket::SendSocket;
 use gaia_thread::{ServerToGaia, LoadReason};
-use nanomsg::Endpoint;
 use server::Server;
 use std::sync::mpsc::Receiver;
 
 pub fn client_thread<UpdateGaia>(
-  client_endpoints: &mut Vec<Endpoint>,
   server: &Server,
   ups_from_client: &Receiver<ClientToServer>,
   update_gaia: &mut UpdateGaia,
@@ -18,14 +17,13 @@ pub fn client_thread<UpdateGaia>(
       ClientToServer::Init(client_url) => {
         info!("Sending to {}.", client_url);
 
-        let (client, endpoint) = spark_socket_sender(client_url);
-        client_endpoints.push(endpoint);
+        let to_client = SendSocket::<'static, _>::spawn(client_url.as_slice());
         let player_position = server.player.lock().unwrap().position;
 
-        client.send(ServerToClient::UpdatePlayer(player_position)).unwrap();
-        server.inform_client(&client);
+        to_client.send(ServerToClient::UpdatePlayer(player_position));
+        server.inform_client(&mut |msg| to_client.send(msg));
 
-        *server.to_client.lock().unwrap() = Some(client);
+        *server.to_client.lock().unwrap() = Some(to_client);
       },
       ClientToServer::StartJump => {
         let mut player = server.player.lock().unwrap();

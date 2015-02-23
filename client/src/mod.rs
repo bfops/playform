@@ -48,7 +48,8 @@ mod view_thread;
 mod view_update;
 
 use client::Client;
-use common::communicate::{ClientToServer, spark_socket_sender, spark_socket_receiver};
+use common::communicate::ClientToServer;
+use common::socket::{SendSocket, ReceiveSocket};
 use std::ops::Deref;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Future, Mutex};
@@ -72,10 +73,16 @@ pub fn main() {
   let (client_to_view_send, client_to_view_recv) = channel();
   let (terrain_to_load_send, terrain_to_load_recv) = channel();
 
-  let (ups_from_server, mut listen_endpoint) = spark_socket_receiver(listen_url.clone());
-  let (ups_to_server, mut talk_endpoint) = spark_socket_sender(server_listen_url);
+  let (ups_from_server_send, ups_from_server_recv) = channel();
+  let listen =
+    ReceiveSocket::spawn(
+      listen_url.as_slice(),
+      move |msg| ups_from_server_send.send(msg).unwrap(),
+    );
+  let ups_from_server = ups_from_server_recv;
+  let ups_to_server = SendSocket::spawn(server_listen_url.as_slice());
 
-  ups_to_server.send(ClientToServer::Init(listen_url)).unwrap();
+  ups_to_server.send(ClientToServer::Init(listen_url));
 
   let client = Client::new();
   let client = Arc::new(client);
@@ -108,7 +115,7 @@ pub fn main() {
       surroundings_thread::surroundings_thread(
         client.deref(),
         &mut |msg| { client_to_view_send.lock().unwrap().send(msg).unwrap() },
-        &mut |msg| { ups_to_server.lock().unwrap().send(msg).unwrap() },
+        &mut |msg| { ups_to_server.lock().unwrap().send(msg) },
       );
     })
   };
@@ -130,13 +137,12 @@ pub fn main() {
 
   view_thread(
     &client_to_view_recv,
-    &mut |msg| { ups_to_server.lock().unwrap().send(msg).unwrap() },
+    &mut |msg| { ups_to_server.lock().unwrap().send(msg) },
   );
 
   let _ups_from_server = server_thread.into_inner();
 
-  listen_endpoint.shutdown().unwrap();
-  talk_endpoint.shutdown().unwrap();
+  listen.close();
 
   debug!("Done.");
 }

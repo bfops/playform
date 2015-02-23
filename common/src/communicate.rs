@@ -4,10 +4,7 @@ use block_position::BlockPosition;
 use entity::EntityId;
 use lod::LODIndex;
 use cgmath::{Vector2, Vector3, Point3};
-use nanomsg::{Endpoint, Socket, Protocol};
-use rustc_serialize::{Encodable, Decodable, json};
-use std::sync::mpsc::{channel, Sender, Receiver};
-use std::thread;
+use rustc_serialize::Encodable;
 use terrain_block::TerrainBlock;
 use vertex::ColoredVertex;
 
@@ -58,55 +55,4 @@ pub enum ServerToClient {
 
   /// Provide a block of terrain to a client.
   AddBlock(TerrainBlockSend),
-}
-
-/// Spawn a new thread to send messages to a socket and wait for acks.
-pub fn spark_socket_sender<T>(url: String) -> (Sender<T>, Endpoint)
-  where T: Send + Encodable + 'static
-{
-  let mut socket = Socket::new(Protocol::Push).unwrap();
-  let endpoint = socket.connect(url.as_slice()).unwrap();
-
-  let (send, recv) = channel();
-
-  thread::spawn(move || {
-    loop {
-      match recv.recv() {
-        Err(e) => panic!("Error receiving from channel: {:?}", e),
-        Ok(msg) => {
-          let msg = json::encode(&msg).unwrap();
-          if let Err(e) = socket.write_all(msg.as_bytes()) {
-            panic!("Error sending message: {:?}", e);
-          }
-        }
-      };
-    }
-  });
-
-  (send, endpoint)
-}
-
-/// Spawn a new thread to read messages from a socket and ack.
-pub fn spark_socket_receiver<T>(url: String) -> (Receiver<T>, Endpoint)
-  where T: Send + Decodable + 'static
-{
-  let mut socket = Socket::new(Protocol::Pull).unwrap();
-  let endpoint = socket.bind(url.as_slice()).unwrap();
-
-  let (send, recv) = channel();
-
-  thread::spawn(move || {
-    loop {
-      match socket.read_to_end() {
-        Err(e) => panic!("Error reading from socket: {:?}", e),
-        Ok(s) => {
-          let s = String::from_utf8(s).unwrap();
-          let msg = json::decode(s.as_slice()).unwrap();
-          send.send(msg).unwrap();
-        },
-      }
-    }
-  });
-
-  (recv, endpoint)
 }

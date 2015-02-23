@@ -1,15 +1,15 @@
+use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
 use common::color::Color4;
 use common::communicate::ServerToClient;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::OwnerId;
+use common::socket::SendSocket;
 use mob;
-use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
 use physics::Physics;
 use player::Player;
 use std::collections::HashMap;
 use std::f32::consts::PI;
-use std::sync::mpsc::Sender;
 use std::sync::Mutex;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
@@ -28,7 +28,7 @@ pub struct Server {
   pub owner_allocator: Mutex<IdAllocator<OwnerId>>,
   pub terrain_game_loader: Mutex<TerrainGameLoader>,
 
-  pub to_client: Mutex<Option<Sender<ServerToClient>>>,
+  pub to_client: Mutex<Option<SendSocket<'static, ServerToClient>>>,
 }
 
 impl Server {
@@ -75,7 +75,9 @@ impl Server {
     }
   }
 
-  pub fn inform_client(&self, client: &Sender<ServerToClient>) {
+  pub fn inform_client<UpdateClient>(&self, client: &mut UpdateClient)
+    where UpdateClient: FnMut(ServerToClient)
+  {
     let ids: Vec<EntityId> = self.mobs.lock().unwrap().iter().map(|(&x, _)| x).collect();
     for id in ids.into_iter() {
       let triangles = {
@@ -86,7 +88,7 @@ impl Server {
         .map(|&x| x)
         .collect()
       };
-      client.send(ServerToClient::AddMob(id, triangles)).unwrap();
+      client(ServerToClient::AddMob(id, triangles));
     }
   }
 }

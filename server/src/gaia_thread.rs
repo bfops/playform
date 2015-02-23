@@ -93,7 +93,7 @@ pub fn gaia_thread(
                             block: block.clone(),
                             lod: lod,
                           })
-                        ).unwrap();
+                        );
                       },
                     }
                   },

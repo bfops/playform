@@ -29,6 +29,7 @@ pub mod interval_timer;
 pub mod lod;
 pub mod process_events;
 pub mod range_abs;
+pub mod socket;
 pub mod stopwatch;
 pub mod surroundings_iter;
 pub mod surroundings_loader;

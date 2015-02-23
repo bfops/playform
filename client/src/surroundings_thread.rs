@@ -16,8 +16,8 @@ pub fn surroundings_thread<UpdateView, UpdateServer>(
   update_view: &mut UpdateView,
   update_server: &mut UpdateServer,
 ) where
-    UpdateView: FnMut(ClientToView),
-    UpdateServer: FnMut(ClientToServer),
+  UpdateView: FnMut(ClientToView),
+  UpdateServer: FnMut(ClientToServer),
 {
   let timers = TimerSet::new();
   let timers = &timers;
