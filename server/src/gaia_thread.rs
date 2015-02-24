@@ -2,7 +2,7 @@
 
 use common::communicate::{ServerToClient, TerrainBlockSend};
 use common::lod::{LODIndex, OwnerId};
-use common::process_events::process_channel;
+use common::process_events::process_receiver;
 use common::stopwatch::TimerSet;
 use common::block_position::BlockPosition;
 use common::terrain_block::{BLOCK_WIDTH, TEXTURE_WIDTH};
@@ -49,7 +49,7 @@ pub fn gaia_thread(
 
   loop {
     let quit =
-      !process_channel(
+      !process_receiver(
         ups_from_server,
         |update| {
           match update {

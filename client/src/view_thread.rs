@@ -2,7 +2,7 @@
 
 use common::communicate::ClientToServer;
 use common::interval_timer::IntervalTimer;
-use common::process_events::process_channel;
+use common::process_events::process_receiver;
 use common::stopwatch::TimerSet;
 use gl;
 use hud::make_hud;
@@ -125,7 +125,7 @@ pub fn view_thread<UpdateServer>(
       }
     }
 
-    process_channel(
+    process_receiver(
       ups_from_client,
       |update| {
         apply_client_to_view(update, &mut view);

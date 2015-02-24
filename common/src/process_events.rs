@@ -6,7 +6,7 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 
 /// Process all available events from a channel.
 // TODO: This could probably be an iterator.
-pub fn process_channel<T, Apply>(chan: &Receiver<T>, mut apply: Apply) -> bool
+pub fn process_receiver<T, Apply>(chan: &Receiver<T>, mut apply: Apply) -> bool
   where
     T: Send + 'static,
     Apply: FnMut(T) -> bool,
