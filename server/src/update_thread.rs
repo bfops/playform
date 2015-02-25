@@ -23,10 +23,14 @@ const UPDATES_PER_SECOND: u64 = 30;
 const SUN_TICK_NS: u64 = 5000000;
 
 pub fn update_thread<UpdateGaia>(
-  timers: &TimerSet,
   server: &Server,
   update_gaia: &mut UpdateGaia,
-) where UpdateGaia: FnMut(ServerToGaia) {
+) where
+  UpdateGaia: FnMut(ServerToGaia),
+{
+  let timers = TimerSet::new();
+  let timers = &timers;
+
   let mut mob_loaders = HashMap::new();
   timers.time("init_mobs", || {
     init_mobs(server, &mut mob_loaders);

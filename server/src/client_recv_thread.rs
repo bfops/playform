@@ -1,4 +1,4 @@
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::mpsc::channel;
 use std::thread;
 
 use common::communicate::{ClientToServer, ServerToClient};
@@ -7,15 +7,15 @@ use client_send_thread::client_send_thread;
 use server::Server;
 use update_gaia::{ServerToGaia, LoadReason};
 
-pub fn client_recv_thread<UpdateGaia>(
+pub fn client_recv_thread<Recv, UpdateGaia>(
   server: &Server,
-  ups_from_client: &Receiver<ClientToServer>,
+  recv: &mut Recv,
   update_gaia: &mut UpdateGaia,
-) where UpdateGaia: FnMut(ServerToGaia)
+) where
+  Recv: FnMut() -> Option<ClientToServer>,
+  UpdateGaia: FnMut(ServerToGaia),
 {
-  // TODO: Proper exit semantics for this and other threads.
-  loop {
-    let update = ups_from_client.recv().unwrap();
+  while let Some(update) = recv() {
     match update {
       ClientToServer::Init(client_url) => {
         info!("Sending to {}.", client_url);

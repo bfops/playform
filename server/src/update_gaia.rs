@@ -49,6 +49,7 @@ pub fn update_gaia(
             match load_reason {
               LoadReason::Local(owner) => {
                 // TODO: Check that this block isn't stale; i.e. should still be loaded.
+                // Maybe this should just ping the original thread, same as we ping the client.
                 TerrainGameLoader::insert_block(
                   timers,
                   block,
