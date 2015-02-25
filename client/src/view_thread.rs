@@ -1,33 +1,35 @@
 //! This module defines the main function for the view/render/event thread.
 
-use common::communicate::ClientToServer;
-use common::interval_timer::IntervalTimer;
-use common::process_events::process_receiver;
-use common::stopwatch::TimerSet;
-use gl;
-use hud::make_hud;
 use cgmath::Vector2;
-use process_event::process_event;
-use render::render;
+use gl;
 use sdl2;
 use sdl2::event::Event;
 use sdl2::video;
 use std::mem;
 use std::old_io::timer;
-use std::sync::mpsc::Receiver;
 use std::time::duration::Duration;
 use time;
+use yaglw::gl_context::GLContext;
+
+use common::communicate::ClientToServer;
+use common::interval_timer::IntervalTimer;
+use common::stopwatch::TimerSet;
+
+use hud::make_hud;
+use process_event::process_event;
+use render::render;
 use view::View;
 use view_update::{ClientToView, apply_client_to_view};
-use yaglw::gl_context::GLContext;
 
 pub const FRAMES_PER_SECOND: u64 = 30;
 
 #[allow(missing_docs)]
-pub fn view_thread<UpdateServer>(
-  ups_from_client: &Receiver<ClientToView>,
+pub fn view_thread<Recv, UpdateServer>(
+  recv: &mut Recv,
   update_server: &mut UpdateServer,
-) where UpdateServer: FnMut(ClientToServer)
+) where
+  Recv: FnMut() -> Option<ClientToView>,
+  UpdateServer: FnMut(ClientToServer),
 {
   let timers = TimerSet::new();
 
@@ -125,13 +127,9 @@ pub fn view_thread<UpdateServer>(
       }
     }
 
-    process_receiver(
-      ups_from_client,
-      |update| {
-        apply_client_to_view(update, &mut view);
-        true
-      },
-    );
+    while let Some(update) = recv() {
+      apply_client_to_view(update, &mut view);
+    }
 
     let renders = render_timer.update(time::precise_time_ns());
     if renders > 0 {

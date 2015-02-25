@@ -6,7 +6,6 @@ use common::interval_timer::IntervalTimer;
 use common::lod::{LOD, LODIndex, OwnerId};
 use common::stopwatch::TimerSet;
 use common::surroundings_loader::{SurroundingsLoader, LODChange};
-use gaia_thread::ServerToGaia;
 use init_mobs::init_mobs;
 use mob;
 use server::Server;
@@ -16,6 +15,7 @@ use std::ops::Neg;
 use std::time::duration::Duration;
 use sun::Sun;
 use time;
+use update_gaia::ServerToGaia;
 
 // TODO: Consider removing the IntervalTimer.
 
@@ -99,8 +99,8 @@ pub fn update_thread<UpdateGaia>(
           server.player.lock().unwrap().update(server);
 
           let player_position = server.player.lock().unwrap().position;
-          server.to_client.lock().unwrap().as_mut().map(|client| {
-            client.send(UpdatePlayer(player_position));
+          server.to_client.lock().unwrap().as_mut().map(|&mut (ref client, _)| {
+            client.send(Some(UpdatePlayer(player_position))).unwrap();
           });
         });
 
@@ -144,8 +144,8 @@ pub fn update_thread<UpdateGaia>(
         });
 
         sun.update().map(|fraction| {
-          server.to_client.lock().unwrap().as_mut().map(|client| {
-            client.send(UpdateSun(fraction));
+          server.to_client.lock().unwrap().as_mut().map(|&mut (ref client, _)| {
+            client.send(Some(UpdateSun(fraction))).unwrap();
           });
         });
       });
@@ -174,13 +174,13 @@ fn translate_mob(
   mob.position.add_self_v(delta_p);
 
   // TODO: Just send new position. Mesh remains the same.
-  server.to_client.lock().unwrap().as_ref().map(|client| {
+  server.to_client.lock().unwrap().as_ref().map(|&(ref client, _)| {
     let vec =
       mob::Mob::to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
       .iter()
       .map(|&x| x)
       .collect();
-    client.send(UpdateMob(mob.entity_id, vec));
+    client.send(Some(UpdateMob(mob.entity_id, vec))).unwrap();
   });
 }
 

@@ -1,16 +1,19 @@
 use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
+use std::collections::HashMap;
+use std::f32::consts::PI;
+use std::sync::Mutex;
+use std::sync::mpsc::Sender;
+use std::thread::JoinGuard;
+
 use common::color::Color4;
 use common::communicate::ServerToClient;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::OwnerId;
-use common::socket::SendSocket;
+
 use mob;
 use physics::Physics;
 use player::Player;
-use std::collections::HashMap;
-use std::f32::consts::PI;
-use std::sync::Mutex;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
 
@@ -28,7 +31,7 @@ pub struct Server {
   pub owner_allocator: Mutex<IdAllocator<OwnerId>>,
   pub terrain_game_loader: Mutex<TerrainGameLoader>,
 
-  pub to_client: Mutex<Option<SendSocket<'static, ServerToClient>>>,
+  pub to_client: Mutex<Option<(Sender<Option<ServerToClient>>, JoinGuard<'static, ()>)>>,
 }
 
 impl Server {

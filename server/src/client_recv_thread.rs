@@ -1,10 +1,13 @@
-use common::communicate::{ClientToServer, ServerToClient};
-use common::socket::SendSocket;
-use gaia_thread::{ServerToGaia, LoadReason};
-use server::Server;
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{channel, Receiver};
+use std::thread;
 
-pub fn client_thread<UpdateGaia>(
+use common::communicate::{ClientToServer, ServerToClient};
+
+use client_send_thread::client_send_thread;
+use server::Server;
+use update_gaia::{ServerToGaia, LoadReason};
+
+pub fn client_recv_thread<UpdateGaia>(
   server: &Server,
   ups_from_client: &Receiver<ClientToServer>,
   update_gaia: &mut UpdateGaia,
@@ -17,13 +20,25 @@ pub fn client_thread<UpdateGaia>(
       ClientToServer::Init(client_url) => {
         info!("Sending to {}.", client_url);
 
-        let to_client = SendSocket::<'static, _>::spawn(client_url.as_slice());
+        let (to_client_send, to_client_recv) = channel();
+        let client_thread = {
+          thread::scoped(move || {
+            client_send_thread(
+              client_url,
+              &mut move || { to_client_recv.recv().unwrap() },
+            );
+          })
+        };
         let player_position = server.player.lock().unwrap().position;
 
-        to_client.send(ServerToClient::UpdatePlayer(player_position));
-        server.inform_client(&mut |msg| to_client.send(msg));
+        to_client_send.send(
+          Some(ServerToClient::UpdatePlayer(player_position))
+        ).unwrap();
+        server.inform_client(
+          &mut |msg| to_client_send.send(Some(msg)).unwrap()
+        );
 
-        *server.to_client.lock().unwrap() = Some(to_client);
+        *server.to_client.lock().unwrap() = Some((to_client_send, client_thread));
       },
       ClientToServer::StartJump => {
         let mut player = server.player.lock().unwrap();

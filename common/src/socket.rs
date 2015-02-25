@@ -3,121 +3,89 @@
 use nanomsg::{Endpoint, Socket, Protocol};
 use rustc_serialize::{Encodable, Decodable, json};
 use std::marker::PhantomData;
-use std::sync::mpsc::{channel, Sender};
-use std::thread;
+use std::time::duration::Duration;
 
 /// A send-only strongly typed socket with sends running in a separate thread.
-pub struct SendSocket<'a, T> {
+pub struct SendSocket<T> {
+  socket: Socket,
   endpoint: Endpoint,
-  messages: Sender<T>,
-  _thread: thread::JoinGuard<'a, ()>,
+  phantom: PhantomData<T>,
 }
 
-impl<'a, T> SendSocket<'a, T>
-  where T: Send + Encodable + 'static,
+impl<T> SendSocket<T>
+  where T: Encodable,
 {
   /// Create a new `SendSocket` with a new thread to send its messages.
-  pub fn spawn(url: &str) -> SendSocket<'a, T> {
-    let (send, recv) = channel();
-
+  pub fn new(url: &str) -> SendSocket<T> {
     let mut socket = Socket::new(Protocol::Push).unwrap();
+    socket.set_send_timeout(&Duration::seconds(30)).unwrap();
     let endpoint = socket.connect(url).unwrap();
 
-    let thread =
-      thread::scoped(move || {
-        // There's no real need to support a nice clean "kill" signal;
-        // we're doing blocking IO, so it's a very real possibility that
-        // we'll have to kill the thread anyway.
-        // The nicest way to do it is probably to cause a panic, e.g. by
-        // closing the send half of the channel.
-        loop {
-          match recv.recv() {
-            Err(e) => panic!("Error receiving from channel: {:?}", e),
-            Ok(msg) => {
-              let msg = json::encode(&msg).unwrap();
-              if let Err(e) = socket.write_all(msg.as_bytes()) {
-                panic!("Error sending message: {:?}", e);
-              }
-            }
-          };
-        }
-      });
-
     SendSocket {
+      socket: socket,
       endpoint: endpoint,
-      messages: send,
-      _thread: thread,
+      phantom: PhantomData,
     }
   }
 
-  /// Send this socket a message.
-  pub fn send(&self, msg: T) {
-    self.messages.send(msg).unwrap();
+  /// Block until we can send this socket a message.
+  pub fn write(&mut self, msg: T) {
+    let msg = json::encode(&msg).unwrap();
+    self.socket.write_all(msg.as_bytes()).unwrap();
   }
 
-  /// Terminate this connection and wait for the thread to exit.
-  pub fn close(mut self) {
-    self.endpoint.shutdown().unwrap();
+  /// Terminate this connection.
+  pub fn close(self) {
+    // The `drop` takes care of everything.
   }
 }
 
-unsafe impl<'a, T> Sync for SendSocket<'a, T> {}
-
 #[unsafe_destructor]
-impl<'a, T> Drop for SendSocket<'a, T> {
+impl<T> Drop for SendSocket<T> {
   fn drop(&mut self) {
     self.endpoint.shutdown().unwrap();
   }
 }
 
 /// A receive-only strongly typed socket with receives running in a separate thread.
-pub struct ReceiveSocket<'a, T> {
+pub struct ReceiveSocket<T> {
+  socket: Socket,
   endpoint: Endpoint,
-  _thread: thread::JoinGuard<'a, ()>,
   phantom: PhantomData<T>,
 }
 
-impl<'a, T> ReceiveSocket<'a, T>
+impl<'a, T> ReceiveSocket<T>
   where T: Decodable,
 {
   /// Create a new `ReceiveSocket` with a spawned thread polling the socket.
-  pub fn spawn<F>(url: &str, mut act: F) -> ReceiveSocket<'a, T>
-    where F: FnMut(T) + Send + 'a,
-  {
+  pub fn new(url: &str) -> ReceiveSocket<T> {
     let mut socket = Socket::new(Protocol::Pull).unwrap();
+    socket.set_receive_timeout(&Duration::seconds(30)).unwrap();
     let endpoint = socket.bind(url.as_slice()).unwrap();
 
-    let thread =
-      thread::scoped(move || {
-        loop {
-          match socket.read_to_end() {
-            Err(e) => panic!("Error reading from socket: {:?}", e),
-            Ok(s) => {
-              let s = String::from_utf8(s).unwrap();
-              let msg = json::decode(s.as_slice()).unwrap();
-              act(msg);
-            },
-          }
-        }
-      });
-    
     ReceiveSocket {
+      socket: socket,
       endpoint: endpoint,
-      _thread: thread,
       phantom: PhantomData,
     }
   }
 
-  /// Terminate this connection and wait for the thread to exit.
-  pub fn close(mut self) {
-    self.endpoint.shutdown().unwrap();
+  /// Block until a message can be fetched from this socket.
+  pub fn read(&mut self) -> T {
+    let msg = self.socket.read_to_end().unwrap();
+    let msg = String::from_utf8(msg).unwrap();
+    let msg = json::decode(msg.as_slice()).unwrap();
+    msg
+  }
+
+  /// Terminate this connection.
+  pub fn close(self) {
+    // The `drop` takes care of everything.
   }
 }
 
-unsafe impl<'a, T> Sync for ReceiveSocket<'a, T> {}
-
 #[unsafe_destructor]
-impl<'a, T> Drop for ReceiveSocket<'a, T> {
+impl<T> Drop for ReceiveSocket<T> {
   fn drop(&mut self) {
     self.endpoint.shutdown().unwrap();
   }

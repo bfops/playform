@@ -1,82 +1,37 @@
-use client::{Client, LOD_THRESHOLDS};
 use common::block_position::BlockPosition;
 use common::communicate::ClientToServer;
-use common::lod::LODIndex;
-use common::stopwatch::TimerSet;
-use common::surroundings_loader::{LODChange, SurroundingsLoader};
-use std::num;
-use std::old_io::timer;
-use std::time::duration::Duration;
-use view_update::ClientToView;
-use view_update::ClientToView::*;
+use common::surroundings_loader::SurroundingsLoader;
 
-pub fn surroundings_thread<UpdateView, UpdateServer>(
+use client::{Client, LOD_THRESHOLDS};
+use update_surroundings;
+use view_update::ClientToView;
+
+pub fn surroundings_thread<Recv, UpdateView, UpdateServer>(
   client: &Client,
+  recv: &mut Recv,
   update_view: &mut UpdateView,
   update_server: &mut UpdateServer,
 ) where
+  Recv: FnMut() -> Option<BlockPosition>,
   UpdateView: FnMut(ClientToView),
   UpdateServer: FnMut(ClientToServer),
 {
-  let timers = TimerSet::new();
-  let timers = &timers;
+  let max_load_distance = client.max_load_distance;
 
   let mut surroundings_loader = {
     SurroundingsLoader::new(
-      client.max_load_distance,
+      max_load_distance,
       LOD_THRESHOLDS.iter().map(|&x| x).collect(),
     )
   };
 
-  loop {
-    let block_position = BlockPosition::from_world_position(&client.player_position.lock().unwrap().clone());
-
-    surroundings_loader.update(
-      block_position,
-      |lod_change| {
-        match lod_change {
-          LODChange::Load(block_position, distance) => {
-            timers.time("request_block", || {
-              let lod = lod_index(distance);
-              update_server(ClientToServer::RequestBlock(block_position, lod));
-            });
-          },
-          LODChange::Unload(block_position) => {
-            // The block removal code is duplicated elsewhere.
-
-            client.loaded_blocks
-              .lock().unwrap()
-              .remove(&block_position)
-              // If it wasn't loaded, don't unload anything.
-              .map(|(block, prev_lod)| {
-                timers.time("remove_block", || {
-                  for id in block.ids.iter() {
-                    update_view(RemoveTerrain(*id));
-                  }
-
-                  update_view(RemoveBlockData(block_position, prev_lod));
-                });
-              });
-          },
-        };
-      },
-    );
-
-    timer::sleep(Duration::milliseconds(1));
+  while let Some(position) = recv() {
+    update_surroundings::update_surroundings(
+      client,
+      update_view,
+      update_server,
+      &mut surroundings_loader,
+      &position,
+    )
   }
-
-  // TODO: This thread should exit nicely.
-  // i.e. reach this point and print `timers`.
-}
-
-pub fn lod_index(distance: i32) -> LODIndex {
-  assert!(distance >= 0);
-  let mut lod = 0;
-  while
-    lod < LOD_THRESHOLDS.len()
-    && LOD_THRESHOLDS[lod] < distance
-  {
-    lod += 1;
-  }
-  LODIndex(num::cast(lod).unwrap())
 }

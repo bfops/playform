@@ -44,6 +44,8 @@ impl Client {
   }
 }
 
+unsafe impl Sync for Client {}
+
 fn load_distance(mut polygon_budget: i32) -> i32 {
   // TODO: This should try to account for VRAM not used on a per-poly basis.
 

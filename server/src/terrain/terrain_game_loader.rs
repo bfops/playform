@@ -4,12 +4,12 @@ use common::id_allocator::IdAllocator;
 use common::lod::{LOD, LODIndex, OwnerId, LODMap};
 use common::stopwatch::TimerSet;
 use common::terrain_block::TerrainBlock;
-use gaia_thread::{ServerToGaia, LoadReason};
 use in_progress_terrain::InProgressTerrain;
 use noise::Seed;
 use physics::Physics;
 use std::sync::Mutex;
 use terrain::terrain::Terrain;
+use update_gaia::{ServerToGaia, LoadReason};
 
 /// Load and unload TerrainBlocks from the game.
 /// Each TerrainBlock can be owned by a set of owners, each of which can independently request LODs.
@@ -130,7 +130,7 @@ impl TerrainGameLoader {
     let lod = LOD::LodIndex(lod);
     let (_, change) = lod_map.insert(*position, lod, owner);
     // TODO: This should be an unwrap, but the preconditions of another TODO aren't
-    // satisfied in src/gaia_thread.rs.
+    // satisfied in src/update_gaia.rs.
     // (i.e. blocks sometimes get here when they're stale).
     let change = match change {
       None => return,
