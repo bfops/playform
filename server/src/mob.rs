@@ -29,7 +29,7 @@ impl Mob {
     let (x1, y1, z1) = (bounds.min.x, bounds.min.y, bounds.min.z);
     let (x2, y2, z2) = (bounds.max.x, bounds.max.y, bounds.max.z);
 
-    let vtx = |&:x, y, z| {
+    let vtx = |x, y, z| {
       ColoredVertex {
         position: Point3::new(x, y, z),
         color: c.clone(),

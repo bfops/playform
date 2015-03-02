@@ -5,7 +5,7 @@
 
 #![feature(core)]
 #![feature(collections)]
-#![feature(old_io)]
+#![feature(io)]
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(unboxed_closures)]

@@ -25,7 +25,7 @@ impl ColoredVertex {
   /// Generates two colored triangles, representing a square, at z=0.
   /// The bounds of the square is represented by `b`.
   pub fn square(min: Point2<f32>, max: Point2<f32>, color: Color4<f32>) -> [ColoredVertex; 6] {
-    let vtx = |&: x, y| {
+    let vtx = |x, y| {
         ColoredVertex { position: Point3::new(x, y, 0.0), color: color }
       };
 
@@ -57,7 +57,7 @@ impl TextureVertex {
   /// The coordinates on the texture will implicitly be the "whole thing".
   /// i.e. [(0, 0), (1, 1)].
   pub fn square(min: Vector2<f32>, max: Vector2<f32>) -> [TextureVertex; 6] {
-    let vtx = |&: x, y, tx, ty| {
+    let vtx = |x, y, tx, ty| {
         TextureVertex {
           world_position:  Vector3::new(x, y, 0.0),
           texture_position: Vector2::new(tx, ty),

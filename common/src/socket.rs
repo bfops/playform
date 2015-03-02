@@ -2,6 +2,7 @@
 
 use nanomsg::{Endpoint, Socket, Protocol};
 use rustc_serialize::{Encodable, Decodable, json};
+use std::io::{Read, Write};
 use std::marker::PhantomData;
 use std::time::duration::Duration;
 
@@ -31,7 +32,7 @@ impl<T> SendSocket<T>
   /// Block until we can send this socket a message.
   pub fn write(&mut self, msg: T) {
     let msg = json::encode(&msg).unwrap();
-    self.socket.write_all(msg.as_bytes()).unwrap();
+    self.socket.write(msg.as_bytes()).unwrap();
   }
 
   /// Terminate this connection.
@@ -72,8 +73,8 @@ impl<'a, T> ReceiveSocket<T>
 
   /// Block until a message can be fetched from this socket.
   pub fn read(&mut self) -> T {
-    let msg = self.socket.read_to_end().unwrap();
-    let msg = String::from_utf8(msg).unwrap();
+    let mut msg = String::new();
+    self.socket.read_to_string(&mut msg).unwrap();
     let msg = json::decode(msg.as_slice()).unwrap();
     msg
   }

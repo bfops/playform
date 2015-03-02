@@ -225,7 +225,7 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
       OctreeContents::Branch(ref b) => {
         let mid = middle(&self.bounds, self.dimension);
         let (low_bounds, high_bounds) = split(mid, self.dimension, bounds.clone());
-        let high = |&: high_bounds| {
+        let high = |high_bounds| {
           match high_bounds {
             None => None,
             Some(bs) => b.high_tree.intersect(&bs, self_v),

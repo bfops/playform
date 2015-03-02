@@ -5,7 +5,6 @@
 
 #![feature(core)]
 #![feature(collections)]
-#![feature(env)]
 #![feature(main)]
 #![feature(old_io)]
 #![feature(old_path)]
