@@ -1,4 +1,5 @@
 use env_logger;
+use rustc_serialize::json;
 use std::env;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::thread;
@@ -56,7 +57,10 @@ fn main() {
     thread::scoped(move || {
       update_thread(
         server,
-        &mut || { try_recv(listen_thread_recv) },
+        &mut || {
+          try_recv(listen_thread_recv)
+            .map(|msg| json::decode(&msg).unwrap())
+        },
         &mut || { try_recv(gaia_thread_recv) },
         &mut |up| { gaia_thread_send.send(up).unwrap() },
       );

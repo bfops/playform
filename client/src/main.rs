@@ -1,4 +1,5 @@
 use env_logger;
+use rustc_serialize::json;
 use std::env;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::thread;
@@ -62,7 +63,8 @@ fn main() {
       let talk_socket = &mut talk_socket;
       thread::scoped(move || {
         while let Some(msg) = server_send_thread_recv.recv().unwrap() {
-          talk_socket.write(msg);
+          let msg = json::encode(&msg).unwrap();
+          talk_socket.write(msg.as_bytes());
         }
       })
     };
@@ -81,7 +83,10 @@ fn main() {
       thread::scoped(move || {
         update_thread(
           client,
-          &mut || { try_recv(server_recv_thread_recv) },
+          &mut || {
+            try_recv(server_recv_thread_recv)
+              .map(|msg| json::decode(&msg).unwrap())
+          },
           &mut || { try_recv(terrain_blocks_recv) },
           &mut |up| { view_thread_send.send(up).unwrap() },
 	        &mut |up| { server_send_thread_send.send(Some(up)).unwrap() },

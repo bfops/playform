@@ -1,23 +1,18 @@
 //! One-way socket wrapper data structures.
 
 use nanomsg::{Endpoint, Socket, Protocol};
-use rustc_serialize::{Encodable, Decodable, json};
 use std::io::{Read, Write};
-use std::marker::PhantomData;
 use std::time::duration::Duration;
 
-/// A send-only strongly typed socket with sends running in a separate thread.
-pub struct SendSocket<T> {
+/// A send-only socket.
+pub struct SendSocket {
   socket: Socket,
   endpoint: Endpoint,
-  phantom: PhantomData<T>,
 }
 
-impl<T> SendSocket<T>
-  where T: Encodable,
-{
-  /// Create a new `SendSocket` with a new thread to send its messages.
-  pub fn new(url: &str) -> SendSocket<T> {
+impl SendSocket {
+  #[allow(missing_docs)]
+  pub fn new(url: &str) -> SendSocket {
     let mut socket = Socket::new(Protocol::Push).unwrap();
     socket.set_send_timeout(&Duration::seconds(30)).unwrap();
     let endpoint = socket.connect(url).unwrap();
@@ -25,14 +20,12 @@ impl<T> SendSocket<T>
     SendSocket {
       socket: socket,
       endpoint: endpoint,
-      phantom: PhantomData,
     }
   }
 
   /// Block until we can send this socket a message.
-  pub fn write(&mut self, msg: T) {
-    let msg = json::encode(&msg).unwrap();
-    self.socket.write(msg.as_bytes()).unwrap();
+  pub fn write(&mut self, msg: &[u8]) {
+    self.socket.write(msg).unwrap();
   }
 
   /// Terminate this connection.
@@ -42,24 +35,21 @@ impl<T> SendSocket<T>
 }
 
 #[unsafe_destructor]
-impl<T> Drop for SendSocket<T> {
+impl Drop for SendSocket {
   fn drop(&mut self) {
     self.endpoint.shutdown().unwrap();
   }
 }
 
-/// A receive-only strongly typed socket with receives running in a separate thread.
-pub struct ReceiveSocket<T> {
+/// A receive-only socket.
+pub struct ReceiveSocket {
   socket: Socket,
   endpoint: Endpoint,
-  phantom: PhantomData<T>,
 }
 
-impl<'a, T> ReceiveSocket<T>
-  where T: Decodable,
-{
-  /// Create a new `ReceiveSocket` with a spawned thread polling the socket.
-  pub fn new(url: &str) -> ReceiveSocket<T> {
+impl ReceiveSocket {
+  #[allow(missing_docs)]
+  pub fn new(url: &str) -> ReceiveSocket {
     let mut socket = Socket::new(Protocol::Pull).unwrap();
     socket.set_receive_timeout(&Duration::seconds(30)).unwrap();
     let endpoint = socket.bind(url.as_slice()).unwrap();
@@ -67,15 +57,13 @@ impl<'a, T> ReceiveSocket<T>
     ReceiveSocket {
       socket: socket,
       endpoint: endpoint,
-      phantom: PhantomData,
     }
   }
 
   /// Block until a message can be fetched from this socket.
-  pub fn read(&mut self) -> T {
+  pub fn read(&mut self) -> String {
     let mut msg = String::new();
     self.socket.read_to_string(&mut msg).unwrap();
-    let msg = json::decode(msg.as_slice()).unwrap();
     msg
   }
 
@@ -86,7 +74,7 @@ impl<'a, T> ReceiveSocket<T>
 }
 
 #[unsafe_destructor]
-impl<T> Drop for ReceiveSocket<T> {
+impl Drop for ReceiveSocket {
   fn drop(&mut self) {
     self.endpoint.shutdown().unwrap();
   }
