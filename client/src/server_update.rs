@@ -2,31 +2,71 @@ use cgmath::{Point, Vector, Vector3};
 use std::cmp::partial_max;
 use std::f32::consts::PI;
 use std::num::Float;
+use time;
 
 use common::block_position::BlockPosition;
 use common::color::Color3;
-use common::communicate::{ServerToClient, TerrainBlockSend};
+use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
+use common::surroundings_loader::{SurroundingsLoader, LODChange};
 
-use client::Client;
+use client::{Client, LOD_THRESHOLDS};
 use light::Light;
+use load_terrain::lod_index;
 use view_update::ClientToView;
 
-pub fn apply_server_update<UpdateView, UpdateSurroundings, LoadTerrain>(
+pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
   client: &Client,
   update_view: &mut UpdateView,
-  update_surroundings: &mut UpdateSurroundings,
-  load_terrain: &mut LoadTerrain,
+  update_server: &mut UpdateServer,
+  queue_block: &mut QueueBlock,
   update: ServerToClient,
 ) where
   UpdateView: FnMut(ClientToView),
-  UpdateSurroundings: FnMut(BlockPosition),
-  LoadTerrain: FnMut(TerrainBlockSend),
+  UpdateServer: FnMut(ClientToServer),
+  QueueBlock: FnMut(TerrainBlockSend),
 {
+  let max_load_distance = client.max_load_distance;
+
+  let mut surroundings_loader = {
+    SurroundingsLoader::new(
+      max_load_distance,
+      LOD_THRESHOLDS.iter().map(|&x| x).collect(),
+    )
+  };
+
   match update {
     ServerToClient::UpdatePlayer(position) => {
+      println!("{} update player: {:?}", time::precise_time_ns(), position);
       *client.player_position.lock().unwrap() = position;
-      update_surroundings(BlockPosition::from_world_position(&position));
       update_view(ClientToView::MoveCamera(position));
+
+      let position = BlockPosition::from_world_position(&position);
+      surroundings_loader.update(
+        position,
+        |lod_change| {
+          match lod_change {
+            LODChange::Load(block_position, distance) => {
+              let lod = lod_index(distance);
+              update_server(ClientToServer::RequestBlock(block_position, lod));
+            },
+            LODChange::Unload(block_position) => {
+              // The block removal code is duplicated elsewhere.
+    
+              client.loaded_blocks
+                .lock().unwrap()
+                .remove(&block_position)
+                // If it wasn't loaded, don't unload anything.
+                .map(|(block, prev_lod)| {
+                  for id in block.ids.iter() {
+                    update_view(ClientToView::RemoveTerrain(*id));
+                  }
+    
+                  update_view(ClientToView::RemoveBlockData(block_position, prev_lod));
+                });
+            },
+          };
+        },
+      );
     },
     ServerToClient::AddMob(id, v) => {
       update_view(ClientToView::AddMob(id, v));
@@ -70,7 +110,7 @@ pub fn apply_server_update<UpdateView, UpdateSurroundings, LoadTerrain>(
       update_view(ClientToView::SetClearColor(sun_color));
     },
     ServerToClient::AddBlock(block) => {
-      load_terrain(block);
+      queue_block(block);
     },
   }
 }

@@ -6,7 +6,6 @@
 #![feature(core)]
 #![feature(collections)]
 #![feature(main)]
-#![feature(old_io)]
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(unboxed_closures)]
@@ -26,8 +25,6 @@ extern crate test;
 extern crate time;
 
 mod client_recv_thread;
-mod client_send_thread;
-mod gaia_thread;
 mod in_progress_terrain;
 mod init_mobs;
 mod main;

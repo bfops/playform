@@ -1,18 +1,26 @@
 use env_logger;
 use std::env;
-use std::sync::mpsc::{channel, TryRecvError};
-use std::sync::Mutex;
+use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::thread;
 
 use common::communicate::ClientToServer;
 use common::socket::{SendSocket, ReceiveSocket};
 
 use client::Client;
-use server_recv_thread::server_recv_thread;
-use server_send_thread::server_send_thread;
-use surroundings_thread::surroundings_thread;
-use terrain_load_thread::terrain_load_thread;
+use update_thread::update_thread;
 use view_thread::view_thread;
+
+// TODO: This is duplicated in the server. Fix that.
+#[inline(always)]
+fn try_recv<T>(recv: &Receiver<T>) -> Option<T>
+  where T: Send,
+{
+  match recv.try_recv() {
+    Ok(msg) => Some(msg),
+    Err(TryRecvError::Empty) => None,
+    e => Some(e.unwrap()),
+  }
+}
 
 #[main]
 fn main() {
@@ -28,14 +36,9 @@ fn main() {
   info!("Listening on {}.", listen_url);
 
   let (server_send_thread_send, mut server_send_thread_recv) = channel();
-  let (surroundings_thread_send, mut surroundings_thread_recv) = channel();
-  let (terrain_load_thread_send, mut terrain_load_thread_recv) = channel();
+  let (server_recv_thread_send, mut server_recv_thread_recv) = channel();
+  let (terrain_blocks_send, mut terrain_blocks_recv) = channel();
   let (view_thread_send, mut view_thread_recv) = channel();
-
-  let server_send_thread_send = Mutex::new(server_send_thread_send);
-  let surroundings_thread_send = Mutex::new(surroundings_thread_send);
-  let terrain_load_thread_send = Mutex::new(terrain_load_thread_send);
-  let view_thread_send = Mutex::new(view_thread_send);
 
   let mut listen_socket = ReceiveSocket::new(listen_url.as_slice());
   let mut talk_socket = SendSocket::new(server_url.as_slice());
@@ -44,99 +47,64 @@ fn main() {
 
   {
     let _server_recv_thread = {
-      let client = &client;
       let listen_socket = &mut listen_socket;
-      let view_thread_send = &view_thread_send;
-      let surroundings_thread_send = &surroundings_thread_send;
-      let terrain_load_thread_send = &terrain_load_thread_send;
+      let server_recv_thread_send = server_recv_thread_send.clone();
       thread::scoped(move || {
-        server_recv_thread(
-          client,
-          &mut || { listen_socket.read() },
-          &mut |view_update| {
-            view_thread_send.lock().unwrap().send(Some(view_update)).unwrap();
-          },
-          &mut |player_position| {
-            surroundings_thread_send.lock().unwrap().send(Some(player_position)).unwrap();
-          },
-          &mut |block| {
-            terrain_load_thread_send.lock().unwrap().send(Some(block)).unwrap();
-          },
-        );
+        loop {
+          let msg = listen_socket.read();
+          server_recv_thread_send.send(msg).unwrap();
+        }
       })
     };
-
-    // TODO: This can get lost if the server is not started.
-    // Maybe do this in a loop until we get a response?
-    talk_socket.write(ClientToServer::Init(listen_url.clone()));
 
     let _server_send_thread = {
       let server_send_thread_recv = &mut server_send_thread_recv;
       let talk_socket = &mut talk_socket;
       thread::scoped(move || {
-        server_send_thread(
-          &mut move || { server_send_thread_recv.recv().unwrap() },
-          &mut |msg| { talk_socket.write(msg) },
-        )
+        while let Some(msg) = server_send_thread_recv.recv().unwrap() {
+          talk_socket.write(msg);
+        }
       })
     };
 
-    let _surroundings_thread = {
+    // TODO: This can get lost if the server is not started.
+    // Maybe do this in a loop until we get a response?
+    server_send_thread_send.send(Some(ClientToServer::Init(listen_url.clone()))).unwrap();
+
+    let _update_thread = {
       let client = &client;
-      let surroundings_thread_recv = &mut surroundings_thread_recv;
-      let server_send_thread_send = &server_send_thread_send;
-      let view_thread_send = &view_thread_send;
+      let server_recv_thread_recv = &mut server_recv_thread_recv;
+      let terrain_blocks_recv = &mut terrain_blocks_recv;
+      let view_thread_send = view_thread_send.clone();
+      let server_send_thread_send = server_send_thread_send.clone();
+      let terrain_blocks_send = terrain_blocks_send.clone();
       thread::scoped(move || {
-        surroundings_thread(
+        update_thread(
           client,
-          &mut move || { surroundings_thread_recv.recv().unwrap() },
-          &mut |view_update| {
-            view_thread_send.lock().unwrap().send(Some(view_update)).unwrap();
-          },
-          &mut |server_update| {
-            server_send_thread_send.lock().unwrap().send(Some(server_update)).unwrap();
-          },
-        )
-      })
-    };
-
-    let _terrain_load_thread = {
-      let client = &client;
-      let terrain_load_thread_recv = &mut terrain_load_thread_recv;
-      let view_thread_send = &view_thread_send;
-      thread::scoped(move || {
-        terrain_load_thread(
-          &client,
-          &mut move || { terrain_load_thread_recv.recv().unwrap() },
-          &mut |view_update| {
-            view_thread_send.lock().unwrap().send(Some(view_update)).unwrap();
-          },
+          &mut || { try_recv(server_recv_thread_recv) },
+          &mut || { try_recv(terrain_blocks_recv) },
+          &mut |up| { view_thread_send.send(up).unwrap() },
+	        &mut |up| { server_send_thread_send.send(Some(up)).unwrap() },
+          &mut |block| { terrain_blocks_send.send(block).unwrap() },
         )
       })
     };
 
     let view_thread = {
       let view_thread_recv = &mut view_thread_recv;
-      let server_send_thread_send = &server_send_thread_send;
+      let server_send_thread_send = server_send_thread_send.clone();
       thread::scoped(move || {
         view_thread(
           &mut || {
             match view_thread_recv.try_recv() {
-              Ok(Some(msg)) => Some(msg),
-              Ok(None) => {
-                panic!(
-                  "{} {}",
-                  "The view thread initiates quits.",
-                  "It should not receive a Quit signal."
-                );
-              },
+              Ok(msg) => Some(msg),
               Err(TryRecvError::Empty) => None,
               Err(TryRecvError::Disconnected) =>
                 panic!("view_thread_send should not be closed."),
             }
           },
           &mut |server_update| {
-            server_send_thread_send.lock().unwrap().send(Some(server_update)).unwrap();
+            server_send_thread_send.send(Some(server_update)).unwrap();
           },
         )
       })
@@ -146,11 +114,7 @@ fn main() {
 
     // System events go to the view_thread, so it handles quit signals.
     // Once it quits, we should close everything and die.
-
-    server_send_thread_send.lock().unwrap().send(None).unwrap();
-    surroundings_thread_send.lock().unwrap().send(None).unwrap();
-    terrain_load_thread_send.lock().unwrap().send(None).unwrap();
-    view_thread_send.lock().unwrap().send(None).unwrap();
+    server_send_thread_send.send(None).unwrap();
   }
 
   drop(talk_socket);

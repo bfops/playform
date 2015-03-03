@@ -1,9 +1,12 @@
-use client::Client;
+use std::collections::hash_map::Entry::{Vacant, Occupied};
+use std::num;
+
 use common::block_position::BlockPosition;
 use common::communicate::TerrainBlockSend;
+use common::lod::LODIndex;
 use common::surroundings_loader::radius_between;
-use std::collections::hash_map::Entry::{Vacant, Occupied};
-use update_surroundings::lod_index;
+
+use client::{Client, LOD_THRESHOLDS};
 use view_update::ClientToView;
 
 pub fn load_terrain_block<UpdateView>(
@@ -58,4 +61,16 @@ pub fn load_terrain_block<UpdateView>(
   if !block.block.ids.is_empty() {
     update_view(ClientToView::AddBlock(block));
   }
+}
+
+pub fn lod_index(distance: i32) -> LODIndex {
+  assert!(distance >= 0);
+  let mut lod = 0;
+  while
+    lod < LOD_THRESHOLDS.len()
+    && LOD_THRESHOLDS[lod] < distance
+  {
+    lod += 1;
+  }
+  LODIndex(num::cast(lod).unwrap())
 }

@@ -1,15 +1,24 @@
 use env_logger;
 use std::env;
-use std::sync::mpsc::channel;
-use std::sync::Mutex;
+use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::thread;
 
 use common::socket::ReceiveSocket;
 
-use client_recv_thread::client_recv_thread;
-use gaia_thread::gaia_thread;
 use server::Server;
 use update_thread::update_thread;
+
+// TODO: This is duplicated in the client. Fix that.
+#[inline(always)]
+fn try_recv<T>(recv: &Receiver<T>) -> Option<T>
+  where T: Send,
+{
+  match recv.try_recv() {
+    Ok(msg) => Some(msg),
+    Err(TryRecvError::Empty) => None,
+    e => Some(e.unwrap()),
+  }
+}
 
 #[main]
 fn main() {
@@ -23,56 +32,34 @@ fn main() {
 
   info!("Listening on {}.", listen_url);
 
-  let (socket_sender, incoming) = channel();
+  let (listen_thread_send, mut listen_thread_recv) = channel();
+  let (gaia_thread_send, mut gaia_thread_recv) = channel();
+
   let _listen_thread = {
+    let listen_thread_send = listen_thread_send.clone();
     thread::scoped(move || {
       let mut socket = ReceiveSocket::new(listen_url.as_slice());
       loop {
         let msg = socket.read();
-        socket_sender.send(msg).unwrap();
+        listen_thread_send.send(msg).unwrap();
       }
     })
   };
 
   let server = Server::new();
 
-  let (gaia_thread_send, gaia_thread_recv) = channel();
-  let gaia_thread = {
+  let _update_thread = {
     let server = &server;
-
+    let listen_thread_recv = &mut listen_thread_recv;
+    let gaia_thread_recv = &mut gaia_thread_recv;
+    let gaia_thread_send = gaia_thread_send.clone();
     thread::scoped(move || {
-      gaia_thread(
+      update_thread(
         server,
-        &mut move || { gaia_thread_recv.recv().unwrap() },
-      )
+        &mut || { try_recv(listen_thread_recv) },
+        &mut || { try_recv(gaia_thread_recv) },
+        &mut |up| { gaia_thread_send.send(up).unwrap() },
+      );
     })
   };
-
-  let gaia_thread_send = Mutex::new(gaia_thread_send);
-
-  {
-    let _update_thread = {
-      let server = &server;
-      let gaia_thread_send = &gaia_thread_send;
-      thread::scoped(move || {
-        update_thread(
-          server,
-          &mut |msg| {
-            gaia_thread_send.lock().unwrap().send(Some(msg)).unwrap()
-          },
-        );
-      })
-    };
-
-    client_recv_thread(
-      &server,
-      &mut || { Some(incoming.recv().unwrap()) },
-      &mut |msg| {
-        gaia_thread_send.lock().unwrap().send(Some(msg)).unwrap()
-      },
-    );
-
-    gaia_thread_send.lock().unwrap().send(None).unwrap();
-    gaia_thread.join();
-  }
 }
