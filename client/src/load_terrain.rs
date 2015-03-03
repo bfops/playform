@@ -1,3 +1,4 @@
+use rustc_serialize::json;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
 use std::num;
 
@@ -5,6 +6,7 @@ use common::block_position::BlockPosition;
 use common::communicate::TerrainBlockSend;
 use common::lod::LODIndex;
 use common::surroundings_loader::radius_between;
+use common::terrain_block::TerrainBlock;
 
 use client::{Client, LOD_THRESHOLDS};
 use view_update::ClientToView;
@@ -40,9 +42,12 @@ pub fn load_terrain_block<UpdateView>(
     return;
   }
 
+  // TODO: This block is decoded both here and in update_view.
+  // Fix this.
+  let actual_block: TerrainBlock = json::decode(&block.block).unwrap();
   match client.loaded_blocks.lock().unwrap().entry(block.position) {
     Vacant(entry) => {
-      entry.insert((block.block.clone(), block.lod));
+      entry.insert((actual_block.clone(), block.lod));
     },
     Occupied(mut entry) => {
       {
@@ -54,12 +59,12 @@ pub fn load_terrain_block<UpdateView>(
         }
         update_view(ClientToView::RemoveBlockData(block.position, prev_lod));
       }
-      entry.insert((block.block.clone(), block.lod));
+      entry.insert((actual_block.clone(), block.lod));
     },
   };
 
-  if !block.block.ids.is_empty() {
-    update_view(ClientToView::AddBlock(block));
+  if !actual_block.ids.is_empty() {
+    update_view(ClientToView::AddBlock((block.position, actual_block, block.lod)));
   }
 }
 

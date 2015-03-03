@@ -1,12 +1,15 @@
 /// Creator of the earth.
 
+use rustc_serialize::json;
+use std::ops::DerefMut;
+
 use common::communicate::{ServerToClient, TerrainBlockSend};
 use common::lod::{LODIndex, OwnerId};
 use common::stopwatch::TimerSet;
 use common::block_position::BlockPosition;
+
 use opencl_context::CL;
 use server::Server;
-use std::ops::DerefMut;
 use terrain::terrain_game_loader::TerrainGameLoader;
 use terrain::texture_generator::TerrainTextureGenerator;
 
@@ -67,7 +70,7 @@ pub fn update_gaia(
                 to_client.send(Some(
                   ServerToClient::AddBlock(TerrainBlockSend {
                     position: position,
-                    block: block.clone(),
+                    block: json::encode(&block).unwrap(),
                     lod: lod,
                   })
                 )).unwrap();

@@ -5,7 +5,6 @@ use entity::EntityId;
 use lod::LODIndex;
 use cgmath::{Vector2, Vector3, Point3};
 use rustc_serialize::Encodable;
-use terrain_block::TerrainBlock;
 use vertex::ColoredVertex;
 
 #[derive(Debug, Clone)]
@@ -14,8 +13,8 @@ use vertex::ColoredVertex;
 pub struct TerrainBlockSend {
   #[allow(missing_docs)]
   pub position: BlockPosition,
-  #[allow(missing_docs)]
-  pub block: TerrainBlock,
+  /// The String-serialized `TerrainBlock`.
+  pub block: String,
   #[allow(missing_docs)]
   pub lod: LODIndex,
 }
