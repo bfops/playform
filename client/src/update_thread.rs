@@ -1,5 +1,4 @@
 use std::thread;
-use time;
 
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
 
@@ -25,7 +24,6 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
   // TODO: quit?
   'update_loop: loop {
     if let Some(up) = recv_server() {
-      println!("{} server update: {:?}", time::precise_time_ns(), up);
       apply_server_update(
         client,
         update_view,
@@ -35,7 +33,6 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
       );
     } else {
       if let Some(block) = recv_block() {
-        println!("{} block update", time::precise_time_ns());
         load_terrain_block(
           client,
           update_view,

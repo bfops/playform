@@ -2,7 +2,6 @@ use cgmath::{Point, Vector, Vector3};
 use std::cmp::partial_max;
 use std::f32::consts::PI;
 use std::num::Float;
-use time;
 
 use common::block_position::BlockPosition;
 use common::color::Color3;
@@ -36,7 +35,6 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
 
   match update {
     ServerToClient::UpdatePlayer(position) => {
-      println!("{} update player: {:?}", time::precise_time_ns(), position);
       *client.player_position.lock().unwrap() = position;
       update_view(ClientToView::MoveCamera(position));
 

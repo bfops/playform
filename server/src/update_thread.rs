@@ -77,11 +77,9 @@ pub fn update_thread<RecvClient, RecvGaia, RequestBlock>(
 
   loop {
     if let Some(update) = recv_client() {
-      println!("{} recv client: {:?}", time::precise_time_ns(), update);
       apply_client_update(server, request_block, update);
     } else {
       if update_timer.update(time::precise_time_ns()) > 0 {
-        println!("{} update", time::precise_time_ns());
         update_world(
           timers,
           server,
@@ -95,7 +93,6 @@ pub fn update_thread<RecvClient, RecvGaia, RequestBlock>(
         );
       } else {
         if let Some(update) = recv_gaia() {
-          println!("{} update gaia", time::precise_time_ns());
           update_gaia(
             timers,
             &server,
@@ -174,7 +171,6 @@ fn update_world<RequestBlock>(
       let player_position = server.player.lock().unwrap().position;
       server.to_client.lock().unwrap().as_mut().map(|&mut (ref client, _)| {
         client.send(Some(UpdatePlayer(player_position))).unwrap();
-        println!("{} update player {:?}", time::precise_time_ns(), player_position);
       });
     });
 

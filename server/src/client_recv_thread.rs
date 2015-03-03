@@ -1,6 +1,5 @@
 use std::sync::mpsc::channel;
 use std::thread;
-use time;
 
 use common::communicate::{ClientToServer, ServerToClient};
 use common::socket::SendSocket;
@@ -25,9 +24,7 @@ pub fn apply_client_update<UpdateGaia>(
         thread::scoped(move || {
           let mut socket = SendSocket::new(client_url.as_slice());
           while let Some(msg) = to_client_recv.recv().unwrap() {
-            let now = time::precise_time_ns();
             socket.write(msg);
-            println!("send took {}", time::precise_time_ns() - now);
           }
         })
       };
