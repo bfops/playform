@@ -2,6 +2,7 @@ use env_logger;
 use rustc_serialize::json;
 use std::env;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
+use std::sync::Mutex;
 use std::thread;
 
 use common::communicate::ClientToServer;
@@ -36,52 +37,60 @@ fn main() {
   info!("Sending to {}.", server_url);
   info!("Listening on {}.", listen_url);
 
-  let (server_send_thread_send, mut server_send_thread_recv) = channel();
+  let (server_send_thread_send, server_send_thread_recv) = channel();
   let (server_recv_thread_send, mut server_recv_thread_recv) = channel();
   let (terrain_blocks_send, mut terrain_blocks_recv) = channel();
   let (view_thread_send, mut view_thread_recv) = channel();
 
-  let mut listen_socket = ReceiveSocket::new(listen_url.as_slice());
-  let mut talk_socket = SendSocket::new(server_url.as_slice());
+  let server_recv_thread_send = &server_recv_thread_send;
+  let server_recv_thread_recv = &mut server_recv_thread_recv;
+  let terrain_blocks_send = &terrain_blocks_send;
+  let terrain_blocks_recv = &mut terrain_blocks_recv;
+  let view_thread_send = &view_thread_send;
+  let view_thread_recv = &mut view_thread_recv;
 
   let client = Client::new();
+  let client = &client;
+
+  let quit = Mutex::new(false);
+  let quit = &quit;
+
+  let _server_recv_thread = {
+    let listen_url = listen_url.clone();
+    let server_recv_thread_send = server_recv_thread_send.clone();
+    thread::spawn(move || {
+      let mut listen_socket = ReceiveSocket::new(listen_url.as_slice());
+      loop {
+        let msg = listen_socket.read();
+        server_recv_thread_send.send(msg).unwrap();
+      }
+    })
+  };
+
+  let _server_send_thread = {
+    thread::spawn(move || {
+      let mut talk_socket = SendSocket::new(server_url.as_slice());
+      loop {
+        let msg = server_send_thread_recv.recv().unwrap();
+        let msg = json::encode(&msg).unwrap();
+        talk_socket.write(msg.as_bytes());
+      }
+    })
+  };
+
+  // TODO: This can get lost if the server is not started.
+  // Maybe do this in a loop until we get a response?
+  server_send_thread_send.send(Some(ClientToServer::Init(listen_url))).unwrap();
 
   {
-    let _server_recv_thread = {
-      let listen_socket = &mut listen_socket;
-      let server_recv_thread_send = server_recv_thread_send.clone();
-      thread::scoped(move || {
-        loop {
-          let msg = listen_socket.read();
-          server_recv_thread_send.send(msg).unwrap();
-        }
-      })
-    };
-
-    let _server_send_thread = {
-      let server_send_thread_recv = &mut server_send_thread_recv;
-      let talk_socket = &mut talk_socket;
-      thread::scoped(move || {
-        while let Some(msg) = server_send_thread_recv.recv().unwrap() {
-          let msg = json::encode(&msg).unwrap();
-          talk_socket.write(msg.as_bytes());
-        }
-      })
-    };
-
-    // TODO: This can get lost if the server is not started.
-    // Maybe do this in a loop until we get a response?
-    server_send_thread_send.send(Some(ClientToServer::Init(listen_url.clone()))).unwrap();
-
     let _update_thread = {
       let client = &client;
-      let server_recv_thread_recv = &mut server_recv_thread_recv;
-      let terrain_blocks_recv = &mut terrain_blocks_recv;
       let view_thread_send = view_thread_send.clone();
       let server_send_thread_send = server_send_thread_send.clone();
       let terrain_blocks_send = terrain_blocks_send.clone();
       thread::scoped(move || {
         update_thread(
+          quit,
           client,
           &mut || {
             try_recv(server_recv_thread_recv)
@@ -96,7 +105,6 @@ fn main() {
     };
 
     let view_thread = {
-      let view_thread_recv = &mut view_thread_recv;
       let server_send_thread_send = server_send_thread_send.clone();
       thread::scoped(move || {
         view_thread(
@@ -117,11 +125,7 @@ fn main() {
 
     view_thread.join();
 
-    // System events go to the view_thread, so it handles quit signals.
-    // Once it quits, we should close everything and die.
-    server_send_thread_send.send(None).unwrap();
+    // View thread returned, so we got a quit event.
+    *quit.lock().unwrap() = true;
   }
-
-  drop(talk_socket);
-  drop(listen_socket);
 }

@@ -1,3 +1,4 @@
+use std::sync::Mutex;
 use std::thread;
 
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
@@ -8,6 +9,7 @@ use server_update::apply_server_update;
 use view_update::ClientToView;
 
 pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock>(
+  quit: &Mutex<bool>,
   client: &Client,
   recv_server: &mut RecvServer,
   recv_block: &mut RecvBlock,
@@ -21,9 +23,10 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
   UpdateServer: FnMut(ClientToServer),
   QueueBlock: FnMut(TerrainBlockSend),
 {
-  // TODO: quit?
   'update_loop: loop {
-    if let Some(up) = recv_server() {
+    if *quit.lock().unwrap() == true {
+      break 'update_loop;
+    } else if let Some(up) = recv_server() {
       apply_server_update(
         client,
         update_view,
@@ -31,16 +34,14 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
         queue_block,
         up,
       );
+    } else if let Some(block) = recv_block() {
+      load_terrain_block(
+        client,
+        update_view,
+        block,
+      );
     } else {
-      if let Some(block) = recv_block() {
-        load_terrain_block(
-          client,
-          update_view,
-          block,
-        );
-      } else {
-        thread::yield_now();
-      }
+      thread::yield_now();
     }
   }
 }
