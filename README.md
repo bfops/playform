@@ -15,21 +15,21 @@ Help is great! PRs and [issues](https://github.com/bfops/playform/issues) are ap
 Make sure you have:
 
   * The Rust compiler and package manager, `cargo`.
+  * OpenCL
   * `libpng`
   * `SDL2`
   * `SDL2_ttf`
-  * libnanomsg
+  * `libnanomsg`
 
 At any point, `--release` can be appended onto `cargo build` or `cargo run` for a slower
 build, but a much more optimized result.
 
 Run the Playform server using `cargo run` in the `server` folder. It takes one parameter:
-the listen URL for the server. If you're only running locally, you can use something like
-`ipc:///tmp/server.ipc`.
+the listen URL for the server. The default is for running locally: `ipc:///tmp/server.ipc`.
 
 The client can similarly be run with `cargo run` in the `client` folder. It takes two
-parameters: the listen URL of the client, and the listen URL of the server. Again, if
-running locally, you can use something like `ipc:///tmp/client.ipc` for the client.
+parameters: the listen URL of the client, and the listen URL of the server. The default
+is `ipc:///tmp/client.ipc` for the client.
 
 **Some dependencies may not build**. Look for forks that are updated for your `rustc`,
 and then point your `~/.cargo/config` at them.
