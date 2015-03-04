@@ -1,5 +1,5 @@
+use opencl::hl;
 use opencl::hl::{Device, Context, CommandQueue};
-use opencl::util::create_compute_context;
 
 pub struct CL {
   pub device: Device,
@@ -9,11 +9,23 @@ pub struct CL {
 
 impl CL {
   pub unsafe fn new() -> CL {
-    let (device, context, queue) = create_compute_context().unwrap();
-    CL {
-      device: device,
-      context: context,
-      queue: queue,
+    for platform in hl::get_platforms().iter() {
+      debug!("Found OpenCL platform: {}", platform.name());
+      debug!("Available devices:");
+      let devices = platform.get_devices();
+      for device in devices.into_iter() {
+        debug!("  {}", device.name());
+        let context = device.create_context();
+        let queue = context.create_command_queue(&device);
+
+        return CL {
+          device: device,
+          context: context,
+          queue: queue,
+        };
+      }
     }
+
+    panic!("Couldn't find an OpenCL device.");
   }
 }
