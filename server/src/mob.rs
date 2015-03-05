@@ -1,9 +1,12 @@
+use cgmath::{Point3, Vector3};
+use cgmath::Aabb3;
+
 use common::color::Color4;
 use common::entity::EntityId;
 use common::lod::OwnerId;
+use common::surroundings_loader::SurroundingsLoader;
 use common::vertex::ColoredVertex;
-use cgmath::{Point3, Vector3};
-use cgmath::Aabb3;
+
 use server::Server;
 
 pub const TRIANGLES_PER_BOX: u32 = 12;
@@ -19,6 +22,7 @@ pub struct Mob {
 
   pub entity_id: EntityId,
   pub owner_id: OwnerId,
+  pub surroundings_loader: SurroundingsLoader,
 }
 
 impl Mob {

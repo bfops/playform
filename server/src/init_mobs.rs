@@ -1,9 +1,7 @@
 use cgmath::{Aabb3, Point, Point3, EuclideanVector, Vector, Vector3};
-use common::entity::EntityId;
 use common::surroundings_loader::SurroundingsLoader;
 use mob;
 use server::Server;
-use std::collections::HashMap;
 use terrain::terrain;
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
@@ -15,7 +13,6 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
 
 pub fn init_mobs(
   server: &Server,
-  mob_loaders: &mut HashMap<EntityId, SurroundingsLoader>,
 ) {
   fn mob_behavior(world: &Server, mob: &mut mob::Mob) {
     fn to_player(world: &Server, mob: &mob::Mob) -> Vector3<f32> {
@@ -60,7 +57,6 @@ pub fn init_mobs(
 
   add_mob(
     server,
-    mob_loaders,
     Point3::new(0.0, terrain::AMPLITUDE as f32, -1.0),
     mob_behavior,
   );
@@ -68,7 +64,6 @@ pub fn init_mobs(
 
 fn add_mob(
   server: &Server,
-  loaders: &mut HashMap<EntityId, SurroundingsLoader>,
   low_corner: Point3<f32>,
   behavior: mob::Behavior,
 ) {
@@ -82,12 +77,8 @@ fn add_mob(
       behavior: behavior,
       entity_id: entity_id,
       owner_id: server.owner_allocator.lock().unwrap().allocate(),
+      surroundings_loader: SurroundingsLoader::new(1, Vec::new()),
     };
-
-  loaders.insert(
-    entity_id,
-    SurroundingsLoader::new(1, Vec::new()),
-  );
 
   server.physics.lock().unwrap().insert_misc(entity_id, bounds);
   server.mobs.lock().unwrap().insert(entity_id, mob);

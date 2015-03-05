@@ -49,6 +49,7 @@ impl InProgressTerrain {
     physics: &Mutex<Physics>,
     block_position: &BlockPosition,
   ) -> bool {
-    self.blocks.remove(block_position).map(|id| physics.lock().unwrap().remove_misc(id)).is_some()
+    self.blocks.remove(block_position)
+      .map(|id| physics.lock().unwrap().remove_misc(id)).is_some()
   }
 }

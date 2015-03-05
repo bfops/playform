@@ -1,132 +1,54 @@
 use cgmath::{Point, Vector, Vector3};
-use std::collections::HashMap;
 use std::ops::Neg;
-use std::thread;
-use time;
+use std::sync::mpsc::Sender;
 
 use common::block_position::BlockPosition;
 use common::color::Color4;
-use common::communicate::ClientToServer;
 use common::communicate::ServerToClient::*;
-use common::entity::EntityId;
-use common::interval_timer::IntervalTimer;
 use common::lod::{LOD, OwnerId};
 use common::stopwatch::TimerSet;
-use common::surroundings_loader::{SurroundingsLoader, LODChange};
-use common::terrain_block::{BLOCK_WIDTH, TEXTURE_WIDTH};
+use common::surroundings_loader::LODChange;
 
-use client_recv_thread::apply_client_update;
-use init_mobs::init_mobs;
 use mob;
-use opencl_context::CL;
 use server::Server;
-use terrain::texture_generator::TerrainTextureGenerator;
-use update_gaia::{ServerToGaia, update_gaia};
+use update_gaia::ServerToGaia;
 
 // TODO: Consider removing the IntervalTimer.
 
-const UPDATES_PER_SECOND: u64 = 30;
-
-pub fn update_thread<RecvClient, RecvGaia, RequestBlock>(
-  server: &Server,
-  recv_client: &mut RecvClient,
-  recv_gaia: &mut RecvGaia,
-  request_block: &mut RequestBlock,
-) where
-  RecvClient: FnMut() -> Option<ClientToServer>,
-  RecvGaia: FnMut() -> Option<ServerToGaia>,
-  RequestBlock: FnMut(ServerToGaia),
-{
-  let timers = TimerSet::new();
-  let timers = &timers;
-
-  let cl = unsafe {
-    CL::new()
-  };
-  let cl = &cl;
-
-  let texture_generators = [
-    TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[0], BLOCK_WIDTH as u32),
-    TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[1], BLOCK_WIDTH as u32),
-    TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[2], BLOCK_WIDTH as u32),
-    TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[3], BLOCK_WIDTH as u32),
-  ];
-
-  let mut mob_loaders = HashMap::new();
-  timers.time("init_mobs", || {
-    init_mobs(server, &mut mob_loaders);
-  });
-
-  let mut update_timer;
-  {
-    let now = time::precise_time_ns();
-    let nanoseconds_per_second = 1000000000;
-    update_timer = IntervalTimer::new(nanoseconds_per_second / UPDATES_PER_SECOND, now);
-  }
-
-  loop {
-    if let Some(update) = recv_client() {
-      apply_client_update(server, request_block, update);
-    } else {
-      if update_timer.update(time::precise_time_ns()) > 0 {
-        update_world(
-          timers,
-          server,
-          request_block,
-          &mut mob_loaders,
-        );
-      } else {
-        if let Some(update) = recv_gaia() {
-          update_gaia(
-            timers,
-            &server,
-            &texture_generators,
-            cl,
-            update,
-          );
-        } else {
-          thread::yield_now();
-        }
-      }
-    }
-  }
-}
-
-fn update_world<RequestBlock>(
+pub fn update_world(
   timers: &TimerSet,
   server: &Server,
-  request_block: &mut RequestBlock,
-  mob_loaders: &mut HashMap<EntityId, SurroundingsLoader>,
-) where
-  RequestBlock: FnMut(ServerToGaia),
-{
+  request_block: &Sender<ServerToGaia>,
+) {
+  let mut request_block = |block| { request_block.send(block).unwrap() };
+
   timers.time("update", || {
     timers.time("update.player", || {
-      server.player.lock().unwrap().update(timers, server, request_block);
+      server.player.lock().unwrap().update(timers, server, &mut request_block);
 
       let player_position = server.player.lock().unwrap().position;
+      trace!("player_position {:?}", player_position);
       server.to_client.lock().unwrap().as_mut().map(|&mut (ref client, _)| {
         client.send(Some(UpdatePlayer(player_position))).unwrap();
       });
     });
 
     timers.time("update.mobs", || {
-      for (id, mob) in server.mobs.lock().unwrap().iter_mut() {
+      for (_, mob) in server.mobs.lock().unwrap().iter_mut() {
         let block_position = BlockPosition::from_world_position(&mob.position);
 
-        {
-          mob_loaders.get_mut(id).unwrap().update(
-            block_position,
-            |lod_change|
-              load_placeholders(
-                timers,
-                mob.owner_id,
-                server,
-                request_block,
-                lod_change,
-              )
-          );
-        }
+        let owner_id = mob.owner_id;
+        mob.surroundings_loader.update(
+          block_position,
+          |lod_change|
+            load_placeholders(
+              timers,
+              owner_id,
+              server,
+              &mut request_block,
+              lod_change,
+            )
+        );
 
         {
           let behavior = mob.behavior;

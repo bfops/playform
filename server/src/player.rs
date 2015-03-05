@@ -14,7 +14,7 @@ use common::surroundings_loader::{SurroundingsLoader, LODChange};
 use physics::Physics;
 use server::Server;
 use update_gaia::ServerToGaia;
-use update_thread::load_placeholders;
+use update_world::load_placeholders;
 
 const MAX_JUMP_FUEL: u32 = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;
@@ -51,6 +51,8 @@ impl Player {
     entity_id: EntityId,
     owner_allocator: &mut Mutex<IdAllocator<OwnerId>>,
   ) -> Player {
+    let surroundings_owner = owner_allocator.lock().unwrap().allocate();
+    let solid_owner = owner_allocator.lock().unwrap().allocate();
     Player {
       position: Point3::new(0.0, 0.0, 0.0),
       speed: Vector3::new(0.0, 0.0, 0.0),
@@ -64,8 +66,8 @@ impl Player {
 
       surroundings_loader: SurroundingsLoader::new(1, Vec::new()),
       solid_boundary:  SurroundingsLoader::new(1, Vec::new()),
-      surroundings_owner:  owner_allocator.lock().unwrap().allocate(),
-      solid_owner: owner_allocator.lock().unwrap().allocate(),
+      surroundings_owner:  surroundings_owner,
+      solid_owner: solid_owner,
     }
   }
 
@@ -142,7 +144,7 @@ impl Player {
   ) where
     RequestBlock: FnMut(ServerToGaia),
   {
-    let block_position = BlockPosition::from_world_position(&server.player.lock().unwrap().position);
+    let block_position = BlockPosition::from_world_position(&self.position);
 
     timers.time("update.player.surroundings", || {
       let owner = self.surroundings_owner;

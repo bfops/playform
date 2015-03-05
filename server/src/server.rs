@@ -4,13 +4,16 @@ use std::f32::consts::PI;
 use std::sync::Mutex;
 use std::sync::mpsc::Sender;
 use std::thread::JoinGuard;
+use time;
 
 use common::color::Color4;
 use common::communicate::ServerToClient;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
+use common::interval_timer::IntervalTimer;
 use common::lod::OwnerId;
 
+use init_mobs::init_mobs;
 use mob;
 use physics::Physics;
 use player::Player;
@@ -18,6 +21,7 @@ use sun::Sun;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
 
+const UPDATES_PER_SECOND: u64 = 30;
 const SUN_TICK_NS: u64 = 5000000;
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
@@ -37,6 +41,7 @@ pub struct Server {
   pub to_client: Mutex<Option<(Sender<Option<ServerToClient>>, JoinGuard<'static, ()>)>>,
 
   pub sun: Mutex<Sun>,
+  pub update_timer: Mutex<IntervalTimer>,
 }
 
 impl Server {
@@ -70,7 +75,7 @@ impl Server {
       player
     };
 
-    Server {
+    let server = Server {
       player: Mutex::new(player),
       mobs: Mutex::new(HashMap::new()),
 
@@ -81,7 +86,18 @@ impl Server {
 
       to_client: Mutex::new(None),
       sun: Mutex::new(Sun::new(SUN_TICK_NS)),
-    }
+
+      update_timer: {
+        let now = time::precise_time_ns();
+        let nanoseconds_per_second = 1000000000;
+        Mutex::new(
+          IntervalTimer::new(nanoseconds_per_second / UPDATES_PER_SECOND, now)
+        )
+      }
+    };
+
+    init_mobs(&server);
+    server
   }
 
   pub fn inform_client<UpdateClient>(&self, client: &mut UpdateClient)

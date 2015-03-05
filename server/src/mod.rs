@@ -37,4 +37,4 @@ mod server;
 mod sun;
 mod terrain;
 mod update_gaia;
-mod update_thread;
+mod update_world;
