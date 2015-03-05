@@ -6,9 +6,9 @@ use std::num::Float;
 use common::block_position::BlockPosition;
 use common::color::Color3;
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
-use common::surroundings_loader::{SurroundingsLoader, LODChange};
+use common::surroundings_loader::LODChange;
 
-use client::{Client, LOD_THRESHOLDS};
+use client::Client;
 use light::Light;
 use load_terrain::lod_index;
 use view_update::ClientToView;
@@ -24,22 +24,13 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
   UpdateServer: FnMut(ClientToServer),
   QueueBlock: FnMut(TerrainBlockSend),
 {
-  let max_load_distance = client.max_load_distance;
-
-  let mut surroundings_loader = {
-    SurroundingsLoader::new(
-      max_load_distance,
-      LOD_THRESHOLDS.iter().map(|&x| x).collect(),
-    )
-  };
-
   match update {
     ServerToClient::UpdatePlayer(position) => {
       *client.player_position.lock().unwrap() = position;
       update_view(ClientToView::MoveCamera(position));
 
       let position = BlockPosition::from_world_position(&position);
-      surroundings_loader.update(
+      client.surroundings_loader.lock().unwrap().update(
         position,
         |lod_change| {
           match lod_change {

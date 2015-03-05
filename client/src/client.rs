@@ -1,12 +1,15 @@
 //! Main Playform client state code.
 
-use common::block_position::BlockPosition;
-use common::lod::LODIndex;
-use common::terrain_block::{TerrainBlock, LOD_QUALITY};
 use cgmath::Point3;
 use std::collections::HashMap;
 use std::iter::range_inclusive;
 use std::sync::Mutex;
+
+use common::block_position::BlockPosition;
+use common::lod::LODIndex;
+use common::surroundings_loader::SurroundingsLoader;
+use common::terrain_block::{TerrainBlock, LOD_QUALITY};
+
 use terrain_buffers;
 
 /// The distances at which LOD switches.
@@ -18,6 +21,8 @@ pub struct Client {
   pub player_position: Mutex<Point3<f32>>,
   #[allow(missing_docs)]
   pub max_load_distance: i32,
+  #[allow(missing_docs)]
+  pub surroundings_loader: Mutex<SurroundingsLoader>,
   /// A record of all the blocks that have been loaded.
   pub loaded_blocks: Mutex<HashMap<BlockPosition, (TerrainBlock, LODIndex)>>,
 }
@@ -36,9 +41,17 @@ impl Client {
       info!("load_distance {}", load_distance);
     }
 
+    let surroundings_loader = {
+      SurroundingsLoader::new(
+        max_load_distance,
+        LOD_THRESHOLDS.iter().map(|&x| x).collect(),
+      )
+    };
+
     Client {
       player_position: Mutex::new(Point3::new(0.0, 0.0, 0.0)),
       max_load_distance: load_distance,
+      surroundings_loader: Mutex::new(surroundings_loader),
       loaded_blocks: Mutex::new(HashMap::new()),
     }
   }
