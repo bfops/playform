@@ -14,8 +14,11 @@ use common::lod::OwnerId;
 use mob;
 use physics::Physics;
 use player::Player;
+use sun::Sun;
 use terrain::terrain;
 use terrain::terrain_game_loader::TerrainGameLoader;
+
+const SUN_TICK_NS: u64 = 5000000;
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
   bounds.min.add_v(&bounds.max.to_vec()).mul_s(1.0 / 2.0)
@@ -32,6 +35,8 @@ pub struct Server {
   pub terrain_game_loader: Mutex<TerrainGameLoader>,
 
   pub to_client: Mutex<Option<(Sender<Option<ServerToClient>>, JoinGuard<'static, ()>)>>,
+
+  pub sun: Mutex<Sun>,
 }
 
 impl Server {
@@ -48,10 +53,10 @@ impl Server {
       );
 
     let mut id_allocator = IdAllocator::new();
-    let owner_allocator = IdAllocator::new();
+    let mut owner_allocator = Mutex::new(IdAllocator::new());
 
     let player = {
-      let mut player = Player::new(id_allocator.allocate());
+      let mut player = Player::new(id_allocator.allocate(), &mut owner_allocator);
 
       let min = Point3::new(0.0, terrain::AMPLITUDE as f32, 4.0);
       let max = min.add_v(&Vector3::new(1.0, 2.0, 1.0));
@@ -71,10 +76,11 @@ impl Server {
 
       id_allocator: Mutex::new(id_allocator),
       physics: Mutex::new(physics),
-      owner_allocator: Mutex::new(owner_allocator),
+      owner_allocator: owner_allocator,
       terrain_game_loader: Mutex::new(TerrainGameLoader::new()),
 
       to_client: Mutex::new(None),
+      sun: Mutex::new(Sun::new(SUN_TICK_NS)),
     }
   }
 

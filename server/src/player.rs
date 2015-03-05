@@ -1,15 +1,25 @@
-use common::entity::EntityId;
 use cgmath;
 use cgmath::{Aabb3, Point, Point3, Matrix, Matrix3, Ray, Ray3, Vector, Vector3};
-use physics::Physics;
-use server::Server;
 use std::f32::consts::PI;
 use std::ops::DerefMut;
 use std::sync::Mutex;
 
+use common::block_position::BlockPosition;
+use common::entity::EntityId;
+use common::id_allocator::IdAllocator;
+use common::lod::{LOD, LODIndex, OwnerId};
+use common::stopwatch::TimerSet;
+use common::surroundings_loader::{SurroundingsLoader, LODChange};
+
+use physics::Physics;
+use server::Server;
+use update_gaia::ServerToGaia;
+use update_thread::load_placeholders;
+
 const MAX_JUMP_FUEL: u32 = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;
 
+// TODO: Add ObservablePlayer struct as a subset.
 pub struct Player {
   pub position: Point3<f32>,
   // speed; units are world coordinates
@@ -28,11 +38,18 @@ pub struct Player {
   pub lateral_rotation: f32,
   // "pitch", in radians
   pub vertical_rotation: f32,
+
+  surroundings_loader: SurroundingsLoader,
+  surroundings_owner: OwnerId,
+  // Nearby blocks should be made solid if they aren't loaded yet.
+  solid_boundary: SurroundingsLoader,
+  solid_owner: OwnerId,
 }
 
 impl Player {
   pub fn new(
     entity_id: EntityId,
+    owner_allocator: &mut Mutex<IdAllocator<OwnerId>>,
   ) -> Player {
     Player {
       position: Point3::new(0.0, 0.0, 0.0),
@@ -44,6 +61,11 @@ impl Player {
       entity_id: entity_id,
       lateral_rotation: 0.0,
       vertical_rotation: 0.0,
+
+      surroundings_loader: SurroundingsLoader::new(1, Vec::new()),
+      solid_boundary:  SurroundingsLoader::new(1, Vec::new()),
+      surroundings_owner:  owner_allocator.lock().unwrap().allocate(),
+      solid_owner: owner_allocator.lock().unwrap().allocate(),
     }
   }
 
@@ -112,10 +134,59 @@ impl Player {
     }
   }
 
-  pub fn update(
+  pub fn update<RequestBlock>(
     &mut self,
+    timers: &TimerSet,
     server: &Server,
-  ) {
+    request_block: &mut RequestBlock,
+  ) where
+    RequestBlock: FnMut(ServerToGaia),
+  {
+    let block_position = BlockPosition::from_world_position(&server.player.lock().unwrap().position);
+
+    timers.time("update.player.surroundings", || {
+      let owner = self.surroundings_owner;
+      self.surroundings_loader.update(
+        block_position,
+        |lod_change| {
+          match lod_change {
+            LODChange::Load(pos, _) => {
+              server.terrain_game_loader.lock().unwrap().load(
+                timers,
+                &server.id_allocator,
+                &server.physics,
+                &pos,
+                LOD::LodIndex(LODIndex(0)),
+                owner,
+                request_block,
+              );
+            },
+            LODChange::Unload(pos) => {
+              server.terrain_game_loader.lock().unwrap().unload(
+                timers,
+                &server.physics,
+                &pos,
+                owner,
+              );
+            },
+          }
+        },
+      );
+
+      let owner = self.solid_owner;
+      self.solid_boundary.update(
+        block_position,
+        |lod_change|
+          load_placeholders(
+            timers,
+            owner,
+            server,
+            request_block,
+            lod_change,
+          )
+      );
+    });
+
     if self.is_jumping {
       if self.jump_fuel > 0 {
         self.jump_fuel -= 1;

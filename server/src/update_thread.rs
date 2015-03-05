@@ -10,7 +10,7 @@ use common::communicate::ClientToServer;
 use common::communicate::ServerToClient::*;
 use common::entity::EntityId;
 use common::interval_timer::IntervalTimer;
-use common::lod::{LOD, LODIndex, OwnerId};
+use common::lod::{LOD, OwnerId};
 use common::stopwatch::TimerSet;
 use common::surroundings_loader::{SurroundingsLoader, LODChange};
 use common::terrain_block::{BLOCK_WIDTH, TEXTURE_WIDTH};
@@ -20,14 +20,12 @@ use init_mobs::init_mobs;
 use mob;
 use opencl_context::CL;
 use server::Server;
-use sun::Sun;
 use terrain::texture_generator::TerrainTextureGenerator;
 use update_gaia::{ServerToGaia, update_gaia};
 
 // TODO: Consider removing the IntervalTimer.
 
 const UPDATES_PER_SECOND: u64 = 30;
-const SUN_TICK_NS: u64 = 5000000;
 
 pub fn update_thread<RecvClient, RecvGaia, RequestBlock>(
   server: &Server,
@@ -66,15 +64,6 @@ pub fn update_thread<RecvClient, RecvGaia, RequestBlock>(
     update_timer = IntervalTimer::new(nanoseconds_per_second / UPDATES_PER_SECOND, now);
   }
 
-  let mut sun = Sun::new(SUN_TICK_NS);
-
-  // TODO: Make a struct for these.
-  let player_surroundings_owner = server.owner_allocator.lock().unwrap().allocate();
-  let player_solid_owner = server.owner_allocator.lock().unwrap().allocate();
-  let mut player_surroundings_loader = SurroundingsLoader::new(1, Vec::new());
-  // Nearby blocks should be made solid if they aren't loaded yet.
-  let mut player_solid_boundary = SurroundingsLoader::new(1, Vec::new());
-
   loop {
     if let Some(update) = recv_client() {
       apply_client_update(server, request_block, update);
@@ -83,12 +72,7 @@ pub fn update_thread<RecvClient, RecvGaia, RequestBlock>(
         update_world(
           timers,
           server,
-          &mut sun,
           request_block,
-          &mut player_surroundings_loader,
-          player_surroundings_owner,
-          &mut player_solid_boundary,
-          player_solid_owner,
           &mut mob_loaders,
         );
       } else {
@@ -111,62 +95,14 @@ pub fn update_thread<RecvClient, RecvGaia, RequestBlock>(
 fn update_world<RequestBlock>(
   timers: &TimerSet,
   server: &Server,
-  sun: &mut Sun,
   request_block: &mut RequestBlock,
-  player_surroundings_loader: &mut SurroundingsLoader,
-  player_surroundings_owner: OwnerId,
-  player_solid_boundary: &mut SurroundingsLoader,
-  player_solid_owner: OwnerId,
   mob_loaders: &mut HashMap<EntityId, SurroundingsLoader>,
 ) where
   RequestBlock: FnMut(ServerToGaia),
 {
   timers.time("update", || {
     timers.time("update.player", || {
-      let block_position = BlockPosition::from_world_position(&server.player.lock().unwrap().position);
-
-      timers.time("update.player.surroundings", || {
-        player_surroundings_loader.update(
-          block_position,
-          |lod_change| {
-            match lod_change {
-              LODChange::Load(pos, _) => {
-                server.terrain_game_loader.lock().unwrap().load(
-                  timers,
-                  &server.id_allocator,
-                  &server.physics,
-                  &pos,
-                  LOD::LodIndex(LODIndex(0)),
-                  player_surroundings_owner,
-                  request_block,
-                );
-              },
-              LODChange::Unload(pos) => {
-                server.terrain_game_loader.lock().unwrap().unload(
-                  timers,
-                  &server.physics,
-                  &pos,
-                  player_surroundings_owner,
-                );
-              },
-            }
-          },
-        );
-
-        player_solid_boundary.update(
-          block_position,
-          |lod_change|
-            load_placeholders(
-              timers,
-              player_solid_owner,
-              server,
-              request_block,
-              lod_change,
-            )
-        );
-      });
-
-      server.player.lock().unwrap().update(server);
+      server.player.lock().unwrap().update(timers, server, request_block);
 
       let player_position = server.player.lock().unwrap().position;
       server.to_client.lock().unwrap().as_mut().map(|&mut (ref client, _)| {
@@ -213,7 +149,7 @@ fn update_world<RequestBlock>(
       }
     });
 
-    sun.update().map(|fraction| {
+    server.sun.lock().unwrap().update().map(|fraction| {
       server.to_client.lock().unwrap().as_mut().map(|&mut (ref client, _)| {
         client.send(Some(UpdateSun(fraction))).unwrap();
       });
