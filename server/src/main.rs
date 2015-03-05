@@ -102,53 +102,55 @@ fn main() {
     };
   );
 
-  let gaia_thread_send = gaia_thread_send.clone();
+  let mut threads = Vec::new();
 
-  let thread = thread::scoped(move || {
-    let timers = TimerSet::new();
-    let timers = &timers;
+  {
+    let gaia_thread_send = gaia_thread_send.clone();
+    let listen_thread_recv = &listen_thread_recv;
+    threads.push(thread::scoped(move || {
+      let timers = TimerSet::new();
+      let timers = &timers;
 
-    let cl = unsafe {
-      CL::new()
-    };
-    let cl = &cl;
+      let cl = unsafe {
+        CL::new()
+      };
+      let cl = &cl;
 
-    let texture_generators = [
-        TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[0], BLOCK_WIDTH as u32),
-        TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[1], BLOCK_WIDTH as u32),
-        TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[2], BLOCK_WIDTH as u32),
-        TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[3], BLOCK_WIDTH as u32),
-    ];
-    let texture_generators = &texture_generators;
+      let texture_generators = [
+          TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[0], BLOCK_WIDTH as u32),
+          TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[1], BLOCK_WIDTH as u32),
+          TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[2], BLOCK_WIDTH as u32),
+          TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[3], BLOCK_WIDTH as u32),
+      ];
+      let texture_generators = &texture_generators;
 
-    in_series!(
-      {
-        listen_thread_recv.lock().unwrap().try_recv_opt()
-          .map_to_bool(|up| {
-            let up = json::decode(up.as_slice()).unwrap();
-            apply_client_update(server, &mut |block| { gaia_thread_send.send(block).unwrap() }, up)
-          })
-      },
-      {
-        if server.update_timer.lock().unwrap().update(time::precise_time_ns()) > 0 {
-          update_world(
-            timers,
-            server,
-            &gaia_thread_send,
-          );
-          true
-        } else {
-          false
-        }
-      },
-      {
-        gaia_thread_recv.lock().unwrap().try_recv_opt()
-          .map_to_bool(|up| {
-            update_gaia(timers, server, texture_generators, cl, up)
-          })
-      },
-    );
-  });
-
-  thread.join();
+      in_series!(
+        {
+          listen_thread_recv.lock().unwrap().try_recv_opt()
+            .map_to_bool(|up| {
+              let up = json::decode(up.as_slice()).unwrap();
+              apply_client_update(server, &mut |block| { gaia_thread_send.send(block).unwrap() }, up)
+            })
+        },
+        {
+          if server.update_timer.lock().unwrap().update(time::precise_time_ns()) > 0 {
+            update_world(
+              timers,
+              server,
+              &gaia_thread_send,
+            );
+            true
+          } else {
+            false
+          }
+        },
+        {
+          gaia_thread_recv.lock().unwrap().try_recv_opt()
+            .map_to_bool(|up| {
+              update_gaia(timers, server, texture_generators, cl, up)
+            })
+        },
+      );
+    }));
+  }
 }
