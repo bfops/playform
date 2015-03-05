@@ -8,7 +8,7 @@ use block_position::BlockPosition;
 #[cfg(test)]
 use std::collections::HashSet;
 #[cfg(test)]
-use cgmath::Vector3;
+use cgmath::{Point, Vector3};
 #[cfg(test)]
 use test::{Bencher, black_box};
 

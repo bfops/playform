@@ -129,3 +129,11 @@ fn main() {
     *quit.lock().unwrap() = true;
   }
 }
+
+#[test]
+fn keep_bin_code_live() {
+  let i = 0;
+  if i == 1 {
+    main();
+  }
+}
