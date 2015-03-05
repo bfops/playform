@@ -65,15 +65,15 @@ pub fn update_gaia(
                 );
               },
               LoadReason::ForClient => {
-                let mut to_client = server.to_client.lock().unwrap();
-                let &mut (ref mut to_client, _) = to_client.as_mut().unwrap();
-                to_client.send(Some(
-                  ServerToClient::AddBlock(TerrainBlockSend {
-                    position: position,
-                    block: json::encode(&block).unwrap(),
-                    lod: lod,
-                  })
-                )).unwrap();
+                for &(ref to_client, _) in server.to_client.lock().unwrap().iter() {
+                  to_client.send(Some(
+                    ServerToClient::AddBlock(TerrainBlockSend {
+                      position: position,
+                      block: json::encode(&block).unwrap(),
+                      lod: lod,
+                    })
+                  )).unwrap();
+                }
               },
             }
           },

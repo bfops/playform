@@ -28,9 +28,9 @@ pub fn update_world(
 
       let player_position = server.player.lock().unwrap().position;
       trace!("player_position {:?}", player_position);
-      server.to_client.lock().unwrap().as_mut().map(|&mut (ref client, _)| {
+      for &(ref client, _) in server.to_client.lock().unwrap().iter() {
         client.send(Some(UpdatePlayer(player_position))).unwrap();
-      });
+      }
     });
 
     timers.time("update.mobs", || {
@@ -72,9 +72,9 @@ pub fn update_world(
     });
 
     server.sun.lock().unwrap().update().map(|fraction| {
-      server.to_client.lock().unwrap().as_mut().map(|&mut (ref client, _)| {
+      for &(ref client, _) in server.to_client.lock().unwrap().iter() {
         client.send(Some(UpdateSun(fraction))).unwrap();
-      });
+      }
     });
   });
 }
@@ -98,14 +98,15 @@ fn translate_mob(
   mob.position.add_self_v(delta_p);
 
   // TODO: Just send new position. Mesh remains the same.
-  server.to_client.lock().unwrap().as_ref().map(|&(ref client, _)| {
-    let vec =
-      mob::Mob::to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
-      .iter()
-      .map(|&x| x)
-      .collect();
-    client.send(Some(UpdateMob(mob.entity_id, vec))).unwrap();
-  });
+  let mesh: Vec<_> =
+    mob::Mob::to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
+    .iter()
+    .map(|&x| x)
+    .collect();
+
+  for &(ref client, _) in server.to_client.lock().unwrap().iter() {
+    client.send(Some(UpdateMob(mob.entity_id, mesh.clone()))).unwrap();
+  }
 }
 
 #[inline]

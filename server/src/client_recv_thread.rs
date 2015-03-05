@@ -36,7 +36,7 @@ pub fn apply_client_update<UpdateGaia>(
         &mut |msg| { to_client_send.send(Some(msg)).unwrap() },
       );
 
-      *server.to_client.lock().unwrap() = Some((to_client_send, client_thread));
+      server.to_client.lock().unwrap().push((to_client_send, client_thread));
     },
     ClientToServer::StartJump => {
       let mut player = server.player.lock().unwrap();

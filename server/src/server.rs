@@ -38,7 +38,7 @@ pub struct Server {
   pub owner_allocator: Mutex<IdAllocator<OwnerId>>,
   pub terrain_game_loader: Mutex<TerrainGameLoader>,
 
-  pub to_client: Mutex<Option<(Sender<Option<ServerToClient>>, JoinGuard<'static, ()>)>>,
+  pub to_client: Mutex<Vec<(Sender<Option<ServerToClient>>, JoinGuard<'static, ()>)>>,
 
   pub sun: Mutex<Sun>,
   pub update_timer: Mutex<IntervalTimer>,
@@ -84,7 +84,7 @@ impl Server {
       owner_allocator: owner_allocator,
       terrain_game_loader: Mutex::new(TerrainGameLoader::new()),
 
-      to_client: Mutex::new(None),
+      to_client: Mutex::new(Vec::new()),
       sun: Mutex::new(Sun::new(SUN_TICK_NS)),
 
       update_timer: {
