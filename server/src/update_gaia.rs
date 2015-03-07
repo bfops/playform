@@ -65,8 +65,8 @@ pub fn update_gaia(
                 );
               },
               LoadReason::ForClient => {
-                for &(ref to_client, _) in server.to_client.lock().unwrap().iter() {
-                  to_client.send(Some(
+                for client in server.clients.lock().unwrap().values() {
+                  client.sender.send(Some(
                     ServerToClient::AddBlock(TerrainBlockSend {
                       position: position,
                       block: json::encode(&block).unwrap(),

@@ -1,11 +1,34 @@
 //! Defines the messages passed between client and server.
 
+use cgmath::{Vector2, Vector3, Point3};
+use rustc_serialize::Encodable;
+use std::default::Default;
+use std::ops::Add;
+
 use block_position::BlockPosition;
 use entity::EntityId;
 use lod::LODIndex;
-use cgmath::{Vector2, Vector3, Point3};
-use rustc_serialize::Encodable;
 use vertex::ColoredVertex;
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(RustcDecodable, RustcEncodable)]
+/// Unique client ID.
+pub struct ClientId(u32);
+
+impl Default for ClientId {
+  fn default() -> ClientId {
+    ClientId(0)
+  }
+}
+
+impl Add<u32> for ClientId {
+  type Output = ClientId;
+
+  fn add(self, rhs: u32) -> ClientId {
+    let ClientId(i) = self;
+    ClientId(i + rhs)
+  }
+}
 
 #[derive(Debug, Clone)]
 #[derive(RustcDecodable, RustcEncodable)]
@@ -41,6 +64,9 @@ pub enum ClientToServer {
 #[derive(RustcDecodable, RustcEncodable)]
 /// Messages the server sends to the client.
 pub enum ServerToClient {
+  /// Provide the client a unique id to tag its messages.
+  LeaseId(ClientId),
+
   /// Update the player's position.
   UpdatePlayer(Point3<f32>),
 

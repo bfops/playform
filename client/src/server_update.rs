@@ -25,6 +25,9 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
   QueueBlock: FnMut(TerrainBlockSend),
 {
   match update {
+    ServerToClient::LeaseId(_) => {
+      warn!("ID has already been leased.");
+    },
     ServerToClient::UpdatePlayer(position) => {
       *client.player_position.lock().unwrap() = position;
       update_view(ClientToView::MoveCamera(position));

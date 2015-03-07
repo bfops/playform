@@ -1,11 +1,13 @@
 use env_logger;
 use rustc_serialize::json;
 use std::env;
+use std::old_io::timer;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Mutex;
 use std::thread;
+use std::time::duration::Duration;
 
-use common::communicate::ClientToServer;
+use common::communicate::{ClientToServer, ServerToClient};
 use common::socket::{SendSocket, ReceiveSocket};
 
 use client::Client;
@@ -49,9 +51,6 @@ fn main() {
   let view_thread_send = &view_thread_send;
   let view_thread_recv = &mut view_thread_recv;
 
-  let client = Client::new();
-  let client = &client;
-
   let quit = Mutex::new(false);
   let quit = &quit;
 
@@ -59,7 +58,7 @@ fn main() {
     let listen_url = listen_url.clone();
     let server_recv_thread_send = server_recv_thread_send.clone();
     thread::spawn(move || {
-      let mut listen_socket = ReceiveSocket::new(listen_url.as_slice());
+      let mut listen_socket = ReceiveSocket::new(listen_url.clone().as_slice());
       loop {
         let msg = listen_socket.read();
         server_recv_thread_send.send(msg).unwrap();
@@ -78,9 +77,24 @@ fn main() {
     })
   };
 
-  // TODO: This can get lost if the server is not started.
-  // Maybe do this in a loop until we get a response?
-  server_send_thread_send.send(Some(ClientToServer::Init(listen_url))).unwrap();
+  // TODO: Keep sending pings on a regular basis.
+  // TODO: Consider using RPCs to solidify the request-response patterns.
+  let client;
+  'init_loop:loop {
+    server_send_thread_send.send(Some(ClientToServer::Init(listen_url.clone()))).unwrap();
+    timer::sleep(Duration::seconds(1));
+    match server_recv_thread_recv.try_recv().map(|s| json::decode(&s).unwrap()) {
+      Ok(ServerToClient::LeaseId(client_id)) => {
+        client = Client::new(client_id);
+        break 'init_loop;
+      },
+      Err(TryRecvError::Empty) => {},
+      e => {
+        panic!("Received unexpected message: {:?}", e);
+      },
+    }
+  }
+  let client = &client;
 
   {
     let _update_thread = {

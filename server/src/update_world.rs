@@ -28,8 +28,8 @@ pub fn update_world(
 
       let player_position = server.player.lock().unwrap().position;
       trace!("player_position {:?}", player_position);
-      for &(ref client, _) in server.to_client.lock().unwrap().iter() {
-        client.send(Some(UpdatePlayer(player_position))).unwrap();
+      for client in server.clients.lock().unwrap().values() {
+        client.sender.send(Some(UpdatePlayer(player_position))).unwrap();
       }
     });
 
@@ -72,8 +72,8 @@ pub fn update_world(
     });
 
     server.sun.lock().unwrap().update().map(|fraction| {
-      for &(ref client, _) in server.to_client.lock().unwrap().iter() {
-        client.send(Some(UpdateSun(fraction))).unwrap();
+      for client in server.clients.lock().unwrap().values() {
+        client.sender.send(Some(UpdateSun(fraction))).unwrap();
       }
     });
   });
@@ -104,8 +104,8 @@ fn translate_mob(
     .map(|&x| x)
     .collect();
 
-  for &(ref client, _) in server.to_client.lock().unwrap().iter() {
-    client.send(Some(UpdateMob(mob.entity_id, mesh.clone()))).unwrap();
+  for client in server.clients.lock().unwrap().values() {
+    client.sender.send(Some(UpdateMob(mob.entity_id, mesh.clone()))).unwrap();
   }
 }
 

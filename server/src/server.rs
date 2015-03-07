@@ -7,7 +7,7 @@ use std::thread::JoinGuard;
 use time;
 
 use common::color::Color4;
-use common::communicate::ServerToClient;
+use common::communicate::{ServerToClient, ClientId};
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::interval_timer::IntervalTimer;
@@ -28,17 +28,24 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
   bounds.min.add_v(&bounds.max.to_vec()).mul_s(1.0 / 2.0)
 }
 
+pub struct Client {
+  pub sender: Sender<Option<ServerToClient>>,
+  pub thread: JoinGuard<'static, ()>,
+}
+
 // TODO: Audit for s/Mutex/RwLock.
 pub struct Server {
   pub player: Mutex<Player>,
   pub mobs: Mutex<HashMap<EntityId, mob::Mob>>,
 
-  pub physics: Mutex<Physics>,
   pub id_allocator: Mutex<IdAllocator<EntityId>>,
   pub owner_allocator: Mutex<IdAllocator<OwnerId>>,
+  pub client_allocator: Mutex<IdAllocator<ClientId>>,
+
+  pub physics: Mutex<Physics>,
   pub terrain_game_loader: Mutex<TerrainGameLoader>,
 
-  pub to_client: Mutex<Vec<(Sender<Option<ServerToClient>>, JoinGuard<'static, ()>)>>,
+  pub clients: Mutex<HashMap<ClientId, Client>>,
 
   pub sun: Mutex<Sun>,
   pub update_timer: Mutex<IntervalTimer>,
@@ -80,11 +87,13 @@ impl Server {
       mobs: Mutex::new(HashMap::new()),
 
       id_allocator: Mutex::new(id_allocator),
-      physics: Mutex::new(physics),
       owner_allocator: owner_allocator,
+      client_allocator: Mutex::new(IdAllocator::new()),
+
+      physics: Mutex::new(physics),
       terrain_game_loader: Mutex::new(TerrainGameLoader::new()),
 
-      to_client: Mutex::new(Vec::new()),
+      clients: Mutex::new(HashMap::new()),
       sun: Mutex::new(Sun::new(SUN_TICK_NS)),
 
       update_timer: {
