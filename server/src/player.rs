@@ -49,7 +49,7 @@ pub struct Player {
 impl Player {
   pub fn new(
     entity_id: EntityId,
-    owner_allocator: &mut Mutex<IdAllocator<OwnerId>>,
+    owner_allocator: &Mutex<IdAllocator<OwnerId>>,
   ) -> Player {
     let surroundings_owner = owner_allocator.lock().unwrap().allocate();
     let solid_owner = owner_allocator.lock().unwrap().allocate();

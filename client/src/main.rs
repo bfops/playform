@@ -1,11 +1,9 @@
 use env_logger;
 use rustc_serialize::json;
 use std::env;
-use std::old_io::timer;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Mutex;
 use std::thread;
-use std::time::duration::Duration;
 
 use common::communicate::{ClientToServer, ServerToClient};
 use common::socket::{SendSocket, ReceiveSocket};
@@ -79,18 +77,34 @@ fn main() {
 
   // TODO: Keep sending pings on a regular basis.
   // TODO: Consider using RPCs to solidify the request-response patterns.
+  server_send_thread_send.send(Some(ClientToServer::Init(listen_url.clone()))).unwrap();
   let client;
   'init_loop:loop {
-    server_send_thread_send.send(Some(ClientToServer::Init(listen_url.clone()))).unwrap();
-    timer::sleep(Duration::seconds(1));
-    match server_recv_thread_recv.try_recv().map(|s| json::decode(&s).unwrap()) {
+    match server_recv_thread_recv.recv().map(|s| json::decode(&s).unwrap()) {
       Ok(ServerToClient::LeaseId(client_id)) => {
-        client = Client::new(client_id);
-        break 'init_loop;
+        server_send_thread_send.send(Some(ClientToServer::AddPlayer(client_id))).unwrap();
+        loop {
+          match server_recv_thread_recv.recv().map(|s| json::decode(&s).unwrap()) {
+            Ok(ServerToClient::PlayerAdded(player_id, position)) => {
+              client = Client::new(client_id, player_id, position);
+              break 'init_loop;
+            },
+            Ok(msg) => {
+              // Ignore other messages in the meantime.
+              info!("Ignoring: {:?}", msg);
+            },
+            Err(e) => {
+              panic!("Received error: {:?}", e);
+            },
+          }
+        }
       },
-      Err(TryRecvError::Empty) => {},
-      e => {
-        panic!("Received unexpected message: {:?}", e);
+      Ok(msg) => {
+        // Ignore other messages in the meantime.
+        info!("Ignoring: {:?}", msg);
+      },
+      Err(e) => {
+        panic!("Received error: {:?}", e);
       },
     }
   }
@@ -122,6 +136,7 @@ fn main() {
       let server_send_thread_send = server_send_thread_send.clone();
       thread::scoped(move || {
         view_thread(
+          client.player_id,
           &mut || {
             match view_thread_recv.try_recv() {
               Ok(msg) => Some(msg),

@@ -7,6 +7,7 @@ use std::sync::Mutex;
 
 use common::block_position::BlockPosition;
 use common::communicate::ClientId;
+use common::entity::EntityId;
 use common::lod::LODIndex;
 use common::surroundings_loader::SurroundingsLoader;
 use common::terrain_block::{TerrainBlock, LOD_QUALITY};
@@ -21,6 +22,8 @@ pub struct Client {
   #[allow(missing_docs)]
   pub id: ClientId,
   #[allow(missing_docs)]
+  pub player_id: EntityId,
+  #[allow(missing_docs)]
   pub player_position: Mutex<Point3<f32>>,
   #[allow(missing_docs)]
   pub max_load_distance: i32,
@@ -32,7 +35,7 @@ pub struct Client {
 
 impl Client {
   #[allow(missing_docs)]
-  pub fn new(client_id: ClientId) -> Client {
+  pub fn new(client_id: ClientId, player_id: EntityId, position: Point3<f32>) -> Client {
     let mut load_distance = load_distance(terrain_buffers::POLYGON_BUDGET as i32);
 
     // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
@@ -52,8 +55,9 @@ impl Client {
     };
 
     Client {
-      player_position: Mutex::new(Point3::new(0.0, 0.0, 0.0)),
       id: client_id,
+      player_id: player_id,
+      player_position: Mutex::new(position),
       max_load_distance: load_distance,
       surroundings_loader: Mutex::new(surroundings_loader),
       loaded_blocks: Mutex::new(HashMap::new()),

@@ -26,9 +26,16 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
 {
   match update {
     ServerToClient::LeaseId(_) => {
-      warn!("ID has already been leased.");
+      warn!("Client ID has already been leased.");
     },
-    ServerToClient::UpdatePlayer(position) => {
+    ServerToClient::PlayerAdded(id, _) => {
+      warn!("Unexpected PlayerAdded event: {:?}.", id);
+    },
+    ServerToClient::UpdatePlayer(player_id, position) => {
+      if player_id != client.player_id {
+        return
+      }
+
       *client.player_position.lock().unwrap() = position;
       update_view(ClientToView::MoveCamera(position));
 

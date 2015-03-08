@@ -1,6 +1,5 @@
-use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
+use cgmath::{Aabb3, Point3};
 use std::collections::HashMap;
-use std::f32::consts::PI;
 use std::sync::Mutex;
 use std::sync::mpsc::Sender;
 use std::thread::JoinGuard;
@@ -24,10 +23,6 @@ use terrain::terrain_game_loader::TerrainGameLoader;
 const UPDATES_PER_SECOND: u64 = 30;
 const SUN_TICK_NS: u64 = 5000000;
 
-fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
-  bounds.min.add_v(&bounds.max.to_vec()).mul_s(1.0 / 2.0)
-}
-
 pub struct Client {
   pub sender: Sender<Option<ServerToClient>>,
   pub thread: JoinGuard<'static, ()>,
@@ -35,7 +30,7 @@ pub struct Client {
 
 // TODO: Audit for s/Mutex/RwLock.
 pub struct Server {
-  pub player: Mutex<Player>,
+  pub players: Mutex<HashMap<EntityId, Player>>,
   pub mobs: Mutex<HashMap<EntityId, mob::Mob>>,
 
   pub id_allocator: Mutex<IdAllocator<EntityId>>,
@@ -56,7 +51,7 @@ impl Server {
   pub fn new() -> Server {
     let world_width: u32 = 1 << 11;
     let world_width = world_width as f32;
-    let mut physics =
+    let physics =
       Physics::new(
         Aabb3::new(
           Point3 { x: -world_width, y: -2.0 * terrain::AMPLITUDE as f32, z: -world_width },
@@ -64,26 +59,11 @@ impl Server {
         )
       );
 
-    let mut id_allocator = IdAllocator::new();
-    let mut owner_allocator = Mutex::new(IdAllocator::new());
-
-    let player = {
-      let mut player = Player::new(id_allocator.allocate(), &mut owner_allocator);
-
-      let min = Point3::new(0.0, terrain::AMPLITUDE as f32, 4.0);
-      let max = min.add_v(&Vector3::new(1.0, 2.0, 1.0));
-      let bounds = Aabb3::new(min, max);
-      physics.insert_misc(player.entity_id, bounds.clone());
-
-      player.position = center(&bounds);
-
-      player.rotate_lateral(PI / 2.0);
-
-      player
-    };
+    let id_allocator = IdAllocator::new();
+    let owner_allocator = Mutex::new(IdAllocator::new());
 
     let server = Server {
-      player: Mutex::new(player),
+      players: Mutex::new(HashMap::new()),
       mobs: Mutex::new(HashMap::new()),
 
       id_allocator: Mutex::new(id_allocator),

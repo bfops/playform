@@ -12,6 +12,7 @@ use time;
 use yaglw::gl_context::GLContext;
 
 use common::communicate::ClientToServer;
+use common::entity::EntityId;
 use common::interval_timer::IntervalTimer;
 use common::stopwatch::TimerSet;
 
@@ -25,6 +26,7 @@ pub const FRAMES_PER_SECOND: u64 = 30;
 
 #[allow(missing_docs)]
 pub fn view_thread<Recv, UpdateServer>(
+  player_id: EntityId,
   recv: &mut Recv,
   update_server: &mut UpdateServer,
 ) where
@@ -117,6 +119,7 @@ pub fn view_thread<Recv, UpdateServer>(
           if has_focus {
             process_event(
               &timers,
+              player_id,
               update_server,
               &mut view,
               &mut window,

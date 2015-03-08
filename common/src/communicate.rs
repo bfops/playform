@@ -48,14 +48,16 @@ pub struct TerrainBlockSend {
 pub enum ClientToServer {
   /// Notify the server that the client exists, and provide a "return address".
   Init(String),
+  /// Ask the server to create a new player.
+  AddPlayer(ClientId),
   /// Add a vector the player's acceleration.
-  Walk(Vector3<f32>),
+  Walk(EntityId, Vector3<f32>),
   /// Rotate the player by some amount.
-  RotatePlayer(Vector2<f32>),
+  RotatePlayer(EntityId, Vector2<f32>),
   /// [Try to] start a jump for the player.
-  StartJump,
+  StartJump(EntityId),
   /// [Try to] stop a jump for the player.
-  StopJump,
+  StopJump(EntityId),
   /// Ask the server to send a block of terrain.
   RequestBlock(BlockPosition, LODIndex),
 }
@@ -66,9 +68,11 @@ pub enum ClientToServer {
 pub enum ServerToClient {
   /// Provide the client a unique id to tag its messages.
   LeaseId(ClientId),
+  /// Complete an AddPlayer request.
+  PlayerAdded(EntityId, Point3<f32>),
 
-  /// Update the player's position.
-  UpdatePlayer(Point3<f32>),
+  /// Update a player's position.
+  UpdatePlayer(EntityId, Point3<f32>),
 
   /// Tell the client to add a new mob with the given mesh.
   AddMob(EntityId, Vec<ColoredVertex>),

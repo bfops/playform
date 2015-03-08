@@ -24,12 +24,19 @@ pub fn update_world(
 
   timers.time("update", || {
     timers.time("update.player", || {
-      server.player.lock().unwrap().update(timers, server, &mut request_block);
+      for (_, player) in server.players.lock().unwrap().iter_mut() {
+        player.update(timers, server, &mut request_block);
+      }
 
-      let player_position = server.player.lock().unwrap().position;
-      trace!("player_position {:?}", player_position);
-      for client in server.clients.lock().unwrap().values() {
-        client.sender.send(Some(UpdatePlayer(player_position))).unwrap();
+      let player_positions: Vec<_> =
+        server.players
+          .lock().unwrap()
+          .iter().map(|(&id, p)| (id, p.position))
+          .collect();
+      for (_, client) in server.clients.lock().unwrap().iter() {
+        for &(id, position) in player_positions.iter() {
+          client.sender.send(Some(UpdatePlayer(id, position))).unwrap();
+        }
       }
     });
 

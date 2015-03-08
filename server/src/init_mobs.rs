@@ -1,5 +1,8 @@
 use cgmath::{Aabb3, Point, Point3, EuclideanVector, Vector, Vector3};
+
+use common::entity::EntityId;
 use common::surroundings_loader::SurroundingsLoader;
+
 use mob;
 use server::Server;
 use terrain::terrain;
@@ -15,42 +18,72 @@ pub fn init_mobs(
   server: &Server,
 ) {
   fn mob_behavior(world: &Server, mob: &mut mob::Mob) {
-    fn to_player(world: &Server, mob: &mob::Mob) -> Vector3<f32> {
-      let player = world.player.lock().unwrap().entity_id;
-      let physics = world.physics.lock().unwrap();
+    fn to_player(world: &Server, mob: &mob::Mob) -> Option<Vector3<f32>> {
+      let mob_posn = center(world.physics.lock().unwrap().get_bounds(mob.entity_id).unwrap());
 
-      center(physics.get_bounds(player).unwrap())
-        .sub_p(&center(physics.get_bounds(mob.entity_id).unwrap()))
+      let players: Vec<EntityId> = world.players.lock().unwrap().keys().map(|&x| x).collect();
+      let mut players = players.into_iter();
+
+      players.next().map(|id| {
+        let mut min_v = center(world.physics.lock().unwrap().get_bounds(id).unwrap()).sub_p(&mob_posn);
+        let mut min_d = min_v.length2();
+        for id in players {
+          let v = center(world.physics.lock().unwrap().get_bounds(id).unwrap()).sub_p(&mob_posn);
+          let d = v.length2();
+          if d < min_d {
+            min_v = v;
+            min_d = d;
+          }
+        }
+
+        min_v
+      })
     }
 
     {
-      let to_player = to_player(world, mob).length();
-      if to_player < 2.0 {
-        mob.behavior = wait_for_distance;
+      match to_player(world, mob) {
+        None => { mob.behavior = mob_behavior },
+        Some(to_player) => {
+          if to_player.length() < 2.0 {
+            mob.behavior = wait_for_distance;
+          }
+        },
       }
     }
 
     fn wait_for_distance(world: &Server, mob: &mut mob::Mob) {
-      let to_player = to_player(world, mob);
-      if to_player.length() > 8.0 {
-        mob.behavior = follow_player;
+      match to_player(world, mob) {
+        None => { mob.behavior = mob_behavior },
+        Some(to_player) => {
+          if to_player.length() > 8.0 {
+            mob.behavior = follow_player;
+          }
+        },
       }
     }
 
     fn follow_player(world: &Server, mob: &mut mob::Mob) {
-      let to_player = to_player(world, mob);
-      if to_player.length2() < 4.0 {
-        mob.behavior = wait_to_reset;
-        mob.speed = Vector3::new(0.0, 0.0, 0.0);
-      } else {
-        mob.speed = to_player.mul_s(0.5);
+      match to_player(world, mob) {
+        None => { mob.behavior = mob_behavior },
+        Some(to_player) => {
+          if to_player.length2() < 4.0 {
+            mob.behavior = wait_to_reset;
+            mob.speed = Vector3::new(0.0, 0.0, 0.0);
+          } else {
+            mob.speed = to_player.mul_s(0.5);
+          }
+        },
       }
     }
 
     fn wait_to_reset(world: &Server, mob: &mut mob::Mob) {
-      let to_player = to_player(world, mob);
-      if to_player.length() >= 2.0 {
-        mob.behavior = mob_behavior;
+      match to_player(world, mob) {
+        None => { mob.behavior = mob_behavior },
+        Some(to_player) => {
+          if to_player.length() >= 2.0 {
+            mob.behavior = mob_behavior;
+          }
+        },
       }
     }
   }
