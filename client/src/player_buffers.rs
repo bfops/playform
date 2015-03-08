@@ -11,24 +11,24 @@ use common::entity::EntityId;
 use vertex::ColoredVertex;
 use shaders::color::ColorShader;
 
-pub const VERTICES_PER_MOB: usize = 36;
+pub const VERTICES_PER_PLAYER: usize = 36;
 
 /// This data structure keeps tracks of mob data in VRAM.
-pub struct MobBuffers<'a> {
+pub struct PlayerBuffers<'a> {
   id_to_index: HashMap<EntityId, usize>,
   index_to_id: Vec<EntityId>,
 
   triangles: GLArray<'a, ColoredVertex>,
 }
 
-impl<'a> MobBuffers<'a> {
+impl<'a> PlayerBuffers<'a> {
   #[allow(missing_docs)]
   pub fn new<'b:'a>(
     gl: &'a mut GLContext,
     shader: &ColorShader<'b>,
-  ) -> MobBuffers<'b> {
-    let buffer = GLBuffer::new(gl, 32 * VERTICES_PER_MOB);
-    MobBuffers {
+  ) -> PlayerBuffers<'b> {
+    let buffer = GLBuffer::new(gl, 32 * VERTICES_PER_PLAYER);
+    PlayerBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),
 
@@ -51,7 +51,7 @@ impl<'a> MobBuffers<'a> {
     &mut self,
     gl: &mut GLContext,
     id: EntityId,
-    triangles: &[ColoredVertex; VERTICES_PER_MOB],
+    triangles: &[ColoredVertex; VERTICES_PER_PLAYER],
   ) -> bool {
     match self.id_to_index.entry(id) {
       Entry::Vacant(entry) => {
@@ -59,13 +59,13 @@ impl<'a> MobBuffers<'a> {
         self.index_to_id.push(id);
 
         self.triangles.buffer.byte_buffer.bind(gl);
-        self.triangles.push(gl, triangles);
+        assert!(self.triangles.push(gl, triangles));
         true
       },
       Entry::Occupied(entry) => {
         let idx = *entry.get();
         self.triangles.buffer.byte_buffer.bind(gl);
-        self.triangles.buffer.update(gl, idx * VERTICES_PER_MOB, triangles);
+        self.triangles.buffer.update(gl, idx * VERTICES_PER_PLAYER, triangles);
         false
       },
     }

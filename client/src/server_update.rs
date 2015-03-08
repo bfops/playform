@@ -41,6 +41,11 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
       warn!("Unexpected PlayerAdded event: {:?}.", id);
     },
     ServerToClient::UpdatePlayer(player_id, bounds) => {
+      let mesh = to_triangles(&bounds, &Color4::of_rgba(0.0, 0.0, 1.0, 1.0));
+      update_view(ClientToView::UpdatePlayer(player_id, mesh));
+
+      // We "lock" the client to client.player_id, so for updates to that player only,
+      // there is more client-specific logic.
       if player_id != client.player_id {
         return
       }
@@ -80,7 +85,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
     },
     ServerToClient::UpdateMob(id, bounds) => {
       let mesh = to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0));
-      update_view(ClientToView::UpdateMob(id, mesh.iter().map(|&x| x).collect()));
+      update_view(ClientToView::UpdateMob(id, mesh));
     },
     ServerToClient::UpdateSun(fraction) => {
       // Convert to radians.

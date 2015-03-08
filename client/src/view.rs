@@ -14,6 +14,7 @@ use fontloader::FontLoader;
 use gl;
 use gl::types::*;
 use mob_buffers::MobBuffers;
+use player_buffers::PlayerBuffers;
 use shaders::Shaders;
 use terrain_buffers::TerrainBuffers;
 use vertex::{ColoredVertex, TextureVertex};
@@ -31,6 +32,8 @@ pub struct View<'a> {
   pub terrain_buffers: TerrainBuffers<'a>,
   #[allow(missing_docs)]
   pub mob_buffers: MobBuffers<'a>,
+  #[allow(missing_docs)]
+  pub player_buffers: PlayerBuffers<'a>,
   /// Hud triangles for non-text.
   pub hud_triangles: GLArray<'a, ColoredVertex>,
   /// HUD triangles for text.
@@ -62,6 +65,7 @@ impl<'a> View<'a> {
     );
 
     let mob_buffers = MobBuffers::new(&mut gl, &shaders.mob_shader);
+    let player_buffers = PlayerBuffers::new(&mut gl, &shaders.mob_shader);
 
     let buffer = GLBuffer::new(&mut gl, 16 * VERTICES_PER_TRIANGLE);
     let hud_triangles = {
@@ -127,6 +131,7 @@ impl<'a> View<'a> {
 
       terrain_buffers: terrain_buffers,
       mob_buffers: mob_buffers,
+      player_buffers: player_buffers,
       hud_triangles: hud_triangles,
       text_triangles: text_triangles,
 

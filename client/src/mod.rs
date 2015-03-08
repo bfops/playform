@@ -37,6 +37,7 @@ mod light;
 mod load_terrain;
 mod main;
 mod mob_buffers;
+mod player_buffers;
 mod process_event;
 mod render;
 mod server_update;

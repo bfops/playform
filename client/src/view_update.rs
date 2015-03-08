@@ -10,17 +10,20 @@ use common::lod::LODIndex;
 use common::terrain_block::TerrainBlock;
 
 use light::{Light, set_point_light, set_ambient_light};
+use mob_buffers::VERTICES_PER_MOB;
+use player_buffers::VERTICES_PER_PLAYER;
 use vertex::ColoredVertex;
 use view::View;
 
-#[derive(Clone)]
 /// Messages from the client to the view.
 pub enum ClientToView {
   /// Set the camera location.
   MoveCamera(Point3<f32>),
 
-  /// Update a mob mesh in the view.
-  UpdateMob(EntityId, Vec<ColoredVertex>),
+  /// Update a player mesh.
+  UpdatePlayer(EntityId, [ColoredVertex; VERTICES_PER_PLAYER]),
+  /// Update a mob mesh.
+  UpdateMob(EntityId, [ColoredVertex; VERTICES_PER_MOB]),
 
   /// Update the point light.
   SetPointLight(Light),
@@ -46,7 +49,10 @@ pub fn apply_client_to_view(up: ClientToView, view: &mut View) {
       view.camera.translate_to(position);
     },
     ClientToView::UpdateMob(id, triangles) => {
-      view.mob_buffers.insert(&mut view.gl, id, triangles.as_slice());
+      view.mob_buffers.insert(&mut view.gl, id, &triangles);
+    },
+    ClientToView::UpdatePlayer(id, triangles) => {
+      view.player_buffers.insert(&mut view.gl, id, &triangles);
     },
     ClientToView::SetPointLight(light) => {
       set_point_light(

@@ -25,6 +25,7 @@ pub fn render(
 
     rndr.shaders.mob_shader.shader.use_shader(&mut rndr.gl);
     rndr.mob_buffers.draw(&mut rndr.gl);
+    rndr.player_buffers.draw(&mut rndr.gl);
 
     // draw the hud
     rndr.shaders.hud_color_shader.shader.use_shader(&mut rndr.gl);
