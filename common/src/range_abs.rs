@@ -38,7 +38,7 @@ impl<T> Iterator for RangeAbs<T>
   }
 
   fn size_hint(&self) -> (usize, Option<usize>) {
-    let sz = 2*(self.max - self.n.abs()).to_uint().unwrap();
+    let sz = 2*(self.max - self.n.abs()).to_usize().unwrap();
     (sz, Some(sz))
   }
 }
