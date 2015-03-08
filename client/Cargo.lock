@@ -24,7 +24,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "cgmath"
 version = "0.0.7"
-source = "git+https://github.com/bfops/cgmath-rs#5d6717cbf136ee00875946e5e2d7e8be729195c7"
+source = "git+https://github.com/bfops/cgmath-rs#f824d5f3189fc4168f398917e5cdf291219a6eec"
 dependencies = [
  "rand 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_macros 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
