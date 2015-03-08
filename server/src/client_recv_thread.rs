@@ -75,10 +75,6 @@ pub fn apply_client_update<UpdateGaia>(
       client.sender.send(
         Some(ServerToClient::PlayerAdded(id, pos))
       ).unwrap();
-
-      server.inform_client(
-        &mut |msg| { client.sender.send(Some(msg)).unwrap() },
-      );
     },
     ClientToServer::StartJump(player_id) => {
       let mut players = server.players.lock().unwrap();

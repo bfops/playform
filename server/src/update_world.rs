@@ -3,7 +3,6 @@ use std::ops::Neg;
 use std::sync::mpsc::Sender;
 
 use common::block_position::BlockPosition;
-use common::color::Color4;
 use common::communicate::ServerToClient::*;
 use common::lod::{LOD, OwnerId};
 use common::stopwatch::TimerSet;
@@ -28,14 +27,11 @@ pub fn update_world(
         player.update(timers, server, &mut request_block);
       }
 
-      let player_positions: Vec<_> =
-        server.players
-          .lock().unwrap()
-          .iter().map(|(&id, p)| (id, p.position))
-          .collect();
+      let players: Vec<_> = server.players.lock().unwrap().keys().map(|&x| x).collect();
       for (_, client) in server.clients.lock().unwrap().iter() {
-        for &(id, position) in player_positions.iter() {
-          client.sender.send(Some(UpdatePlayer(id, position))).unwrap();
+        for &id in players.iter() {
+          let bounds = server.physics.lock().unwrap().get_bounds(id).unwrap().clone();
+          client.sender.send(Some(UpdatePlayer(id, bounds))).unwrap();
         }
       }
     });
@@ -104,15 +100,8 @@ fn translate_mob(
 
   mob.position.add_self_v(delta_p);
 
-  // TODO: Just send new position. Mesh remains the same.
-  let mesh: Vec<_> =
-    mob::Mob::to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
-    .iter()
-    .map(|&x| x)
-    .collect();
-
   for client in server.clients.lock().unwrap().values() {
-    client.sender.send(Some(UpdateMob(mob.entity_id, mesh.clone()))).unwrap();
+    client.sender.send(Some(UpdateMob(mob.entity_id, bounds.clone()))).unwrap();
   }
 }
 

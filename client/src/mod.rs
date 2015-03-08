@@ -44,6 +44,7 @@ mod shaders;
 mod terrain_buffers;
 mod ttf;
 mod update_thread;
+mod vertex;
 mod view;
 mod view_thread;
 mod view_update;

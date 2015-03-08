@@ -5,7 +5,6 @@ use std::sync::mpsc::Sender;
 use std::thread::JoinGuard;
 use time;
 
-use common::color::Color4;
 use common::communicate::{ServerToClient, ClientId};
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
@@ -87,22 +86,5 @@ impl Server {
 
     init_mobs(&server);
     server
-  }
-
-  pub fn inform_client<UpdateClient>(&self, client: &mut UpdateClient)
-    where UpdateClient: FnMut(ServerToClient)
-  {
-    let ids: Vec<EntityId> = self.mobs.lock().unwrap().iter().map(|(&x, _)| x).collect();
-    for id in ids.into_iter() {
-      let triangles = {
-        let physics = self.physics.lock().unwrap();
-        let bounds = physics.get_bounds(id).unwrap();
-        mob::Mob::to_triangles(bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0))
-        .iter()
-        .map(|&x| x)
-        .collect()
-      };
-      client(ServerToClient::AddMob(id, triangles));
-    }
   }
 }

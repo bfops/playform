@@ -1,20 +1,22 @@
 //! The state associated with perceiving the world state.
 
-use camera::Camera;
 use cgmath;
 use cgmath::Vector2;
+use std::f32::consts::PI;
+use yaglw::gl_context::GLContext;
+use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, DrawMode, VertexAttribData};
+use yaglw::texture::{Texture2D, TextureUnit};
+
 use common::id_allocator::IdAllocator;
-use common::vertex::{ColoredVertex, TextureVertex};
+
+use camera::Camera;
 use fontloader::FontLoader;
 use gl;
 use gl::types::*;
 use mob_buffers::MobBuffers;
 use shaders::Shaders;
-use std::f32::consts::PI;
 use terrain_buffers::TerrainBuffers;
-use yaglw::gl_context::GLContext;
-use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, DrawMode, VertexAttribData};
-use yaglw::texture::{Texture2D, TextureUnit};
+use vertex::{ColoredVertex, TextureVertex};
 
 const VERTICES_PER_TRIANGLE: usize = 3;
 

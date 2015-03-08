@@ -8,9 +8,9 @@ use common::color::Color3;
 use common::entity::EntityId;
 use common::lod::LODIndex;
 use common::terrain_block::TerrainBlock;
-use common::vertex::ColoredVertex;
 
 use light::{Light, set_point_light, set_ambient_light};
+use vertex::ColoredVertex;
 use view::View;
 
 #[derive(Clone)]
@@ -19,8 +19,6 @@ pub enum ClientToView {
   /// Set the camera location.
   MoveCamera(Point3<f32>),
 
-  /// Add a mob mesh to the view.
-  AddMob(EntityId, Vec<ColoredVertex>),
   /// Update a mob mesh in the view.
   UpdateMob(EntityId, Vec<ColoredVertex>),
 
@@ -47,11 +45,8 @@ pub fn apply_client_to_view(up: ClientToView, view: &mut View) {
     ClientToView::MoveCamera(position) => {
       view.camera.translate_to(position);
     },
-    ClientToView::AddMob(id, triangles) => {
-      view.mob_buffers.push(&mut view.gl, id, triangles.as_slice());
-    },
     ClientToView::UpdateMob(id, triangles) => {
-      view.mob_buffers.update(&mut view.gl, id, triangles.as_slice());
+      view.mob_buffers.insert(&mut view.gl, id, triangles.as_slice());
     },
     ClientToView::SetPointLight(light) => {
       set_point_light(

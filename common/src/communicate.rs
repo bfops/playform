@@ -1,6 +1,6 @@
 //! Defines the messages passed between client and server.
 
-use cgmath::{Vector2, Vector3, Point3};
+use cgmath::{Aabb3, Vector2, Vector3, Point3};
 use rustc_serialize::Encodable;
 use std::default::Default;
 use std::ops::Add;
@@ -8,7 +8,6 @@ use std::ops::Add;
 use block_position::BlockPosition;
 use entity::EntityId;
 use lod::LODIndex;
-use vertex::ColoredVertex;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(RustcDecodable, RustcEncodable)]
@@ -68,16 +67,14 @@ pub enum ClientToServer {
 pub enum ServerToClient {
   /// Provide the client a unique id to tag its messages.
   LeaseId(ClientId),
+
   /// Complete an AddPlayer request.
   PlayerAdded(EntityId, Point3<f32>),
-
   /// Update a player's position.
-  UpdatePlayer(EntityId, Point3<f32>),
+  UpdatePlayer(EntityId, Aabb3<f32>),
 
-  /// Tell the client to add a new mob with the given mesh.
-  AddMob(EntityId, Vec<ColoredVertex>),
   /// Update the client's view of a mob with a given mesh.
-  UpdateMob(EntityId, Vec<ColoredVertex>),
+  UpdateMob(EntityId, Aabb3<f32>),
 
   /// The sun as a [0, 1) portion of its cycle.
   UpdateSun(f32),

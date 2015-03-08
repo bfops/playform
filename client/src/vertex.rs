@@ -1,9 +1,10 @@
 //! Vertex data structures.
 
-use color::Color4;
 use cgmath::{Point2,Point3,Vector2,Vector3};
 #[cfg(test)]
 use std::mem;
+
+use common::color::Color4;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[derive(RustcDecodable, RustcEncodable)]

@@ -34,4 +34,3 @@ pub mod stopwatch;
 pub mod surroundings_iter;
 pub mod surroundings_loader;
 pub mod terrain_block;
-pub mod vertex;

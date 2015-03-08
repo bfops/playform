@@ -1,12 +1,15 @@
 //! Data structures and functions to load/unload/maintain mob data in VRAM.
 
-use common::entity::EntityId;
-use common::vertex::ColoredVertex;
-use shaders::color::ColorShader;
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, VertexAttribData};
 use yaglw::vertex_buffer::{DrawMode, GLType};
 use yaglw::gl_context::GLContext;
+
+use common::entity::EntityId;
+
+use vertex::ColoredVertex;
+use shaders::color::ColorShader;
 
 const TRIANGLES_PER_BOX: u32 = 12;
 const VERTICES_PER_TRIANGLE: u32 = 3;
@@ -44,30 +47,30 @@ impl<'a> MobBuffers<'a> {
     }
   }
 
-  /// Add a single mob into VRAM.
-  pub fn push(
+  /// Add a single mob into VRAM and return true.
+  /// If the mob ID is already loaded, replace the existing mob and return false.
+  pub fn insert(
     &mut self,
     gl: &mut GLContext,
     id: EntityId,
     triangles: &[ColoredVertex]
-  ) {
-    self.id_to_index.insert(id, self.index_to_id.len());
-    self.index_to_id.push(id);
+  ) -> bool {
+    match self.id_to_index.entry(id) {
+      Entry::Vacant(entry) => {
+        entry.insert(self.index_to_id.len());
+        self.index_to_id.push(id);
 
-    self.triangles.buffer.byte_buffer.bind(gl);
-    self.triangles.push(gl, triangles);
-  }
-
-  /// Update an existing mob in VRAM.
-  pub fn update(
-    &mut self,
-    gl: &mut GLContext,
-    id: EntityId,
-    triangles: &[ColoredVertex]
-  ) {
-    let idx = *self.id_to_index.get(&id).unwrap();
-    self.triangles.buffer.byte_buffer.bind(gl);
-    self.triangles.buffer.update(gl, idx, triangles);
+        self.triangles.buffer.byte_buffer.bind(gl);
+        self.triangles.push(gl, triangles);
+        true
+      },
+      Entry::Occupied(entry) => {
+        let idx = *entry.get();
+        self.triangles.buffer.byte_buffer.bind(gl);
+        self.triangles.buffer.update(gl, idx, triangles);
+        false
+      },
+    }
   }
 
   /// Draw all the mobs.

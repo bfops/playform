@@ -1,9 +1,11 @@
 //! HUD initialization code.
 
-use common::color::Color4;
-use common::vertex::{ColoredVertex, TextureVertex};
 use cgmath::Point2;
 use cgmath::Vector2;
+
+use common::color::Color4;
+
+use vertex::{ColoredVertex, TextureVertex};
 use view::View;
 
 /// Add HUD data into `view`.
