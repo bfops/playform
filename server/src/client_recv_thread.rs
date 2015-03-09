@@ -3,6 +3,7 @@ use rustc_serialize::json;
 use std::f32::consts::PI;
 use std::sync::mpsc::channel;
 use std::thread;
+use std::time::Duration;
 
 use common::communicate::{ClientToServer, ServerToClient};
 use common::socket::SendSocket;
@@ -31,7 +32,7 @@ pub fn apply_client_update<UpdateGaia>(
       let (to_client_send, to_client_recv) = channel();
       let client_thread = {
         thread::scoped(move || {
-          let mut socket = SendSocket::new(client_url.as_slice());
+          let mut socket = SendSocket::new(client_url.as_slice(), Some(Duration::seconds(30)));
           while let Some(msg) = to_client_recv.recv().unwrap() {
             // TODO: Don't do this allocation on every packet!
             let msg = json::encode(&msg).unwrap();
@@ -49,6 +50,14 @@ pub fn apply_client_update<UpdateGaia>(
           thread: client_thread,
         };
       server.clients.lock().unwrap().insert(client_id, client);
+    },
+    ClientToServer::Ping(client_id) => {
+      server.clients.lock().unwrap()
+        .get(&client_id)
+        .unwrap()
+        .sender
+        .send(Some(ServerToClient::Ping))
+        .unwrap();
     },
     ClientToServer::AddPlayer(client_id) => {
       let mut player =

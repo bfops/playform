@@ -4,6 +4,7 @@ use std::env;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Mutex;
 use std::thread;
+use std::time::Duration;
 
 use common::communicate::{ClientToServer, ServerToClient};
 use common::socket::{SendSocket, ReceiveSocket};
@@ -56,7 +57,7 @@ fn main() {
     let listen_url = listen_url.clone();
     let server_recv_thread_send = server_recv_thread_send.clone();
     thread::spawn(move || {
-      let mut listen_socket = ReceiveSocket::new(listen_url.clone().as_slice());
+      let mut listen_socket = ReceiveSocket::new(listen_url.clone().as_slice(), Some(Duration::seconds(30)));
       loop {
         let msg = listen_socket.read();
         server_recv_thread_send.send(msg).unwrap();
@@ -66,7 +67,7 @@ fn main() {
 
   let _server_send_thread = {
     thread::spawn(move || {
-      let mut talk_socket = SendSocket::new(server_url.as_slice());
+      let mut talk_socket = SendSocket::new(server_url.clone().as_slice(), Some(Duration::seconds(30)));
       loop {
         let msg = server_send_thread_recv.recv().unwrap();
         let msg = json::encode(&msg).unwrap();
@@ -75,7 +76,6 @@ fn main() {
     })
   };
 
-  // TODO: Keep sending pings on a regular basis.
   // TODO: Consider using RPCs to solidify the request-response patterns.
   server_send_thread_send.send(Some(ClientToServer::Init(listen_url.clone()))).unwrap();
   let client;

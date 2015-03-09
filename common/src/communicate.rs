@@ -47,6 +47,8 @@ pub struct TerrainBlockSend {
 pub enum ClientToServer {
   /// Notify the server that the client exists, and provide a "return address".
   Init(String),
+  /// Ping
+  Ping(ClientId),
   /// Ask the server to create a new player.
   AddPlayer(ClientId),
   /// Add a vector the player's acceleration.
@@ -67,6 +69,8 @@ pub enum ClientToServer {
 pub enum ServerToClient {
   /// Provide the client a unique id to tag its messages.
   LeaseId(ClientId),
+  /// Ping
+  Ping,
 
   /// Complete an AddPlayer request.
   PlayerAdded(EntityId, Point3<f32>),

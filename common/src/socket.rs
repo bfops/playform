@@ -12,9 +12,9 @@ pub struct SendSocket {
 
 impl SendSocket {
   #[allow(missing_docs)]
-  pub fn new(url: &str) -> SendSocket {
+  pub fn new(url: &str, timeout: Option<Duration>) -> SendSocket {
     let mut socket = Socket::new(Protocol::Push).unwrap();
-    socket.set_send_timeout(&Duration::seconds(30)).unwrap();
+    timeout.map(|timeout| socket.set_receive_timeout(&timeout).unwrap());
     let endpoint = socket.connect(url).unwrap();
 
     SendSocket {
@@ -49,9 +49,9 @@ pub struct ReceiveSocket {
 
 impl ReceiveSocket {
   #[allow(missing_docs)]
-  pub fn new(url: &str) -> ReceiveSocket {
+  pub fn new(url: &str, timeout: Option<Duration>) -> ReceiveSocket {
     let mut socket = Socket::new(Protocol::Pull).unwrap();
-    socket.set_receive_timeout(&Duration::seconds(30)).unwrap();
+    timeout.map(|timeout| socket.set_receive_timeout(&timeout).unwrap());
     let endpoint = socket.bind(url.as_slice()).unwrap();
 
     ReceiveSocket {

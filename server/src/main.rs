@@ -75,7 +75,7 @@ fn main() {
   let _listen_thread = {
     let listen_thread_send = listen_thread_send.clone();
     thread::scoped(move || {
-      let mut socket = ReceiveSocket::new(listen_url.as_slice());
+      let mut socket = ReceiveSocket::new(listen_url.as_slice(), None);
       loop {
         let msg = socket.read();
         listen_thread_send.send(msg).unwrap();
