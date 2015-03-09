@@ -62,7 +62,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
           match lod_change {
             LODChange::Load(block_position, distance) => {
               let lod = lod_index(distance);
-              update_server(ClientToServer::RequestBlock(block_position, lod));
+              update_server(ClientToServer::RequestBlock(client.id, block_position, lod));
             },
             LODChange::Unload(block_position) => {
               // The block removal code is duplicated elsewhere.

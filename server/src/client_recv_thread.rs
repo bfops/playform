@@ -105,8 +105,8 @@ pub fn apply_client_update<UpdateGaia>(
       player.rotate_lateral(v.x);
       player.rotate_vertical(v.y);
     },
-    ClientToServer::RequestBlock(position, lod) => {
-      update_gaia(ServerToGaia::Load(position, lod, LoadReason::ForClient));
+    ClientToServer::RequestBlock(client_id, position, lod) => {
+      update_gaia(ServerToGaia::Load(position, lod, LoadReason::ForClient(client_id)));
     },
   };
 }

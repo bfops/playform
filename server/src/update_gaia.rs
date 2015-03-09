@@ -3,7 +3,7 @@
 use rustc_serialize::json;
 use std::ops::DerefMut;
 
-use common::communicate::{ServerToClient, TerrainBlockSend};
+use common::communicate::{ClientId, ServerToClient, TerrainBlockSend};
 use common::lod::{LODIndex, OwnerId};
 use common::stopwatch::TimerSet;
 use common::block_position::BlockPosition;
@@ -16,7 +16,7 @@ use terrain::texture_generator::TerrainTextureGenerator;
 #[derive(Debug, Clone)]
 pub enum LoadReason {
   Local(OwnerId),
-  ForClient,
+  ForClient(ClientId),
 }
 
 #[derive(Debug, Clone)]
@@ -64,16 +64,16 @@ pub fn update_gaia(
                   in_progress_terrain,
                 );
               },
-              LoadReason::ForClient => {
-                for client in server.clients.lock().unwrap().values() {
-                  client.sender.send(Some(
-                    ServerToClient::AddBlock(TerrainBlockSend {
-                      position: position,
-                      block: json::encode(&block).unwrap(),
-                      lod: lod,
-                    })
-                  )).unwrap();
-                }
+              LoadReason::ForClient(id) => {
+                let clients = server.clients.lock().unwrap();
+                let client = clients.get(&id).unwrap();
+                client.sender.send(Some(
+                  ServerToClient::AddBlock(TerrainBlockSend {
+                    position: position,
+                    block: json::encode(&block).unwrap(),
+                    lod: lod,
+                  })
+                )).unwrap();
               },
             }
           },

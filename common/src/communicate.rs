@@ -58,7 +58,7 @@ pub enum ClientToServer {
   /// [Try to] stop a jump for the player.
   StopJump(EntityId),
   /// Ask the server to send a block of terrain.
-  RequestBlock(BlockPosition, LODIndex),
+  RequestBlock(ClientId, BlockPosition, LODIndex),
 }
 
 #[derive(Debug, Clone)]
