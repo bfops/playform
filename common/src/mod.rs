@@ -3,8 +3,8 @@
 
 //! Data structures and functions shared between server and client.
 
-#![feature(core)]
 #![feature(collections)]
+#![feature(core)]
 #![feature(io)]
 #![feature(std_misc)]
 #![feature(test)]

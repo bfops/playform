@@ -1,12 +1,12 @@
 //! Closure-timing data structure.
 
-use std::cell::{RefCell, Ref, BorrowState};
-use std::rc::Rc;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::sync::Mutex;
 use time;
 
-/// A simple stopwatch taht can time events and print stats about them.
+#[derive(Debug, Copy, Clone)]
+/// A simple stopwatch that can time events and print stats about them.
 pub struct Stopwatch {
   /// The total amount of time clocked.
   pub total_time: u64,
@@ -51,15 +51,18 @@ impl Stopwatch {
 
 }
 
+unsafe impl Send for Stopwatch {}
+unsafe impl Sync for Stopwatch {}
+
 /// A set of stopwatches for multiple, named events.
 pub struct TimerSet {
-  timers: RefCell<HashMap<String, Rc<RefCell<Stopwatch>>>>,
+  timers: Mutex<HashMap<String, Stopwatch>>,
 }
 
 impl TimerSet {
   /// Creates a new set of timers.
   pub fn new() -> TimerSet {
-    TimerSet { timers: RefCell::new(HashMap::new()) }
+    TimerSet { timers: Mutex::new(HashMap::new()) }
   }
 
   /// Times the execution of a function, and logs it under a timer with
@@ -68,28 +71,34 @@ impl TimerSet {
   /// This function is not marked `mut` because borrow checking is done
   /// dynamically.
   pub fn time<T, F: FnOnce() -> T>(&self, name: &str, f: F) -> T {
-    let timer : Rc<RefCell<Stopwatch>> =
-      match self.timers.borrow_mut().entry(String::from_str(name)) {
-        Entry::Occupied(entry) => entry.get().clone(),
-        Entry::Vacant(entry) => entry.insert(Rc::new(RefCell::new(Stopwatch::new()))).clone(),
-      };
+    let then = time::precise_time_ns();
+    let ret = f();
+    let total_time = time::precise_time_ns() - then;
 
-    if timer.borrow_state() != BorrowState::Unused {
-      panic!("timer \"{}\" used recursively", name);
+    let mut timers = self.timers.lock().unwrap();
+    match timers.entry(String::from_str(name)) {
+      Entry::Occupied(mut entry) => {
+        entry.get_mut().number_of_windows += 1;
+        entry.get_mut().total_time += total_time;
+      },
+      Entry::Vacant(entry) => {
+        entry.insert(Stopwatch {
+          total_time: total_time,
+          number_of_windows: 1,
+        });
+      },
     }
 
-    let mut timer = timer.borrow_mut();
-    timer.timed(f)
+    ret
   }
 
   /// Prints all the timer statistics to stdout, each tagged with their name.
   pub fn print(&self) {
-    let timers = self.timers.borrow();
-
-    let mut timer_vec : Vec<(&str, Ref<Stopwatch>)> =
+    let timers = self.timers.lock().unwrap();
+    let mut timer_vec : Vec<(&str, &Stopwatch)> =
       timers
         .iter()
-        .map(|(name, sw)| (name.as_slice(), sw.borrow()))
+        .map(|(name, sw)| (name.as_slice(), sw))
         .collect();
 
     timer_vec.sort_by(|&(k1, _), &(k2, _)| k1.cmp(k2));
@@ -99,6 +108,9 @@ impl TimerSet {
     }
   }
 }
+
+unsafe impl Send for TimerSet {}
+unsafe impl Sync for TimerSet {}
 
 #[test]
 fn test_simple() {
