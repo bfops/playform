@@ -19,13 +19,13 @@ lto = false
 opt-level = 3
 debug = false
 rpath = false
-lto = true
+lto = false
 
 [profile.bench]
 opt-level = 3
 debug = false
 rpath = false
-lto = true
+lto = false
 
 [profile.test]
 opt-level = 0
