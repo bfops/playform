@@ -2,7 +2,7 @@
 name = "playform-server"
 version = "0.0.0"
 dependencies = [
- "cgmath 0.0.7 (git+https://github.com/bfops/cgmath-rs)",
+ "cgmath 0.0.8 (git+https://github.com/bfops/cgmath-rs)",
  "env_logger 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.3.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
@@ -16,8 +16,8 @@ dependencies = [
 
 [[package]]
 name = "cgmath"
-version = "0.0.7"
-source = "git+https://github.com/bfops/cgmath-rs#f824d5f3189fc4168f398917e5cdf291219a6eec"
+version = "0.0.8"
+source = "git+https://github.com/bfops/cgmath-rs#50b76ebb6679204d30c70c665077cebe80b60caa"
 dependencies = [
  "rand 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_macros 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -30,7 +30,7 @@ version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "log 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -72,7 +72,7 @@ dependencies = [
 [[package]]
 name = "opencl"
 version = "0.3.0-dev"
-source = "git+https://github.com/bfops/rust-opencl#56added1de3f4b3c3fdb07485371bd6c6b47a7b1"
+source = "git+https://github.com/bfops/rust-opencl#cf16b8a65a0cf8b05ebf2d2fe07684440558d46f"
 dependencies = [
  "log 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -81,7 +81,7 @@ dependencies = [
 name = "playform-common"
 version = "0.0.0"
 dependencies = [
- "cgmath 0.0.7 (git+https://github.com/bfops/cgmath-rs)",
+ "cgmath 0.0.8 (git+https://github.com/bfops/cgmath-rs)",
  "log 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.3.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
  "rustc-serialize 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -114,7 +114,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "regex"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]

@@ -2,7 +2,7 @@
 name = "playform-client"
 version = "0.0.0"
 dependencies = [
- "cgmath 0.0.7 (git+https://github.com/bfops/cgmath-rs)",
+ "cgmath 0.0.8 (git+https://github.com/bfops/cgmath-rs)",
  "env_logger 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "gl 0.0.9 (git+https://github.com/bjz/gl-rs)",
  "libc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -23,8 +23,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "cgmath"
-version = "0.0.7"
-source = "git+https://github.com/bfops/cgmath-rs#f824d5f3189fc4168f398917e5cdf291219a6eec"
+version = "0.0.8"
+source = "git+https://github.com/bfops/cgmath-rs#50b76ebb6679204d30c70c665077cebe80b60caa"
 dependencies = [
  "rand 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_macros 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -37,7 +37,7 @@ version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "log 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -48,7 +48,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "gl"
 version = "0.0.9"
-source = "git+https://github.com/bjz/gl-rs#5867745f94b2c9f1a37b079f0ddee887651f1f5f"
+source = "git+https://github.com/bjz/gl-rs#7cb92371a25f125d60a5bdbfd573c2fcd151c886"
 dependencies = [
  "gl_common 0.0.4 (git+https://github.com/bjz/gl-rs)",
  "gl_generator 0.0.19 (git+https://github.com/bjz/gl-rs)",
@@ -59,7 +59,7 @@ dependencies = [
 [[package]]
 name = "gl_common"
 version = "0.0.4"
-source = "git+https://github.com/bjz/gl-rs#5867745f94b2c9f1a37b079f0ddee887651f1f5f"
+source = "git+https://github.com/bjz/gl-rs#7cb92371a25f125d60a5bdbfd573c2fcd151c886"
 dependencies = [
  "libc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -67,7 +67,7 @@ dependencies = [
 [[package]]
 name = "gl_generator"
 version = "0.0.19"
-source = "git+https://github.com/bjz/gl-rs#5867745f94b2c9f1a37b079f0ddee887651f1f5f"
+source = "git+https://github.com/bjz/gl-rs#7cb92371a25f125d60a5bdbfd573c2fcd151c886"
 dependencies = [
  "khronos_api 0.0.5 (git+https://github.com/bjz/gl-rs)",
  "log 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -77,7 +77,7 @@ dependencies = [
 [[package]]
 name = "khronos_api"
 version = "0.0.5"
-source = "git+https://github.com/bjz/gl-rs#5867745f94b2c9f1a37b079f0ddee887651f1f5f"
+source = "git+https://github.com/bjz/gl-rs#7cb92371a25f125d60a5bdbfd573c2fcd151c886"
 
 [[package]]
 name = "libc"
@@ -106,7 +106,7 @@ source = "git+https://github.com/thehydroimpulse/nanomsg.rs#42751b3c0dc7f324ec27
 name = "playform-common"
 version = "0.0.0"
 dependencies = [
- "cgmath 0.0.7 (git+https://github.com/bfops/cgmath-rs)",
+ "cgmath 0.0.8 (git+https://github.com/bfops/cgmath-rs)",
  "log 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.3.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
  "rustc-serialize 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -130,7 +130,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "regex"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
