@@ -126,13 +126,6 @@ fn main() {
 
       in_series!(
         {
-          listen_thread_recv.lock().unwrap().try_recv_opt()
-            .map_to_bool(|up| {
-              let up = binary::decode(up.as_slice()).unwrap();
-              apply_client_update(server, &mut |block| { gaia_thread_send.send(block).unwrap() }, up)
-            })
-        },
-        {
           if server.update_timer.lock().unwrap().update(time::precise_time_ns()) > 0 {
             update_world(
               timers,
@@ -143,6 +136,13 @@ fn main() {
           } else {
             false
           }
+        },
+        {
+          listen_thread_recv.lock().unwrap().try_recv_opt()
+            .map_to_bool(|up| {
+              let up = binary::decode(up.as_slice()).unwrap();
+              apply_client_update(server, &mut |block| { gaia_thread_send.send(block).unwrap() }, up)
+            })
         },
         {
           gaia_thread_recv.lock().unwrap().try_recv_opt()
