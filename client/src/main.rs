@@ -1,5 +1,4 @@
 use env_logger;
-use rustc_serialize::json;
 use std::env;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Mutex;
@@ -7,6 +6,7 @@ use std::thread;
 use std::time::Duration;
 
 use common::communicate::{ClientToServer, ServerToClient};
+use common::serialize as binary;
 use common::socket::{SendSocket, ReceiveSocket};
 
 use client::Client;
@@ -69,9 +69,9 @@ fn main() {
     thread::spawn(move || {
       let mut talk_socket = SendSocket::new(server_url.clone().as_slice(), Some(Duration::seconds(30)));
       loop {
-        let msg = server_send_thread_recv.recv().unwrap();
-        let msg = json::encode(&msg).unwrap();
-        talk_socket.write(msg.as_bytes());
+        let msg: Option<ClientToServer> = server_send_thread_recv.recv().unwrap();
+        let msg = binary::encode(&msg.unwrap()).unwrap();
+        talk_socket.write(msg.as_slice());
       }
     })
   };
@@ -80,11 +80,11 @@ fn main() {
   server_send_thread_send.send(Some(ClientToServer::Init(listen_url.clone()))).unwrap();
   let client;
   'init_loop:loop {
-    match server_recv_thread_recv.recv().map(|s| json::decode(&s).unwrap()) {
+    match server_recv_thread_recv.recv().map(|s| binary::decode(s.as_slice()).unwrap()) {
       Ok(ServerToClient::LeaseId(client_id)) => {
         server_send_thread_send.send(Some(ClientToServer::AddPlayer(client_id))).unwrap();
         loop {
-          match server_recv_thread_recv.recv().map(|s| json::decode(&s).unwrap()) {
+          match server_recv_thread_recv.recv().map(|s| binary::decode(s.as_slice()).unwrap()) {
             Ok(ServerToClient::PlayerAdded(player_id, position)) => {
               client = Client::new(client_id, player_id, position);
               break 'init_loop;
@@ -122,7 +122,7 @@ fn main() {
           client,
           &mut || {
             try_recv(server_recv_thread_recv)
-              .map(|msg| json::decode(&msg).unwrap())
+              .map(|msg| binary::decode(msg.as_slice()).unwrap())
           },
           &mut || { try_recv(terrain_blocks_recv) },
           &mut |up| { view_thread_send.send(up).unwrap() },

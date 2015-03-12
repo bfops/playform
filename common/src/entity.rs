@@ -22,4 +22,3 @@ impl Add<u32> for EntityId {
     EntityId(i + rhs)
   }
 }
-

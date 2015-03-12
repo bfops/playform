@@ -1,11 +1,11 @@
 use env_logger;
-use rustc_serialize::json;
 use std::env;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Mutex;
 use std::thread;
 use time;
 
+use common::serialize as binary;
 use common::socket::ReceiveSocket;
 use common::stopwatch::TimerSet;
 use common::terrain_block::{BLOCK_WIDTH, TEXTURE_WIDTH};
@@ -128,7 +128,7 @@ fn main() {
         {
           listen_thread_recv.lock().unwrap().try_recv_opt()
             .map_to_bool(|up| {
-              let up = json::decode(up.as_slice()).unwrap();
+              let up = binary::decode(up.as_slice()).unwrap();
               apply_client_update(server, &mut |block| { gaia_thread_send.send(block).unwrap() }, up)
             })
         },

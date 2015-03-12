@@ -1,11 +1,12 @@
 use cgmath::{Point, Point3, Vector3, Aabb3};
-use rustc_serialize::json;
 use std::f32::consts::PI;
 use std::sync::mpsc::channel;
 use std::thread;
 use std::time::Duration;
+use time;
 
 use common::communicate::{ClientToServer, ServerToClient};
+use common::serialize as binary;
 use common::socket::SendSocket;
 
 use player::Player;
@@ -34,9 +35,12 @@ pub fn apply_client_update<UpdateGaia>(
         thread::scoped(move || {
           let mut socket = SendSocket::new(client_url.as_slice(), Some(Duration::seconds(30)));
           while let Some(msg) = to_client_recv.recv().unwrap() {
+            let now = time::precise_time_ns();
             // TODO: Don't do this allocation on every packet!
-            let msg = json::encode(&msg).unwrap();
-            socket.write(msg.as_bytes());
+            let msg = binary::encode(&msg).unwrap();
+            socket.write(msg.as_slice());
+            let delta = time::precise_time_ns() - now;
+            trace!("Send took {}ns", delta);
           }
         })
       };
@@ -56,7 +60,7 @@ pub fn apply_client_update<UpdateGaia>(
         .get(&client_id)
         .unwrap()
         .sender
-        .send(Some(ServerToClient::Ping))
+        .send(Some(ServerToClient::Ping(())))
         .unwrap();
     },
     ClientToServer::AddPlayer(client_id) => {

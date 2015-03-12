@@ -8,6 +8,8 @@ use std::ops::Add;
 use block_position::BlockPosition;
 use entity::EntityId;
 use lod::LODIndex;
+use serialize::{Flatten, MemStream, EOF};
+use terrain_block::TerrainBlock;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(RustcDecodable, RustcEncodable)]
@@ -35,11 +37,13 @@ impl Add<u32> for ClientId {
 pub struct TerrainBlockSend {
   #[allow(missing_docs)]
   pub position: BlockPosition,
-  /// The String-serialized `TerrainBlock`.
-  pub block: String,
+  #[allow(missing_docs)]
+  pub block: TerrainBlock,
   #[allow(missing_docs)]
   pub lod: LODIndex,
 }
+
+flatten_struct_impl!(TerrainBlockSend, position, block, lod);
 
 #[derive(Debug, Clone)]
 #[derive(RustcDecodable, RustcEncodable)]
@@ -63,6 +67,19 @@ pub enum ClientToServer {
   RequestBlock(ClientId, BlockPosition, LODIndex),
 }
 
+flatten_enum_impl!(
+  ClientToServer,
+  u8,
+  (Init, 0, x),
+  (Ping, 1, x),
+  (AddPlayer, 2, x),
+  (Walk, 3, x, y),
+  (RotatePlayer, 4, x, y),
+  (StartJump, 5, x),
+  (StopJump, 6, x),
+  (RequestBlock, 7, x, y, z),
+);
+
 #[derive(Debug, Clone)]
 #[derive(RustcDecodable, RustcEncodable)]
 /// Messages the server sends to the client.
@@ -70,7 +87,7 @@ pub enum ServerToClient {
   /// Provide the client a unique id to tag its messages.
   LeaseId(ClientId),
   /// Ping
-  Ping,
+  Ping(()),
 
   /// Complete an AddPlayer request.
   PlayerAdded(EntityId, Point3<f32>),
@@ -86,3 +103,15 @@ pub enum ServerToClient {
   /// Provide a block of terrain to a client.
   AddBlock(TerrainBlockSend),
 }
+
+flatten_enum_impl!(
+  ServerToClient,
+  u8,
+  (LeaseId, 0, x),
+  (Ping, 1, x),
+  (PlayerAdded, 2, x, y),
+  (UpdatePlayer, 3, x, y),
+  (UpdateMob, 4, x, y),
+  (UpdateSun, 5, x),
+  (AddBlock, 6, x),
+);

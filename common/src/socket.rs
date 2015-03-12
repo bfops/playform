@@ -61,9 +61,9 @@ impl ReceiveSocket {
   }
 
   /// Block until a message can be fetched from this socket.
-  pub fn read(&mut self) -> String {
-    let mut msg = String::new();
-    self.socket.read_to_string(&mut msg).unwrap();
+  pub fn read(&mut self) -> Vec<u8> {
+    let mut msg = Vec::new();
+    self.socket.read_to_end(&mut msg).unwrap();
     msg
   }
 

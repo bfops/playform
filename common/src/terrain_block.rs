@@ -1,8 +1,10 @@
 //! Data structure for a small block of terrain.
 
+use cgmath::{Point2, Point3, Vector3, Aabb3};
+
 use color::Color3;
 use entity::EntityId;
-use cgmath::{Point2, Point3, Vector3, Aabb3};
+use serialize::{Flatten, MemStream, EOF};
 
 pub const BLOCK_WIDTH: i32 = 8;
 pub const TEXTURE_WIDTH: [u32; 4] = [32, 16, 8, 2];
@@ -17,7 +19,7 @@ pub const TEXTURE_LEN: [usize; 4] = [
 /// Quality is the number of times the noise function is sampled along each axis.
 pub const LOD_QUALITY: [u16; 4] = [8, 4, 2, 1];
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 #[derive(RustcDecodable, RustcEncodable)]
 /// [T; 3], but deriving RustcDecodable.
 pub struct Triangle<T> {
@@ -75,3 +77,5 @@ impl TerrainBlock {
     }
   }
 }
+
+flatten_struct_impl!(TerrainBlock, vertex_coordinates, normals, coords, pixels, ids, bounds);

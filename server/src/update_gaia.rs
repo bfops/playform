@@ -1,6 +1,5 @@
 /// Creator of the earth.
 
-use rustc_serialize::json;
 use std::ops::DerefMut;
 
 use common::communicate::{ClientId, ServerToClient, TerrainBlockSend};
@@ -70,7 +69,7 @@ pub fn update_gaia(
                 client.sender.send(Some(
                   ServerToClient::AddBlock(TerrainBlockSend {
                     position: position,
-                    block: json::encode(&block).unwrap(),
+                    block: block.clone(),
                     lod: lod,
                   })
                 )).unwrap();

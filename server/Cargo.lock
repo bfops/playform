@@ -85,6 +85,7 @@ dependencies = [
  "log 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.3.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
  "rustc-serialize 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serialize 0.0.0",
  "time 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -120,6 +121,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "rustc-serialize"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "serialize"
+version = "0.0.0"
 
 [[package]]
 name = "time"

@@ -17,6 +17,7 @@
 /doc/
 /target/
 */target/
+*/*/target/
 /.rust/
 
 common/Cargo.lock

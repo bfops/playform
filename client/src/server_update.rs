@@ -37,7 +37,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
     ServerToClient::LeaseId(_) => {
       warn!("Client ID has already been leased.");
     },
-    ServerToClient::Ping => {
+    ServerToClient::Ping(()) => {
       update_server(ClientToServer::Ping(client.id));
     },
     ServerToClient::PlayerAdded(id, _) => {
