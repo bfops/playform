@@ -3,14 +3,11 @@ use std::cmp::partial_max;
 use std::f32::consts::PI;
 use std::num::Float;
 
-use common::block_position::BlockPosition;
 use common::color::{Color3, Color4};
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
-use common::surroundings_loader::LODChange;
 
 use client::Client;
 use light::Light;
-use load_terrain::lod_index;
 use vertex::ColoredVertex;
 use view_update::ClientToView;
 
@@ -57,34 +54,6 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
 
       *client.player_position.lock().unwrap() = position;
       update_view(ClientToView::MoveCamera(position));
-
-      let position = BlockPosition::from_world_position(&position);
-      client.surroundings_loader.lock().unwrap().update(
-        position,
-        |lod_change| {
-          match lod_change {
-            LODChange::Load(block_position, distance) => {
-              let lod = lod_index(distance);
-              update_server(ClientToServer::RequestBlock(client.id, block_position, lod));
-            },
-            LODChange::Unload(block_position) => {
-              // The block removal code is duplicated elsewhere.
-    
-              client.loaded_blocks
-                .lock().unwrap()
-                .remove(&block_position)
-                // If it wasn't loaded, don't unload anything.
-                .map(|(block, prev_lod)| {
-                  for id in block.ids.iter() {
-                    update_view(ClientToView::RemoveTerrain(*id));
-                  }
-    
-                  update_view(ClientToView::RemoveBlockData(block_position, prev_lod));
-                });
-            },
-          };
-        },
-      );
     },
     ServerToClient::UpdateMob(id, bounds) => {
       let mesh = to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0));

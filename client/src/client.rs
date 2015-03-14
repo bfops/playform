@@ -39,7 +39,7 @@ impl Client {
     let mut load_distance = load_distance(terrain_buffers::POLYGON_BUDGET as i32);
 
     // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-    let max_load_distance = 5;
+    let max_load_distance = 80;
     if load_distance > max_load_distance {
       info!("load_distance {} capped at {}", load_distance, max_load_distance);
       load_distance = max_load_distance;

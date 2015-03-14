@@ -43,6 +43,7 @@ pub fn update_world(
         let owner_id = mob.owner_id;
         mob.surroundings_loader.update(
           block_position,
+          || { true },
           |lod_change|
             load_placeholders(
               timers,

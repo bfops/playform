@@ -8,7 +8,6 @@ use std::cmp::max;
 use std::collections::VecDeque;
 use std::num::{Float, SignedInt};
 use surroundings_iter::SurroundingsIter;
-use time;
 
 // Rough budget (in microseconds) for how long block updating can take PER SurroundingsLoader.
 pub const BLOCK_UPDATE_BUDGET: u64 = 20000;
@@ -74,11 +73,13 @@ impl SurroundingsLoader {
   }
 
   /// Update the center point around which we load, and load some more blocks.
-  pub fn update<LODChangeFunc>(
+  pub fn update<While, LODChangeFunc>(
     &mut self,
     position: BlockPosition,
+    mut cond: While,
     mut lod_change: LODChangeFunc,
   ) where
+    While: FnMut() -> bool,
     LODChangeFunc: FnMut(LODChange),
   {
     let position_changed = Some(position) != self.last_position;
@@ -98,9 +99,7 @@ impl SurroundingsLoader {
       self.last_position = Some(position);
     }
 
-    // TODO: figure out a better termination condition for this loop.
-    let target_time = time::precise_time_ns() + BLOCK_UPDATE_BUDGET * 1000;
-    while time::precise_time_ns() < target_time {
+    while cond() {
       if let Some(block_position) = self.to_recheck.pop_front() {
         let distance = radius_between(&position, &block_position);
         if distance > self.max_load_distance {

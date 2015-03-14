@@ -150,6 +150,7 @@ impl Player {
       let owner = self.surroundings_owner;
       self.surroundings_loader.update(
         block_position,
+        || { true },
         |lod_change| {
           match lod_change {
             LODChange::Load(pos, _) => {
@@ -178,6 +179,7 @@ impl Player {
       let owner = self.solid_owner;
       self.solid_boundary.update(
         block_position,
+        || { true },
         |lod_change|
           load_placeholders(
             timers,
