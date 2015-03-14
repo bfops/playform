@@ -1,6 +1,6 @@
 //! Font loading data structure and functions.
 
-use std::old_path::Path;
+use std::path::Path;
 use ttf;
 
 #[allow(missing_docs)]

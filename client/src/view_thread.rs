@@ -6,8 +6,7 @@ use sdl2;
 use sdl2::event::Event;
 use sdl2::video;
 use std::mem;
-use std::old_io::timer;
-use std::time::duration::Duration;
+use std::thread;
 use time;
 use yaglw::gl_context::GLContext;
 
@@ -141,7 +140,7 @@ pub fn view_thread<Recv, UpdateServer>(
       window.gl_swap_window();
     }
 
-    timer::sleep(Duration::milliseconds(1));
+    thread::yield_now();
   }
 
   timers.print();

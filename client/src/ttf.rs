@@ -6,7 +6,7 @@ use sdl2_sys::pixels::{SDL_Color,SDL_PIXELFORMAT_ARGB8888};
 use sdl2_sys::surface::SDL_Surface;
 use sdl2_sys::surface;
 use std::ffi::CString;
-use std::old_path::{BytesContainer, Path};
+use std::path::Path;
 use yaglw::gl_context::GLContext;
 use yaglw::texture::Texture2D;
 
@@ -88,7 +88,7 @@ impl Font {
   pub fn new(font: &Path, point_size: u32) -> Font {
     ensure_init();
 
-    let c_path = CString::new(font.container_as_bytes()).unwrap();
+    let c_path = CString::new(font.to_str().unwrap().as_bytes()).unwrap();
     let ptr = c_path.as_ptr() as *const i8;
     let p = unsafe { ffi::TTF_OpenFont(ptr, point_size as ffi::c_int) };
 

@@ -62,6 +62,3 @@ git = "https://github.com/bfops/yaglw"
 
 [dependencies.cgmath]
 git = "https://github.com/bfops/cgmath-rs"
-
-[dependencies.nanomsg]
-git = "https://github.com/thehydroimpulse/nanomsg.rs"

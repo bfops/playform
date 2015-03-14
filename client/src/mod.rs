@@ -6,8 +6,6 @@
 #![feature(core)]
 #![feature(collections)]
 #![feature(main)]
-#![feature(old_io)]
-#![feature(old_path)]
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(unboxed_closures)]
@@ -20,7 +18,6 @@ extern crate gl;
 #[macro_use]
 extern crate log;
 extern crate libc;
-extern crate nanomsg;
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate sdl2;
 extern crate "sdl2-sys" as sdl2_sys;
@@ -30,7 +27,6 @@ extern crate yaglw;
 
 mod camera;
 mod client;
-mod client_update;
 mod fontloader;
 mod hud;
 mod light;

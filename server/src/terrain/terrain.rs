@@ -20,15 +20,6 @@ pub const PERSISTENCE: f64 = 1.0 / 16.0;
 pub const LACUNARITY: f64 = 8.0;
 pub const OCTAVES: usize = 2;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum TerrainType {
-  Grass,
-  Dirt,
-  Stone,
-  Wood,
-  Leaf,
-}
-
 pub struct TerrainMipMesh {
   pub lods: Vec<Option<TerrainBlock>>,
 }
