@@ -1,0 +1,34 @@
+[package]
+
+name = "serialize"
+version = "0.0.0"
+authors = []
+
+# The development profile, used for `cargo build`
+[profile.dev]
+opt-level = 1
+debug = true
+rpath = false
+lto = false
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+
+[profile.bench]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+
+[profile.test]
+opt-level = 0
+debug = true
+rpath = false
+lto = false
+
+[lib]
+name = "serialize"
+path = "lib.rs"

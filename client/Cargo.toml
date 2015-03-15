@@ -1,0 +1,64 @@
+[package]
+
+name = "playform-client"
+version = "0.0.0"
+authors = [
+    "Ben Foppa <benjamin.foppa@gmail.com>",
+    "Clark Gaebel <cg.wowus.cg@gmail.com>",
+    "Elijah Andrews <elijahcandrews@gmail.com>",
+  ]
+
+# The development profile, used for `cargo build`
+[profile.dev]
+opt-level = 1
+debug = true
+rpath = false
+lto = false
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = false
+
+[profile.bench]
+opt-level = 3
+debug = false
+rpath = false
+lto = false
+
+[profile.test]
+opt-level = 0
+debug = true
+rpath = false
+lto = false
+
+[[bin]]
+name = "client"
+path = "./src/mod.rs"
+
+[dependencies]
+env_logger= "*"
+libc = "*"
+log = "*"
+rustc-serialize = "*"
+time = "*"
+
+[dependencies.playform-common]
+path = "../common"
+version = "*"
+
+[dependencies.gl]
+git = "https://github.com/bjz/gl-rs"
+
+[dependencies.sdl2-sys]
+git = "https://github.com/bfops/rust-sdl2"
+
+[dependencies.sdl2]
+git = "https://github.com/bfops/rust-sdl2"
+
+[dependencies.yaglw]
+git = "https://github.com/bfops/yaglw"
+
+[dependencies.cgmath]
+git = "https://github.com/bfops/cgmath-rs"

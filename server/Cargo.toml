@@ -1,0 +1,58 @@
+[package]
+
+name = "playform-server"
+version = "0.0.0"
+authors = [
+    "Ben Foppa <benjamin.foppa@gmail.com>",
+    "Clark Gaebel <cg.wowus.cg@gmail.com>",
+    "Elijah Andrews <elijahcandrews@gmail.com>",
+  ]
+
+# The development profile, used for `cargo build`
+[profile.dev]
+opt-level = 1
+debug = true
+rpath = false
+lto = false
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = false
+
+[profile.bench]
+opt-level = 3
+debug = false
+rpath = false
+lto = false
+
+[profile.test]
+opt-level = 0
+debug = true
+rpath = false
+lto = false
+
+[[bin]]
+name = "server"
+path = "./src/mod.rs"
+
+[dependencies]
+env_logger= "*"
+log = "*"
+rand = "*"
+rustc-serialize = "*"
+time = "*"
+
+[dependencies.playform-common]
+path = "../common"
+version = "*"
+
+[dependencies.cgmath]
+git = "https://github.com/bfops/cgmath-rs"
+
+[dependencies.noise]
+git = "https://github.com/bfops/noise-rs"
+
+[dependencies.opencl]
+git = "https://github.com/bfops/rust-opencl"

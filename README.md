@@ -12,13 +12,29 @@ Help is great! PRs and [issues](https://github.com/bfops/playform/issues) are ap
 
 ## Making it work
 
-Install the Rust compiler and `cargo`, as well as `libpng`, `SDL2` and `SDL2_ttf`.
-Run `cargo run`! `cargo run --release` for a slower build, but faster playform.
+Make sure you have:
+
+  * The Rust compiler and package manager, `cargo`.
+  * OpenCL
+  * `libpng`
+  * `SDL2`
+  * `SDL2_ttf`
+  * `libnanomsg`
+
+At any point, `--release` can be appended onto `cargo build` or `cargo run` for a slower
+build, but a much more optimized result.
+
+Run the Playform server using `cargo run` in the `server` folder. It takes one parameter:
+the listen URL for the server. The default is for running locally: `ipc:///tmp/server.ipc`.
+
+The client can similarly be run with `cargo run` in the `client` folder. It takes two
+parameters: the listen URL of the client, and the listen URL of the server. The default
+is `ipc:///tmp/client.ipc` for the client.
 
 **Some dependencies may not build**. Look for forks that are updated for your `rustc`,
 and then point your `~/.cargo/config` at them.
 
-If you find `playform` itself won't build on the latest nightly, please open an issue or file a PR!
+If you find `playform` itself won't build on the latest `rustc`, please open an issue or file a PR!
 
 ## How to play
 
@@ -32,9 +48,4 @@ One mob spawns that will play "tag" with you: tag it and it will chase you until
 
 If things are broken, like compile errors, problems getting it to start, crashes, etc.
 please consider opening an issue! If you can take the time to do it in a non-optimized
-build with `RUST_BACKTRACE` set, it would be much appreciated.
-
-If things are laggy, there are some constants scattered around that you can tweak;
-there are LOD settings in `player.rs`, `terrain/terrain.rs`, `terrain/tree_placer.rs`,
-`terrain/texture_generator.rs`, and probably other places. Also consider setting a (lower)
-`max_load_distance` in `init/mod.rs`.
+build with `RUST_BACKTRACE=1` and `RUST_LOG=debug` set, it would be much appreciated.
