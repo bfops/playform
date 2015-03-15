@@ -52,7 +52,16 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
             match lod_change {
               LODChange::Load(block_position, distance) => {
                 let lod = lod_index(distance);
-                update_server(ClientToServer::RequestBlock(client.id, block_position, lod));
+                let loaded_lod =
+                  client.loaded_blocks
+                  .lock().unwrap()
+                  .get(&block_position)
+                  .map(|&(_, lod)| lod);
+                if loaded_lod != Some(lod) {
+                  update_server(ClientToServer::RequestBlock(client.id, block_position, lod));
+                } else {
+                  trace!("Not re-loading {:?} at {:?}", block_position, lod);
+                }
               },
               LODChange::Unload(block_position) => {
                 // The block removal code is duplicated elsewhere.
@@ -73,6 +82,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
           },
         );
       } else if let Some(block) = recv_block() {
+        trace!("Got block: {:?} at {:?}", block.position, block.lod);
         load_terrain_block(
           client,
           update_view,
