@@ -30,7 +30,7 @@ impl Sun {
     let fraction = (self.position as f32) / 65536.0;
 
     if self.print_timer.update(time::precise_time_ns()) > 0 {
-      debug!("Sun is at {:.0}%.", fraction * 100.0);
+      debug!("Sun is at {:.1}%.", fraction * 100.0);
     }
 
     Some(fraction)
