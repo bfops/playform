@@ -70,7 +70,7 @@ pub fn generate_block(
   })
 }
 
-fn add_tile<'a>(
+fn add_tile(
   timers: &TimerSet,
   hm: &HeightMap,
   treemap: &TreePlacer,
@@ -123,11 +123,11 @@ fn add_tile<'a>(
 
     macro_rules! place_terrain(
       ($v1: expr,
-        $v2: expr,
-        $minx: expr,
-        $minz: expr,
-        $maxx: expr,
-        $maxz: expr
+       $v2: expr,
+       $minx: expr,
+       $minz: expr,
+       $maxx: expr,
+       $maxz: expr
       ) => ({
         let v1 = &ps[$v1];
         let v2 = &ps[$v2];

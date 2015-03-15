@@ -24,14 +24,14 @@ impl<'a> TerrainShader<'a> {
         uniform samplerBuffer coords;
         uniform samplerBuffer normals;
 
-        flat out int vertex_id;
+        flat out int face_id;
+        out vec3 world_position;
         out vec3 normal;
         out vec2 pixel_coords;
 
         void main() {
           // Mutiply by 3 because there are 3 components for each normal vector.
           int position_id = gl_VertexID * 3;
-          vec3 world_position;
           world_position.x = texelFetch(positions, position_id + 0).r;
           world_position.y = texelFetch(positions, position_id + 1).r;
           world_position.z = texelFetch(positions, position_id + 2).r;
@@ -46,7 +46,7 @@ impl<'a> TerrainShader<'a> {
           pixel_coords.x = texelFetch(coords, coord_id + 0).r;
           pixel_coords.y = texelFetch(coords, coord_id + 1).r;
 
-          vertex_id = gl_VertexID;
+          face_id = gl_VertexID / 3;
 
           gl_Position = projection_matrix * vec4(world_position, 1.0);
         }".to_string()),
@@ -70,7 +70,8 @@ impl<'a> TerrainShader<'a> {
         uniform samplerBuffer pixels_2;
         uniform samplerBuffer pixels_3;
 
-        flat in int vertex_id;
+        flat in int face_id;
+        in vec3 world_position;
         in vec3 normal;
         in vec2 pixel_coords;
 
@@ -88,7 +89,6 @@ impl<'a> TerrainShader<'a> {
           tex_width[3] = {};
           tex_length[3] = {};
 
-          int face_id = vertex_id / 3;
           int color_id = face_id * 3;
 
           int block_index = texelFetch(block_indices, face_id).r;
@@ -127,13 +127,6 @@ impl<'a> TerrainShader<'a> {
             base_color.b = texelFetch(pixels_3, pixel_idx + 2).r;
           }}
           base_color.a = 1.0;
-
-          // Mutiply by 3 because there are 3 components for each position vector.
-          int position_id = vertex_id * 3;
-          vec3 world_position;
-          world_position.x = texelFetch(positions, position_id + 0).r;
-          world_position.y = texelFetch(positions, position_id + 1).r;
-          world_position.z = texelFetch(positions, position_id + 2).r;
 
           // vector from here to the light
           vec3 light_path = light.position - world_position;
