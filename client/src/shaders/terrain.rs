@@ -21,13 +21,11 @@ impl<'a> TerrainShader<'a> {
         uniform mat4 projection_matrix;
 
         uniform samplerBuffer positions;
-        uniform samplerBuffer coords;
         uniform samplerBuffer normals;
 
         flat out int face_id;
         out vec3 world_position;
         out vec3 normal;
-        out vec2 pixel_coords;
 
         void main() {
           // Mutiply by 3 because there are 3 components for each normal vector.
@@ -40,11 +38,6 @@ impl<'a> TerrainShader<'a> {
           normal.x = texelFetch(normals, normal_id + 0).r;
           normal.y = texelFetch(normals, normal_id + 1).r;
           normal.z = texelFetch(normals, normal_id + 2).r;
-
-          // There are 2 coords per vertex.
-          int coord_id = gl_VertexID * 2;
-          pixel_coords.x = texelFetch(coords, coord_id + 0).r;
-          pixel_coords.y = texelFetch(coords, coord_id + 1).r;
 
           face_id = gl_VertexID / 3;
 
@@ -61,19 +54,10 @@ impl<'a> TerrainShader<'a> {
         uniform vec3 ambient_light;
 
         uniform samplerBuffer positions;
-        uniform isamplerBuffer block_indices;
-        uniform isamplerBuffer lods;
-        uniform isamplerBuffer pixel_indices;
-
-        uniform samplerBuffer pixels_0;
-        uniform samplerBuffer pixels_1;
-        uniform samplerBuffer pixels_2;
-        uniform samplerBuffer pixels_3;
 
         flat in int face_id;
         in vec3 world_position;
         in vec3 normal;
-        in vec2 pixel_coords;
 
         out vec4 frag_color;
 
@@ -91,41 +75,11 @@ impl<'a> TerrainShader<'a> {
 
           int color_id = face_id * 3;
 
-          int block_index = texelFetch(block_indices, face_id).r;
-
-          int lod = texelFetch(lods, block_index).r;
-
           vec4 base_color;
-          int p_x = int(pixel_coords.x);
-          int p_y = int(pixel_coords.y);
-          if (p_x >= tex_width[lod]) {{
-            p_x = tex_width[lod] - 1;
-          }}
-          if (p_y >= tex_width[lod]) {{
-            p_y = tex_width[lod] - 1;
-          }}
 
-          int pixel_idx = texelFetch(pixel_indices, block_index).r;
-          pixel_idx = pixel_idx*tex_length[lod] + p_y*tex_width[lod] + p_x;
-          // There are 3 components for every color.
-          pixel_idx = pixel_idx * 3;
-          if (lod == 0) {{
-            base_color.r = texelFetch(pixels_0, pixel_idx + 0).r;
-            base_color.g = texelFetch(pixels_0, pixel_idx + 1).r;
-            base_color.b = texelFetch(pixels_0, pixel_idx + 2).r;
-          }} else if (lod == 1) {{
-            base_color.r = texelFetch(pixels_1, pixel_idx + 0).r;
-            base_color.g = texelFetch(pixels_1, pixel_idx + 1).r;
-            base_color.b = texelFetch(pixels_1, pixel_idx + 2).r;
-          }} else if (lod == 2) {{
-            base_color.r = texelFetch(pixels_2, pixel_idx + 0).r;
-            base_color.g = texelFetch(pixels_2, pixel_idx + 1).r;
-            base_color.b = texelFetch(pixels_2, pixel_idx + 2).r;
-          }} else if (lod == 3) {{
-            base_color.r = texelFetch(pixels_3, pixel_idx + 0).r;
-            base_color.g = texelFetch(pixels_3, pixel_idx + 1).r;
-            base_color.b = texelFetch(pixels_3, pixel_idx + 2).r;
-          }}
+          base_color.r = 0.0;
+          base_color.g = 1.0;
+          base_color.b = 0.0;
           base_color.a = 1.0;
 
           // vector from here to the light

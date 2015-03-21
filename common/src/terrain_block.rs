@@ -1,8 +1,7 @@
 //! Data structure for a small block of terrain.
 
-use cgmath::{Point2, Point3, Vector3, Aabb3};
+use cgmath::{Point3, Vector3, Aabb3};
 
-use color::Color3;
 use entity::EntityId;
 use serialize::{Flatten, MemStream, EOF};
 
@@ -50,16 +49,11 @@ pub struct TerrainBlock {
   pub vertex_coordinates: Vec<Triangle<Point3<f32>>>,
   /// Vertex normals. These should be normalized!
   pub normals: Vec<Triangle<Vector3<f32>>>,
-  /// Per-vertex indices into an array in `pixels`.
-  pub coords: Vec<Triangle<Point2<f32>>>,
   /// Entity IDs for each triangle.
   pub ids: Vec<EntityId>,
   // TODO: Change this back to a HashMap once initial capacity is zero for those.
   /// Per-triangle bounding boxes.
   pub bounds: Vec<(EntityId, Aabb3<f32>)>,
-
-  /// Textures for this block.
-  pub pixels: Vec<Color3<f32>>,
 }
 
 impl TerrainBlock {
@@ -68,9 +62,6 @@ impl TerrainBlock {
     TerrainBlock {
       vertex_coordinates: Vec::new(),
       normals: Vec::new(),
-      coords: Vec::new(),
-
-      pixels: Vec::new(),
 
       ids: Vec::new(),
       bounds: Vec::new(),
@@ -78,4 +69,4 @@ impl TerrainBlock {
   }
 }
 
-flatten_struct_impl!(TerrainBlock, vertex_coordinates, normals, coords, pixels, ids, bounds);
+flatten_struct_impl!(TerrainBlock, vertex_coordinates, normals, ids, bounds);

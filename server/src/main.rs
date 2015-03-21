@@ -8,12 +8,9 @@ use time;
 use common::serialize as binary;
 use common::socket::ReceiveSocket;
 use common::stopwatch::TimerSet;
-use common::terrain_block::{BLOCK_WIDTH, TEXTURE_WIDTH};
 
 use client_recv_thread::apply_client_update;
-use opencl_context::CL;
 use server::Server;
-use terrain::texture_generator::TerrainTextureGenerator;
 use update_gaia::update_gaia;
 use update_world::update_world;
 
@@ -111,19 +108,6 @@ fn main() {
       let timers = TimerSet::new();
       let timers = &timers;
 
-      let cl = unsafe {
-        CL::new()
-      };
-      let cl = &cl;
-
-      let texture_generators = [
-          TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[0], BLOCK_WIDTH as u32),
-          TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[1], BLOCK_WIDTH as u32),
-          TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[2], BLOCK_WIDTH as u32),
-          TerrainTextureGenerator::new(&cl, TEXTURE_WIDTH[3], BLOCK_WIDTH as u32),
-      ];
-      let texture_generators = &texture_generators;
-
       in_series!(
         {
           if server.update_timer.lock().unwrap().update(time::precise_time_ns()) > 0 {
@@ -147,7 +131,7 @@ fn main() {
         {
           gaia_thread_recv.lock().unwrap().try_recv_opt()
             .map_to_bool(|up| {
-              update_gaia(timers, server, texture_generators, cl, up)
+              update_gaia(timers, server, up)
             })
         },
       );

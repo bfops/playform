@@ -5,7 +5,6 @@ use common::lod::{LOD, LODIndex, OwnerId, LODMap};
 use common::stopwatch::TimerSet;
 use common::terrain_block::TerrainBlock;
 use in_progress_terrain::InProgressTerrain;
-use noise::Seed;
 use physics::Physics;
 use std::sync::Mutex;
 use terrain::terrain::Terrain;
@@ -23,7 +22,7 @@ pub struct TerrainGameLoader {
 impl TerrainGameLoader {
   pub fn new() -> TerrainGameLoader {
     TerrainGameLoader {
-      terrain: Terrain::new(Seed::new(0), 0),
+      terrain: Terrain::new(),
       in_progress_terrain: InProgressTerrain::new(),
       lod_map: LODMap::new(),
     }

@@ -1,7 +1,6 @@
 //! Define the updates passed from the client to the view.
 
 use cgmath::Point3;
-use std::iter::repeat;
 
 use common::block_position::BlockPosition;
 use common::color::Color3;
@@ -71,33 +70,19 @@ pub fn apply_client_to_view(up: ClientToView, view: &mut View) {
     ClientToView::SetClearColor(color) => {
       view.gl.set_background_color(color.r, color.g, color.b, 1.0);
     },
-    ClientToView::AddBlock((position, block, lod)) => {
-      let block_index =
-        view.terrain_buffers.push_block_data(
-          &mut view.gl,
-          position,
-          block.pixels.as_slice(),
-          lod,
-        );
-
-      let block_indices: Vec<_> =
-        repeat(block_index).take(block.ids.len()).collect();
-
+    ClientToView::AddBlock((_, block, _)) => {
       view.terrain_buffers.push(
         &mut view.gl,
 
         block.vertex_coordinates.as_slice(),
         block.normals.as_slice(),
-        block.coords.as_slice(),
-        block_indices.as_slice(),
         block.ids.as_slice(),
       );
     },
     ClientToView::RemoveTerrain(id) => {
       view.terrain_buffers.swap_remove(&mut view.gl, id);
     },
-    ClientToView::RemoveBlockData(block_position, lod) => {
-      view.terrain_buffers.free_block_data(lod, &block_position);
+    ClientToView::RemoveBlockData(_, _) => {
     },
   };
 }
