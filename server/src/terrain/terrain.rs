@@ -1,4 +1,4 @@
-use cgmath::Vector3;
+use cgmath::{Point, Point3, EuclideanVector, Vector3};
 use noise::Seed;
 use std::collections::hash_map::{HashMap, Entry};
 use std::iter::range_inclusive;
@@ -13,7 +13,7 @@ use common::terrain_block::TerrainBlock;
 
 use terrain::heightmap::HeightMap;
 use terrain::terrain_gen;
-use voxel_tree::VoxelTree;
+use voxel_tree::{VoxelTree, VoxelBounds};
 
 pub const AMPLITUDE: f64 = 64.0;
 pub const FREQUENCY: f64 = 1.0 / 64.0;
@@ -24,10 +24,45 @@ pub const OCTAVES: usize = 2;
 #[derive(Copy)]
 pub struct Voxel {
   pub edge_crosses: EdgeCrosses,
-  pub vertex: Vector3<Frac8>,
+  pub vertex: VoxelVertex,
+  pub normal: VoxelNormal,
   // When crossing an edge aligned with a given axis,
   // should the surface dot positive with the positive axis?
   pub facing: [bool; 3],
+}
+
+#[derive(Copy)]
+pub struct VoxelVertex {
+  pub x: Fracu8,
+  pub y: Fracu8,
+  pub z: Fracu8,
+}
+
+impl VoxelVertex {
+  pub fn to_world_vertex(&self, parent: VoxelBounds) -> Point3<f32> {
+    // Relative position of the vertex.
+    let local =
+      Vector3::new(
+        ((self.x.numerator as i32) << parent.lg_size) as f32 / 256.0,
+        ((self.y.numerator as i32) << parent.lg_size) as f32 / 256.0,
+        ((self.z.numerator as i32) << parent.lg_size) as f32 / 256.0,
+      );
+    let fparent = Point3::new(parent.x as f32, parent.y as f32, parent.z as f32);
+    fparent.add_v(&local)
+  }
+}
+
+#[derive(Copy)]
+pub struct VoxelNormal {
+  pub x: Fraci8,
+  pub y: Fraci8,
+  pub z: Fraci8,
+}
+
+impl VoxelNormal {
+  pub fn to_world_normal(&self) -> Vector3<f32> {
+    Vector3::new(self.x.to_f32(), self.y.to_f32(), self.z.to_f32()).normalize()
+  }
 }
 
 /// Tells you whether and where the surface crossed an edge of a cubic voxel.
@@ -42,16 +77,34 @@ pub struct EdgeCrosses {
 }
 
 #[derive(Copy)]
-pub struct Frac8 {
+pub struct Fracu8 {
   // The denominator is 1 << 8.
   pub numerator: u8,
 }
 
-impl Frac8 {
-  pub fn of(numerator: u8) -> Frac8 {
-    Frac8 {
+impl Fracu8 {
+  pub fn of(numerator: u8) -> Fracu8 {
+    Fracu8 {
       numerator: numerator,
     }
+  }
+}
+
+#[derive(Copy)]
+pub struct Fraci8 {
+  // The denominator is 1 << 8.
+  pub numerator: i8,
+}
+
+impl Fraci8 {
+  pub fn of(numerator: i8) -> Fraci8 {
+    Fraci8 {
+      numerator: numerator,
+    }
+  }
+
+  pub fn to_f32(&self) -> f32 {
+    self.numerator as f32 / 256.0
   }
 }
 

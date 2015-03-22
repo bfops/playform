@@ -1,6 +1,6 @@
 use cgmath::{Point, Point3, Vector, Vector3};
 use cgmath::Aabb3;
-use std::cmp::{partial_min, partial_max};
+use std::cmp::{min, max, partial_min, partial_max};
 use std::iter::range_inclusive;
 use std::num::Int;
 use std::sync::Mutex;
@@ -13,19 +13,22 @@ use common::stopwatch::TimerSet;
 use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, tri};
 
 use terrain::heightmap::HeightMap;
-use terrain::terrain::{Frac8, Voxel, EdgeCrosses};
+use terrain::terrain::{Fracu8, Fraci8, Voxel, VoxelVertex, VoxelNormal, EdgeCrosses};
 use voxel_tree;
 use voxel_tree::{VoxelBounds, VoxelTree};
 
 #[cfg(test)]
 use test;
 
-fn generate_voxel<FieldContains>(
+fn generate_voxel<FieldContains, GetNormal>(
   timers: &TimerSet,
   field_contains: &mut FieldContains,
+  get_normal: &mut GetNormal,
   voxel: VoxelBounds,
 ) -> Option<Voxel>
-  where FieldContains: FnMut(f32, f32, f32) -> bool,
+  where
+    FieldContains: FnMut(f32, f32, f32) -> bool,
+    GetNormal: FnMut(f32, f32, f32) -> Vector3<f32>,
 {
   timers.time("generate_voxel", || {
     let d = 1 << voxel.lg_size;
@@ -106,14 +109,37 @@ fn generate_voxel<FieldContains>(
 
     let vertex = vertex.div_s(n);
     let vertex =
+      VoxelVertex {
+        x: Fracu8::of(vertex.x as u8),
+        y: Fracu8::of(vertex.y as u8),
+        z: Fracu8::of(vertex.z as u8),
+      };
+
+    let normal;
+    {
+      // Okay, this is silly to have right after we construct the vertex.
+      let vertex = vertex.to_world_vertex(voxel);
+      normal = get_normal(vertex.x, vertex.y, vertex.z).mul_s(127.0);
+    }
+
+    let normal = Vector3::new(normal.x as i32, normal.y as i32, normal.z as i32);
+    let normal =
       Vector3::new(
-        Frac8::of(vertex.x as u8),
-        Frac8::of(vertex.y as u8),
-        Frac8::of(vertex.z as u8),
+        max(-127, min(127, normal.x)) as i8,
+        max(-127, min(127, normal.y)) as i8,
+        max(-127, min(127, normal.z)) as i8,
       );
+
+    let normal =
+      VoxelNormal {
+        x: Fraci8::of(normal.x),
+        y: Fraci8::of(normal.y),
+        z: Fraci8::of(normal.z),
+      };
 
     Some(Voxel {
       vertex: vertex,
+      normal: normal,
       edge_crosses: edges,
       facing: facing,
     })
@@ -163,62 +189,63 @@ pub fn generate_block(
     let lg_size = lg_size as u8;
 
     {
-      let mut add_poly = |v1: Point3<f32>, v2: Point3<f32>, center: Point3<f32>| {
-        let id = id_allocator.lock().unwrap().allocate();
+      let mut add_poly =
+        |v1: Point3<f32>, n1, v2: Point3<f32>, n2, center: Point3<f32>, center_normal| {
+          let id = id_allocator.lock().unwrap().allocate();
 
-        let minx = partial_min(v1.x, v2.x);
-        let minx = minx.and_then(|m| partial_min(m, center.x));
-        let minx = minx.unwrap();
+          let minx = partial_min(v1.x, v2.x);
+          let minx = minx.and_then(|m| partial_min(m, center.x));
+          let minx = minx.unwrap();
 
-        let maxx = partial_max(v1.x, v2.x);
-        let maxx = maxx.and_then(|m| partial_max(m, center.x));
-        let maxx = maxx.unwrap();
+          let maxx = partial_max(v1.x, v2.x);
+          let maxx = maxx.and_then(|m| partial_max(m, center.x));
+          let maxx = maxx.unwrap();
 
-        let miny = partial_min(v1.y, v2.y);
-        let miny = miny.and_then(|m| partial_min(m, center.y));
-        let miny = miny.unwrap();
+          let miny = partial_min(v1.y, v2.y);
+          let miny = miny.and_then(|m| partial_min(m, center.y));
+          let miny = miny.unwrap();
 
-        let maxy = partial_max(v1.y, v2.y);
-        let maxy = maxy.and_then(|m| partial_max(m, center.y));
-        let maxy = maxy.unwrap();
+          let maxy = partial_max(v1.y, v2.y);
+          let maxy = maxy.and_then(|m| partial_max(m, center.y));
+          let maxy = maxy.unwrap();
 
-        let minz = partial_min(v1.z, v2.z);
-        let minz = minz.and_then(|m| partial_min(m, center.z));
-        let minz = minz.unwrap();
+          let minz = partial_min(v1.z, v2.z);
+          let minz = minz.and_then(|m| partial_min(m, center.z));
+          let minz = minz.unwrap();
 
-        let maxz = partial_max(v1.z, v2.z);
-        let maxz = maxz.and_then(|m| partial_max(m, center.z));
-        let maxz = maxz.unwrap();
+          let maxz = partial_max(v1.z, v2.z);
+          let maxz = maxz.and_then(|m| partial_max(m, center.z));
+          let maxz = maxz.unwrap();
 
-        let norm = Vector3::new(0.0, 1.0, 0.0);
+          block.vertex_coordinates.push(tri(v1, v2, center));
+          block.normals.push(tri(n1, n2, center_normal));
+          block.ids.push(id);
 
-        block.vertex_coordinates.push(tri(v1, v2, center));
-        // TODO: Real normals.
-        block.normals.push(tri(norm, norm, norm));
-        block.ids.push(id);
-
-        block.bounds.push((
-          id,
-          Aabb3::new(
-            // TODO: Remove this - 1.0. It's a temporary hack until voxel collisions work.
-            Point3::new(minx, miny - 1.0, minz),
-            Point3::new(maxx, maxy, maxz),
-          ),
-        ));
-      };
+          block.bounds.push((
+            id,
+            Aabb3::new(
+              // TODO: Remove this - 1.0. It's a temporary hack until voxel collisions work.
+              Point3::new(minx, miny - 1.0, minz),
+              Point3::new(maxx, maxy, maxz),
+            ),
+          ));
+        };
 
       let mut field_contains = |x, y, z| {
         heightmap.height_at(x, z) >= y
       };
 
-      macro_rules! get_voxel(($v:expr) => {{
-        let bounds = VoxelBounds::new($v.x, $v.y, $v.z, lg_size);
-        let branch = voxels.get_mut(bounds);
+      let mut get_normal = |x, _, z| {
+        heightmap.normal_at(x, z, voxel_size as f32)
+      };
+
+      macro_rules! get_voxel(($bounds:expr) => {{
+        let branch = voxels.get_mut($bounds);
         match branch {
           &mut voxel_tree::TreeBody::Leaf(v) => Some(v),
           &mut voxel_tree::TreeBody::Empty => {
             // TODO: Add a "yes this is empty I checked" flag so we don't regen every time.
-            generate_voxel(timers, &mut field_contains, bounds).map(|v| {
+            generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds).map(|v| {
               *branch = voxel_tree::TreeBody::Leaf(v);
               v
             })
@@ -226,7 +253,7 @@ pub fn generate_block(
           &mut voxel_tree::TreeBody::Branch(_) => {
             // Overwrite existing for now.
             // TODO: Don't do ^that.
-            generate_voxel(timers, &mut field_contains, bounds).map(|v| {
+            generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds).map(|v| {
               *branch = voxel_tree::TreeBody::Leaf(v);
               v
             })
@@ -234,26 +261,11 @@ pub fn generate_block(
         }
       }});
 
-      let to_world_vertex = |local: Vector3<Frac8>, voxel_position: Point3<i32>| {
-        // Relative position of the vertex.
-        let local =
-          Vector3::new(
-            ((local.x.numerator as i32) << lg_size) as f32 / 256.0,
-            ((local.y.numerator as i32) << lg_size) as f32 / 256.0,
-            ((local.z.numerator as i32) << lg_size) as f32 / 256.0,
-          );
-        let fv =
-          Point3::new(
-            voxel_position.x as f32,
-            voxel_position.y as f32,
-            voxel_position.z as f32,
-          );
-        fv.add_v(&local)
-      };
-
-      macro_rules! get_vertex(($w:expr) => (
-        to_world_vertex(get_voxel!($w).unwrap().vertex, $w)
-      ));
+      macro_rules! get_vertex(($v:expr) => {{
+        let bounds = VoxelBounds::new($v.x, $v.y, $v.z, lg_size);
+        let voxel = get_voxel!(bounds).unwrap();
+        (voxel.vertex.to_world_vertex(bounds), voxel.normal.to_world_normal())
+      }});
 
       macro_rules! extract((
         $edges:ident,
@@ -266,7 +278,8 @@ pub fn generate_block(
           for z in 0..lateral_samples {
             let w = iposition.add_v(&Vector3::new(x << lg_size, y << lg_size, z << lg_size));
             let voxel;
-            match get_voxel!(w) {
+            let bounds = VoxelBounds::new(w.x, w.y, w.z, lg_size);
+            match get_voxel!(bounds) {
               None => continue,
               Some(v) => voxel = v,
             }
@@ -280,26 +293,31 @@ pub fn generate_block(
             // We know they have vertices in them because if the surface crosses an edge,
             // it must cross that edge's neighbors.
 
-            let v1 = get_vertex!(w.add_v(&$d1).add_v(&$d2));
-            let v2 = get_vertex!(w.add_v(&$d1));
-            let v3 = to_world_vertex(voxel.vertex, w);
-            let v4 = get_vertex!(w.add_v(&$d2));
+            let (v1, n1) = get_vertex!(w.add_v(&$d1).add_v(&$d2));
+            let (v2, n2) = get_vertex!(w.add_v(&$d1));
+            let v3 = voxel.vertex.to_world_vertex(bounds);
+            let n3 = voxel.normal.to_world_normal();
+            let (v4, n4) = get_vertex!(w.add_v(&$d2));
+
             // Put a vertex at the average of the vertices.
             let center =
               v1.add_v(&v2.to_vec()).add_v(&v3.to_vec()).add_v(&v4.to_vec()).div_s(4.0);
+            let center_normal = n1.add_v(&n2).add_v(&n3).add_v(&n4).div_s(4.0);
+
+            let mut add_poly = |v1, n1, v2, n2| add_poly(v1, n1, v2, n2, center, center_normal);
 
             if voxel.facing[$facing] {
               // The polys are visible from positive infinity.
-              add_poly(v1, v4, center);
-              add_poly(v4, v3, center);
-              add_poly(v3, v2, center);
-              add_poly(v2, v1, center);
+              add_poly(v1, n1, v4, n4);
+              add_poly(v4, n4, v3, n3);
+              add_poly(v3, n3, v2, n2);
+              add_poly(v2, n2, v1, n1);
             } else {
               // The polys are visible from negative infinity.
-              add_poly(v1, v2, center);
-              add_poly(v2, v3, center);
-              add_poly(v3, v4, center);
-              add_poly(v4, v1, center);
+              add_poly(v1, n1, v2, n2);
+              add_poly(v2, n2, v3, n3);
+              add_poly(v3, n3, v4, n4);
+              add_poly(v4, n4, v1, n1);
             }
           }}}
         )
