@@ -13,7 +13,7 @@ use common::stopwatch::TimerSet;
 use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, tri};
 
 use terrain::heightmap::HeightMap;
-use terrain::terrain::{Fracu8, Fraci8, Voxel, VoxelVertex, VoxelNormal, EdgeCrosses};
+use terrain::terrain::{Fracu8, Fraci8, Voxel, VoxelVertex, VoxelNormal, Edge};
 use voxel_tree;
 use voxel_tree::{VoxelBounds, VoxelTree};
 
@@ -50,30 +50,26 @@ fn generate_voxel<FieldContains, GetNormal>(
       ],
     ];
 
-    let mut facing = [false; 3];
-
-    macro_rules! edge(($f:expr, $x1:expr, $y1:expr, $z1:expr, $x2:expr, $y2:expr, $z2:expr) => {{
-      let r = corners[$x1][$y1][$z1] != corners[$x2][$y2][$z2];
-      if r && corners[$x1][$y1][$z1] {
-        facing[$f] = true;
+    let edge = |x1:usize, y1:usize, z1:usize, x2:usize, y2:usize, z2:usize| {
+      let is_crossed = corners[x1][y1][z1] != corners[x2][y2][z2];
+      Edge {
+        is_crossed: is_crossed,
+        direction: corners[x2][y2][z2],
       }
-      r
-    }});
-
-    let edges = EdgeCrosses {
-      x_edges: [
-        [ edge!(0, 0,0,0, 1,0,0), edge!(0, 0,0,1, 1,0,1) ],
-        [ edge!(0, 0,1,0, 1,1,0), edge!(0, 0,1,1, 1,1,1) ],
-      ],
-      y_edges: [
-        [ edge!(1, 0,0,0, 0,1,0), edge!(1, 1,0,0, 1,1,0) ],
-        [ edge!(1, 0,0,1, 0,1,1), edge!(1, 1,0,1, 1,1,1) ],
-      ],
-      z_edges: [
-        [ edge!(2, 0,0,0, 0,0,1), edge!(2, 1,0,0, 1,0,1) ],
-        [ edge!(2, 0,1,0, 0,1,1), edge!(2, 1,1,0, 1,1,1) ],
-      ],
     };
+
+    let x_edges = [
+      [ edge(0,0,0, 1,0,0), edge(0,0,1, 1,0,1) ],
+      [ edge(0,1,0, 1,1,0), edge(0,1,1, 1,1,1) ],
+    ];
+    let y_edges = [
+      [ edge(0,0,0, 0,1,0), edge(1,0,0, 1,1,0) ],
+      [ edge(0,0,1, 0,1,1), edge(1,0,1, 1,1,1) ],
+    ];
+    let z_edges = [
+      [ edge(0,0,0, 0,0,1), edge(1,0,0, 1,0,1) ],
+      [ edge(0,1,0, 0,1,1), edge(1,1,0, 1,1,1) ],
+    ];
 
     let mut vertex = Vector3::new(0, 0, 0);
     let mut n = 0;
@@ -81,7 +77,7 @@ fn generate_voxel<FieldContains, GetNormal>(
 
     for y in range_inclusive(0, 1) {
     for z in range_inclusive(0, 1) {
-      if edges.x_edges[y][z] {
+      if x_edges[y][z].is_crossed {
         vertex.add_self_v(&Vector3::new(half, y << 8, z << 8));
         n += 1;
       }
@@ -89,7 +85,7 @@ fn generate_voxel<FieldContains, GetNormal>(
 
     for x in range_inclusive(0, 1) {
     for z in range_inclusive(0, 1) {
-      if edges.y_edges[x][z] {
+      if y_edges[x][z].is_crossed {
         vertex.add_self_v(&Vector3::new(x << 8, half, z << 8));
         n += 1;
       }
@@ -97,7 +93,7 @@ fn generate_voxel<FieldContains, GetNormal>(
 
     for x in range_inclusive(0, 1) {
     for y in range_inclusive(0, 1) {
-      if edges.z_edges[x][y] {
+      if z_edges[x][y].is_crossed {
         vertex.add_self_v(&Vector3::new(x << 8, y << 8, half));
         n += 1;
       }
@@ -140,8 +136,9 @@ fn generate_voxel<FieldContains, GetNormal>(
     Some(Voxel {
       vertex: vertex,
       normal: normal,
-      edge_crosses: edges,
-      facing: facing,
+      x_edges: x_edges,
+      y_edges: y_edges,
+      z_edges: z_edges,
     })
   })
 }
@@ -284,8 +281,8 @@ pub fn generate_block(
               Some(v) => voxel = v,
             }
 
-            let crosses_surface = voxel.edge_crosses.$edges[0][0];
-            if !crosses_surface {
+            let edge = voxel.$edges[0][0];
+            if !edge.is_crossed {
               continue
             }
 
@@ -306,18 +303,18 @@ pub fn generate_block(
 
             let mut add_poly = |v1, n1, v2, n2| add_poly(v1, n1, v2, n2, center, center_normal);
 
-            if voxel.facing[$facing] {
-              // The polys are visible from positive infinity.
-              add_poly(v1, n1, v4, n4);
-              add_poly(v4, n4, v3, n3);
-              add_poly(v3, n3, v2, n2);
-              add_poly(v2, n2, v1, n1);
-            } else {
+            if edge.direction {
               // The polys are visible from negative infinity.
               add_poly(v1, n1, v2, n2);
               add_poly(v2, n2, v3, n3);
               add_poly(v3, n3, v4, n4);
               add_poly(v4, n4, v1, n1);
+            } else {
+              // The polys are visible from positive infinity.
+              add_poly(v1, n1, v4, n4);
+              add_poly(v4, n4, v3, n3);
+              add_poly(v3, n3, v2, n2);
+              add_poly(v2, n2, v1, n1);
             }
           }}}
         )

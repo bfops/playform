@@ -21,17 +21,20 @@ pub const PERSISTENCE: f64 = 1.0 / 16.0;
 pub const LACUNARITY: f64 = 8.0;
 pub const OCTAVES: usize = 2;
 
-#[derive(Copy)]
+#[derive(Debug, Copy)]
 pub struct Voxel {
-  pub edge_crosses: EdgeCrosses,
   pub vertex: VoxelVertex,
   pub normal: VoxelNormal,
-  // When crossing an edge aligned with a given axis,
-  // should the surface dot positive with the positive axis?
-  pub facing: [bool; 3],
+
+  // x_edges[y][z]
+  pub x_edges: [[Edge; 2]; 2],
+  // y_edges[x][z]
+  pub y_edges: [[Edge; 2]; 2],
+  // z_edges[x][y]
+  pub z_edges: [[Edge; 2]; 2],
 }
 
-#[derive(Copy)]
+#[derive(Debug, Copy)]
 pub struct VoxelVertex {
   pub x: Fracu8,
   pub y: Fracu8,
@@ -52,7 +55,7 @@ impl VoxelVertex {
   }
 }
 
-#[derive(Copy)]
+#[derive(Debug, Copy)]
 pub struct VoxelNormal {
   pub x: Fraci8,
   pub y: Fraci8,
@@ -67,16 +70,13 @@ impl VoxelNormal {
 
 /// Tells you whether and where the surface crossed an edge of a cubic voxel.
 #[derive(Debug, Copy)]
-pub struct EdgeCrosses {
-  // x_edges[y][z]
-  pub x_edges: [[bool; 2]; 2],
-  // y_edges[x][z]
-  pub y_edges: [[bool; 2]; 2],
-  // z_edges[x][y]
-  pub z_edges: [[bool; 2]; 2],
+pub struct Edge {
+  pub is_crossed: bool,
+  // If this is true, the edge moves into the volume as its coordinates increase.
+  pub direction: bool,
 }
 
-#[derive(Copy)]
+#[derive(Debug, Copy)]
 pub struct Fracu8 {
   // The denominator is 1 << 8.
   pub numerator: u8,
@@ -90,7 +90,7 @@ impl Fracu8 {
   }
 }
 
-#[derive(Copy)]
+#[derive(Debug, Copy)]
 pub struct Fraci8 {
   // The denominator is 1 << 8.
   pub numerator: i8,
@@ -115,7 +115,7 @@ fn small_voxel() {
   // Check that the leaf does not increase the size of TreeBody on 64-bit systems.
 
   let max_ptr_size = mem::size_of::<u64>();
-  println!("size_of::<EdgeCrosses>() = {}", mem::size_of::<EdgeCrosses>());
+  println!("size_of::<Edges>() = {}", mem::size_of::<Edges>());
   println!("size_of::<Voxel>() = {}", mem::size_of::<Voxel>());
   assert!(mem::size_of::<Voxel>() <= max_ptr_size);
 }
