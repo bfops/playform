@@ -1,6 +1,7 @@
 use cgmath::{Point, Point3, Vector, Vector3};
 use cgmath::Aabb3;
 use std::cmp::{partial_min, partial_max};
+use std::iter::range_inclusive;
 use std::num::Int;
 use std::sync::Mutex;
 
@@ -11,6 +12,7 @@ use common::lod::LODIndex;
 use common::stopwatch::TimerSet;
 use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, tri};
 
+use terrain::heightmap::HeightMap;
 use terrain::terrain::{Frac8, Voxel, EdgeCrosses};
 use voxel_tree;
 use voxel_tree::{VoxelBounds, VoxelTree};
@@ -18,36 +20,103 @@ use voxel_tree::{VoxelBounds, VoxelTree};
 #[cfg(test)]
 use test;
 
-fn generate_voxel(
+fn generate_voxel<FieldContains>(
   timers: &TimerSet,
+  field_contains: &mut FieldContains,
   voxel: VoxelBounds,
-) -> Option<Voxel> {
+) -> Option<Voxel>
+  where FieldContains: FnMut(f32, f32, f32) -> bool,
+{
   timers.time("generate_voxel", || {
-    let h = 50;
-    let dy = h - voxel.y;
-    // The voxel starts below y = h.
-    if dy >= 0 {
-      // "What fraction of the way through the voxel is y = h?"
-      // expressed as the numerator of a /256 fraction.
-      // TODO: This could round instead of truncate.
-      let num = (dy << 8) >> voxel.lg_size;
-      // If the fraction < 1, then y = h is within the voxel.
-      if num & !0xFF == 0 {
-        let half = Frac8::of(0x80);
-        let y = Frac8::of(num as u8);
-        return Some(Voxel {
-          edge_crosses: EdgeCrosses {
-            x_edges: [[false; 2]; 2],
-            y_edges: [[true; 2]; 2],
-            z_edges: [[false; 2]; 2],
-          },
-          vertex: Vector3::new(half, y, half),
-          facing: [true; 3],
-        })
+    let d = 1 << voxel.lg_size;
+    let x1 = voxel.x as f32;
+    let x2 = (voxel.x + d) as f32;
+    let y1 = voxel.y as f32;
+    let y2 = (voxel.y + d) as f32;
+    let z1 = voxel.z as f32;
+    let z2 = (voxel.z + d) as f32;
+    // corners[x][y][z]
+    let corners = [
+      [
+        [ field_contains(x1, y1, z1), field_contains(x1, y1, z2) ],
+        [ field_contains(x1, y2, z1), field_contains(x1, y2, z2) ],
+      ],
+      [
+        [ field_contains(x2, y1, z1), field_contains(x2, y1, z2) ],
+        [ field_contains(x2, y2, z1), field_contains(x2, y2, z2) ],
+      ],
+    ];
+
+    let mut facing = [false; 3];
+
+    macro_rules! edge(($f:expr, $x1:expr, $y1:expr, $z1:expr, $x2:expr, $y2:expr, $z2:expr) => {{
+      let r = corners[$x1][$y1][$z1] != corners[$x2][$y2][$z2];
+      if r && corners[$x1][$y1][$z1] {
+        facing[$f] = true;
       }
+      r
+    }});
+
+    let edges = EdgeCrosses {
+      x_edges: [
+        [ edge!(0, 0,0,0, 1,0,0), edge!(0, 0,0,1, 1,0,1) ],
+        [ edge!(0, 0,1,0, 1,1,0), edge!(0, 0,1,1, 1,1,1) ],
+      ],
+      y_edges: [
+        [ edge!(1, 0,0,0, 0,1,0), edge!(1, 1,0,0, 1,1,0) ],
+        [ edge!(1, 0,0,1, 0,1,1), edge!(1, 1,0,1, 1,1,1) ],
+      ],
+      z_edges: [
+        [ edge!(2, 0,0,0, 0,0,1), edge!(2, 1,0,0, 1,0,1) ],
+        [ edge!(2, 0,1,0, 0,1,1), edge!(2, 1,1,0, 1,1,1) ],
+      ],
+    };
+
+    let mut vertex = Vector3::new(0, 0, 0);
+    let mut n = 0;
+    let half = 0x80;
+
+    for y in range_inclusive(0, 1) {
+    for z in range_inclusive(0, 1) {
+      if edges.x_edges[y][z] {
+        vertex.add_self_v(&Vector3::new(half, y << 8, z << 8));
+        n += 1;
+      }
+    }}
+
+    for x in range_inclusive(0, 1) {
+    for z in range_inclusive(0, 1) {
+      if edges.y_edges[x][z] {
+        vertex.add_self_v(&Vector3::new(x << 8, half, z << 8));
+        n += 1;
+      }
+    }}
+
+    for x in range_inclusive(0, 1) {
+    for y in range_inclusive(0, 1) {
+      if edges.z_edges[x][y] {
+        vertex.add_self_v(&Vector3::new(x << 8, y << 8, half));
+        n += 1;
+      }
+    }}
+
+    if n == 0 {
+      return None
     }
 
-    None
+    let vertex = vertex.div_s(n);
+    let vertex =
+      Vector3::new(
+        Frac8::of(vertex.x as u8),
+        Frac8::of(vertex.y as u8),
+        Frac8::of(vertex.z as u8),
+      );
+
+    Some(Voxel {
+      vertex: vertex,
+      edge_crosses: edges,
+      facing: facing,
+    })
   })
 }
 
@@ -72,6 +141,7 @@ fn bench_generate_empty_voxel(bencher: &mut test::Bencher) {
 pub fn generate_block(
   timers: &TimerSet,
   id_allocator: &Mutex<IdAllocator<EntityId>>,
+  heightmap: &HeightMap,
   voxels: &mut VoxelTree<Voxel>,
   position: &BlockPosition,
   lod_index: LODIndex,
@@ -137,14 +207,18 @@ pub fn generate_block(
         ));
       };
 
-      let mut get_voxel = |v: Point3<i32>| {
-        let bounds = VoxelBounds::new(v.x, v.y, v.z, lg_size);
+      let mut field_contains = |x, y, z| {
+        heightmap.height_at(x, z) >= y
+      };
+
+      macro_rules! get_voxel(($v:expr) => {{
+        let bounds = VoxelBounds::new($v.x, $v.y, $v.z, lg_size);
         let branch = voxels.get_mut(bounds);
         match branch {
           &mut voxel_tree::TreeBody::Leaf(v) => Some(v),
           &mut voxel_tree::TreeBody::Empty => {
             // TODO: Add a "yes this is empty I checked" flag so we don't regen every time.
-            generate_voxel(timers, bounds).map(|v| {
+            generate_voxel(timers, &mut field_contains, bounds).map(|v| {
               *branch = voxel_tree::TreeBody::Leaf(v);
               v
             })
@@ -152,13 +226,13 @@ pub fn generate_block(
           &mut voxel_tree::TreeBody::Branch(_) => {
             // Overwrite existing for now.
             // TODO: Don't do ^that.
-            generate_voxel(timers, bounds).map(|v| {
+            generate_voxel(timers, &mut field_contains, bounds).map(|v| {
               *branch = voxel_tree::TreeBody::Leaf(v);
               v
             })
           },
         }
-      };
+      }});
 
       let to_world_vertex = |local: Vector3<Frac8>, voxel_position: Point3<i32>| {
         // Relative position of the vertex.
@@ -178,7 +252,7 @@ pub fn generate_block(
       };
 
       macro_rules! get_vertex(($w:expr) => (
-        to_world_vertex(get_voxel($w).unwrap().vertex, $w)
+        to_world_vertex(get_voxel!($w).unwrap().vertex, $w)
       ));
 
       macro_rules! extract((
@@ -192,7 +266,7 @@ pub fn generate_block(
           for z in 0..lateral_samples {
             let w = iposition.add_v(&Vector3::new(x << lg_size, y << lg_size, z << lg_size));
             let voxel;
-            match get_voxel(w) {
+            match get_voxel!(w) {
               None => continue,
               Some(v) => voxel = v,
             }

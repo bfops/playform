@@ -1,12 +1,15 @@
+use noise::Seed;
+use std::sync::Mutex;
+
 use common::block_position::BlockPosition;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::{LOD, LODIndex, OwnerId, LODMap};
 use common::stopwatch::TimerSet;
 use common::terrain_block::TerrainBlock;
+
 use in_progress_terrain::InProgressTerrain;
 use physics::Physics;
-use std::sync::Mutex;
 use terrain::terrain::Terrain;
 use update_gaia::{ServerToGaia, LoadReason};
 
@@ -22,7 +25,7 @@ pub struct TerrainGameLoader {
 impl TerrainGameLoader {
   pub fn new() -> TerrainGameLoader {
     TerrainGameLoader {
-      terrain: Terrain::new(),
+      terrain: Terrain::new(Seed::new(0)),
       in_progress_terrain: InProgressTerrain::new(),
       lod_map: LODMap::new(),
     }

@@ -1,4 +1,5 @@
 use cgmath::Vector3;
+use noise::Seed;
 use std::collections::hash_map::{HashMap, Entry};
 use std::iter::range_inclusive;
 use std::sync::Mutex;
@@ -10,16 +11,22 @@ use common::lod::LODIndex;
 use common::stopwatch::TimerSet;
 use common::terrain_block::TerrainBlock;
 
+use terrain::heightmap::HeightMap;
 use terrain::terrain_gen;
 use voxel_tree::VoxelTree;
 
 pub const AMPLITUDE: f64 = 64.0;
+pub const FREQUENCY: f64 = 1.0 / 64.0;
+pub const PERSISTENCE: f64 = 1.0 / 16.0;
+pub const LACUNARITY: f64 = 8.0;
+pub const OCTAVES: usize = 2;
 
 #[derive(Copy)]
 pub struct Voxel {
   pub edge_crosses: EdgeCrosses,
   pub vertex: Vector3<Frac8>,
-  // When crossing a given axis, should the surface dot positive with the positive axis?
+  // When crossing an edge aligned with a given axis,
+  // should the surface dot positive with the positive axis?
   pub facing: [bool; 3],
 }
 
@@ -66,14 +73,16 @@ pub struct TerrainMipMesh {
 
 /// This struct contains and lazily generates the world's terrain.
 pub struct Terrain {
+  pub heightmap: HeightMap,
   // all the blocks that have ever been created.
   pub all_blocks: HashMap<BlockPosition, TerrainMipMesh>,
   pub voxels: VoxelTree<Voxel>,
 }
 
 impl Terrain {
-  pub fn new() -> Terrain {
+  pub fn new(terrain_seed: Seed) -> Terrain {
     Terrain {
+      heightmap: HeightMap::new(terrain_seed, OCTAVES, FREQUENCY, PERSISTENCE, LACUNARITY, AMPLITUDE),
       all_blocks: HashMap::new(),
       voxels: VoxelTree::new(),
     }
@@ -101,6 +110,7 @@ impl Terrain {
             terrain_gen::generate_block(
               timers,
               id_allocator,
+              &self.heightmap,
               &mut self.voxels,
               position,
               lod_index,
