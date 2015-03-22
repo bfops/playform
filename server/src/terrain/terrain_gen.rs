@@ -334,8 +334,8 @@ pub fn generate_block(
 
       extract!(
         z_edges, 2,
-        Vector3::new(0, -voxel_size, 0),
         Vector3::new(-voxel_size, 0, 0),
+        Vector3::new(0, -voxel_size, 0),
       );
     }
 
