@@ -84,7 +84,7 @@ impl<'a> TerrainBuffers<'a> {
       block_indices: BufferTexture::new(gl, gl::R32UI, POLYGON_BUDGET),
 
       block_to_index: HashMap::new(),
-      free_list: range(0, num_blocks as u32).collect(),
+      free_list: (0 .. num_blocks as u32).collect(),
       lods: {
         let mut lods = BufferTexture::new(gl, gl::R32UI, num_blocks);
         let init: Vec<_> = repeat(u32::MAX).take(num_blocks).collect();
@@ -291,7 +291,7 @@ impl<'a> PixelBuffer<'a> {
         buffer
       },
       block_to_index: HashMap::new(),
-      free_list: range(0, len).collect(),
+      free_list: (0 .. len).collect(),
     }
   }
 

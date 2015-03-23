@@ -44,7 +44,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
       if surroundings_timer.update(time::precise_time_ns()) > 0 {
         let position = *client.player_position.lock().unwrap();
         let position = BlockPosition::from_world_position(&position);
-        let mut cap = range(0, 1 << 16);
+        let mut cap = 0 .. 1 << 16;
         client.surroundings_loader.lock().unwrap().update(
           position,
           || { cap.next().is_some() },

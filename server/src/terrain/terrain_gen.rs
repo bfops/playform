@@ -32,9 +32,9 @@ pub fn generate_block(
     let sample_width = BLOCK_WIDTH as f32 / lateral_samples as f32;
 
     let mut any_tiles = false;
-    for dx in range(0, lateral_samples) {
+    for dx in 0 .. lateral_samples {
       let dx = dx as f32;
-      for dz in range(0, lateral_samples) {
+      for dz in 0 .. lateral_samples {
         let dz = dz as f32;
         let tex_sample =
           TEXTURE_WIDTH[lod_index.0 as usize] as f32 / lateral_samples as f32;

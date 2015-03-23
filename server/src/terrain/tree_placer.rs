@@ -168,7 +168,7 @@ impl TreePlacer {
       let mut points: Vec<Point3<_>> = {
         let n_points =
           (crown_width * crown_width * crown_height * TREE_NODES[lod_index]) as u32;
-        range(0, n_points)
+        (0 .. n_points)
         .map(|_| {
           let x = rng.next_u32();
           let y = rng.next_u32();
