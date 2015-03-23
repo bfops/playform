@@ -34,7 +34,7 @@ pub fn view_thread<Recv, UpdateServer>(
 {
   let timers = TimerSet::new();
 
-  sdl2::init(sdl2::INIT_EVERYTHING);
+  let sdl = sdl2::init(sdl2::INIT_EVERYTHING).unwrap();
 
   video::gl_set_attribute(video::GLAttr::GLContextMajorVersion, 3);
   video::gl_set_attribute(video::GLAttr::GLContextMinorVersion, 3);
@@ -55,6 +55,7 @@ pub fn view_thread<Recv, UpdateServer>(
 
   // Send text input events.
   sdl2::keyboard::start_text_input();
+  let mut event_pump = sdl.event_pump();
 
   let _sdl_gl_context = window.gl_create_context().unwrap();
 
@@ -89,17 +90,17 @@ pub fn view_thread<Recv, UpdateServer>(
 
   'game_loop:loop {
     'event_loop:loop {
-      match sdl2::event::poll_event() {
-        Event::None => {
+      match event_pump.poll_event() {
+        None => {
           break 'event_loop;
         },
-        Event::Quit{..} => {
+        Some(Event::Quit{..}) => {
           break 'game_loop;
         }
-        Event::AppTerminating{..} => {
+        Some(Event::AppTerminating{..}) => {
           break 'game_loop;
         }
-        Event::Window{win_event_id: event_id, ..} => {
+        Some(Event::Window{win_event_id: event_id, ..}) => {
           // Manage has_focus so that we don't capture the cursor when the
           // window is in the background
           match event_id {
@@ -114,7 +115,7 @@ pub fn view_thread<Recv, UpdateServer>(
             _ => {}
           }
         }
-        event => {
+        Some(event) => {
           if has_focus {
             process_event(
               &timers,
