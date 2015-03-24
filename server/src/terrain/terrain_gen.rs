@@ -16,9 +16,6 @@ use terrain::terrain::{Fracu8, Fraci8, Voxel, VoxelVertex, VoxelNormal, Edge};
 use voxel_tree;
 use voxel_tree::{VoxelBounds, VoxelTree};
 
-#[cfg(test)]
-use test;
-
 fn generate_voxel<Field, GetNormal>(
   timers: &TimerSet,
   field: &mut Field,
@@ -185,24 +182,6 @@ fn generate_voxel<Field, GetNormal>(
       ],
     })
   })
-}
-
-#[bench]
-fn bench_generate_interesting_voxel(bencher: &mut test::Bencher) {
-  let timers = TimerSet::new();
-  bencher.iter(|| {
-    let voxel = generate_voxel(&timers, VoxelBounds::new(0, 0, 0, 6));
-    assert!(voxel.is_some());
-  });
-}
-
-#[bench]
-fn bench_generate_empty_voxel(bencher: &mut test::Bencher) {
-  let timers = TimerSet::new();
-  bencher.iter(|| {
-    let voxel = generate_voxel(&timers, VoxelBounds::new(0, 0, 0, 4));
-    assert!(voxel.is_none());
-  });
 }
 
 pub fn generate_block(

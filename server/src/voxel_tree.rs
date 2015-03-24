@@ -428,7 +428,7 @@ fn simple_inserts(bencher: &mut test::Bencher) {
     let mut tree: VoxelTree<i32> = VoxelTree::new();
     tree.grow_to_hold(VoxelBounds::new(0, 0, 0, 30));
 
-    for i in range(-10, 10) {
+    for i in -10..10 {
       *tree.get_mut(VoxelBounds::new(i, i, i, 0)) = TreeBody::Leaf(0);
     }
 

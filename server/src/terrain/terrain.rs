@@ -117,7 +117,6 @@ fn small_voxel() {
   // Check that the leaf does not increase the size of TreeBody on 64-bit systems.
 
   let max_ptr_size = mem::size_of::<u64>();
-  println!("size_of::<Edges>() = {}", mem::size_of::<Edges>());
   println!("size_of::<Voxel>() = {}", mem::size_of::<Voxel>());
   assert!(mem::size_of::<Voxel>() <= max_ptr_size);
 }
