@@ -1,7 +1,6 @@
 use cgmath::{Point, Point3, Vector, Vector3};
 use cgmath::Aabb3;
 use std::cmp::{min, max, partial_min, partial_max};
-use std::iter::range_inclusive;
 use std::num::Int;
 use std::sync::Mutex;
 
@@ -20,14 +19,14 @@ use voxel_tree::{VoxelBounds, VoxelTree};
 #[cfg(test)]
 use test;
 
-fn generate_voxel<FieldContains, GetNormal>(
+fn generate_voxel<Field, GetNormal>(
   timers: &TimerSet,
-  field_contains: &mut FieldContains,
+  field: &mut Field,
   get_normal: &mut GetNormal,
   voxel: VoxelBounds,
 ) -> Option<Voxel>
   where
-    FieldContains: FnMut(f32, f32, f32) -> bool,
+    Field: FnMut(f32, f32, f32) -> f32,
     GetNormal: FnMut(f32, f32, f32) -> Vector3<f32>,
 {
   timers.time("generate_voxel", || {
@@ -41,20 +40,27 @@ fn generate_voxel<FieldContains, GetNormal>(
     // corners[x][y][z]
     let corners = [
       [
-        [ field_contains(x1, y1, z1), field_contains(x1, y1, z2) ],
-        [ field_contains(x1, y2, z1), field_contains(x1, y2, z2) ],
+        [ field(x1, y1, z1), field(x1, y1, z2) ],
+        [ field(x1, y2, z1), field(x1, y2, z2) ],
       ],
       [
-        [ field_contains(x2, y1, z1), field_contains(x2, y1, z2) ],
-        [ field_contains(x2, y2, z1), field_contains(x2, y2, z2) ],
+        [ field(x2, y1, z1), field(x2, y1, z2) ],
+        [ field(x2, y2, z1), field(x2, y2, z2) ],
       ],
     ];
 
     let edge = |x1:usize, y1:usize, z1:usize, x2:usize, y2:usize, z2:usize| {
-      let is_crossed = corners[x1][y1][z1] != corners[x2][y2][z2];
-      Edge {
-        is_crossed: is_crossed,
-        direction: corners[x2][y2][z2],
+      let c1 = corners[x1][y1][z1];
+      let c2 = corners[x2][y2][z2];
+      if c1.signum() != c2.signum() {
+        // Since the numbers are different signs, 0 must be between them.
+        // => -1 <= cross <= 1 (aside from error).
+        let cross = c1 / (c2 - c1);
+        let cross = (cross.abs() * 256.0) as i32;
+        let cross = min(cross, 0xFF) as u8;
+        Some((cross, c2 > 0.0))
+      } else {
+        None
       }
     };
 
@@ -71,31 +77,42 @@ fn generate_voxel<FieldContains, GetNormal>(
       [ edge(0,1,0, 0,1,1), edge(1,1,0, 1,1,1) ],
     ];
 
-    let mut vertex = Vector3::new(0, 0, 0);
+    let mut vertex: Vector3<u32> = Vector3::new(0, 0, 0);
     let mut n = 0;
-    let half = 0x80;
 
-    for y in range_inclusive(0, 1) {
-    for z in range_inclusive(0, 1) {
-      if x_edges[y][z].is_crossed {
-        vertex.add_self_v(&Vector3::new(half, y << 8, z << 8));
-        n += 1;
+    // TODO: Take the normals at the edge intersections
+    // and use those to help infer the vertex.
+
+    for (&y, edges) in [0, 0xFF].iter().zip(x_edges.iter()) {
+    for (&z, edge) in [0, 0xFF].iter().zip(edges.iter()) {
+      match edge {
+        &None => continue,
+        &Some((x, _)) => {
+          vertex.add_self_v(&Vector3::new(x as u32, y, z));
+          n += 1;
+        },
       }
     }}
 
-    for x in range_inclusive(0, 1) {
-    for z in range_inclusive(0, 1) {
-      if y_edges[x][z].is_crossed {
-        vertex.add_self_v(&Vector3::new(x << 8, half, z << 8));
-        n += 1;
+    for (&x, edges) in [0, 0xFF].iter().zip(y_edges.iter()) {
+    for (&z, edge) in [0, 0xFF].iter().zip(edges.iter()) {
+      match edge {
+        &None => continue,
+        &Some((y, _)) => {
+          vertex.add_self_v(&Vector3::new(x, y as u32, z));
+          n += 1;
+        },
       }
     }}
 
-    for x in range_inclusive(0, 1) {
-    for y in range_inclusive(0, 1) {
-      if z_edges[x][y].is_crossed {
-        vertex.add_self_v(&Vector3::new(x << 8, y << 8, half));
-        n += 1;
+    for (&x, edges) in [0, 0xFF].iter().zip(z_edges.iter()) {
+    for (&y, edge) in [0, 0xFF].iter().zip(edges.iter()) {
+      match edge {
+        &None => continue,
+        &Some((z, _)) => {
+          vertex.add_self_v(&Vector3::new(x, y, z as u32));
+          n += 1;
+        },
       }
     }}
 
@@ -118,6 +135,11 @@ fn generate_voxel<FieldContains, GetNormal>(
       normal = get_normal(vertex.x, vertex.y, vertex.z).mul_s(127.0);
     }
 
+    // Okay, so we scale the normal by 127, and use 127 to represent 1.0.
+    // Then we store it in a `Fraci8`, which scales by 128 and represents a
+    // fraction in [0,1). That seems wrong, but this is normal data, so scaling
+    // doesn't matter. Sketch factor is over 9000, but it's not wrong.
+
     let normal = Vector3::new(normal.x as i32, normal.y as i32, normal.z as i32);
     let normal =
       Vector3::new(
@@ -133,12 +155,34 @@ fn generate_voxel<FieldContains, GetNormal>(
         z: Fraci8::of(normal.z),
       };
 
+    macro_rules! to_edge(($edge:expr) => {{
+      match $edge {
+        None => Edge {
+          is_crossed: false,
+          direction: false,
+        },
+        Some((_, d)) => Edge {
+          is_crossed: true,
+          direction: d,
+        },
+      }
+    }});
+
     Some(Voxel {
       vertex: vertex,
       normal: normal,
-      x_edges: x_edges,
-      y_edges: y_edges,
-      z_edges: z_edges,
+      x_edges: [
+        [ to_edge!(x_edges[0][0]), to_edge!(x_edges[0][1]) ],
+        [ to_edge!(x_edges[1][0]), to_edge!(x_edges[1][1]) ],
+      ],
+      y_edges: [
+        [ to_edge!(y_edges[0][0]), to_edge!(y_edges[0][1]) ],
+        [ to_edge!(y_edges[1][0]), to_edge!(y_edges[1][1]) ],
+      ],
+      z_edges: [
+        [ to_edge!(z_edges[0][0]), to_edge!(z_edges[0][1]) ],
+        [ to_edge!(z_edges[1][0]), to_edge!(z_edges[1][1]) ],
+      ],
     })
   })
 }
@@ -228,8 +272,8 @@ pub fn generate_block(
           ));
         };
 
-      let mut field_contains = |x, y, z| {
-        heightmap.height_at(x, z) >= y
+      let mut field = |x, y, z| {
+        heightmap.height_at(x, z) - y
       };
 
       let mut get_normal = |x, _, z| {
@@ -242,7 +286,7 @@ pub fn generate_block(
           &mut voxel_tree::TreeBody::Leaf(v) => Some(v),
           &mut voxel_tree::TreeBody::Empty => {
             // TODO: Add a "yes this is empty I checked" flag so we don't regen every time.
-            generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds).map(|v| {
+            generate_voxel(timers, &mut field, &mut get_normal, $bounds).map(|v| {
               *branch = voxel_tree::TreeBody::Leaf(v);
               v
             })
@@ -250,7 +294,7 @@ pub fn generate_block(
           &mut voxel_tree::TreeBody::Branch(_) => {
             // Overwrite existing for now.
             // TODO: Don't do ^that.
-            generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds).map(|v| {
+            generate_voxel(timers, &mut field, &mut get_normal, $bounds).map(|v| {
               *branch = voxel_tree::TreeBody::Leaf(v);
               v
             })

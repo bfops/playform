@@ -76,6 +76,7 @@ pub struct Edge {
   pub direction: bool,
 }
 
+/// Express a `[0,1)` fraction using a `u8`.
 #[derive(Debug, Copy)]
 pub struct Fracu8 {
   // The denominator is 1 << 8.
@@ -90,6 +91,7 @@ impl Fracu8 {
   }
 }
 
+/// Express a `[0,1)` fraction using a `i8`.
 #[derive(Debug, Copy)]
 pub struct Fraci8 {
   // The denominator is 1 << 8.
