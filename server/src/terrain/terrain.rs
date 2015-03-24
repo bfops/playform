@@ -104,7 +104,7 @@ impl Fraci8 {
   }
 
   pub fn to_f32(&self) -> f32 {
-    self.numerator as f32 / 256.0
+    self.numerator as f32 / 128.0
   }
 }
 
