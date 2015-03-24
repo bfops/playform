@@ -87,6 +87,29 @@ fn generate_voxel<FieldContains, GetNormal>(
       }
     }}}
 
+    {
+      // Sample in extra areas to help weight the vertex to the appropriate place.
+      let mut sample_extra = |lg_s: u8| {
+        let fs = 1.0 / ((1 << lg_s) as f32);
+        let mfs = 1.0 - fs;
+        let s = 0x100 >> lg_s;
+        let ms = 0x100 - s;
+        for &(wx, x) in
+          [((voxel.x as f32 + fs) * size, s), ((voxel.x as f32 + mfs) * size, ms)].iter() {
+        for &(wy, y) in
+          [((voxel.y as f32 + fs) * size, s), ((voxel.y as f32 + mfs) * size, ms)].iter() {
+        for &(wz, z) in
+          [((voxel.z as f32 + fs) * size, s), ((voxel.z as f32 + mfs) * size, ms)].iter() {
+          if field_contains(wx, wy, wz) {
+            vertex.add_self_v(&Vector3::new(x, y, z).mul_s(lg_s as u32));
+            n += lg_s as u32;
+          }
+        }}}
+      };
+
+      sample_extra(2);
+    }
+
     let vertex = vertex.div_s(n);
     let vertex =
       VoxelVertex {
