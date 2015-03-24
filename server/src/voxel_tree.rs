@@ -13,11 +13,14 @@ pub enum Dimension {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VoxelBounds {
+  /// x-coordinate as a multiple of 2^lg_size.
   pub x: i32,
+  /// y-coordinate as a multiple of 2^lg_size.
   pub y: i32,
+  /// z-coordinate as a multiple of 2^lg_size.
   pub z: i32,
-  /// The log_2 of the voxel's scale, i.e. its size.
-  pub lg_size: u8,
+  /// The log_2 of the voxel's size.
+  pub lg_size: i16,
 }
 
 #[derive(Debug)]
@@ -50,7 +53,7 @@ pub enum TreeBody<T> {
 }
 
 impl VoxelBounds {
-  pub fn new(x: i32, y: i32, z: i32, lg_size: u8) -> VoxelBounds {
+  pub fn new(x: i32, y: i32, z: i32, lg_size: i16) -> VoxelBounds {
     let ret =
       VoxelBounds {
         x: x,
@@ -58,33 +61,35 @@ impl VoxelBounds {
         z: z,
         lg_size: lg_size,
       };
-    assert!(ret.is_aligned());
     ret
   }
 
-  pub fn is_aligned(&self) -> bool {
-    let combined = self.x | self.y | self.z;
-    let mask = (1 << self.lg_size) - 1;
-    // Check no bits less significant than `lg_size` exist; i.e. alignment to `lg_size` is true.
-    (combined & mask) == 0
+  #[inline(always)]
+  pub fn size(&self) -> f32 {
+    if self.lg_size >= 0 {
+      (1 << self.lg_size) as f32
+    } else {
+      1.0 / (1 << -self.lg_size) as f32
+    }
   }
 
   pub fn is_within(&self, lg_size: u8) -> bool {
-    assert!(self.is_aligned());
+    if self.lg_size < 0 {
+      return true
+    }
 
-    let high = 1 << lg_size;
+    let high = (1 << lg_size) >> self.lg_size;
     let low = -high;
 
+    // TODO: Should these be strict?
     if self.x <= low || self.y <= low || self.z <= low {
       return false
     }
 
-    let scale = 1 << self.lg_size;
-    let high_x = self.x + scale;
-    let high_y = self.y + scale;
-    let high_z = self.z + scale;
-
-    high_x <= high && high_y <= high && high_z <= high
+    true
+    && (self.x + 1) <= high
+    && (self.y + 1) <= high
+    && (self.z + 1) <= high
   }
 }
 
@@ -227,13 +232,7 @@ impl<T> VoxelTree<T> {
     }
   }
 
-  fn mut_find<'a, Step, E>(
-    &'a mut self,
-    voxel: VoxelBounds,
-    mut step: Step,
-  ) -> Result<&'a mut TreeBody<T>, E> where
-    Step: FnMut(&'a mut TreeBody<T>) -> Result<&'a mut Branches<T>, E>,
-  {
+  fn find_mask(&self, voxel: VoxelBounds) -> i32 {
     // When we compare the voxel position to octree bounds to choose subtrees
     // for insertion, we'll be comparing voxel position to values of 2^n and
     // -2^n, so we can just use the position bits to branch directly.
@@ -241,25 +240,34 @@ impl<T> VoxelTree<T> {
     // we need to branch on the sign bit up front, but after that, two's
     // complement magic means the branching on bits works regardless of sign.
 
-    let mask = (1 << self.lg_size) >> 1;
+    let mut mask = (1 << self.lg_size) >> 1;
 
-    // The voxel is aligned in a multiple of its size, which is some 2^k,
-    // so we don't need to branch by anything smaller than the voxel size.
-    debug_assert!(voxel.is_aligned());
+    // Shift everything by the voxel's lg_size, so we can compare the mask to 0
+    // to know whether we're done.
+    if voxel.lg_size >= 0 {
+      mask = mask >> voxel.lg_size;
+    } else {
+      // TODO: Check for overflow.
+      mask = mask << -voxel.lg_size;
+    }
 
-    // Shift everything down by the voxel's lg_size, so we can just compare
-    // the mask to 0 to know when we're done.
-    let x = voxel.x >> voxel.lg_size;
-    let y = voxel.y >> voxel.lg_size;
-    let z = voxel.z >> voxel.lg_size;
-    let mut mask = mask >> voxel.lg_size;
+    mask
+  }
 
+  fn mut_find<'a, Step, E>(
+    &'a mut self,
+    voxel: VoxelBounds,
+    mut step: Step,
+  ) -> Result<&'a mut TreeBody<T>, E> where
+    Step: FnMut(&'a mut TreeBody<T>) -> Result<&'a mut Branches<T>, E>,
+  {
+    let mut mask = self.find_mask(voxel);
     let mut branches = &mut self.contents;
 
     macro_rules! iter(
       ($mask:expr, $step:block) => {{
         let branches_temp = branches;
-        let branch = VoxelTree::get_branch_mut(branches_temp, $mask, x, y, z);
+        let branch = VoxelTree::get_branch_mut(branches_temp, $mask, voxel.x, voxel.y, voxel.z);
 
         $step;
         // We've reached the voxel.
@@ -289,32 +297,13 @@ impl<T> VoxelTree<T> {
   ) -> Result<&'a TreeBody<T>, E> where
     Step: FnMut(&'a TreeBody<T>) -> Result<&'a Branches<T>, E>,
   {
-    // When we compare the voxel position to octree bounds to choose subtrees
-    // for insertion, we'll be comparing voxel position to values of 2^n and
-    // -2^n, so we can just use the position bits to branch directly.
-    // This actually works for negative values too, without much wrestling:
-    // we need to branch on the sign bit up front, but after that, two's
-    // complement magic means the branching on bits works regardless of sign.
-
-    let mask = (1 << self.lg_size) >> 1;
-
-    // The voxel is aligned in a multiple of its size, which is some 2^k,
-    // so we don't need to branch by anything smaller than the voxel size.
-    debug_assert!(voxel.is_aligned());
-
-    // Shift everything down by the voxel's lg_size, so we can just compare
-    // the mask to 0 to know when we're done.
-    let x = voxel.x >> voxel.lg_size;
-    let y = voxel.y >> voxel.lg_size;
-    let z = voxel.z >> voxel.lg_size;
-    let mut mask = mask >> voxel.lg_size;
-
+    let mut mask = self.find_mask(voxel);
     let mut branches = &self.contents;
 
     macro_rules! iter(
       ($mask:expr, $step:block) => {{
         let branches_temp = branches;
-        let branch = VoxelTree::get_branch(branches_temp, $mask, x, y, z);
+        let branch = VoxelTree::get_branch(branches_temp, $mask, voxel.x, voxel.y, voxel.z);
 
         $step;
         // We've reached the voxel.
@@ -385,15 +374,15 @@ fn simple_test() {
   let mut tree: VoxelTree<i32> = VoxelTree::new();
   *tree.get_mut(VoxelBounds::new(1, 1, 1, 0)) = TreeBody::Leaf(1);
   *tree.get_mut(VoxelBounds::new(8, -8, 4, 0)) = TreeBody::Leaf(2);
-  *tree.get_mut(VoxelBounds::new(32, 0, 64, 4)) = TreeBody::Leaf(3);
-  *tree.get_mut(VoxelBounds::new(36, 0, 64, 2)) = TreeBody::Leaf(4);
-  *tree.get_mut(VoxelBounds::new(36, 0, 64, 2)) = TreeBody::Leaf(5);
+  *tree.get_mut(VoxelBounds::new(2, 0, 4, 4)) = TreeBody::Leaf(3);
+  *tree.get_mut(VoxelBounds::new(9, 0, 16, 2)) = TreeBody::Leaf(4);
+  *tree.get_mut(VoxelBounds::new(9, 0, 16, 2)) = TreeBody::Leaf(5);
 
   assert_eq!(tree.get(VoxelBounds::new(1, 1, 1, 0)), Some(&1));
   assert_eq!(tree.get(VoxelBounds::new(8, -8, 4, 0)), Some(&2));
-  assert_eq!(tree.get(VoxelBounds::new(36, 0, 64, 2)), Some(&5));
+  assert_eq!(tree.get(VoxelBounds::new(9, 0, 16, 2)), Some(&5));
 
-  assert_eq!(tree.get(VoxelBounds::new(32, 0, 64, 4)), None);
+  assert_eq!(tree.get(VoxelBounds::new(2, 0, 4, 4)), None);
 }
 
 #[test]
@@ -413,13 +402,6 @@ fn grow_is_transparent() {
   tree.grow_to_hold(VoxelBounds::new(-32, 32, -128, 3));
 
   assert_eq!(tree.get(VoxelBounds::new(1, 1, 1, 0)), Some(&1));
-}
-
-#[should_panic]
-#[test]
-fn misaligned_bounds() {
-  let v = VoxelBounds::new(2, 2, 1, 1);
-  test::black_box(v);
 }
 
 #[bench]

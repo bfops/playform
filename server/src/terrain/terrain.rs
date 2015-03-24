@@ -46,12 +46,12 @@ impl VoxelVertex {
     // Relative position of the vertex.
     let local =
       Vector3::new(
-        ((self.x.numerator as i32) << parent.lg_size) as f32 / 256.0,
-        ((self.y.numerator as i32) << parent.lg_size) as f32 / 256.0,
-        ((self.z.numerator as i32) << parent.lg_size) as f32 / 256.0,
+        self.x.numerator as f32 / 256.0,
+        self.y.numerator as f32 / 256.0,
+        self.z.numerator as f32 / 256.0,
       );
     let fparent = Point3::new(parent.x as f32, parent.y as f32, parent.z as f32);
-    fparent.add_v(&local)
+    fparent.add_v(&local).mul_s(parent.size())
   }
 }
 

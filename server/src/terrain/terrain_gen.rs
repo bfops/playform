@@ -27,13 +27,10 @@ fn generate_voxel<Field, GetNormal>(
     GetNormal: FnMut(f32, f32, f32) -> Vector3<f32>,
 {
   timers.time("generate_voxel", || {
-    let d = 1 << voxel.lg_size;
-    let x1 = voxel.x as f32;
-    let x2 = (voxel.x + d) as f32;
-    let y1 = voxel.y as f32;
-    let y2 = (voxel.y + d) as f32;
-    let z1 = voxel.z as f32;
-    let z2 = (voxel.z + d) as f32;
+    let size = voxel.size();
+    let (x1, y1, z1) = (voxel.x as f32 * size, voxel.y as f32 * size, voxel.z as f32 * size);
+    let delta = size;
+    let (x2, y2, z2) = (x1 + delta, y1 + delta, z1 + delta);
     // corners[x][y][z]
     let corners = [
       [
@@ -199,14 +196,28 @@ pub fn generate_block(
     let iposition = Point3::new(position.x as i32, position.y as i32, position.z as i32);
 
     let lateral_samples = LOD_QUALITY[lod_index.0 as usize] as i32;
-    assert!(lateral_samples <= BLOCK_WIDTH, "Sub-unit voxels not supported yet.");
-    assert!(BLOCK_WIDTH % lateral_samples == 0, "Block width doesn't sample cleanly.");
+    assert!(
+      BLOCK_WIDTH % lateral_samples == 0 || lateral_samples % BLOCK_WIDTH == 0,
+      "Block width doesn't sample cleanly."
+    );
 
-    let voxel_size = BLOCK_WIDTH / lateral_samples;
-    let lg_size = Int::trailing_zeros(voxel_size);
-    assert!(1 << lg_size == voxel_size, "voxel_size should be an exponent of 2");
-    assert!(lg_size < 31, "2^{} is too a huge voxel.", lg_size);
-    let lg_size = lg_size as u8;
+    let lg_block_width = Int::trailing_zeros(BLOCK_WIDTH);
+    assert!(1 << lg_block_width == BLOCK_WIDTH, "BLOCK_WIDTH should be an exponent of 2");
+
+    let lg_lateral_samples = Int::trailing_zeros(lateral_samples);
+    assert!(
+      1 << lg_lateral_samples == lateral_samples,
+      "lateral_samples should be an exponent of 2");
+
+    let lg_size: i16 = lg_block_width as i16 - lg_lateral_samples as i16;
+    assert!(lg_size.abs() < 16, "2^{} is too a huge voxel.", lg_size);
+    // TODO: This is duplicated in src/voxel_tree.src. Fix that.
+    let voxel_size;
+    if lg_size >= 0 {
+      voxel_size = (1 << lg_size) as f32;
+    } else {
+      voxel_size =  1.0 / (1 << -lg_size) as f32;
+    }
 
     {
       let mut add_poly =
@@ -283,7 +294,9 @@ pub fn generate_block(
 
       macro_rules! get_vertex(($v:expr) => {{
         let bounds = VoxelBounds::new($v.x, $v.y, $v.z, lg_size);
-        let voxel = get_voxel!(bounds).unwrap();
+        let voxel =
+          get_voxel!(bounds)
+          .unwrap_or_else(|| panic!("Couldn't find edge neighbor voxel"));
         (voxel.vertex.to_world_vertex(bounds), voxel.normal.to_world_normal())
       }});
 
@@ -296,9 +309,32 @@ pub fn generate_block(
           for x in 0..lateral_samples {
           for y in 0..lateral_samples {
           for z in 0..lateral_samples {
-            let w = iposition.add_v(&Vector3::new(x << lg_size, y << lg_size, z << lg_size));
-            let voxel;
+            let w;
+            {
+              let iposition =
+                if lg_size >= 0 {
+                  let mask = (1 << lg_size) - 1;
+                  assert!(
+                    (iposition.x|iposition.y|iposition.z) & mask == 0,
+                    "Block position should be a multiple of voxel sizes."
+                  );
+                  Point3::new(
+                    iposition.x >> lg_size,
+                    iposition.y >> lg_size,
+                    iposition.z >> lg_size,
+                  )
+                } else {
+                  let lg_size = -lg_size;
+                  Point3::new(
+                    iposition.x << lg_size,
+                    iposition.y << lg_size,
+                    iposition.z << lg_size,
+                  )
+                };
+              w = iposition.add_v(&Vector3::new(x, y, z));
+            }
             let bounds = VoxelBounds::new(w.x, w.y, w.z, lg_size);
+            let voxel;
             match get_voxel!(bounds) {
               None => continue,
               Some(v) => voxel = v,
@@ -345,20 +381,20 @@ pub fn generate_block(
 
       extract!(
         x_edges, 0,
-        Vector3::new(0, -voxel_size, 0),
-        Vector3::new(0, 0, -voxel_size),
+        Vector3::new(0, -1, 0),
+        Vector3::new(0, 0, -1),
       );
 
       extract!(
         y_edges, 1,
-        Vector3::new(0, 0, -voxel_size),
-        Vector3::new(-voxel_size, 0, 0),
+        Vector3::new(0, 0, -1),
+        Vector3::new(-1, 0, 0),
       );
 
       extract!(
         z_edges, 2,
-        Vector3::new(-voxel_size, 0, 0),
-        Vector3::new(0, -voxel_size, 0),
+        Vector3::new(-1, 0, 0),
+        Vector3::new(0, -1, 0),
       );
     }
 
