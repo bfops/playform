@@ -47,10 +47,10 @@ pub fn view_thread<Recv, UpdateServer>(
   let mut window =
     video::Window::new(
       "Playform",
-      video::WindowPos::Positioned(0),
-      video::WindowPos::Positioned(0),
-      800, 600,
-      video::OPENGL,
+      video::WindowPos::PosUndefined,
+      video::WindowPos::PosUndefined,
+      0, 0,
+      video::OPENGL | video::FULLSCREEN_DESKTOP,
     ).unwrap();
 
   // Send text input events.
