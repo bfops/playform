@@ -185,13 +185,6 @@ pub fn generate_block(
 
     let lg_size: i16 = lg_block_width as i16 - lg_lateral_samples as i16;
     assert!(lg_size.abs() < 16, "2^{} is too a huge voxel.", lg_size);
-    // TODO: This is duplicated in src/voxel_tree.src. Fix that.
-    let voxel_size;
-    if lg_size >= 0 {
-      voxel_size = (1 << lg_size) as f32;
-    } else {
-      voxel_size =  1.0 / (1 << -lg_size) as f32;
-    }
 
     {
       let mut add_poly =
@@ -241,7 +234,7 @@ pub fn generate_block(
       };
 
       let mut get_normal = |x, _, z| {
-        heightmap.normal_at(x, z, voxel_size as f32)
+        heightmap.normal_at(x, z, 0.01)
       };
 
       macro_rules! get_voxel(($bounds:expr) => {{
