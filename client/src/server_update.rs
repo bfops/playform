@@ -71,7 +71,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
           (s * 0.75 + 0.25).abs(),
         );
 
-      let radius = 1024.0;
+      let radius = (1 << 30) as f32;
       let rel_position = Vector3::new(c, s, 0.0);
       rel_position.mul_s(radius);
 
