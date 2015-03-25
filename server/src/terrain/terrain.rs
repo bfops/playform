@@ -136,7 +136,7 @@ pub struct Terrain {
 impl Terrain {
   pub fn new(terrain_seed: Seed) -> Terrain {
     Terrain {
-      heightmap: HeightMap::new(terrain_seed, OCTAVES, FREQUENCY, PERSISTENCE, LACUNARITY, AMPLITUDE),
+      heightmap: HeightMap::new(terrain_seed, OCTAVES, FREQUENCY, PERSISTENCE, LACUNARITY),
       all_blocks: HashMap::new(),
       voxels: VoxelTree::new(),
     }
