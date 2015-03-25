@@ -1,6 +1,5 @@
 //! Read and draw terrain data in 3D.
 
-use common::terrain_block::{TEXTURE_WIDTH, TEXTURE_LEN};
 use gl;
 use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
@@ -61,25 +60,44 @@ impl<'a> TerrainShader<'a> {
 
         out vec4 frag_color;
 
-        void main() {{
-          int tex_width[4];
-          int tex_length[4];
-          tex_width[0] = {};
-          tex_length[0] = {};
-          tex_width[1] = {};
-          tex_length[1] = {};
-          tex_width[2] = {};
-          tex_length[2] = {};
-          tex_width[3] = {};
-          tex_length[3] = {};
+        float perlin(const float x, const float y) {{
+          float amplitude = 1;
+          float frequency = 1.0 / 64.0;
+          float persistence = 0.8;
+          const float lacunarity = 2.4;
+          const int octaves = 2;
 
+          float r = 0.0;
+          float max_crest = 0.0;
+
+          for (int o = 0; o < octaves; ++o) {{
+            float f = frequency * 2 * 3.14;
+            r += amplitude * (sin((o+x) * f) + sin((o+y) * f)) / 2;
+
+            max_crest += amplitude;
+            amplitude *= persistence;
+            frequency *= lacunarity;
+          }}
+
+          // Scale to [-1, 1]. N.B. There is no clamping.
+          r /= max_crest;
+
+          return r;
+        }}
+
+        void main() {{
           int color_id = face_id * 3;
 
           vec4 base_color;
 
-          base_color.r = 0.0;
-          base_color.g = 1.0;
-          base_color.b = 0.0;
+          float p = perlin(world_position.x, world_position.z);
+          // shift, scale, clamp to [0, 1]
+          p = (p + 1) / 2;
+          p = clamp(p, 0, 1);
+
+          base_color.r = (1 - p) / 2;
+          base_color.g = (3/2 + p) / 5;
+          base_color.b = (1 - p) / 5;
           base_color.a = 1.0;
 
           // vector from here to the light
@@ -91,10 +109,6 @@ impl<'a> TerrainShader<'a> {
           vec3 lighting = brightness * light.intensity + ambient_light;
           frag_color = vec4(clamp(lighting, 0, 1), 1) * base_color;
         }}",
-          TEXTURE_WIDTH[0], TEXTURE_LEN[0],
-          TEXTURE_WIDTH[1], TEXTURE_LEN[1],
-          TEXTURE_WIDTH[2], TEXTURE_LEN[2],
-          TEXTURE_WIDTH[3], TEXTURE_LEN[3],
         )),
     );
     TerrainShader {
