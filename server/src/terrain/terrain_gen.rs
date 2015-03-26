@@ -230,11 +230,11 @@ pub fn generate_block(
         };
 
       let mut field_contains = |x, y, z| {
-        heightmap.density_at(x, y, z) - y/64.0 >= 0.0
+        heightmap.density_at(x, y, z) >= 0.0
       };
 
       let mut get_normal = |x, y, z| {
-        heightmap.normal_at(x, y, z, 0.01)
+        heightmap.normal_at(0.01, x, y, z)
       };
 
       macro_rules! get_voxel(($bounds:expr) => {{
