@@ -63,12 +63,12 @@ fn generate_voxel<FieldContains, GetNormal>(
         [ edge(0,1,0, 1,1,0), edge(0,1,1, 1,1,1) ],
       ];
       y_edges = [
-        [ edge(0,0,0, 0,1,0), edge(1,0,0, 1,1,0) ],
-        [ edge(0,0,1, 0,1,1), edge(1,0,1, 1,1,1) ],
+        [ edge(0,0,0, 0,1,0), edge(0,0,1, 0,1,1) ],
+        [ edge(1,0,0, 1,1,0), edge(1,0,1, 1,1,1) ],
       ];
       z_edges = [
-        [ edge(0,0,0, 0,0,1), edge(1,0,0, 1,0,1) ],
-        [ edge(0,1,0, 0,1,1), edge(1,1,0, 1,1,1) ],
+        [ edge(0,0,0, 0,0,1), edge(0,1,0, 0,1,1) ],
+        [ edge(1,0,0, 1,0,1), edge(1,1,0, 1,1,1) ],
       ];
     }
 
@@ -269,97 +269,96 @@ pub fn generate_block(
 
       macro_rules! extract((
         $edges:ident,
-        $facing:expr,
         $d1:expr,
         $d2:expr,
       ) => (
-          for x in 0..lateral_samples {
-          for y in 0..lateral_samples {
-          for z in 0..lateral_samples {
-            let w;
-            {
-              let iposition =
-                if lg_size >= 0 {
-                  let mask = (1 << lg_size) - 1;
-                  assert!(
-                    (iposition.x|iposition.y|iposition.z) & mask == 0,
-                    "Block position should be a multiple of voxel sizes."
-                  );
-                  Point3::new(
-                    iposition.x >> lg_size,
-                    iposition.y >> lg_size,
-                    iposition.z >> lg_size,
-                  )
-                } else {
-                  let lg_size = -lg_size;
-                  Point3::new(
-                    iposition.x << lg_size,
-                    iposition.y << lg_size,
-                    iposition.z << lg_size,
-                  )
-                };
-              w = iposition.add_v(&Vector3::new(x, y, z));
-            }
-            let bounds = VoxelBounds::new(w.x, w.y, w.z, lg_size);
-            let voxel;
-            match get_voxel!(bounds) {
-              None => continue,
-              Some(v) => voxel = v,
-            }
+        for x in 0..lateral_samples {
+        for y in 0..lateral_samples {
+        for z in 0..lateral_samples {
+          let w;
+          {
+            let iposition =
+              if lg_size >= 0 {
+                let mask = (1 << lg_size) - 1;
+                assert!(
+                  (iposition.x|iposition.y|iposition.z) & mask == 0,
+                  "Block position should be a multiple of voxel sizes."
+                );
+                Point3::new(
+                  iposition.x >> lg_size,
+                  iposition.y >> lg_size,
+                  iposition.z >> lg_size,
+                )
+              } else {
+                let lg_size = -lg_size;
+                Point3::new(
+                  iposition.x << lg_size,
+                  iposition.y << lg_size,
+                  iposition.z << lg_size,
+                )
+              };
+            w = iposition.add_v(&Vector3::new(x, y, z));
+          }
+          let bounds = VoxelBounds::new(w.x, w.y, w.z, lg_size);
+          let voxel;
+          match get_voxel!(bounds) {
+            None => continue,
+            Some(v) => voxel = v,
+          }
 
-            let edge = voxel.$edges[0][0];
-            if !edge.is_crossed {
-              continue
-            }
+          let edge = voxel.$edges[0][0];
+          if !edge.is_crossed {
+            continue
+          }
 
-            // Make a quad out of the vertices from the 4 voxels adjacent to this edge.
-            // We know they have vertices in them because if the surface crosses an edge,
-            // it must cross that edge's neighbors.
+          // Make a quad out of the vertices from the 4 voxels adjacent to this edge.
+          // We know they have vertices in them because if the surface crosses an edge,
+          // it must cross that edge's neighbors.
 
-            let (v1, n1) = get_vertex!(w.add_v(&$d1).add_v(&$d2));
-            let (v2, n2) = get_vertex!(w.add_v(&$d1));
-            let v3 = voxel.vertex.to_world_vertex(bounds);
-            let n3 = voxel.normal.to_world_normal();
-            let (v4, n4) = get_vertex!(w.add_v(&$d2));
+          let (v1, n1) = get_vertex!(w.add_v(&$d1).add_v(&$d2));
+          let (v2, n2) = get_vertex!(w.add_v(&$d1));
+          let v3 = voxel.vertex.to_world_vertex(bounds);
+          let n3 = voxel.normal.to_world_normal();
+          let (v4, n4) = get_vertex!(w.add_v(&$d2));
 
-            // Put a vertex at the average of the vertices.
-            let center =
-              v1.add_v(&v2.to_vec()).add_v(&v3.to_vec()).add_v(&v4.to_vec()).div_s(4.0);
-            let center_normal = n1.add_v(&n2).add_v(&n3).add_v(&n4).div_s(4.0);
+          // Put a vertex at the average of the vertices.
+          let center =
+            v1.add_v(&v2.to_vec()).add_v(&v3.to_vec()).add_v(&v4.to_vec()).div_s(4.0);
+          let center_normal = n1.add_v(&n2).add_v(&n3).add_v(&n4).div_s(4.0);
 
-            let mut add_poly = |v1, n1, v2, n2| add_poly(v1, n1, v2, n2, center, center_normal);
+          let mut add_poly = |v1, n1, v2, n2| add_poly(v1, n1, v2, n2, center, center_normal);
 
-            if edge.direction {
-              // The polys are visible from negative infinity.
-              add_poly(v1, n1, v2, n2);
-              add_poly(v2, n2, v3, n3);
-              add_poly(v3, n3, v4, n4);
-              add_poly(v4, n4, v1, n1);
-            } else {
-              // The polys are visible from positive infinity.
-              add_poly(v1, n1, v4, n4);
-              add_poly(v4, n4, v3, n3);
-              add_poly(v3, n3, v2, n2);
-              add_poly(v2, n2, v1, n1);
-            }
-          }}}
+          if edge.direction {
+            // The polys are visible from negative infinity.
+            add_poly(v1, n1, v2, n2);
+            add_poly(v2, n2, v3, n3);
+            add_poly(v3, n3, v4, n4);
+            add_poly(v4, n4, v1, n1);
+          } else {
+            // The polys are visible from positive infinity.
+            add_poly(v1, n1, v4, n4);
+            add_poly(v4, n4, v3, n3);
+            add_poly(v3, n3, v2, n2);
+            add_poly(v2, n2, v1, n1);
+          }
+        }}}
         )
       );
 
       extract!(
-        x_edges, 0,
+        x_edges,
         Vector3::new(0, -1, 0),
         Vector3::new(0, 0, -1),
       );
 
       extract!(
-        y_edges, 1,
+        y_edges,
         Vector3::new(0, 0, -1),
         Vector3::new(-1, 0, 0),
       );
 
       extract!(
-        z_edges, 2,
+        z_edges,
         Vector3::new(-1, 0, 0),
         Vector3::new(0, -1, 0),
       );
