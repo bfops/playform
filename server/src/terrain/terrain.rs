@@ -1,3 +1,4 @@
+use bit_svo::{VoxelTree, VoxelBounds};
 use cgmath::{Point, Point3, EuclideanVector, Vector3};
 use noise::Seed;
 use std::collections::hash_map::{HashMap, Entry};
@@ -13,7 +14,6 @@ use common::terrain_block::TerrainBlock;
 
 use terrain::heightmap::HeightMap;
 use terrain::terrain_gen;
-use voxel_tree::{VoxelTree, VoxelBounds};
 
 pub const AMPLITUDE: f64 = 64.0;
 pub const FREQUENCY: f64 = 1.0 / 64.0;

@@ -11,6 +11,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 
+extern crate bit_svo;
 extern crate cgmath;
 extern crate common;
 extern crate env_logger;
@@ -36,4 +37,3 @@ mod sun;
 mod terrain;
 mod update_gaia;
 mod update_world;
-mod voxel_tree;

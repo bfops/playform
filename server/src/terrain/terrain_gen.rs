@@ -1,3 +1,5 @@
+use bit_svo;
+use bit_svo::{VoxelBounds, VoxelTree};
 use cgmath::{Point, Point3, Vector, Vector3};
 use cgmath::Aabb3;
 use std::cmp::{min, max, partial_min, partial_max};
@@ -13,8 +15,6 @@ use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, tri};
 
 use terrain::heightmap::HeightMap;
 use terrain::terrain::{Fracu8, Fraci8, Voxel, VoxelVertex, VoxelNormal, Edge};
-use voxel_tree;
-use voxel_tree::{VoxelBounds, VoxelTree};
 
 fn generate_voxel<FieldContains, GetNormal>(
   timers: &TimerSet,
@@ -238,21 +238,21 @@ pub fn generate_block(
       };
 
       macro_rules! get_voxel(($bounds:expr) => {{
-        let branch = voxels.get_mut($bounds);
+        let branch = voxels.get_mut_or_create($bounds);
         match branch {
-          &mut voxel_tree::TreeBody::Leaf(v) => Some(v),
-          &mut voxel_tree::TreeBody::Empty => {
+          &mut bit_svo::TreeBody::Leaf(v) => Some(v),
+          &mut bit_svo::TreeBody::Empty => {
             // TODO: Add a "yes this is empty I checked" flag so we don't regen every time.
             generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds).map(|v| {
-              *branch = voxel_tree::TreeBody::Leaf(v);
+              *branch = bit_svo::TreeBody::Leaf(v);
               v
             })
           },
-          &mut voxel_tree::TreeBody::Branch(_) => {
+          &mut bit_svo::TreeBody::Branch(_) => {
             // Overwrite existing for now.
             // TODO: Don't do ^that.
             generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds).map(|v| {
-              *branch = voxel_tree::TreeBody::Leaf(v);
+              *branch = bit_svo::TreeBody::Leaf(v);
               v
             })
           },
