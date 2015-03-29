@@ -26,12 +26,13 @@ pub struct Voxel {
   pub vertex: VoxelVertex,
   pub normal: VoxelNormal,
 
-  // x_edges[y][z]
-  pub x_edges: [[Edge; 2]; 2],
-  // y_edges[x][z]
-  pub y_edges: [[Edge; 2]; 2],
-  // z_edges[x][y]
-  pub z_edges: [[Edge; 2]; 2],
+  // Each voxel contains edge information about the edges that intersect the
+  // lowest corner of the cube. Assuming the grid is effectively infinite, no
+  // edges will be left out.
+
+  pub x_edge: Edge,
+  pub y_edge: Edge,
+  pub z_edge: Edge,
 }
 
 #[derive(Debug, Copy)]

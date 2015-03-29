@@ -43,9 +43,9 @@ fn generate_voxel<FieldContains, GetNormal>(
       ],
     ];
 
-    let x_edges;
-    let y_edges;
-    let z_edges;
+    let x_edge;
+    let y_edge;
+    let z_edge;
     let mut any_crossed = false;
 
     {
@@ -58,18 +58,23 @@ fn generate_voxel<FieldContains, GetNormal>(
         }
       };
 
-      x_edges = [
-        [ edge(0,0,0, 1,0,0), edge(0,0,1, 1,0,1) ],
-        [ edge(0,1,0, 1,1,0), edge(0,1,1, 1,1,1) ],
-      ];
-      y_edges = [
-        [ edge(0,0,0, 0,1,0), edge(0,0,1, 0,1,1) ],
-        [ edge(1,0,0, 1,1,0), edge(1,0,1, 1,1,1) ],
-      ];
-      z_edges = [
-        [ edge(0,0,0, 0,0,1), edge(0,1,0, 0,1,1) ],
-        [ edge(1,0,0, 1,0,1), edge(1,1,0, 1,1,1) ],
-      ];
+      // x-oriented edges
+      x_edge = edge(0,0,0, 1,0,0);
+      let _  = edge(0,0,1, 1,0,1);
+      let _  = edge(0,1,0, 1,1,0);
+      let _  = edge(0,1,1, 1,1,1);
+
+      // y-oriented edges
+      y_edge = edge(0,0,0, 0,1,0);
+      let _  = edge(0,0,1, 0,1,1);
+      let _  = edge(1,0,0, 1,1,0);
+      let _  = edge(1,0,1, 1,1,1);
+
+      // z-oriented edges
+      z_edge = edge(0,0,0, 0,0,1);
+      let _  = edge(0,1,0, 0,1,1);
+      let _  = edge(1,0,0, 1,0,1);
+      let _  = edge(1,1,0, 1,1,1);
     }
 
     if !any_crossed {
@@ -148,9 +153,9 @@ fn generate_voxel<FieldContains, GetNormal>(
     Some(Voxel {
       vertex: vertex,
       normal: normal,
-      x_edges: x_edges,
-      y_edges: y_edges,
-      z_edges: z_edges,
+      x_edge: x_edge,
+      y_edge: y_edge,
+      z_edge: z_edge,
     })
   })
 }
@@ -268,7 +273,7 @@ pub fn generate_block(
       }});
 
       macro_rules! extract((
-        $edges:ident,
+        $edge:ident,
         $d1:expr,
         $d2:expr,
       ) => (
@@ -306,7 +311,7 @@ pub fn generate_block(
             Some(v) => voxel = v,
           }
 
-          let edge = voxel.$edges[0][0];
+          let edge = voxel.$edge;
           if !edge.is_crossed {
             continue
           }
@@ -346,19 +351,19 @@ pub fn generate_block(
       );
 
       extract!(
-        x_edges,
+        x_edge,
         Vector3::new(0, -1, 0),
         Vector3::new(0, 0, -1),
       );
 
       extract!(
-        y_edges,
+        y_edge,
         Vector3::new(0, 0, -1),
         Vector3::new(-1, 0, 0),
       );
 
       extract!(
-        z_edges,
+        z_edge,
         Vector3::new(-1, 0, 0),
         Vector3::new(0, -1, 0),
       );
