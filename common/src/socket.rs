@@ -1,6 +1,7 @@
 //! One-way socket wrapper data structures.
 
 use nanomsg::{Endpoint, Socket, Protocol};
+use std::convert::AsRef;
 use std::io::{Read, Write};
 use std::time::duration::Duration;
 
@@ -52,7 +53,7 @@ impl ReceiveSocket {
   pub fn new(url: &str, timeout: Option<Duration>) -> ReceiveSocket {
     let mut socket = Socket::new(Protocol::Pull).unwrap();
     timeout.map(|timeout| socket.set_receive_timeout(&timeout).unwrap());
-    let endpoint = socket.bind(url.as_slice()).unwrap();
+    let endpoint = socket.bind(url.as_ref()).unwrap();
 
     ReceiveSocket {
       socket: socket,

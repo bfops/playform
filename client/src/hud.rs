@@ -20,7 +20,7 @@ pub fn make_hud<'a, 'b:'a>(view: &'a mut View<'b>) {
     ).iter().map(|&x| x).collect();
 
   view.hud_triangles.bind(&mut view.gl);
-  view.hud_triangles.push(&mut view.gl, triangles.as_slice());
+  view.hud_triangles.push(&mut view.gl, triangles.as_ref());
 
   let instructions = vec!(
     "Use WASD to move, and spacebar to jump.",
@@ -46,7 +46,7 @@ pub fn make_hud<'a, 'b:'a>(view: &'a mut View<'b>) {
       .map(|&x| x)
       .collect();
     view.text_triangles.bind(&mut view.gl);
-    view.text_triangles.push(&mut view.gl, triangles.as_slice());
+    view.text_triangles.push(&mut view.gl, triangles.as_ref());
     y -= 0.2;
   }
 }

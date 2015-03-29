@@ -3,7 +3,6 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::iter::IteratorExt;
 use std::ops::Add;
 use block_position::BlockPosition;
 

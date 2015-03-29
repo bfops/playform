@@ -3,8 +3,9 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-#![feature(core)]
 #![feature(collections)]
+#![feature(convert)]
+#![feature(core)]
 #![feature(main)]
 #![feature(std_misc)]
 #![feature(test)]
@@ -18,9 +19,9 @@ extern crate gl;
 #[macro_use]
 extern crate log;
 extern crate libc;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate sdl2;
-extern crate "sdl2-sys" as sdl2_sys;
+extern crate sdl2_sys;
 extern crate test;
 extern crate time;
 extern crate yaglw;

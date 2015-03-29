@@ -1,4 +1,5 @@
 use env_logger;
+use std::convert::AsRef;
 use std::env;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Mutex;
@@ -72,7 +73,7 @@ fn main() {
   let _listen_thread = {
     let listen_thread_send = listen_thread_send.clone();
     thread::scoped(move || {
-      let mut socket = ReceiveSocket::new(listen_url.as_slice(), None);
+      let mut socket = ReceiveSocket::new(listen_url.as_ref(), None);
       loop {
         let msg = socket.read();
         listen_thread_send.send(msg).unwrap();
@@ -124,7 +125,7 @@ fn main() {
         {
           listen_thread_recv.lock().unwrap().try_recv_opt()
             .map_to_bool(|up| {
-              let up = binary::decode(up.as_slice()).unwrap();
+              let up = binary::decode(up.as_ref()).unwrap();
               apply_client_update(server, &mut |block| { gaia_thread_send.send(block).unwrap() }, up)
             })
         },

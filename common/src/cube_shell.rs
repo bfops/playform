@@ -153,7 +153,7 @@ fn test_surface_area() {
     BlockPosition::new(2, 1, -4),
   ];
   for center in centers.iter() {
-    for radius in range(1, 5) {
+    for radius in 1..5 {
       assert_eq!(
         cube_shell(center, radius as i32).len() as u32,
         cube_shell_area(radius)

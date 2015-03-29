@@ -64,7 +64,7 @@ fn shell_ordering() {
   let mut iter = SurroundingsIter::new(center, max_distance);
 
   for distance in range_inclusive(0, max_distance) {
-    for _ in range(0, cube_shell_area(distance)) {
+    for _ in 0..cube_shell_area(distance) {
       let (block_posn, d) = iter.next().unwrap();
       assert_eq!(d, distance);
       assert_eq!(radius_between(&center, &block_posn), distance);

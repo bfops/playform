@@ -3,8 +3,9 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-#![feature(core)]
 #![feature(collections)]
+#![feature(convert)]
+#![feature(core)]
 #![feature(main)]
 #![feature(std_misc)]
 #![feature(test)]
@@ -20,7 +21,7 @@ extern crate log;
 extern crate noise;
 extern crate opencl;
 extern crate rand;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate test;
 extern crate time;
 

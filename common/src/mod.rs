@@ -4,6 +4,7 @@
 //! Data structures and functions shared between server and client.
 
 #![feature(collections)]
+#![feature(convert)]
 #![feature(core)]
 #![feature(std_misc)]
 #![feature(test)]
@@ -14,12 +15,12 @@ extern crate cgmath;
 #[macro_use]
 extern crate log;
 extern crate nanomsg;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate test;
 extern crate time;
 
 #[macro_use]
-extern crate "serialize" as _serialize;
+extern crate serialize as _serialize;
 
 pub mod block_position;
 pub mod color;

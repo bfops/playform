@@ -57,7 +57,7 @@ fn main() {
     let listen_url = listen_url.clone();
     let server_recv_thread_send = server_recv_thread_send.clone();
     thread::spawn(move || {
-      let mut listen_socket = ReceiveSocket::new(listen_url.clone().as_slice(), Some(Duration::seconds(30)));
+      let mut listen_socket = ReceiveSocket::new(listen_url.clone().as_ref(), Some(Duration::seconds(30)));
       loop {
         let msg = listen_socket.read();
         server_recv_thread_send.send(msg).unwrap();
@@ -67,11 +67,11 @@ fn main() {
 
   let _server_send_thread = {
     thread::spawn(move || {
-      let mut talk_socket = SendSocket::new(server_url.clone().as_slice(), Some(Duration::seconds(30)));
+      let mut talk_socket = SendSocket::new(server_url.clone().as_ref(), Some(Duration::seconds(30)));
       loop {
         let msg: Option<ClientToServer> = server_send_thread_recv.recv().unwrap();
         let msg = binary::encode(&msg.unwrap()).unwrap();
-        talk_socket.write(msg.as_slice());
+        talk_socket.write(msg.as_ref());
       }
     })
   };
@@ -80,11 +80,11 @@ fn main() {
   server_send_thread_send.send(Some(ClientToServer::Init(listen_url.clone()))).unwrap();
   let client;
   'init_loop:loop {
-    match server_recv_thread_recv.recv().map(|s| binary::decode(s.as_slice()).unwrap()) {
+    match server_recv_thread_recv.recv().map(|s| binary::decode(s.as_ref()).unwrap()) {
       Ok(ServerToClient::LeaseId(client_id)) => {
         server_send_thread_send.send(Some(ClientToServer::AddPlayer(client_id))).unwrap();
         loop {
-          match server_recv_thread_recv.recv().map(|s| binary::decode(s.as_slice()).unwrap()) {
+          match server_recv_thread_recv.recv().map(|s| binary::decode(s.as_ref()).unwrap()) {
             Ok(ServerToClient::PlayerAdded(player_id, position)) => {
               client = Client::new(client_id, player_id, position);
               break 'init_loop;
@@ -122,7 +122,7 @@ fn main() {
           client,
           &mut || {
             try_recv(server_recv_thread_recv)
-              .map(|msg| binary::decode(msg.as_slice()).unwrap())
+              .map(|msg| binary::decode(msg.as_ref()).unwrap())
           },
           &mut || { try_recv(terrain_blocks_recv) },
           &mut |up| { view_thread_send.send(up).unwrap() },

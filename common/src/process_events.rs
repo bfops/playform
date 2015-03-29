@@ -2,6 +2,7 @@
 
 use nanomsg::{Socket, NanoError, NanoErrorKind};
 use rustc_serialize;
+use std::convert::AsRef;
 use std::sync::mpsc::{Receiver, TryRecvError};
 
 /// Process all available events from a channel.
@@ -43,7 +44,7 @@ pub fn process_socket<T, Apply>(socket: &mut Socket, mut apply: Apply) -> bool
       Err(e) => panic!("Error getting message from socket: {:?}", e),
       Ok(_) => {
         let s = String::from_utf8(s).unwrap();
-        let update = rustc_serialize::json::decode(s.as_slice()).unwrap();
+        let update = rustc_serialize::json::decode(s.as_ref()).unwrap();
         if !apply(update) {
           return false
         }

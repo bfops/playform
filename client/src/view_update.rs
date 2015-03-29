@@ -74,9 +74,9 @@ pub fn apply_client_to_view(up: ClientToView, view: &mut View) {
       view.terrain_buffers.push(
         &mut view.gl,
 
-        block.vertex_coordinates.as_slice(),
-        block.normals.as_slice(),
-        block.ids.as_slice(),
+        block.vertex_coordinates.as_ref(),
+        block.normals.as_ref(),
+        block.ids.as_ref(),
       );
     },
     ClientToView::RemoveTerrain(id) => {

@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::convert::AsRef;
 use std::sync::Mutex;
 use time;
 
@@ -98,7 +99,7 @@ impl TimerSet {
     let mut timer_vec : Vec<(&str, &Stopwatch)> =
       timers
         .iter()
-        .map(|(name, sw)| (name.as_slice(), sw))
+        .map(|(name, sw)| (name.as_ref(), sw))
         .collect();
 
     timer_vec.sort_by(|&(k1, _), &(k2, _)| k1.cmp(k2));

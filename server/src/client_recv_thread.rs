@@ -1,4 +1,5 @@
 use cgmath::{Point, Point3, Vector3, Aabb3};
+use std::convert::AsRef;
 use std::f32::consts::PI;
 use std::sync::mpsc::channel;
 use std::thread;
@@ -32,11 +33,11 @@ pub fn apply_client_update<UpdateGaia>(
       let (to_client_send, to_client_recv) = channel();
       let client_thread = {
         thread::scoped(move || {
-          let mut socket = SendSocket::new(client_url.as_slice(), Some(Duration::seconds(30)));
+          let mut socket = SendSocket::new(client_url.as_ref(), Some(Duration::seconds(30)));
           while let Some(msg) = to_client_recv.recv().unwrap() {
             // TODO: Don't do this allocation on every packet!
             let msg = binary::encode(&msg).unwrap();
-            socket.write(msg.as_slice());
+            socket.write(msg.as_ref());
           }
         })
       };
