@@ -145,6 +145,7 @@ impl<'a> View<'a> {
         let mut camera = Camera::unit();
         // Initialize the projection matrix.
         camera.fov = cgmath::perspective(fovy, aspect, 0.1, 2048.0);
+        // TODO: This should use player rotation from the server.
         camera.rotate_lateral(PI / 2.0);
         camera
       },

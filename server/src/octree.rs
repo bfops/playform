@@ -6,21 +6,23 @@ use std::ptr;
 pub const MIN_CELL_WIDTH: f32 = 0.1;
 
 fn aabb_overlap(aabb1: &Aabb3<f32>, aabb2: &Aabb3<f32>) -> bool {
-  aabb1.min.x < aabb2.max.x &&
-  aabb1.min.y < aabb2.max.y &&
-  aabb1.min.z < aabb2.max.z &&
-  aabb2.min.x < aabb1.max.x &&
-  aabb2.min.y < aabb1.max.y &&
-  aabb2.min.z < aabb1.max.z
+  true
+  && aabb1.min.x < aabb2.max.x
+  && aabb1.min.y < aabb2.max.y
+  && aabb1.min.z < aabb2.max.z
+  && aabb2.min.x < aabb1.max.x
+  && aabb2.min.y < aabb1.max.y
+  && aabb2.min.z < aabb1.max.z
 }
 
 fn contains(aabb1: &Aabb3<f32>, aabb2: &Aabb3<f32>) -> bool {
-  aabb1.min.x <= aabb2.min.x &&
-  aabb1.min.y <= aabb2.min.y &&
-  aabb1.min.z <= aabb2.min.z &&
-  aabb2.max.x <= aabb1.max.x &&
-  aabb2.max.y <= aabb1.max.y &&
-  aabb2.max.z <= aabb1.max.z
+  true
+  && aabb1.min.x <= aabb2.min.x
+  && aabb1.min.y <= aabb2.min.y
+  && aabb1.min.z <= aabb2.min.z
+  && aabb2.max.x <= aabb1.max.x
+  && aabb2.max.y <= aabb1.max.y
+  && aabb2.max.z <= aabb1.max.z
 }
 
 fn length(bounds: &Aabb3<f32>, d: Dimension) -> f32 {

@@ -11,6 +11,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 
+extern crate bit_svo;
 extern crate cgmath;
 extern crate common;
 extern crate env_logger;
@@ -29,7 +30,6 @@ mod init_mobs;
 mod main;
 mod mob;
 mod octree;
-mod opencl_context;
 mod physics;
 mod player;
 mod server;

@@ -35,7 +35,6 @@ pub fn view_thread<Recv, UpdateServer>(
   let timers = TimerSet::new();
 
   let sdl = sdl2::init(sdl2::INIT_EVERYTHING).unwrap();
-  let mut event_pump = sdl.event_pump();
 
   video::gl_set_attribute(video::GLAttr::GLContextMajorVersion, 3);
   video::gl_set_attribute(video::GLAttr::GLContextMinorVersion, 3);
@@ -50,12 +49,13 @@ pub fn view_thread<Recv, UpdateServer>(
       "Playform",
       video::WindowPos::Positioned(0),
       video::WindowPos::Positioned(0),
-      800, 600,
+      1600, 900,
       video::OPENGL,
     ).unwrap();
 
   // Send text input events.
   sdl2::keyboard::start_text_input();
+  let mut event_pump = sdl.event_pump();
 
   let _sdl_gl_context = window.gl_create_context().unwrap();
 

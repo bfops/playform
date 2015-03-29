@@ -1,6 +1,5 @@
 //! Read and draw terrain data in 3D.
 
-use common::terrain_block::{TEXTURE_WIDTH, TEXTURE_LEN};
 use gl;
 use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
@@ -21,13 +20,11 @@ impl<'a> TerrainShader<'a> {
         uniform mat4 projection_matrix;
 
         uniform samplerBuffer positions;
-        uniform samplerBuffer coords;
         uniform samplerBuffer normals;
 
         flat out int face_id;
         out vec3 world_position;
         out vec3 normal;
-        out vec2 pixel_coords;
 
         void main() {
           // Mutiply by 3 because there are 3 components for each normal vector.
@@ -40,11 +37,6 @@ impl<'a> TerrainShader<'a> {
           normal.x = texelFetch(normals, normal_id + 0).r;
           normal.y = texelFetch(normals, normal_id + 1).r;
           normal.z = texelFetch(normals, normal_id + 2).r;
-
-          // There are 2 coords per vertex.
-          int coord_id = gl_VertexID * 2;
-          pixel_coords.x = texelFetch(coords, coord_id + 0).r;
-          pixel_coords.y = texelFetch(coords, coord_id + 1).r;
 
           face_id = gl_VertexID / 3;
 
@@ -61,71 +53,51 @@ impl<'a> TerrainShader<'a> {
         uniform vec3 ambient_light;
 
         uniform samplerBuffer positions;
-        uniform isamplerBuffer block_indices;
-        uniform isamplerBuffer lods;
-        uniform isamplerBuffer pixel_indices;
-
-        uniform samplerBuffer pixels_0;
-        uniform samplerBuffer pixels_1;
-        uniform samplerBuffer pixels_2;
-        uniform samplerBuffer pixels_3;
 
         flat in int face_id;
         in vec3 world_position;
         in vec3 normal;
-        in vec2 pixel_coords;
 
         out vec4 frag_color;
 
-        void main() {{
-          int tex_width[4];
-          int tex_length[4];
-          tex_width[0] = {};
-          tex_length[0] = {};
-          tex_width[1] = {};
-          tex_length[1] = {};
-          tex_width[2] = {};
-          tex_length[2] = {};
-          tex_width[3] = {};
-          tex_length[3] = {};
+        float perlin(const float x, const float y) {{
+          float amplitude = 1;
+          float frequency = 1.0 / 64.0;
+          float persistence = 0.8;
+          const float lacunarity = 2.4;
+          const int octaves = 2;
 
+          float r = 0.0;
+          float max_crest = 0.0;
+
+          for (int o = 0; o < octaves; ++o) {{
+            float f = frequency * 2 * 3.14;
+            r += amplitude * (sin((o+x) * f) + sin((o+y) * f)) / 2;
+
+            max_crest += amplitude;
+            amplitude *= persistence;
+            frequency *= lacunarity;
+          }}
+
+          // Scale to [-1, 1]. N.B. There is no clamping.
+          r /= max_crest;
+
+          return r;
+        }}
+
+        void main() {{
           int color_id = face_id * 3;
 
-          int block_index = texelFetch(block_indices, face_id).r;
-
-          int lod = texelFetch(lods, block_index).r;
-
           vec4 base_color;
-          int p_x = int(pixel_coords.x);
-          int p_y = int(pixel_coords.y);
-          if (p_x >= tex_width[lod]) {{
-            p_x = tex_width[lod] - 1;
-          }}
-          if (p_y >= tex_width[lod]) {{
-            p_y = tex_width[lod] - 1;
-          }}
 
-          int pixel_idx = texelFetch(pixel_indices, block_index).r;
-          pixel_idx = pixel_idx*tex_length[lod] + p_y*tex_width[lod] + p_x;
-          // There are 3 components for every color.
-          pixel_idx = pixel_idx * 3;
-          if (lod == 0) {{
-            base_color.r = texelFetch(pixels_0, pixel_idx + 0).r;
-            base_color.g = texelFetch(pixels_0, pixel_idx + 1).r;
-            base_color.b = texelFetch(pixels_0, pixel_idx + 2).r;
-          }} else if (lod == 1) {{
-            base_color.r = texelFetch(pixels_1, pixel_idx + 0).r;
-            base_color.g = texelFetch(pixels_1, pixel_idx + 1).r;
-            base_color.b = texelFetch(pixels_1, pixel_idx + 2).r;
-          }} else if (lod == 2) {{
-            base_color.r = texelFetch(pixels_2, pixel_idx + 0).r;
-            base_color.g = texelFetch(pixels_2, pixel_idx + 1).r;
-            base_color.b = texelFetch(pixels_2, pixel_idx + 2).r;
-          }} else if (lod == 3) {{
-            base_color.r = texelFetch(pixels_3, pixel_idx + 0).r;
-            base_color.g = texelFetch(pixels_3, pixel_idx + 1).r;
-            base_color.b = texelFetch(pixels_3, pixel_idx + 2).r;
-          }}
+          float p = perlin(world_position.x, world_position.z);
+          // shift, scale, clamp to [0, 1]
+          p = (p + 1) / 2;
+          p = clamp(p, 0, 1);
+
+          base_color.r = (1 - p) / 2;
+          base_color.g = (3/2 + p) / 5;
+          base_color.b = (1 - p) / 5;
           base_color.a = 1.0;
 
           // vector from here to the light
@@ -137,10 +109,6 @@ impl<'a> TerrainShader<'a> {
           vec3 lighting = brightness * light.intensity + ambient_light;
           frag_color = vec4(clamp(lighting, 0, 1), 1) * base_color;
         }}",
-          TEXTURE_WIDTH[0], TEXTURE_LEN[0],
-          TEXTURE_WIDTH[1], TEXTURE_LEN[1],
-          TEXTURE_WIDTH[2], TEXTURE_LEN[2],
-          TEXTURE_WIDTH[3], TEXTURE_LEN[3],
         )),
     );
     TerrainShader {

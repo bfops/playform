@@ -7,10 +7,8 @@ use common::lod::{LODIndex, OwnerId};
 use common::stopwatch::TimerSet;
 use common::block_position::BlockPosition;
 
-use opencl_context::CL;
 use server::Server;
 use terrain::terrain_game_loader::TerrainGameLoader;
-use terrain::texture_generator::TerrainTextureGenerator;
 
 #[derive(Debug, Clone)]
 pub enum LoadReason {
@@ -27,8 +25,6 @@ pub enum ServerToGaia {
 pub fn update_gaia(
   timers: &TimerSet,
   server: &Server,
-  texture_generators: &[TerrainTextureGenerator],
-  cl: &CL,
   update: ServerToGaia,
 ) {
   match update {
@@ -42,8 +38,6 @@ pub fn update_gaia(
         let in_progress_terrain = &mut terrain_game_loader.in_progress_terrain;
         terrain_game_loader.terrain.load(
           timers,
-          cl,
-          &texture_generators[lod.0 as usize],
           &server.id_allocator,
           &position,
           lod,

@@ -48,6 +48,9 @@ time = "*"
 path = "../common"
 version = "*"
 
+[dependencies.bit-svo]
+git = "https://github.com/bfops/bit-svo"
+
 [dependencies.cgmath]
 git = "https://github.com/bfops/cgmath-rs"
 

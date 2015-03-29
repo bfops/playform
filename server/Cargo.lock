@@ -2,6 +2,7 @@
 name = "playform-server"
 version = "0.0.0"
 dependencies = [
+ "bit-svo 0.0.0 (git+https://github.com/bfops/bit-svo)",
  "cgmath 0.1.0 (git+https://github.com/bfops/cgmath-rs)",
  "env_logger 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -12,6 +13,11 @@ dependencies = [
  "rustc-serialize 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "bit-svo"
+version = "0.0.0"
+source = "git+https://github.com/bfops/bit-svo#3011dc1e389c8b9eae5c6e494375a2daffc0bf79"
 
 [[package]]
 name = "cgmath"
