@@ -14,14 +14,14 @@ use common::stopwatch::TimerSet;
 use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, tri};
 
 use terrain::heightmap::HeightMap;
-use terrain::terrain::{Fracu8, Fraci8, Voxel, VoxelVertex, VoxelNormal, Edge};
+use terrain::terrain::{Fracu8, Fraci8, Voxel, SurfaceVoxel, VoxelVertex, VoxelNormal, Edge};
 
 fn generate_voxel<FieldContains, GetNormal>(
   timers: &TimerSet,
   field_contains: &mut FieldContains,
   get_normal: &mut GetNormal,
   voxel: VoxelBounds,
-) -> Option<Voxel>
+) -> Voxel
   where
     FieldContains: FnMut(f32, f32, f32) -> bool,
     GetNormal: FnMut(f32, f32, f32) -> Vector3<f32>,
@@ -78,7 +78,7 @@ fn generate_voxel<FieldContains, GetNormal>(
     }
 
     if !any_crossed {
-      return None
+      return Voxel::Empty
     }
 
     let mut vertex: Vector3<u32> = Vector3::new(0, 0, 0);
@@ -150,7 +150,7 @@ fn generate_voxel<FieldContains, GetNormal>(
         z: Fraci8::of(normal.z),
       };
 
-    Some(Voxel {
+    Voxel::Surface(SurfaceVoxel {
       vertex: vertex,
       normal: normal,
       x_edge: x_edge,
@@ -227,7 +227,8 @@ pub fn generate_block(
           block.bounds.push((
             id,
             Aabb3::new(
-              // TODO: Remove this - 1.0. It's a temporary hack until voxel collisions work.
+              // TODO: Remove this - 1.0. It's a temporary hack until voxel collisions work,
+              // to avoid zero-height Aabb3s.
               Point3::new(minx, miny - 1.0, minz),
               Point3::new(maxx, maxy, maxz),
             ),
@@ -244,23 +245,23 @@ pub fn generate_block(
 
       macro_rules! get_voxel(($bounds:expr) => {{
         let branch = voxels.get_mut_or_create($bounds);
+        let r;
         match branch {
-          &mut bit_svo::TreeBody::Leaf(v) => Some(v),
+          &mut bit_svo::TreeBody::Leaf(v) => r = v,
           &mut bit_svo::TreeBody::Empty => {
-            // TODO: Add a "yes this is empty I checked" flag so we don't regen every time.
-            generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds).map(|v| {
-              *branch = bit_svo::TreeBody::Leaf(v);
-              v
-            })
+            r = generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds);
+            *branch = bit_svo::TreeBody::Leaf(r);
           },
           &mut bit_svo::TreeBody::Branch(_) => {
             // Overwrite existing for now.
             // TODO: Don't do ^that.
-            generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds).map(|v| {
-              *branch = bit_svo::TreeBody::Leaf(v);
-              v
-            })
+            r = generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds);
+            *branch = bit_svo::TreeBody::Leaf(r);
           },
+        };
+        match r {
+          Voxel::Empty => None,
+          Voxel::Surface(r) => Some(r),
         }
       }});
 

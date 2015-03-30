@@ -22,7 +22,13 @@ pub const LACUNARITY: f64 = 8.0;
 pub const OCTAVES: usize = 2;
 
 #[derive(Debug, Copy)]
-pub struct Voxel {
+pub enum Voxel {
+  Empty,
+  Surface(SurfaceVoxel),
+}
+
+#[derive(Debug, Copy)]
+pub struct SurfaceVoxel {
   pub vertex: VoxelVertex,
   pub normal: VoxelNormal,
 
