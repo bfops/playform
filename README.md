@@ -1,3 +1,7 @@
+# Playform is currently inactive!
+
+I'm taking an indefinite hiatus from Rust dev; I plan to take another stab at this project in C++, and make use of great libraries like [PolyVox](http://www.volumesoffun.com/polyvox-about/) and [Bullet Physics](http://bulletphysics.org/wordpress/) that are kind of a headache to get working with Rust.
+
 [![Build Status](https://travis-ci.org/bfops/playform.svg?branch=master)](https://travis-ci.org/bfops/playform)
 
 ## Introduction
