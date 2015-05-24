@@ -1,17 +1,29 @@
 //! Copy-based serialization functions. We don't use rustc-serialize
-//! because it doesn't support bulk copies of Copyable things.
+//! because it doesn't support bulk copies of Copy things.
 
+// TODO: Make this work with less common endiannesses too.
+
+#![deny(warnings)]
 #![feature(collections)]
+#![feature(convert)]
 #![feature(core)]
 
+#![cfg_attr(test, feature(test))] 
+
+extern crate num;
+
 use std::mem;
-use std::num;
 use std::raw;
 
 /// End-of-stream error.
 #[derive(Debug)]
 pub struct EOF;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+pub struct Copyable<T>(pub T) where T: Copy;
+
+// TODO: This can probably be replaced with std things.
 /// "Seek" over an in-memory byte slice.
 pub struct MemStream<'a> {
   data: &'a [u8],
@@ -85,6 +97,76 @@ pub trait Flatten {
   fn read<'a>(s: &mut MemStream<'a>) -> Result<Self, EOF>;
 }
 
+fn emit_slice_as_bytes<T>(v: &[T], dest: &mut Vec<u8>) -> Result<(), ()> {
+  let len: u32;
+  match num::NumCast::from(v.len()) {
+    None => return Err(()),
+    Some(l) => len = l,
+  }
+
+  let len = Copyable(len);
+  try!(Flatten::emit(&len, dest));
+
+  let bytes = unsafe {
+    mem::transmute(
+      raw::Slice {
+        data: v.as_ptr() as *const u8,
+        len: v.len() * mem::size_of::<T>(),
+      }
+    )
+  };
+
+  dest.push_all(bytes);
+  Ok(())
+}
+
+impl<T> Flatten for Vec<T> where T: Copy {
+  fn emit(v: &Vec<T>, dest: &mut Vec<u8>) -> Result<(), ()> {
+    emit_slice_as_bytes(v.as_slice(), dest)
+  }
+
+  fn read<'a>(s: &mut MemStream<'a>) -> Result<Vec<T>, EOF> {
+    let len: Copyable<u32> = try!(Flatten::read(s));
+    let len = len.0 as usize;
+
+    let slice = try!(s.take(len * mem::size_of::<T>()));
+    let slice: &[T] = unsafe {
+      mem::transmute(
+        raw::Slice {
+          data: slice.as_ptr() as *const T,
+          len: len,
+        }
+      )
+    };
+
+    Ok(slice.iter().map(|&x| x).collect())
+  }
+}
+
+impl Flatten for String {
+  fn emit(v: &String, dest: &mut Vec<u8>) -> Result<(), ()> {
+    emit_slice_as_bytes(v.as_bytes(), dest)
+  }
+
+  fn read<'a>(s: &mut MemStream<'a>) -> Result<String, EOF> {
+    let v = try!(Flatten::read(s));
+    let s = unsafe {
+      String::from_utf8_unchecked(v)
+    };
+    Ok(s)
+  }
+}
+
+impl<T> Flatten for Copyable<T> where T: Copy {
+  fn emit(v: &Copyable<T>, dest: &mut Vec<u8>) -> Result<(), ()> {
+    emit_as_bytes(v, dest)
+  }
+
+  fn read<'a>(v: &mut MemStream<'a>) -> Result<Copyable<T>, EOF> {
+    of_bytes(v).map(|v| Copyable(v))
+  }
+}
+
 #[macro_export]
 macro_rules! flatten_unit_struct_impl(
   ( $name: ident ) => {
@@ -121,13 +203,13 @@ macro_rules! flatten_struct_impl(
 
 #[macro_export]
 macro_rules! flatten_enum_impl(
-  ( $name: ident, $tag: ident, $( ( $variant: ident, $id: expr, $( $field: ident ),* ), )* ) => {
+  ( $name: ident, $tag: ty, $( ( $variant: ident, $in_id: pat, $out_id: expr, $( $field: ident ),* ), )* ) => {
     impl Flatten for $name {
       fn emit(v: &$name, dest: &mut Vec<u8>) -> Result<(), ()> {
         match *v {
           $(
             $name::$variant( $( ref $field, )* ) => {
-              let tag: $tag = $id;
+              let tag: $tag = $out_id;
               try!(Flatten::emit(&tag, dest));
               $(
                 try!(Flatten::emit($field, dest));
@@ -142,7 +224,7 @@ macro_rules! flatten_enum_impl(
         let tag: $tag = try!(Flatten::read(s));
         match tag {
           $(
-            $id => {
+            $in_id => {
               $(
                 let $field = try!(Flatten::read(s));
               )*
@@ -156,92 +238,23 @@ macro_rules! flatten_enum_impl(
   }
 );
 
-impl<T> Flatten for T where T: Copy {
-  fn emit(v: &T, dest: &mut Vec<u8>) -> Result<(), ()> {
-    emit_as_bytes(v, dest)
-  }
-
-  fn read<'a>(v: &mut MemStream<'a>) -> Result<T, EOF> {
-    of_bytes(v)
-  }
-}
-
-fn emit_slice_as_bytes<T>(v: &[T], dest: &mut Vec<u8>) -> Result<(), ()> {
-  let len: u32;
-  match num::cast(v.len()) {
-    None => return Err(()),
-    Some(l) => len = l,
-  }
-
-  try!(Flatten::emit(&len, dest));
-
-  let bytes = unsafe {
-    mem::transmute(
-      raw::Slice {
-        data: v.as_ptr() as *const u8,
-        len: v.len() * mem::size_of::<T>(),
-      }
-    )
-  };
-
-  dest.push_all(bytes);
-  Ok(())
-}
-
-impl<T> Flatten for Vec<T> where T: Copy {
-  fn emit(v: &Vec<T>, dest: &mut Vec<u8>) -> Result<(), ()> {
-    emit_slice_as_bytes(v.as_slice(), dest)
-  }
-
-  fn read<'a>(s: &mut MemStream<'a>) -> Result<Vec<T>, EOF> {
-    let len: u32 = try!(Flatten::read(s));
-    let len = len as usize;
-
-    let slice = try!(s.take(len * mem::size_of::<T>()));
-    let slice: &[T] = unsafe {
-      mem::transmute(
-        raw::Slice {
-          data: slice.as_ptr() as *const T,
-          len: len,
-        }
-      )
-    };
-
-    Ok(slice.iter().map(|&x| x).collect())
-  }
-}
-
-impl Flatten for String {
-  fn emit(v: &String, dest: &mut Vec<u8>) -> Result<(), ()> {
-    emit_slice_as_bytes(v.as_bytes(), dest)
-  }
-
-  fn read<'a>(s: &mut MemStream<'a>) -> Result<String, EOF> {
-    let v = try!(Flatten::read(s));
-    let s = unsafe {
-      String::from_utf8_unchecked(v)
-    };
-    Ok(s)
-  }
-}
-
 #[cfg(test)]
 mod tests {
   extern crate test;
 
-  use super::{Flatten, MemStream, EOF, encode, decode};
+  use super::{Flatten, Copyable, MemStream, EOF, encode, decode};
 
   #[derive(Debug, PartialEq, Eq)]
   struct Foo {
     data: Vec<(i32, u64)>,
-    t: i8,
+    t: Copyable<i8>,
   }
 
   flatten_struct_impl!(Foo, data, t);
 
   #[derive(Debug, PartialEq, Eq)]
   struct Bar {
-    t: u32,
+    t: Copyable<u32>,
     items: Foo,
   }
 
@@ -250,7 +263,7 @@ mod tests {
   #[derive(Debug, PartialEq, Eq)]
   struct Baz {
     foo: Foo,
-    thing: i8,
+    thing: Copyable<i8>,
     bar: Bar,
   }
 
@@ -262,14 +275,14 @@ mod tests {
       Baz {
         foo: Foo {
           data: vec!((1, 1), (2, 4), (3, 255)),
-          t: 118,
+          t: Copyable(118),
         },
-        thing: 3,
+        thing: Copyable(3),
         bar: Bar {
-          t: 7,
+          t: Copyable(7),
           items: Foo {
             data: vec!((0, 8), (3, 9), (6, 10)),
-            t: -3,
+            t: Copyable(-3),
           },
         },
       };
@@ -285,14 +298,14 @@ mod tests {
       Baz {
         foo: Foo {
           data: vec!((1, 1), (2, 4), (3, 255)),
-          t: 118,
+          t: Copyable(118),
         },
-        thing: 3,
+        thing: Copyable(3),
         bar: Bar {
-          t: 7,
+          t: Copyable(7),
           items: Foo {
             data: vec!((0, 8), (3, 9), (6, 10)),
-            t: -3,
+            t: Copyable(-3),
           },
         },
       };

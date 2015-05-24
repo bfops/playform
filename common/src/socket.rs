@@ -3,7 +3,7 @@
 use nanomsg::{Endpoint, Socket, Protocol};
 use std::convert::AsRef;
 use std::io::{Read, Write};
-use std::time::duration::Duration;
+use std::time::Duration;
 
 /// A send-only socket.
 pub struct SendSocket {
@@ -11,11 +11,15 @@ pub struct SendSocket {
   endpoint: Endpoint,
 }
 
+fn as_millis(duration: Duration) -> isize {
+  (duration.secs() * 1_000) as isize + (duration.extra_nanos() / 1_000_000) as isize
+}
+
 impl SendSocket {
   #[allow(missing_docs)]
   pub fn new(url: &str, timeout: Option<Duration>) -> SendSocket {
     let mut socket = Socket::new(Protocol::Push).unwrap();
-    timeout.map(|timeout| socket.set_receive_timeout(&timeout).unwrap());
+    timeout.map(|timeout| socket.set_receive_timeout(as_millis(timeout)).unwrap());
     let endpoint = socket.connect(url).unwrap();
 
     SendSocket {
@@ -35,7 +39,6 @@ impl SendSocket {
   }
 }
 
-#[unsafe_destructor]
 impl Drop for SendSocket {
   fn drop(&mut self) {
     self.endpoint.shutdown().unwrap();
@@ -52,7 +55,7 @@ impl ReceiveSocket {
   #[allow(missing_docs)]
   pub fn new(url: &str, timeout: Option<Duration>) -> ReceiveSocket {
     let mut socket = Socket::new(Protocol::Pull).unwrap();
-    timeout.map(|timeout| socket.set_receive_timeout(&timeout).unwrap());
+    timeout.map(|timeout| socket.set_receive_timeout(as_millis(timeout)).unwrap());
     let endpoint = socket.bind(url.as_ref()).unwrap();
 
     ReceiveSocket {
@@ -74,7 +77,6 @@ impl ReceiveSocket {
   }
 }
 
-#[unsafe_destructor]
 impl Drop for ReceiveSocket {
   fn drop(&mut self) {
     self.endpoint.shutdown().unwrap();

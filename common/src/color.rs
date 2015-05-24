@@ -1,7 +1,6 @@
 //! Color structs
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[derive(RustcDecodable, RustcEncodable)]
 /// A color with RGB channels.
 pub struct Color3<T> {
   /// Red
@@ -20,7 +19,6 @@ impl<T: Copy> Color3<T> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[derive(RustcDecodable, RustcEncodable)]
 /// A color with RGBA channels.
 pub struct Color4<T> {
   /// Red

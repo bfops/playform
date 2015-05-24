@@ -32,3 +32,6 @@ lto = false
 [lib]
 name = "serialize"
 path = "lib.rs"
+
+[dependencies]
+num = "*"

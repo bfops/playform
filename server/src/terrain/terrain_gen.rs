@@ -2,8 +2,8 @@ use bit_svo;
 use bit_svo::{VoxelBounds, VoxelTree};
 use cgmath::{Point, Point3, Vector, Vector3};
 use cgmath::Aabb3;
+use num::traits::PrimInt;
 use std::cmp::{min, max, partial_min, partial_max};
-use std::num::Int;
 use std::sync::Mutex;
 
 use common::block_position::BlockPosition;
@@ -180,10 +180,10 @@ pub fn generate_block(
       "Block width doesn't sample cleanly."
     );
 
-    let lg_block_width = Int::trailing_zeros(BLOCK_WIDTH);
+    let lg_block_width = PrimInt::trailing_zeros(BLOCK_WIDTH);
     assert!(1 << lg_block_width == BLOCK_WIDTH, "BLOCK_WIDTH should be an exponent of 2");
 
-    let lg_lateral_samples = Int::trailing_zeros(lateral_samples);
+    let lg_lateral_samples = PrimInt::trailing_zeros(lateral_samples);
     assert!(
       1 << lg_lateral_samples == lateral_samples,
       "lateral_samples should be an exponent of 2");

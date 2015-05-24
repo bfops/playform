@@ -1,13 +1,11 @@
 //! Position data structure for terrain blocks.
 
 use cgmath::{Point3, Vector3};
-use std::num::Float;
 use std::ops::Add;
 
 pub const BLOCK_WIDTH: i32 = 8;
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
-#[derive(RustcDecodable, RustcEncodable)]
 /// Position of blocks on an "infinite" regular grid.
 pub struct BlockPosition(Point3<i32>);
 

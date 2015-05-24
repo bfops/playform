@@ -19,8 +19,7 @@ pub const TEXTURE_LEN: [usize; 4] = [
 pub const LOD_QUALITY: [u16; 4] = [8, 4, 2, 1];
 
 #[derive(Debug, Copy, Clone)]
-#[derive(RustcDecodable, RustcEncodable)]
-/// [T; 3], but deriving RustcDecodable.
+/// [T; 3], but serializable.
 pub struct Triangle<T> {
   #[allow(missing_docs)]
   pub v1: T,
@@ -40,7 +39,6 @@ pub fn tri<T>(v1: T, v2: T, v3: T) -> Triangle<T> {
 }
 
 #[derive(Debug, Clone)]
-#[derive(RustcDecodable, RustcEncodable)]
 /// A small continguous chunk of terrain.
 pub struct TerrainBlock {
   // These Vecs must all be ordered the same way; each entry is the next triangle.

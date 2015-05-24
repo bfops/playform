@@ -40,8 +40,8 @@ path = "./src/mod.rs"
 [dependencies]
 env_logger= "*"
 log = "*"
+num = "*"
 rand = "*"
-rustc-serialize = "*"
 time = "*"
 
 [dependencies.playform-common]
@@ -52,10 +52,7 @@ version = "*"
 git = "https://github.com/bfops/bit-svo"
 
 [dependencies.cgmath]
-git = "https://github.com/bfops/cgmath-rs"
+git = "https://github.com/bjz/cgmath-rs"
 
 [dependencies.noise]
-git = "https://github.com/bfops/noise-rs"
-
-[dependencies.opencl]
-git = "https://github.com/bfops/rust-opencl"
+git = "https://github.com/bjz/noise-rs"

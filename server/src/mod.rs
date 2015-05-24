@@ -4,13 +4,10 @@
 #![deny(warnings)]
 
 #![feature(collections)]
-#![feature(convert)]
 #![feature(core)]
 #![feature(main)]
-#![feature(std_misc)]
 #![feature(test)]
 #![feature(unboxed_closures)]
-#![feature(unsafe_destructor)]
 
 extern crate bit_svo;
 extern crate cgmath;
@@ -19,9 +16,8 @@ extern crate env_logger;
 #[macro_use]
 extern crate log;
 extern crate noise;
-extern crate opencl;
+extern crate num;
 extern crate rand;
-extern crate rustc_serialize;
 extern crate test;
 extern crate time;
 

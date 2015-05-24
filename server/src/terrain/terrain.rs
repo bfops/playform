@@ -21,13 +21,13 @@ pub const PERSISTENCE: f64 = 1.0 / 16.0;
 pub const LACUNARITY: f64 = 8.0;
 pub const OCTAVES: usize = 2;
 
-#[derive(Debug, Copy)]
+#[derive(Debug, Copy, Clone)]
 pub enum Voxel {
   Empty,
   Surface(SurfaceVoxel),
 }
 
-#[derive(Debug, Copy)]
+#[derive(Debug, Copy, Clone)]
 pub struct SurfaceVoxel {
   pub vertex: VoxelVertex,
   pub normal: VoxelNormal,
@@ -41,7 +41,7 @@ pub struct SurfaceVoxel {
   pub z_edge: Edge,
 }
 
-#[derive(Debug, Copy)]
+#[derive(Debug, Copy, Clone)]
 pub struct VoxelVertex {
   pub x: Fracu8,
   pub y: Fracu8,
@@ -62,7 +62,7 @@ impl VoxelVertex {
   }
 }
 
-#[derive(Debug, Copy)]
+#[derive(Debug, Copy, Clone)]
 pub struct VoxelNormal {
   pub x: Fraci8,
   pub y: Fraci8,
@@ -76,7 +76,7 @@ impl VoxelNormal {
 }
 
 /// Tells you whether and where the surface crossed an edge of a cubic voxel.
-#[derive(Debug, Copy)]
+#[derive(Debug, Copy, Clone)]
 pub struct Edge {
   pub is_crossed: bool,
   // If this is true, the edge moves into the volume as its coordinates increase.
@@ -84,7 +84,7 @@ pub struct Edge {
 }
 
 /// Express a `[0,1)` fraction using a `u8`.
-#[derive(Debug, Copy)]
+#[derive(Debug, Copy, Clone)]
 pub struct Fracu8 {
   // The denominator is 1 << 8.
   pub numerator: u8,
@@ -99,7 +99,7 @@ impl Fracu8 {
 }
 
 /// Express a `[0,1)` fraction using a `i8`.
-#[derive(Debug, Copy)]
+#[derive(Debug, Copy, Clone)]
 pub struct Fraci8 {
   // The denominator is 1 << 8.
   pub numerator: i8,

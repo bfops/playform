@@ -6,7 +6,6 @@ use block_position::BlockPosition;
 use cube_shell::cube_diff;
 use std::cmp::max;
 use std::collections::VecDeque;
-use std::num::{Float, SignedInt};
 use surroundings_iter::SurroundingsIter;
 
 // Rough budget (in microseconds) for how long block updating can take PER SurroundingsLoader.

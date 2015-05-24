@@ -1,7 +1,6 @@
 //! [0, -1, 1, -2, 2, .. n] iterator.
 
-use std::num::{Int, SignedInt, ToPrimitive};
-use std::ops::Neg;
+use num::traits::{Zero, One, Signed, ToPrimitive};
 
 /// Produce numbers in increasing absolute value order to some max, like [0, 1, -1, 2, -2].
 pub struct RangeAbs<T> {
@@ -11,18 +10,18 @@ pub struct RangeAbs<T> {
 
 /// Produce numbers in increasing absolute value order to some max, like [0, 1, -1, 2, -2].
 pub fn range_abs<T>(inclusive_max: T) -> RangeAbs<T>
-  where T: Int + Neg<Output=T> + SignedInt + ToPrimitive
+  where T: Zero + One + Signed
 {
   assert!(!inclusive_max.is_negative());
-  let exclusive_max = inclusive_max + Int::one();
+  let exclusive_max = inclusive_max + One::one();
   RangeAbs {
-    n: Int::zero(),
+    n: Zero::zero(),
     max: exclusive_max,
   }
 }
 
 impl<T> Iterator for RangeAbs<T>
-  where T: Int + Neg<Output=T> + SignedInt + ToPrimitive
+  where T: One + Signed + ToPrimitive + Copy
 {
   type Item = T;
 
@@ -30,7 +29,7 @@ impl<T> Iterator for RangeAbs<T>
     let n = self.n;
     if n == self.max { return None }
     if !n.is_positive() {
-      self.n = -n + Int::one();
+      self.n = -n + One::one();
     } else {
       self.n = -self.n;
     }

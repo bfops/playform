@@ -1,6 +1,5 @@
 use cgmath::{Aabb, Aabb3, Point3};
 use std::fmt::Debug;
-use std::num::NumCast;
 use std::ptr;
 
 pub const MIN_CELL_WIDTH: f32 = 0.1;
@@ -68,7 +67,7 @@ fn split(mid: f32, d: Dimension, bounds: Aabb3<f32>) -> (Option<Aabb3<f32>>, Opt
   }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum Dimension { X, Y, Z }
 
 struct Branches<V> {
@@ -116,7 +115,7 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
           vs.iter().fold(
             0.0,
             |x, &(ref bounds, _)| x + length(bounds, d)
-          ) / NumCast::from(vs.len()).unwrap();
+          ) / (vs.len() as f32);
 
         let l = length(&self.bounds, self.dimension);
         let should_bisect_cell =

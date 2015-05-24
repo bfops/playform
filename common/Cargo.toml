@@ -39,14 +39,14 @@ path = "./src/mod.rs"
 
 [dependencies]
 log = "*"
-rustc-serialize = "*"
+num = "*"
 time = "*"
 
 [dependencies.cgmath]
-git = "https://github.com/bfops/cgmath-rs"
+git = "https://github.com/bjz/cgmath-rs"
 
 [dependencies.nanomsg]
-git = "https://github.com/bfops/nanomsg.rs"
+git = "https://github.com/thehydroimpulse/nanomsg.rs"
 
 [dependencies.serialize]
 path = "./serialize"
