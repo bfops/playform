@@ -4,6 +4,7 @@ use std::ops::DerefMut;
 
 use common::communicate::{ClientId, ServerToClient, TerrainBlockSend};
 use common::lod::{LODIndex, OwnerId};
+use common::serialize::Copyable;
 use common::stopwatch::TimerSet;
 use common::block_position::BlockPosition;
 
@@ -62,9 +63,9 @@ pub fn update_gaia(
                 let client = clients.get(&id).unwrap();
                 client.sender.send(Some(
                   ServerToClient::AddBlock(TerrainBlockSend {
-                    position: position,
+                    position: Copyable(position),
                     block: block.clone(),
-                    lod: lod,
+                    lod: Copyable(lod),
                   })
                 )).unwrap();
               },

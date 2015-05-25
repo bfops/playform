@@ -28,7 +28,7 @@ impl HeightMap {
   /// The height of the field at a given x,y,z.
   pub fn density_at(&self, x: f32, y: f32, z: f32) -> f32 {
     let coords = [x as f64, y as f64, z as f64];
-    (self.perlin)(&self.seed, &coords) as f32 - y/64.0
+    self.perlin.apply(&self.seed, &coords) as f32 - y/64.0
   }
 
   /// The lighting normal of the tile at a given x,y,z.

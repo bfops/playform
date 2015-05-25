@@ -105,6 +105,7 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
   }
 
   pub fn insert(&mut self, bounds: Aabb3<f32>, v: V) {
+    let this: *mut Octree<V> = self;
     assert!(contains(&self.bounds, &bounds));
     let contents = match self.contents {
       OctreeContents::Leaf(ref mut vs) => {
@@ -123,7 +124,7 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
         if should_bisect_cell {
           let (low, high) =
             Octree::bisect(
-              self,
+              this,
               &self.bounds,
               self.dimension,
               vs

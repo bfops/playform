@@ -5,6 +5,7 @@ use std::sync::mpsc::Sender;
 use common::block_position::BlockPosition;
 use common::communicate::ServerToClient::*;
 use common::lod::{LOD, OwnerId};
+use common::serialize::Copyable;
 use common::stopwatch::TimerSet;
 use common::surroundings_loader::LODChange;
 
@@ -31,7 +32,7 @@ pub fn update_world(
       for (_, client) in server.clients.lock().unwrap().iter() {
         for &id in players.iter() {
           let bounds = server.physics.lock().unwrap().get_bounds(id).unwrap().clone();
-          client.sender.send(Some(UpdatePlayer(id, bounds))).unwrap();
+          client.sender.send(Some(UpdatePlayer(Copyable(id), Copyable(bounds)))).unwrap();
         }
       }
     });
@@ -77,7 +78,7 @@ pub fn update_world(
 
     server.sun.lock().unwrap().update().map(|fraction| {
       for client in server.clients.lock().unwrap().values() {
-        client.sender.send(Some(UpdateSun(fraction))).unwrap();
+        client.sender.send(Some(UpdateSun(Copyable(fraction)))).unwrap();
       }
     });
   });
@@ -102,7 +103,9 @@ fn translate_mob(
   mob.position.add_self_v(delta_p);
 
   for client in server.clients.lock().unwrap().values() {
-    client.sender.send(Some(UpdateMob(mob.entity_id, bounds.clone()))).unwrap();
+    client.sender.send(
+      Some(UpdateMob(Copyable(mob.entity_id), Copyable(bounds.clone())))
+    ).unwrap();
   }
 }
 

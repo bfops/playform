@@ -6,7 +6,8 @@ use std::thread;
 use std::time::Duration;
 
 use common::communicate::{ClientToServer, ServerToClient};
-use common::serialize as binary;
+use common::serialize;
+use common::serialize::Copyable;
 use common::socket::SendSocket;
 
 use player::Player;
@@ -33,17 +34,17 @@ pub fn apply_client_update<UpdateGaia>(
       let (to_client_send, to_client_recv) = channel();
       let client_thread = {
         thread::scoped(move || {
-          let mut socket = SendSocket::new(client_url.as_ref(), Some(Duration::seconds(30)));
+          let mut socket = SendSocket::new(client_url.as_ref(), Some(Duration::from_secs(30)));
           while let Some(msg) = to_client_recv.recv().unwrap() {
             // TODO: Don't do this allocation on every packet!
-            let msg = binary::encode(&msg).unwrap();
+            let msg = serialize::encode(&msg).unwrap();
             socket.write(msg.as_ref());
           }
         })
       };
 
       let client_id = server.client_allocator.lock().unwrap().allocate();
-      to_client_send.send(Some(ServerToClient::LeaseId(client_id))).unwrap();
+      to_client_send.send(Some(ServerToClient::LeaseId(Copyable(client_id)))).unwrap();
 
       let client =
         Client {
@@ -52,15 +53,15 @@ pub fn apply_client_update<UpdateGaia>(
         };
       server.clients.lock().unwrap().insert(client_id, client);
     },
-    ClientToServer::Ping(client_id) => {
+    ClientToServer::Ping(Copyable(client_id)) => {
       server.clients.lock().unwrap()
         .get(&client_id)
         .unwrap()
         .sender
-        .send(Some(ServerToClient::Ping(())))
+        .send(Some(ServerToClient::Ping(Copyable(()))))
         .unwrap();
     },
-    ClientToServer::AddPlayer(client_id) => {
+    ClientToServer::AddPlayer(Copyable(client_id)) => {
       let mut player =
         Player::new(
           server.id_allocator.lock().unwrap().allocate(),
@@ -83,10 +84,10 @@ pub fn apply_client_update<UpdateGaia>(
       let clients = server.clients.lock().unwrap();
       let client = clients.get(&client_id).unwrap();
       client.sender.send(
-        Some(ServerToClient::PlayerAdded(id, pos))
+        Some(ServerToClient::PlayerAdded(Copyable(id), Copyable(pos)))
       ).unwrap();
     },
-    ClientToServer::StartJump(player_id) => {
+    ClientToServer::StartJump(Copyable(player_id)) => {
       let mut players = server.players.lock().unwrap();
       let player = players.get_mut(&player_id).unwrap();
       if !player.is_jumping {
@@ -95,7 +96,7 @@ pub fn apply_client_update<UpdateGaia>(
         player.accel.y = player.accel.y + 0.3;
       }
     },
-    ClientToServer::StopJump(player_id) => {
+    ClientToServer::StopJump(Copyable(player_id)) => {
       let mut players = server.players.lock().unwrap();
       let player = players.get_mut(&player_id).unwrap();
       if player.is_jumping {
@@ -104,18 +105,18 @@ pub fn apply_client_update<UpdateGaia>(
         player.accel.y = player.accel.y - 0.3;
       }
     },
-    ClientToServer::Walk(player_id, v) => {
+    ClientToServer::Walk(Copyable(player_id), Copyable(v)) => {
       let mut players = server.players.lock().unwrap();
       let mut player = players.get_mut(&player_id).unwrap();
       player.walk(v);
     },
-    ClientToServer::RotatePlayer(player_id, v) => {
+    ClientToServer::RotatePlayer(Copyable(player_id), Copyable(v)) => {
       let mut players = server.players.lock().unwrap();
       let mut player = players.get_mut(&player_id).unwrap();
       player.rotate_lateral(v.x);
       player.rotate_vertical(v.y);
     },
-    ClientToServer::RequestBlock(client_id, position, lod) => {
+    ClientToServer::RequestBlock(Copyable(client_id), Copyable(position), Copyable(lod)) => {
       update_gaia(ServerToGaia::Load(position, lod, LoadReason::ForClient(client_id)));
     },
   };

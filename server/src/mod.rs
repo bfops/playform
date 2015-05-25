@@ -5,7 +5,9 @@
 
 #![feature(collections)]
 #![feature(core)]
+#![feature(duration)]
 #![feature(main)]
+#![feature(scoped)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 

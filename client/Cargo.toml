@@ -41,7 +41,6 @@ path = "./src/mod.rs"
 env_logger= "*"
 libc = "*"
 log = "*"
-rustc-serialize = "*"
 time = "*"
 
 [dependencies.playform-common]
@@ -52,13 +51,13 @@ version = "*"
 git = "https://github.com/bjz/gl-rs"
 
 [dependencies.sdl2-sys]
-git = "https://github.com/bfops/rust-sdl2"
+git = "https://github.com/AngryLawyer/rust-sdl2"
 
 [dependencies.sdl2]
-git = "https://github.com/bfops/rust-sdl2"
+git = "https://github.com/AngryLawyer/rust-sdl2"
 
 [dependencies.yaglw]
 git = "https://github.com/bfops/yaglw"
 
 [dependencies.cgmath]
-git = "https://github.com/bfops/cgmath-rs"
+git = "https://github.com/bjz/cgmath-rs"

@@ -19,7 +19,6 @@ extern crate gl;
 #[macro_use]
 extern crate log;
 extern crate libc;
-extern crate rustc_serialize;
 extern crate sdl2;
 extern crate sdl2_sys;
 extern crate test;

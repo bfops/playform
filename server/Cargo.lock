@@ -58,7 +58,7 @@ dependencies = [
 [[package]]
 name = "nanomsg"
 version = "0.3.4"
-source = "git+https://github.com/thehydroimpulse/nanomsg.rs#2f5657210454043e07f62b7582b78816c870ae2e"
+source = "git+https://github.com/thehydroimpulse/nanomsg.rs#a93e2709006d139c27b879a1d08528e81b16c442"
 dependencies = [
  "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg-sys 0.1.4 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
@@ -67,7 +67,7 @@ dependencies = [
 [[package]]
 name = "nanomsg-sys"
 version = "0.1.4"
-source = "git+https://github.com/thehydroimpulse/nanomsg.rs#2f5657210454043e07f62b7582b78816c870ae2e"
+source = "git+https://github.com/thehydroimpulse/nanomsg.rs#a93e2709006d139c27b879a1d08528e81b16c442"
 dependencies = [
  "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -75,7 +75,7 @@ dependencies = [
 [[package]]
 name = "noise"
 version = "0.1.5"
-source = "git+https://github.com/bjz/noise-rs#43037b10d2490a2974b92749492c7d74cb17b92b"
+source = "git+https://github.com/bjz/noise-rs#d46df3fd9e37000a45fa76aad3fcdb85f4967318"
 dependencies = [
  "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
