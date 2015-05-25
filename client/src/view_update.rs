@@ -32,7 +32,7 @@ pub enum ClientToView {
   SetClearColor(Color3<f32>),
 
   /// Add a terrain block to the view.
-  AddBlock((BlockPosition, TerrainBlock, LODIndex)),
+  AddBlock(BlockPosition, TerrainBlock, LODIndex),
   /// Remove a terrain entity.
   RemoveTerrain(EntityId),
   /// Remove block-specific data.
@@ -70,7 +70,7 @@ pub fn apply_client_to_view(up: ClientToView, view: &mut View) {
     ClientToView::SetClearColor(color) => {
       view.gl.set_background_color(color.r, color.g, color.b, 1.0);
     },
-    ClientToView::AddBlock((_, block, _)) => {
+    ClientToView::AddBlock(_, block, _) => {
       view.terrain_buffers.push(
         &mut view.gl,
 

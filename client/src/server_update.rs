@@ -1,10 +1,10 @@
 use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
 use std::cmp::partial_max;
 use std::f32::consts::PI;
-use std::num::Float;
 
 use common::color::{Color3, Color4};
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
+use common::serialize::Copyable;
 
 use client::Client;
 use light::Light;
@@ -34,13 +34,13 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
     ServerToClient::LeaseId(_) => {
       warn!("Client ID has already been leased.");
     },
-    ServerToClient::Ping(()) => {
-      update_server(ClientToServer::Ping(client.id));
+    ServerToClient::Ping(Copyable(())) => {
+      update_server(ClientToServer::Ping(Copyable(client.id)));
     },
-    ServerToClient::PlayerAdded(id, _) => {
+    ServerToClient::PlayerAdded(Copyable(id), _) => {
       warn!("Unexpected PlayerAdded event: {:?}.", id);
     },
-    ServerToClient::UpdatePlayer(player_id, bounds) => {
+    ServerToClient::UpdatePlayer(Copyable(player_id), Copyable(bounds)) => {
       let mesh = to_triangles(&bounds, &Color4::of_rgba(0.0, 0.0, 1.0, 1.0));
       update_view(ClientToView::UpdatePlayer(player_id, mesh));
 
@@ -55,11 +55,11 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
       *client.player_position.lock().unwrap() = position;
       update_view(ClientToView::MoveCamera(position));
     },
-    ServerToClient::UpdateMob(id, bounds) => {
+    ServerToClient::UpdateMob(Copyable(id), Copyable(bounds)) => {
       let mesh = to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0));
       update_view(ClientToView::UpdateMob(id, mesh));
     },
-    ServerToClient::UpdateSun(fraction) => {
+    ServerToClient::UpdateSun(Copyable(fraction)) => {
       // Convert to radians.
       let angle = fraction * 2.0 * PI;
       let (s, c) = angle.sin_cos();

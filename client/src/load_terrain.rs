@@ -1,9 +1,10 @@
+use num;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
-use std::num;
 
 use common::block_position::BlockPosition;
 use common::communicate::TerrainBlockSend;
 use common::lod::LODIndex;
+use common::serialize::Copyable;
 use common::surroundings_loader::radius_between;
 
 use client::{Client, LOD_THRESHOLDS};
@@ -18,7 +19,7 @@ pub fn load_terrain_block<UpdateView>(
 {
   let player_position =
     BlockPosition::from_world_position(&client.player_position.lock().unwrap().clone());
-  let distance = radius_between(&player_position, &block.position);
+  let distance = radius_between(&player_position, &block.position.0);
 
   if distance > client.max_load_distance {
     debug!(
@@ -30,7 +31,7 @@ pub fn load_terrain_block<UpdateView>(
   }
 
   let lod = lod_index(distance);
-  if lod != block.lod {
+  if lod != block.lod.0 {
     debug!(
       "Not loading {:?}: given LOD {:?} is not the desired LOD {:?}.",
       block.position,
@@ -40,9 +41,9 @@ pub fn load_terrain_block<UpdateView>(
     return;
   }
 
-  match client.loaded_blocks.lock().unwrap().entry(block.position) {
+  match client.loaded_blocks.lock().unwrap().entry(block.position.0) {
     Vacant(entry) => {
-      entry.insert((block.block.clone(), block.lod));
+      entry.insert((block.block.clone(), block.lod.0));
     },
     Occupied(mut entry) => {
       {
@@ -52,14 +53,14 @@ pub fn load_terrain_block<UpdateView>(
         for &id in prev_block.ids.iter() {
           update_view(ClientToView::RemoveTerrain(id));
         }
-        update_view(ClientToView::RemoveBlockData(block.position, prev_lod));
+        update_view(ClientToView::RemoveBlockData(block.position.0, prev_lod));
       }
-      entry.insert((block.block.clone(), block.lod));
+      entry.insert((block.block.clone(), block.lod.0));
     },
   };
 
   if !block.block.ids.is_empty() {
-    update_view(ClientToView::AddBlock((block.position, block.block, block.lod)));
+    update_view(ClientToView::AddBlock(block.position.0, block.block, block.lod.0));
   }
 }
 
@@ -72,5 +73,5 @@ pub fn lod_index(distance: i32) -> LODIndex {
   {
     lod += 1;
   }
-  LODIndex(num::cast(lod).unwrap())
+  LODIndex(num::traits::FromPrimitive::from_usize(lod).unwrap())
 }

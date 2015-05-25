@@ -5,6 +5,7 @@ use time;
 use common::block_position::BlockPosition;
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
 use common::interval_timer::IntervalTimer;
+use common::serialize::Copyable;
 use common::surroundings_loader::LODChange;
 
 use client::Client;
@@ -58,7 +59,13 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
                   .get(&block_position)
                   .map(|&(_, lod)| lod);
                 if loaded_lod != Some(lod) {
-                  update_server(ClientToServer::RequestBlock(client.id, block_position, lod));
+                  update_server(
+                    ClientToServer::RequestBlock(
+                      Copyable(client.id),
+                      Copyable(block_position),
+                      Copyable(lod),
+                    )
+                  );
                 } else {
                   trace!("Not re-loading {:?} at {:?}", block_position, lod);
                 }

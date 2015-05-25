@@ -34,24 +34,22 @@ pub fn view_thread<Recv, UpdateServer>(
 {
   let timers = TimerSet::new();
 
-  let sdl = sdl2::init(sdl2::INIT_EVERYTHING).unwrap();
+  let sdl = sdl2::init().everything().unwrap();
 
-  video::gl_set_attribute(video::GLAttr::GLContextMajorVersion, 3);
-  video::gl_set_attribute(video::GLAttr::GLContextMinorVersion, 3);
-  video::gl_set_attribute(
-    video::GLAttr::GLContextProfileMask,
-    video::GLProfile::GLCoreProfile as i32,
-  );
+  video::gl_attr::set_context_profile(video::GLProfile::Core);
+  video::gl_attr::set_context_version(3, 3);
 
   // Open the window as fullscreen at the current resolution.
   let mut window =
     video::Window::new(
+      sdl,
       "Playform",
-      video::WindowPos::Positioned(0),
-      video::WindowPos::Positioned(0),
       1600, 900,
-      video::OPENGL,
-    ).unwrap();
+    );
+
+  let window2 = window.position(0, 0);
+  window.opengl();
+  let window = window.build().unwrap();
 
   // Send text input events.
   sdl2::keyboard::start_text_input();

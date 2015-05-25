@@ -41,6 +41,7 @@ path = "./src/mod.rs"
 env_logger= "*"
 libc = "*"
 log = "*"
+num = "*"
 time = "*"
 
 [dependencies.playform-common]

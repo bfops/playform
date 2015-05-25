@@ -134,7 +134,7 @@ impl Font {
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
-      surface::SDL_FreeSurface(surface_ptr as *const SDL_Surface);
+      surface::SDL_FreeSurface(surface_ptr as *mut SDL_Surface);
     }
 
     texture
