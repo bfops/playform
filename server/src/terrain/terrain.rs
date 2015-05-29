@@ -21,6 +21,12 @@ pub const PERSISTENCE: f64 = 1.0 / 16.0;
 pub const LACUNARITY: f64 = 8.0;
 pub const OCTAVES: usize = 2;
 
+// NOTE: When voxel size and storage become an issue, this should be shrunk to
+// be less than pointer-sized. It'll be easier to transfer to the GPU for
+// whatever reasons, but also make it possible to shrink the SVO footprint by
+// "flattening" the leaf contents and pointers into the same space (the
+// low-order bits can be used to figure out which one it is, since pointers
+// have three low-order bits set to zero).
 #[derive(Debug, Copy, Clone)]
 pub enum Voxel {
   Empty,
@@ -115,17 +121,6 @@ impl Fraci8 {
   pub fn to_f32(&self) -> f32 {
     self.numerator as f32 / 128.0
   }
-}
-
-#[test]
-fn small_voxel() {
-  use std::mem;
-
-  // Check that the leaf does not increase the size of TreeBody on 64-bit systems.
-
-  let max_ptr_size = mem::size_of::<u64>();
-  println!("size_of::<Voxel>() = {}", mem::size_of::<Voxel>());
-  assert!(mem::size_of::<Voxel>() <= max_ptr_size);
 }
 
 pub struct TerrainMipMesh {
