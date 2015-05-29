@@ -6,9 +6,13 @@ before_install:
   - sudo apt-get update -qq
 
 install:
-  - sudo apt-get install -qq libnanomsg-dev libportaudio-dev libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev opencl-headers fglrx
+  - sudo apt-get install -qq libportaudio-dev libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev opencl-headers fglrx
+  - wget http://download.nanomsg.org/nanomsg-0.5-beta.tar.gz
+  - tar -xvzf nanomsg-0.5-beta.tar.gz
+  - cd nanomsg-0.5-beta && ./configure && make && sudo make install
+  - sudo ldconfig
 
 script:
-  - ( cd common && cargo test --verbose )
-  - ( cd client && cargo test --verbose )
-  - ( cd server && cargo test --verbose )
+  - cd common && cargo test --verbose
+  - cd client && cargo test --verbose
+  - cd server && cargo test --verbose
