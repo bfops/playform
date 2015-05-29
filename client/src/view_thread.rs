@@ -41,15 +41,16 @@ pub fn view_thread<Recv, UpdateServer>(
 
   // Open the window as fullscreen at the current resolution.
   let mut window =
-    video::Window::new(
-      sdl,
+    video::WindowBuilder::new(
+      &sdl,
       "Playform",
       1600, 900,
     );
 
-  let window2 = window.position(0, 0);
+  let window = window.position(0, 0);
   window.opengl();
-  let window = window.build().unwrap();
+
+  let mut window = window.build().unwrap();
 
   // Send text input events.
   sdl2::keyboard::start_text_input();
@@ -69,7 +70,7 @@ pub fn view_thread<Recv, UpdateServer>(
   gl.print_stats();
 
   let window_size = {
-    let (w, h) = window.get_size();
+    let (w, h) = window.properties_getters(&event_pump).get_size();
     Vector2::new(w, h)
   };
 
@@ -121,6 +122,7 @@ pub fn view_thread<Recv, UpdateServer>(
               update_server,
               &mut view,
               &mut window,
+              &event_pump,
               event,
             );
           }

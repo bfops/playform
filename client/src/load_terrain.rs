@@ -4,7 +4,6 @@ use std::collections::hash_map::Entry::{Vacant, Occupied};
 use common::block_position::BlockPosition;
 use common::communicate::TerrainBlockSend;
 use common::lod::LODIndex;
-use common::serialize::Copyable;
 use common::surroundings_loader::radius_between;
 
 use client::{Client, LOD_THRESHOLDS};

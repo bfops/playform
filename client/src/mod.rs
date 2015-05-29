@@ -4,13 +4,12 @@
 #![deny(warnings)]
 
 #![feature(collections)]
-#![feature(convert)]
 #![feature(core)]
+#![feature(duration)]
 #![feature(main)]
-#![feature(std_misc)]
+#![feature(scoped)]
 #![feature(test)]
 #![feature(unboxed_closures)]
-#![feature(unsafe_destructor)]
 
 extern crate cgmath;
 extern crate common;
