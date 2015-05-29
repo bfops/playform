@@ -1,9 +1,9 @@
 language: rust
+rust: nightly
 
 before_install:
   - sudo apt-add-repository --yes ppa:zoogie/sdl2-snapshots
   - sudo apt-get update -qq
-  - curl -sSf https://static.rust-lang.org/rustup.sh | sh -s -- --channel=nightly --disable-sudo
 
 install:
   - sudo apt-get install -qq libnanomsg-dev libportaudio-dev libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev opencl-headers fglrx
