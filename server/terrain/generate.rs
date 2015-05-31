@@ -12,10 +12,10 @@ use common::lod::LODIndex;
 use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, tri};
 
 use heightmap::HeightMap;
-use svo;
-use svo::VoxelTree;
 use voxel;
 use voxel::{Fracu8, Fraci8, Voxel, SurfaceVoxel, VoxelVertex, VoxelNormal, Edge};
+use voxel_tree;
+use voxel_tree::VoxelTree;
 
 fn generate_voxel<FieldContains, GetNormal>(
   timers: &TimerSet,
@@ -250,16 +250,16 @@ pub fn generate_block(
         let branch = voxels.get_mut_or_create($bounds);
         let r;
         match branch {
-          &mut svo::TreeBody::Leaf(v) => r = v,
-          &mut svo::TreeBody::Empty => {
+          &mut voxel_tree::TreeBody::Leaf(v) => r = v,
+          &mut voxel_tree::TreeBody::Empty => {
             r = generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds);
-            *branch = svo::TreeBody::Leaf(r);
+            *branch = voxel_tree::TreeBody::Leaf(r);
           },
-          &mut svo::TreeBody::Branch(_) => {
+          &mut voxel_tree::TreeBody::Branch(_) => {
             // Overwrite existing for now.
             // TODO: Don't do ^that.
             r = generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds);
-            *branch = svo::TreeBody::Leaf(r);
+            *branch = voxel_tree::TreeBody::Leaf(r);
           },
         };
         match r {

@@ -10,9 +10,9 @@ extern crate stopwatch;
 
 mod generate;
 mod heightmap;
-mod svo;
 mod raycast;
 mod voxel;
+mod voxel_tree;
 
 pub use noise::Seed;
 
@@ -28,7 +28,7 @@ use common::lod::LODIndex;
 use common::terrain_block::TerrainBlock;
 
 use heightmap::HeightMap;
-use svo::VoxelTree;
+use voxel_tree::VoxelTree;
 
 pub const AMPLITUDE: f64 = 64.0;
 pub const FREQUENCY: f64 = 1.0 / 64.0;

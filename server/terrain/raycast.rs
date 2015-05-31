@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 
-use svo::{TreeBody, Branches};
 use voxel;
 use voxel::Voxel;
+use voxel_tree::{TreeBody, Branches};
 
 // Time-of-intersection. Implements `Ord` for sanity reasons;
 // let's hope the floating-points are all valid.
