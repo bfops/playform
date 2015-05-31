@@ -4,9 +4,6 @@ name = "playform-server"
 version = "0.0.0"
 authors = []
 
-[profile.dev]
-opt-level = 1
-
 [[bin]]
 name = "server"
 path = "./src/mod.rs"

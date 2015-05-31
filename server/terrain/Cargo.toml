@@ -3,9 +3,6 @@ name = "terrain"
 version = "0.0.0"
 authors = []
 
-[profile.dev]
-opt-level = 1
-
 [lib]
 name = "terrain"
 path = "mod.rs"
