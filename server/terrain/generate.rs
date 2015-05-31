@@ -165,7 +165,7 @@ pub fn generate_block(
   timers: &TimerSet,
   id_allocator: &Mutex<IdAllocator<EntityId>>,
   heightmap: &HeightMap,
-  voxels: &mut VoxelTree<Voxel>,
+  voxels: &mut VoxelTree,
   position: &BlockPosition,
   lod_index: LODIndex,
 ) -> TerrainBlock {

@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 
 use svo::{TreeBody, Branches};
 use voxel;
+use voxel::Voxel;
 
 // Time-of-intersection. Implements `Ord` for sanity reasons;
 // let's hope the floating-points are all valid.
@@ -51,8 +52,8 @@ pub struct Exit {
 // TODO: Audit all the divisions for divide-by-zeros.
 
 #[inline]
-pub fn cast_ray_branches<'a, T, MakeBounds, Act, R>(
-  this: &'a Branches<T>,
+pub fn cast_ray_branches<'a, MakeBounds, Act, R>(
+  this: &'a Branches,
   origin: [f32; 3],
   direction: [f32; 3],
   mut entry: Option<Entry>,
@@ -62,7 +63,7 @@ pub fn cast_ray_branches<'a, T, MakeBounds, Act, R>(
 ) -> Result<R, Exit>
   where
     MakeBounds: FnMut([usize; 3]) -> voxel::Bounds,
-    Act: FnMut(voxel::Bounds, &'a T) -> Option<R>,
+    Act: FnMut(voxel::Bounds, &'a Voxel) -> Option<R>,
 {
   loop {
     let child = this.get(coords[0], coords[1], coords[2]);
@@ -90,8 +91,8 @@ pub fn cast_ray_branches<'a, T, MakeBounds, Act, R>(
 }
 
 /// Precondition: the ray passes through `this`.
-pub fn cast_ray<'a, T, Act, R>(
-  this: &'a TreeBody<T>,
+pub fn cast_ray<'a, Act, R>(
+  this: &'a TreeBody,
   origin: [f32; 3],
   direction: [f32; 3],
   bounds: voxel::Bounds,
@@ -99,7 +100,7 @@ pub fn cast_ray<'a, T, Act, R>(
   act: &mut Act,
 ) -> Result<R, Exit>
   where
-    Act: FnMut(voxel::Bounds, &'a T) -> Option<R>
+    Act: FnMut(voxel::Bounds, &'a Voxel) -> Option<R>
 {
   match this {
     &TreeBody::Empty => {

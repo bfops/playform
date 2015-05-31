@@ -28,7 +28,6 @@ use common::terrain_block::TerrainBlock;
 
 use heightmap::HeightMap;
 use svo::VoxelTree;
-use voxel::{Voxel};
 
 pub const AMPLITUDE: f64 = 64.0;
 pub const FREQUENCY: f64 = 1.0 / 64.0;
@@ -45,7 +44,7 @@ pub struct Terrain {
   pub heightmap: HeightMap,
   // all the blocks that have ever been created.
   pub all_blocks: HashMap<BlockPosition, TerrainMipMesh>,
-  pub voxels: VoxelTree<Voxel>,
+  pub voxels: VoxelTree,
 }
 
 impl Terrain {

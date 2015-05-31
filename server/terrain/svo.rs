@@ -5,41 +5,42 @@ use std::ops::Deref;
 
 use raycast;
 use voxel;
+use voxel::Voxel;
 
 #[derive(Debug)]
-pub struct VoxelTree<T> {
+pub struct VoxelTree {
   /// The log_2 of the tree's size.
   lg_size: u8,
   /// Force the top level to always be branches;
   /// it saves a branch in the grow logic.
-  contents: Branches<T>,
+  contents: Branches,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 #[repr(C)]
-pub struct Branches<T> {
+pub struct Branches {
   // xyz ordering
 
-  lll: TreeBody<T>,
-  llh: TreeBody<T>,
-  lhl: TreeBody<T>,
-  lhh: TreeBody<T>,
-  hll: TreeBody<T>,
-  hlh: TreeBody<T>,
-  hhl: TreeBody<T>,
-  hhh: TreeBody<T>,
+  lll: TreeBody,
+  llh: TreeBody,
+  lhl: TreeBody,
+  lhh: TreeBody,
+  hll: TreeBody,
+  hlh: TreeBody,
+  hhl: TreeBody,
+  hhh: TreeBody,
 }
 
 /// The main, recursive, tree-y part of the `VoxelTree`.
 #[derive(Debug, PartialEq, Eq)]
-pub enum TreeBody<T> {
+pub enum TreeBody {
   Empty,
-  Leaf(T),
-  Branch(Box<Branches<T>>),
+  Leaf(Voxel),
+  Branch(Box<Branches>),
 }
 
-impl<T> Branches<T> {
-  pub fn empty() -> Branches<T> {
+impl Branches {
+  pub fn empty() -> Branches {
     Branches {
       lll: TreeBody::Empty,
       llh: TreeBody::Empty,
@@ -52,16 +53,16 @@ impl<T> Branches<T> {
     }
   }
 
-  pub fn get<'a>(&'a self, x: usize, y: usize, z: usize) -> &'a TreeBody<T> {
-    let this: &'a [[[TreeBody<T>; 2]; 2]; 2] = unsafe {
+  pub fn get<'a>(&'a self, x: usize, y: usize, z: usize) -> &'a TreeBody {
+    let this: &'a [[[TreeBody; 2]; 2]; 2] = unsafe {
       mem::transmute(self)
     };
     &this[x][y][z]
   }
 }
 
-impl<T> VoxelTree<T> {
-  pub fn new() -> VoxelTree<T> {
+impl VoxelTree {
+  pub fn new() -> VoxelTree {
     VoxelTree {
       lg_size: 0,
       contents: Branches::empty(),
@@ -90,10 +91,10 @@ impl<T> VoxelTree<T> {
 
   #[inline(always)]
   fn get_branch<'a, ChooseBranch>(
-    branches: &'a Branches<T>,
+    branches: &'a Branches,
     mut choose_branch: ChooseBranch,
     x: i32, y: i32, z: i32,
-  ) -> &'a TreeBody<T>
+  ) -> &'a TreeBody
     where ChooseBranch: FnMut(i32) -> bool,
   {
     // TODO: Make this branch-free by constructing the bools into an offset.
@@ -111,10 +112,10 @@ impl<T> VoxelTree<T> {
 
   #[inline(always)]
   fn get_branch_mut<'a, ChooseBranch>(
-    branches: &'a mut Branches<T>,
+    branches: &'a mut Branches,
     mut choose_branch: ChooseBranch,
     x: i32, y: i32, z: i32,
-  ) -> &'a mut TreeBody<T>
+  ) -> &'a mut TreeBody
     where ChooseBranch: FnMut(i32) -> bool,
   {
     // TODO: Make this branch-free by constructing the bools into an offset.
@@ -208,8 +209,8 @@ impl<T> VoxelTree<T> {
     &'a mut self,
     voxel: voxel::Bounds,
     mut step: Step,
-  ) -> Result<&'a mut TreeBody<T>, E> where
-    Step: FnMut(&'a mut TreeBody<T>) -> Result<&'a mut Branches<T>, E>,
+  ) -> Result<&'a mut TreeBody, E> where
+    Step: FnMut(&'a mut TreeBody) -> Result<&'a mut Branches, E>,
   {
     let mut mask = self.find_mask(voxel);
     let mut branches = &mut self.contents;
@@ -244,8 +245,8 @@ impl<T> VoxelTree<T> {
     &'a self,
     voxel: voxel::Bounds,
     mut step: Step,
-  ) -> Result<&'a TreeBody<T>, E> where
-    Step: FnMut(&'a TreeBody<T>) -> Result<&'a Branches<T>, E>,
+  ) -> Result<&'a TreeBody, E> where
+    Step: FnMut(&'a TreeBody) -> Result<&'a Branches, E>,
   {
     let mut mask = self.find_mask(voxel);
     let mut branches = &self.contents;
@@ -278,7 +279,7 @@ impl<T> VoxelTree<T> {
 
   /// Find a voxel inside this tree.
   /// If it doesn't exist, it will be created as empty.
-  pub fn get_mut_or_create<'a>(&'a mut self, voxel: voxel::Bounds) -> &'a mut TreeBody<T> {
+  pub fn get_mut_or_create<'a>(&'a mut self, voxel: voxel::Bounds) -> &'a mut TreeBody {
     self.grow_to_hold(voxel);
     let branch: Result<_, ()> =
       self.mut_find(voxel, |branch| { Ok(VoxelTree::get_mut_or_create_step(branch)) });
@@ -286,8 +287,8 @@ impl<T> VoxelTree<T> {
   }
 
   fn get_mut_or_create_step<'a>(
-    branch: &'a mut TreeBody<T>,
-  ) -> &'a mut Branches<T> {
+    branch: &'a mut TreeBody,
+  ) -> &'a mut Branches {
     // "Step down" the tree.
     match *branch {
       // Branches; we can go straight to the branching logic.
@@ -321,7 +322,7 @@ impl<T> VoxelTree<T> {
   }
 
   /// Find a voxel inside this tree.
-  pub fn get<'a>(&'a self, voxel: voxel::Bounds) -> Option<&'a T> {
+  pub fn get<'a>(&'a self, voxel: voxel::Bounds) -> Option<&'a Voxel> {
     if !self.contains_bounds(voxel) {
       return None
     }
@@ -346,7 +347,7 @@ impl<T> VoxelTree<T> {
     act: &mut Act,
   ) -> Option<R>
     where
-      Act: FnMut(voxel::Bounds, &'a T) -> Option<R>
+      Act: FnMut(voxel::Bounds, &'a Voxel) -> Option<R>
   {
     let coords = [
       if origin[0] >= 0.0 {1} else {0},

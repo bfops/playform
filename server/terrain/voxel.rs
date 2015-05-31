@@ -43,13 +43,13 @@ impl Bounds {
 // "flattening" the leaf contents and pointers into the same space (the
 // low-order bits can be used to figure out which one it is, since pointers
 // have three low-order bits set to zero).
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Voxel {
   Empty,
   Surface(SurfaceVoxel),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SurfaceVoxel {
   pub vertex: VoxelVertex,
   pub normal: VoxelNormal,
@@ -63,7 +63,7 @@ pub struct SurfaceVoxel {
   pub z_edge: Edge,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VoxelVertex {
   pub x: Fracu8,
   pub y: Fracu8,
@@ -84,7 +84,7 @@ impl VoxelVertex {
   }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VoxelNormal {
   pub x: Fraci8,
   pub y: Fraci8,
@@ -98,7 +98,7 @@ impl VoxelNormal {
 }
 
 /// Tells you whether and where the surface crossed an edge of a cubic voxel.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Edge {
   pub is_crossed: bool,
   // If this is true, the edge moves into the volume as its coordinates increase.
@@ -106,7 +106,7 @@ pub struct Edge {
 }
 
 /// Express a `[0,1)` fraction using a `u8`.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Fracu8 {
   // The denominator is 1 << 8.
   pub numerator: u8,
@@ -121,7 +121,7 @@ impl Fracu8 {
 }
 
 /// Express a `[0,1)` fraction using a `i8`.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Fraci8 {
   // The denominator is 1 << 8.
   pub numerator: i8,
