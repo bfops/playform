@@ -96,7 +96,7 @@ pub enum ServerToClient {
   UpdateSun(Copyable<f32>),
 
   /// Provide a block of terrain to a client.
-  AddBlock(TerrainBlockSend),
+  UpdateBlock(TerrainBlockSend),
 }
 
 flatten_enum_impl!(
@@ -108,5 +108,5 @@ flatten_enum_impl!(
   (UpdatePlayer, Copyable(3), Copyable(3), x, y),
   (UpdateMob, Copyable(4), Copyable(4), x, y),
   (UpdateSun, Copyable(5), Copyable(5), x),
-  (AddBlock, Copyable(6), Copyable(6), x),
+  (UpdateBlock, Copyable(6), Copyable(6), x),
 );

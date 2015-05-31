@@ -62,7 +62,7 @@ pub fn update_gaia(
                 let clients = server.clients.lock().unwrap();
                 let client = clients.get(&id).unwrap();
                 client.sender.send(Some(
-                  ServerToClient::AddBlock(TerrainBlockSend {
+                  ServerToClient::UpdateBlock(TerrainBlockSend {
                     position: Copyable(position),
                     block: block.clone(),
                     lod: Copyable(lod),

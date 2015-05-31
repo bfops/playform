@@ -94,7 +94,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
 
       update_view(ClientToView::SetClearColor(sun_color));
     },
-    ServerToClient::AddBlock(block) => {
+    ServerToClient::UpdateBlock(block) => {
       queue_block(block);
     },
   }
