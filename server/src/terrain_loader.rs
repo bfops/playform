@@ -44,7 +44,7 @@ impl TerrainLoader {
   ) where LoadBlock: FnMut(ServerToGaia)
   {
     let prev_lod;
-    let max_lod_changed;
+    let max_lod_changed: bool;
     match self.lod_map.get(block_position, owner) {
       Some((Some(prev), lods)) => {
         prev_lod = Some(prev);
@@ -85,19 +85,20 @@ impl TerrainLoader {
         self.in_progress_terrain.insert(id_allocator, physics, block_position);
       },
       LOD::LodIndex(new_lod) => {
+        let mut generate_block = || {
+          debug!("{:?} requested from gaia", block_position);
+          load_block(
+            ServerToGaia::Load(*block_position, new_lod, LoadReason::Local(owner))
+          );
+        };
         match self.terrain.all_blocks.get(block_position) {
           None => {
-            load_block(
-              ServerToGaia::Load(*block_position, new_lod, LoadReason::Local(owner))
-            );
+            generate_block();
           },
           Some(mipmesh) => {
             match mipmesh.lods[new_lod.0 as usize].as_ref() {
               None => {
-                debug!("{:?} requested from gaia", block_position);
-                load_block(
-                  ServerToGaia::Load(*block_position, new_lod, LoadReason::Local(owner))
-                );
+                generate_block();
               },
               Some(block) => {
                 TerrainLoader::insert_block(

@@ -31,8 +31,8 @@ pub fn update_gaia(
   match update {
     ServerToGaia::Load(position, lod, load_reason) => {
       timers.time("terrain.load", || {
-        // TODO: Just lock `terrain` for the check and then the move,
-        // not while we're generating the block.
+        // TODO: Just lock `terrain` for the check and then the move;
+        // don't lock for the whole time where we're generating the block.
         let mut terrain_loader = server.terrain_loader.lock().unwrap();
         let terrain_loader = terrain_loader.deref_mut();
         let lod_map = &mut terrain_loader.lod_map;
@@ -45,7 +45,7 @@ pub fn update_gaia(
           |block| {
             match load_reason {
               LoadReason::Local(owner) => {
-                // TODO: Check that this block isn't stale; i.e. should still be loaded.
+                // TODO: Check that this block isn't stale, i.e. should still be loaded.
                 // Maybe this should just ping the original thread, same as we ping the client.
                 TerrainLoader::insert_block(
                   timers,

@@ -64,7 +64,7 @@ impl Terrain {
     id_allocator: &Mutex<IdAllocator<EntityId>>,
     position: &BlockPosition,
     lod_index: LODIndex,
-    f: F,
+    with_block: F,
   ) -> T
     where F: FnOnce(&TerrainBlock) -> T
   {
@@ -87,7 +87,7 @@ impl Terrain {
           );
         }
 
-        f(mesh.as_ref().unwrap())
+        with_block(mesh.as_ref().unwrap())
       })
     );
 

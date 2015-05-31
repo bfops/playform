@@ -161,6 +161,8 @@ fn generate_voxel<FieldContains, GetNormal>(
   })
 }
 
+/// Generate a `TerrainBlock` based on a given position in a `VoxelTree`.
+/// Any necessary voxels will be generated.
 pub fn generate_block(
   timers: &TimerSet,
   id_allocator: &Mutex<IdAllocator<EntityId>>,
