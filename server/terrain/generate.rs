@@ -1,5 +1,3 @@
-use bit_svo;
-use bit_svo::{VoxelBounds, VoxelTree};
 use cgmath::{Point, Point3, Vector, Vector3};
 use cgmath::Aabb3;
 use num::traits::PrimInt;
@@ -13,14 +11,17 @@ use common::lod::LODIndex;
 use common::stopwatch::TimerSet;
 use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, tri};
 
-use terrain::heightmap::HeightMap;
-use terrain::terrain::{Fracu8, Fraci8, Voxel, SurfaceVoxel, VoxelVertex, VoxelNormal, Edge};
+use heightmap::HeightMap;
+use svo;
+use svo::VoxelTree;
+use voxel;
+use voxel::{Fracu8, Fraci8, Voxel, SurfaceVoxel, VoxelVertex, VoxelNormal, Edge};
 
 fn generate_voxel<FieldContains, GetNormal>(
   timers: &TimerSet,
   field_contains: &mut FieldContains,
   get_normal: &mut GetNormal,
-  voxel: VoxelBounds,
+  voxel: voxel::Bounds,
 ) -> Voxel
   where
     FieldContains: FnMut(f32, f32, f32) -> bool,
@@ -247,16 +248,16 @@ pub fn generate_block(
         let branch = voxels.get_mut_or_create($bounds);
         let r;
         match branch {
-          &mut bit_svo::TreeBody::Leaf(v) => r = v,
-          &mut bit_svo::TreeBody::Empty => {
+          &mut svo::TreeBody::Leaf(v) => r = v,
+          &mut svo::TreeBody::Empty => {
             r = generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds);
-            *branch = bit_svo::TreeBody::Leaf(r);
+            *branch = svo::TreeBody::Leaf(r);
           },
-          &mut bit_svo::TreeBody::Branch(_) => {
+          &mut svo::TreeBody::Branch(_) => {
             // Overwrite existing for now.
             // TODO: Don't do ^that.
             r = generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds);
-            *branch = bit_svo::TreeBody::Leaf(r);
+            *branch = svo::TreeBody::Leaf(r);
           },
         };
         match r {
@@ -266,7 +267,7 @@ pub fn generate_block(
       }});
 
       macro_rules! get_vertex(($v:expr) => {{
-        let bounds = VoxelBounds::new($v.x, $v.y, $v.z, lg_size);
+        let bounds = voxel::Bounds::new($v.x, $v.y, $v.z, lg_size);
         let voxel =
           get_voxel!(bounds)
           .unwrap_or_else(|| panic!("Couldn't find edge neighbor voxel"));
@@ -305,7 +306,7 @@ pub fn generate_block(
               };
             w = iposition.add_v(&Vector3::new(x, y, z));
           }
-          let bounds = VoxelBounds::new(w.x, w.y, w.z, lg_size);
+          let bounds = voxel::Bounds::new(w.x, w.y, w.z, lg_size);
           let voxel;
           match get_voxel!(bounds) {
             None => continue,

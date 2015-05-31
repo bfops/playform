@@ -154,7 +154,7 @@ impl Player {
         |lod_change| {
           match lod_change {
             LODChange::Load(pos, _) => {
-              server.terrain_game_loader.lock().unwrap().load(
+              server.terrain_loader.lock().unwrap().load(
                 timers,
                 &server.id_allocator,
                 &server.physics,
@@ -165,7 +165,7 @@ impl Player {
               );
             },
             LODChange::Unload(pos) => {
-              server.terrain_game_loader.lock().unwrap().unload(
+              server.terrain_loader.lock().unwrap().unload(
                 timers,
                 &server.physics,
                 &pos,

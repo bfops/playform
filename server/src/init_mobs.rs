@@ -5,7 +5,7 @@ use common::surroundings_loader::SurroundingsLoader;
 
 use mob;
 use server::Server;
-use terrain::terrain;
+use terrain;
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
   bounds.min.add_v(&bounds.max.to_vec()).mul_s(0.5)

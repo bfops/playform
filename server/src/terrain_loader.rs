@@ -1,4 +1,3 @@
-use noise::Seed;
 use std::sync::Mutex;
 
 use common::block_position::BlockPosition;
@@ -10,21 +9,21 @@ use common::terrain_block::TerrainBlock;
 
 use in_progress_terrain::InProgressTerrain;
 use physics::Physics;
-use terrain::terrain::Terrain;
+use terrain::{Terrain, Seed};
 use update_gaia::{ServerToGaia, LoadReason};
 
 /// Load and unload TerrainBlocks from the game.
 /// Each TerrainBlock can be owned by a set of owners, each of which can independently request LODs.
 /// The maximum LOD requested is the one that is actually loaded.
-pub struct TerrainGameLoader {
+pub struct TerrainLoader {
   pub terrain: Terrain,
   pub in_progress_terrain: InProgressTerrain,
   pub lod_map: LODMap,
 }
 
-impl TerrainGameLoader {
-  pub fn new() -> TerrainGameLoader {
-    TerrainGameLoader {
+impl TerrainLoader {
+  pub fn new() -> TerrainLoader {
+    TerrainLoader {
       terrain: Terrain::new(Seed::new(0)),
       in_progress_terrain: InProgressTerrain::new(),
       lod_map: LODMap::new(),
@@ -101,7 +100,7 @@ impl TerrainGameLoader {
                 );
               },
               Some(block) => {
-                TerrainGameLoader::insert_block(
+                TerrainLoader::insert_block(
                   timers,
                   block,
                   block_position,
@@ -145,7 +144,7 @@ impl TerrainGameLoader {
           in_progress_terrain.remove(physics, position);
         }
         LOD::LodIndex(_) => {
-          timers.time("terrain_game_loader.load.unload", || {
+          timers.time("terrain_loader.load.unload", || {
             let mut physics = physics.lock().unwrap();
             for id in block.ids.iter() {
               physics.remove_terrain(*id);
@@ -155,7 +154,7 @@ impl TerrainGameLoader {
       }
     );
 
-    timers.time("terrain_game_loader.load.physics", || {
+    timers.time("terrain_loader.load.physics", || {
       let mut physics = physics.lock().unwrap();
       for &(ref id, ref bounds) in block.bounds.iter() {
         physics.insert_terrain(*id, bounds.clone());
@@ -187,7 +186,7 @@ impl TerrainGameLoader {
           self.in_progress_terrain.remove(physics, block_position);
         }
         LOD::LodIndex(loaded_lod) => {
-          timers.time("terrain_game_loader.unload", || {
+          timers.time("terrain_loader.unload", || {
             match self.terrain.all_blocks.get(block_position) {
               None => {
                 // Unloaded before the load request completed.

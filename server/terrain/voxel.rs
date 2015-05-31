@@ -1,25 +1,41 @@
-use bit_svo::{VoxelTree, VoxelBounds};
 use cgmath::{Point, Point3, EuclideanVector, Vector3};
-use noise::Seed;
-use std::collections::hash_map::{HashMap, Entry};
-use std::iter::range_inclusive;
-use std::sync::Mutex;
 
-use common::block_position::BlockPosition;
-use common::entity::EntityId;
-use common::id_allocator::IdAllocator;
-use common::lod::LODIndex;
-use common::stopwatch::TimerSet;
-use common::terrain_block::TerrainBlock;
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Bounds {
+  /// x-coordinate as a multiple of 2^lg_size.
+  pub x: i32,
+  /// y-coordinate as a multiple of 2^lg_size.
+  pub y: i32,
+  /// z-coordinate as a multiple of 2^lg_size.
+  pub z: i32,
+  /// The log_2 of the voxel's size.
+  pub lg_size: i16,
+}
 
-use terrain::heightmap::HeightMap;
-use terrain::terrain_gen;
+impl Bounds {
+  /// Convenience function to create `Bounds`.
+  /// N.B. That the input coordinates should be divided by (2^lg_size).
+  pub fn new(x: i32, y: i32, z: i32, lg_size: i16) -> Bounds {
+    let ret =
+      Bounds {
+        x: x,
+        y: y,
+        z: z,
+        lg_size: lg_size,
+      };
+    ret
+  }
 
-pub const AMPLITUDE: f64 = 64.0;
-pub const FREQUENCY: f64 = 1.0 / 64.0;
-pub const PERSISTENCE: f64 = 1.0 / 16.0;
-pub const LACUNARITY: f64 = 8.0;
-pub const OCTAVES: usize = 2;
+  /// The width of this voxel.
+  #[inline(always)]
+  pub fn size(&self) -> f32 {
+    if self.lg_size >= 0 {
+      (1 << self.lg_size) as f32
+    } else {
+      1.0 / (1 << -self.lg_size) as f32
+    }
+  }
+}
 
 // NOTE: When voxel size and storage become an issue, this should be shrunk to
 // be less than pointer-sized. It'll be easier to transfer to the GPU for
@@ -55,7 +71,7 @@ pub struct VoxelVertex {
 }
 
 impl VoxelVertex {
-  pub fn to_world_vertex(&self, parent: VoxelBounds) -> Point3<f32> {
+  pub fn to_world_vertex(&self, parent: Bounds) -> Point3<f32> {
     // Relative position of the vertex.
     let local =
       Vector3::new(
@@ -123,73 +139,3 @@ impl Fraci8 {
   }
 }
 
-pub struct TerrainMipMesh {
-  pub lods: Vec<Option<TerrainBlock>>,
-}
-
-/// This struct contains and lazily generates the world's terrain.
-pub struct Terrain {
-  pub heightmap: HeightMap,
-  // all the blocks that have ever been created.
-  pub all_blocks: HashMap<BlockPosition, TerrainMipMesh>,
-  pub voxels: VoxelTree<Voxel>,
-}
-
-impl Terrain {
-  pub fn new(terrain_seed: Seed) -> Terrain {
-    Terrain {
-      heightmap: HeightMap::new(terrain_seed, OCTAVES, FREQUENCY, PERSISTENCE, LACUNARITY),
-      all_blocks: HashMap::new(),
-      voxels: VoxelTree::new(),
-    }
-  }
-
-  // TODO: Allow this to be performed in such a way that self is only briefly locked.
-  pub fn load<F, T>(
-    &mut self,
-    timers: &TimerSet,
-    id_allocator: &Mutex<IdAllocator<EntityId>>,
-    position: &BlockPosition,
-    lod_index: LODIndex,
-    f: F,
-  ) -> T
-    where F: FnOnce(&TerrainBlock) -> T
-  {
-    macro_rules! load_lod(
-      ($mip_mesh: expr) => ({
-        for _ in range_inclusive($mip_mesh.lods.len(), lod_index.0 as usize) {
-          $mip_mesh.lods.push(None);
-        }
-        let mesh = $mip_mesh.lods.get_mut(lod_index.0 as usize).unwrap();
-        if mesh.is_none() {
-          *mesh = Some(
-            terrain_gen::generate_block(
-              timers,
-              id_allocator,
-              &self.heightmap,
-              &mut self.voxels,
-              position,
-              lod_index,
-            )
-          );
-        }
-
-        f(mesh.as_ref().unwrap())
-      })
-    );
-
-    match self.all_blocks.entry(*position) {
-      Entry::Occupied(mut entry) => {
-        load_lod!(entry.get_mut())
-      },
-      Entry::Vacant(entry) => {
-        let r = entry.insert(
-          TerrainMipMesh {
-            lods: Vec::new(),
-          }
-        );
-        load_lod!(r)
-      },
-    }
-  }
-}

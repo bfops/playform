@@ -1,30 +1,25 @@
 [package]
-
-name = "playform-server"
+name = "terrain"
 version = "0.0.0"
 authors = []
 
 [profile.dev]
 opt-level = 1
 
-[[bin]]
-name = "server"
-path = "./src/mod.rs"
+[lib]
+name = "terrain"
+path = "mod.rs"
 
 [dependencies]
-env_logger= "*"
 log = "*"
 num = "*"
-rand = "*"
-time = "*"
 
 [dependencies.playform-common]
-path = "../common"
+path = "../../common"
 version = "*"
 
-[dependencies.terrain]
-path = "terrain"
-version = "*"
+[dependencies.noise]
+git = "https://github.com/bjz/noise-rs"
 
 [dependencies.cgmath]
 git = "https://github.com/bjz/cgmath-rs"

@@ -2,21 +2,15 @@
 name = "playform-server"
 version = "0.0.0"
 dependencies = [
- "bit-svo 0.0.0 (git+https://github.com/bfops/bit-svo)",
  "cgmath 0.2.0 (git+https://github.com/bjz/cgmath-rs)",
  "env_logger 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "noise 0.1.5 (git+https://github.com/bjz/noise-rs)",
  "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "playform-common 0.0.0",
  "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "terrain 0.0.0",
  "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "bit-svo"
-version = "0.0.0"
-source = "git+https://github.com/bfops/bit-svo#06bed6e1b78e9ef8f3c758e927a291f4fff2bbed"
 
 [[package]]
 name = "cgmath"
@@ -125,6 +119,17 @@ name = "serialize"
 version = "0.0.0"
 dependencies = [
  "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "terrain"
+version = "0.0.0"
+dependencies = [
+ "cgmath 0.2.0 (git+https://github.com/bjz/cgmath-rs)",
+ "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "noise 0.1.5 (git+https://github.com/bjz/noise-rs)",
+ "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "playform-common 0.0.0",
 ]
 
 [[package]]

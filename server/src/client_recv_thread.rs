@@ -12,7 +12,7 @@ use common::socket::SendSocket;
 
 use player::Player;
 use server::{Client, Server};
-use terrain::terrain;
+use terrain;
 use update_gaia::{ServerToGaia, LoadReason};
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {

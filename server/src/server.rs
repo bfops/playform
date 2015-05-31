@@ -16,8 +16,8 @@ use mob;
 use physics::Physics;
 use player::Player;
 use sun::Sun;
-use terrain::terrain;
-use terrain::terrain_game_loader::TerrainGameLoader;
+use terrain;
+use terrain_loader::TerrainLoader;
 
 const UPDATES_PER_SECOND: u64 = 30;
 const SUN_TICK_NS: u64 = 5000000;
@@ -37,7 +37,7 @@ pub struct Server {
   pub client_allocator: Mutex<IdAllocator<ClientId>>,
 
   pub physics: Mutex<Physics>,
-  pub terrain_game_loader: Mutex<TerrainGameLoader>,
+  pub terrain_loader: Mutex<TerrainLoader>,
 
   pub clients: Mutex<HashMap<ClientId, Client>>,
 
@@ -70,7 +70,7 @@ impl Server {
       client_allocator: Mutex::new(IdAllocator::new()),
 
       physics: Mutex::new(physics),
-      terrain_game_loader: Mutex::new(TerrainGameLoader::new()),
+      terrain_loader: Mutex::new(TerrainLoader::new()),
 
       clients: Mutex::new(HashMap::new()),
       sun: Mutex::new(Sun::new(SUN_TICK_NS)),

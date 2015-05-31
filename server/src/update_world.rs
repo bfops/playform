@@ -121,7 +121,7 @@ pub fn load_placeholders<RequestBlock>(
 {
   match lod_change {
     LODChange::Load(pos, _) => {
-      server.terrain_game_loader.lock().unwrap().load(
+      server.terrain_loader.lock().unwrap().load(
         timers,
         &server.id_allocator,
         &server.physics,
@@ -132,7 +132,7 @@ pub fn load_placeholders<RequestBlock>(
       );
     },
     LODChange::Unload(pos) => {
-      server.terrain_game_loader.lock().unwrap().unload(
+      server.terrain_loader.lock().unwrap().unload(
         timers,
         &server.physics,
         &pos,
