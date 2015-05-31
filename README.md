@@ -5,10 +5,18 @@
 Playform aspires to be an open-world sandbox game written in Rust, taking
 inspiration from [Voxel Farm](http://procworld.blogspot.com/) and Minecraft.
 
+It's currently.. well, very much a WIP. As
+[michaelwu's C++ bindgen fork](https://github.com/michaelwu/rust-bindgen/tree/sm-hacks)
+becomes more and more capable, part of the plan is to start using seasoned C++
+libraries like [bullet physics](https://github.com/bulletphysics/bullet3).
+
+Help is great! PRs and [issues](https://github.com/bfops/playform/issues)
+are appreciated.
+
+Some (oudated) screenshots:
+
 ![screenshot 1](/../screenshots/screenshots/screenshot1.png?raw=true)
 ![screenshot 2](/../screenshots/screenshots/screenshot2.png?raw=true)
-
-Help is great! PRs and [issues](https://github.com/bfops/playform/issues) are appreciated.
 
 ## Making it work
 
@@ -25,14 +33,14 @@ At any point, `--release` can be appended onto `cargo build` or `cargo run` for 
 build, but a much more optimized result.
 
 Run the Playform server using `cargo run` in the `server` folder. It takes one parameter:
-the listen URL for the server. The default is for running locally: `ipc:///tmp/server.ipc`.
+the listen URL for the server. It defaults to running locally: `ipc:///tmp/server.ipc`.
 
-The client can similarly be run with `cargo run` in the `client` folder. It takes two
-parameters: the listen URL of the client, and the listen URL of the server. The default
-is `ipc:///tmp/client.ipc` for the client.
+The client can be run similarly with `cargo run` in the `client` folder. It takes two
+parameters: the listen URL of the client and the listen URL of the server. They
+both default to running locally (`ipc:///tmp/client.ipc` for the client URL).
 
-**Some dependencies may not build**. Look for forks that are updated for your `rustc`,
-and then point your `~/.cargo/config` at them.
+**Some dependencies might not build**. Look for forks that are updated for
+your `rustc`, and then point your `~/.cargo/config` at them.
 
 If you find `playform` itself won't build on the latest `rustc`, please open an issue or file a PR!
 
