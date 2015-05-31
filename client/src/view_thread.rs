@@ -7,13 +7,13 @@ use sdl2::event::Event;
 use sdl2::video;
 use std::mem;
 use std::thread;
+use stopwatch::TimerSet;
 use time;
 use yaglw::gl_context::GLContext;
 
 use common::communicate::ClientToServer;
 use common::entity::EntityId;
 use common::interval_timer::IntervalTimer;
-use common::stopwatch::TimerSet;
 
 use hud::make_hud;
 use process_event::process_event;
@@ -34,7 +34,7 @@ pub fn view_thread<Recv, UpdateServer>(
 {
   let timers = TimerSet::new();
 
-  let sdl = sdl2::init().everything().unwrap();
+  let sdl = sdl2::init().everything().build().unwrap();
 
   video::gl_attr::set_context_profile(video::GLProfile::Core);
   video::gl_attr::set_context_version(3, 3);

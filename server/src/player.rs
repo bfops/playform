@@ -3,12 +3,12 @@ use cgmath::{Aabb3, Point, Point3, Matrix, Matrix3, Ray, Ray3, Vector, Vector3};
 use std::f32::consts::PI;
 use std::ops::DerefMut;
 use std::sync::Mutex;
+use stopwatch::TimerSet;
 
 use common::block_position::BlockPosition;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::{LOD, LODIndex, OwnerId};
-use common::stopwatch::TimerSet;
 use common::surroundings_loader::{SurroundingsLoader, LODChange};
 
 use physics::Physics;

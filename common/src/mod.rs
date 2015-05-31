@@ -3,7 +3,6 @@
 
 //! Data structures and functions shared between server and client.
 
-#![feature(collections)]
 #![feature(core)]
 #![feature(duration)]
 #![feature(test)]
@@ -30,7 +29,6 @@ pub mod interval_timer;
 pub mod lod;
 pub mod range_abs;
 pub mod socket;
-pub mod stopwatch;
 pub mod surroundings_iter;
 pub mod surroundings_loader;
 pub mod terrain_block;

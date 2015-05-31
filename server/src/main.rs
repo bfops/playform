@@ -4,11 +4,11 @@ use std::env;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Mutex;
 use std::thread;
+use stopwatch::TimerSet;
 use time;
 
 use common::serialize as binary;
 use common::socket::ReceiveSocket;
-use common::stopwatch::TimerSet;
 
 use client_recv_thread::apply_client_update;
 use server::Server;

@@ -17,6 +17,7 @@ extern crate env_logger;
 extern crate log;
 extern crate num;
 extern crate rand;
+extern crate stopwatch;
 extern crate terrain;
 extern crate test;
 extern crate time;

@@ -1,12 +1,12 @@
 use cgmath::{Point, Vector, Vector3};
 use std::ops::Neg;
 use std::sync::mpsc::Sender;
+use stopwatch::TimerSet;
 
 use common::block_position::BlockPosition;
 use common::communicate::ServerToClient::*;
 use common::lod::{LOD, OwnerId};
 use common::serialize::Copyable;
-use common::stopwatch::TimerSet;
 use common::surroundings_loader::LODChange;
 
 use mob;

@@ -11,6 +11,7 @@ dependencies = [
  "playform-common 0.0.0",
  "sdl2 0.3.0 (git+https://github.com/AngryLawyer/rust-sdl2)",
  "sdl2-sys 0.3.0 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
  "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "yaglw 0.0.0 (git+https://github.com/bfops/yaglw)",
 ]
@@ -173,6 +174,15 @@ name = "serialize"
 version = "0.0.0"
 dependencies = [
  "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "stopwatch"
+version = "0.0.0"
+source = "git+https://github.com/bfops/stopwatch-rs#ee8078842d167874bc6d38a4d1070a2867bd210e"
+dependencies = [
+ "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

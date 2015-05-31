@@ -37,3 +37,6 @@ git = "https://github.com/bfops/yaglw"
 
 [dependencies.cgmath]
 git = "https://github.com/bjz/cgmath-rs"
+
+[dependencies.stopwatch]
+git = "https://github.com/bfops/stopwatch-rs"

@@ -7,12 +7,12 @@ use sdl2::keycode::KeyCode;
 use sdl2::mouse;
 use sdl2::video;
 use std::f32::consts::PI;
+use stopwatch::TimerSet;
 
 use common::communicate::ClientToServer;
 use common::entity::EntityId;
 use common::communicate::ClientToServer::*;
 use common::serialize::Copyable;
-use common::stopwatch::TimerSet;
 
 use view::View;
 

@@ -1,11 +1,11 @@
 /// Creator of the earth.
 
 use std::ops::DerefMut;
+use stopwatch::TimerSet;
 
 use common::communicate::{ClientId, ServerToClient, TerrainBlockSend};
 use common::lod::{LODIndex, OwnerId};
 use common::serialize::Copyable;
-use common::stopwatch::TimerSet;
 use common::block_position::BlockPosition;
 
 use server::Server;

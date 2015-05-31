@@ -3,12 +3,12 @@ use cgmath::Aabb3;
 use num::traits::PrimInt;
 use std::cmp::{min, max, partial_min, partial_max};
 use std::sync::Mutex;
+use stopwatch::TimerSet;
 
 use common::block_position::BlockPosition;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::LODIndex;
-use common::stopwatch::TimerSet;
 use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, tri};
 
 use heightmap::HeightMap;

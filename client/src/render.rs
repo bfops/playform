@@ -1,7 +1,8 @@
 //! Draw the view.
 
+use stopwatch::TimerSet;
+
 use camera::set_camera;
-use common::stopwatch::TimerSet;
 use gl;
 use view::View;
 

@@ -21,6 +21,7 @@ extern crate libc;
 extern crate num;
 extern crate sdl2;
 extern crate sdl2_sys;
+extern crate stopwatch;
 extern crate test;
 extern crate time;
 extern crate yaglw;

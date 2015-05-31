@@ -6,6 +6,7 @@ extern crate common;
 extern crate log;
 extern crate noise;
 extern crate num;
+extern crate stopwatch;
 
 mod generate;
 mod heightmap;
@@ -18,12 +19,12 @@ pub use noise::Seed;
 use std::collections::hash_map::{HashMap, Entry};
 use std::iter::range_inclusive;
 use std::sync::Mutex;
+use stopwatch::TimerSet;
 
 use common::block_position::BlockPosition;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::LODIndex;
-use common::stopwatch::TimerSet;
 use common::terrain_block::TerrainBlock;
 
 use heightmap::HeightMap;

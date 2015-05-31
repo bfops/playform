@@ -20,3 +20,6 @@ git = "https://github.com/bjz/noise-rs"
 
 [dependencies.cgmath]
 git = "https://github.com/bjz/cgmath-rs"
+
+[dependencies.stopwatch]
+git = "https://github.com/bfops/stopwatch-rs"
