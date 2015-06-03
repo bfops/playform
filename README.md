@@ -22,7 +22,7 @@ Some (oudated) screenshots:
 
 Make sure you have:
 
-  * The Rust compiler and package manager, `cargo`.
+  * The **nightly build** of the Rust compiler and package manager, `cargo`.
   * OpenCL
   * `libpng`
   * `SDL2`
