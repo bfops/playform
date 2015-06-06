@@ -5,7 +5,10 @@ use cgmath::{Point3, Vector3, Aabb3};
 use entity::EntityId;
 use serialize::{Flatten, MemStream, EOF};
 
-pub const BLOCK_WIDTH: i32 = 8;
+// TODO: Move the server-only parts to the server, like BLOCK_WIDTH and sample_info.
+
+pub const LG_WIDTH: i16 = 3;
+pub const WIDTH: i32 = 1 << LG_WIDTH;
 pub const TEXTURE_WIDTH: [u32; 4] = [32, 16, 8, 2];
 pub const TEXTURE_LEN: [usize; 4] = [
   TEXTURE_WIDTH[0] as usize * TEXTURE_WIDTH[0] as usize,
@@ -14,9 +17,22 @@ pub const TEXTURE_LEN: [usize; 4] = [
   TEXTURE_WIDTH[3] as usize * TEXTURE_WIDTH[3] as usize,
 ];
 
+pub const LG_EDGE_SAMPLES: [u16; 4] = [3, 2, 1, 0];
 /// Quality across different LODs.
 /// Quality is the number of times the noise function is sampled along each axis.
-pub const LOD_QUALITY: [u16; 4] = [8, 4, 2, 1];
+pub const EDGE_SAMPLES: [u16; 4] = [
+  1 << LG_EDGE_SAMPLES[0],
+  1 << LG_EDGE_SAMPLES[1],
+  1 << LG_EDGE_SAMPLES[2],
+  1 << LG_EDGE_SAMPLES[3],
+];
+
+pub const LG_SAMPLE_SIZE: [i16; 4] = [
+  LG_WIDTH - LG_EDGE_SAMPLES[0] as i16,
+  LG_WIDTH - LG_EDGE_SAMPLES[1] as i16,
+  LG_WIDTH - LG_EDGE_SAMPLES[2] as i16,
+  LG_WIDTH - LG_EDGE_SAMPLES[3] as i16,
+];
 
 #[derive(Debug, Copy, Clone)]
 /// [T; 3], but serializable.

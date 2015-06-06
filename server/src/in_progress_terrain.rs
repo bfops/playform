@@ -1,11 +1,13 @@
+use cgmath::{Aabb3, Point, Vector, Vector3};
+use std::collections::hash_map::{HashMap, Entry};
+use std::sync::Mutex;
+
 use common::block_position::BlockPosition;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
-use common::terrain_block::BLOCK_WIDTH;
-use cgmath::{Aabb3, Point, Vector, Vector3};
+use common::terrain_block;
+
 use physics::Physics;
-use std::collections::hash_map::{HashMap, Entry};
-use std::sync::Mutex;
 
 // TODO: Rename this to something more memorable.
 pub struct InProgressTerrain {
@@ -36,7 +38,12 @@ impl InProgressTerrain {
         entry.insert(id);
 
         let low_corner = block_position.to_world_position();
-        let block_span = Vector3::new(BLOCK_WIDTH as f32, BLOCK_WIDTH as f32, BLOCK_WIDTH as f32);
+        let block_span =
+          Vector3::new(
+            terrain_block::WIDTH as f32,
+            terrain_block::WIDTH as f32,
+            terrain_block::WIDTH as f32,
+          );
         physics.lock().unwrap().insert_misc(id, Aabb3::new(low_corner, low_corner.add_v(&block_span)));
         true
       }

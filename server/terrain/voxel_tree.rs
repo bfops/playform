@@ -1,7 +1,7 @@
 #![cfg_attr(test, feature(test))]
 
 use std::mem;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 use raycast;
 use voxel;
@@ -205,7 +205,7 @@ impl VoxelTree {
     mask
   }
 
-  fn mut_find<'a, Step, E>(
+  fn find_mut<'a, Step, E>(
     &'a mut self,
     voxel: voxel::Bounds,
     mut step: Step,
@@ -282,7 +282,7 @@ impl VoxelTree {
   pub fn get_mut_or_create<'a>(&'a mut self, voxel: voxel::Bounds) -> &'a mut TreeBody {
     self.grow_to_hold(voxel);
     let branch: Result<_, ()> =
-      self.mut_find(voxel, |branch| { Ok(VoxelTree::get_mut_or_create_step(branch)) });
+      self.find_mut(voxel, |branch| { Ok(VoxelTree::get_mut_or_create_step(branch)) });
     branch.unwrap()
   }
 
@@ -336,6 +336,25 @@ impl VoxelTree {
 
     match self.find(voxel, get_step) {
       Ok(&TreeBody::Leaf(ref t)) => Some(t),
+      _ => None,
+    }
+  }
+
+  /// Find a voxel inside this tree.
+  pub fn get_mut<'a>(&'a mut self, voxel: voxel::Bounds) -> Option<&'a mut Voxel> {
+    if !self.contains_bounds(voxel) {
+      return None
+    }
+
+    let get_step = |branch| {
+      match branch {
+        &mut TreeBody::Branch(ref mut branches) => Ok(branches.deref_mut()),
+        _ => Err(()),
+      }
+    };
+
+    match self.find_mut(voxel, get_step) {
+      Ok(&mut TreeBody::Leaf(ref mut t)) => Some(t),
       _ => None,
     }
   }

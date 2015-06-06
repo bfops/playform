@@ -9,11 +9,12 @@ use common::block_position::BlockPosition;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::LODIndex;
-use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, tri};
+use common::terrain_block;
+use common::terrain_block::{TerrainBlock, tri};
 
 use heightmap::HeightMap;
 use voxel;
-use voxel::{Fracu8, Fraci8, Voxel, SurfaceVoxel, VoxelVertex, VoxelNormal, Edge};
+use voxel::{Fracu8, Fraci8, Voxel, SurfaceVoxel, Vertex, Normal, Edge};
 use voxel_tree;
 use voxel_tree::VoxelTree;
 
@@ -118,7 +119,7 @@ fn generate_voxel<FieldContains, GetNormal>(
 
     let vertex = vertex.div_s(n);
     let vertex =
-      VoxelVertex {
+      Vertex {
         x: Fracu8::of(vertex.x as u8),
         y: Fracu8::of(vertex.y as u8),
         z: Fracu8::of(vertex.z as u8),
@@ -145,7 +146,7 @@ fn generate_voxel<FieldContains, GetNormal>(
       );
 
     let normal =
-      VoxelNormal {
+      Normal {
         x: Fraci8::of(normal.x),
         y: Fraci8::of(normal.y),
         z: Fraci8::of(normal.z),
@@ -177,22 +178,8 @@ pub fn generate_block(
     let position = position.to_world_position();
     let iposition = Point3::new(position.x as i32, position.y as i32, position.z as i32);
 
-    let lateral_samples = LOD_QUALITY[lod_index.0 as usize] as i32;
-    assert!(
-      BLOCK_WIDTH % lateral_samples == 0 || lateral_samples % BLOCK_WIDTH == 0,
-      "Block width doesn't sample cleanly."
-    );
-
-    let lg_block_width = PrimInt::trailing_zeros(BLOCK_WIDTH);
-    assert!(1 << lg_block_width == BLOCK_WIDTH, "BLOCK_WIDTH should be an exponent of 2");
-
-    let lg_lateral_samples = PrimInt::trailing_zeros(lateral_samples);
-    assert!(
-      1 << lg_lateral_samples == lateral_samples,
-      "lateral_samples should be an exponent of 2");
-
-    let lg_size: i16 = lg_block_width as i16 - lg_lateral_samples as i16;
-    assert!(lg_size.abs() < 16, "2^{} is too a huge voxel.", lg_size);
+    let lateral_samples = terrain_block::EDGE_SAMPLES[lod_index.0 as usize] as i32;
+    let lg_size = terrain_block::LG_SAMPLE_SIZE[lod_index.0 as usize] as i16;
 
     {
       let mut add_poly =

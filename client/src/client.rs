@@ -10,7 +10,8 @@ use common::communicate::ClientId;
 use common::entity::EntityId;
 use common::lod::LODIndex;
 use common::surroundings_loader::SurroundingsLoader;
-use common::terrain_block::{TerrainBlock, LOD_QUALITY};
+use common::terrain_block;
+use common::terrain_block::TerrainBlock;
 
 use terrain_buffers;
 
@@ -73,7 +74,7 @@ fn load_distance(mut polygon_budget: i32) -> i32 {
   let mut load_distance = 0;
   let mut prev_threshold = 0;
   let mut prev_square = 0;
-  for (&threshold, &quality) in LOD_THRESHOLDS.iter().zip(LOD_QUALITY.iter()) {
+  for (&threshold, &quality) in LOD_THRESHOLDS.iter().zip(terrain_block::EDGE_SAMPLES.iter()) {
     let polygons_per_block = (quality * quality * 4) as i32;
     for i in range_inclusive(prev_threshold, threshold) {
       let i = 2 * i + 1;
@@ -94,7 +95,7 @@ fn load_distance(mut polygon_budget: i32) -> i32 {
   loop {
     let square = width * width;
     // The "to infinity and beyond" quality.
-    let quality = LOD_QUALITY[LOD_THRESHOLDS.len()];
+    let quality = terrain_block::EDGE_SAMPLES[LOD_THRESHOLDS.len()];
     let polygons_per_block = (quality * quality * 4) as i32;
     let polygons_in_layer = (square - prev_square) * polygons_per_block;
     polygon_budget -= polygons_in_layer;

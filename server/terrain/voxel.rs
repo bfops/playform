@@ -14,7 +14,7 @@ pub struct Bounds {
 
 impl Bounds {
   /// Convenience function to create `Bounds`.
-  /// N.B. That the input coordinates should be divided by (2^lg_size).
+  /// N.B. That the input coordinates should be divided by (2^lg_size) relative to world coords.
   pub fn new(x: i32, y: i32, z: i32, lg_size: i16) -> Bounds {
     let ret =
       Bounds {
@@ -45,14 +45,16 @@ impl Bounds {
 // have three low-order bits set to zero).
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Voxel {
+  // TODO: Is the empty case needed? Maybe we can "flatten" these branches
+  // together, since "no edges crossed" is effectively empty.
   Empty,
   Surface(SurfaceVoxel),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SurfaceVoxel {
-  pub vertex: VoxelVertex,
-  pub normal: VoxelNormal,
+  pub vertex: Vertex,
+  pub normal: Normal,
 
   // Each voxel contains edge information about the edges that intersect the
   // lowest corner of the cube. Assuming the grid is effectively infinite, no
@@ -64,13 +66,13 @@ pub struct SurfaceVoxel {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct VoxelVertex {
+pub struct Vertex {
   pub x: Fracu8,
   pub y: Fracu8,
   pub z: Fracu8,
 }
 
-impl VoxelVertex {
+impl Vertex {
   pub fn to_world_vertex(&self, parent: Bounds) -> Point3<f32> {
     // Relative position of the vertex.
     let local =
@@ -85,13 +87,13 @@ impl VoxelVertex {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct VoxelNormal {
+pub struct Normal {
   pub x: Fraci8,
   pub y: Fraci8,
   pub z: Fraci8,
 }
 
-impl VoxelNormal {
+impl Normal {
   pub fn to_world_normal(&self) -> Vector3<f32> {
     Vector3::new(self.x.to_f32(), self.y.to_f32(), self.z.to_f32()).normalize()
   }

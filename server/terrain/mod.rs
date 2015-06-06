@@ -25,9 +25,11 @@ use common::block_position::BlockPosition;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::LODIndex;
+use common::terrain_block;
 use common::terrain_block::TerrainBlock;
 
 use heightmap::HeightMap;
+use voxel::Voxel;
 use voxel_tree::VoxelTree;
 
 pub const AMPLITUDE: f64 = 64.0;

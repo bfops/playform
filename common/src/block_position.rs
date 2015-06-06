@@ -7,6 +7,7 @@ pub const BLOCK_WIDTH: i32 = 8;
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 /// Position of blocks on an "infinite" regular grid.
+/// The position is implicitly in units of BLOCK_WIDTH.
 pub struct BlockPosition(Point3<i32>);
 
 impl BlockPosition {
