@@ -263,7 +263,6 @@ impl Player {
     transform.mul_v(&forward_orig)
   }
 
-  #[allow(dead_code)]
   pub fn forward_ray(&self) -> Ray3<f32> {
     Ray::new(self.position, self.forward())
   }

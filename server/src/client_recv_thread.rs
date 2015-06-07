@@ -13,6 +13,8 @@ use common::socket::SendSocket;
 use player::Player;
 use server::{Client, Server};
 use terrain;
+use terrain::voxel;
+use terrain::voxel::Voxel;
 use update_gaia::{ServerToGaia, LoadReason};
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
@@ -118,6 +120,33 @@ pub fn apply_client_update<UpdateGaia>(
     },
     ClientToServer::RequestBlock(Copyable(client_id), Copyable(position), Copyable(lod)) => {
       update_gaia(ServerToGaia::Load(position, lod, LoadReason::ForClient(client_id)));
+    },
+    ClientToServer::RemoveVoxel(Copyable(player_id)) => {
+      let ray;
+      {
+        let players = server.players.lock().unwrap();
+        let player = players.get(&player_id).unwrap();
+        ray = player.forward_ray();
+      }
+
+      let bounds: Option<voxel::Bounds>;
+      {
+        let terrain_loader = server.terrain_loader.lock().unwrap();
+        bounds =
+          terrain_loader.terrain.voxels.cast_ray(
+            &ray,
+            &mut |bounds, voxel| {
+              match voxel {
+                &Voxel::Empty => None,
+                _ => Some(bounds),
+              }
+            }
+          );
+      }
+
+      bounds.map(|bounds| {
+        update_gaia(ServerToGaia::RemoveVoxel(bounds));
+      });
     },
   };
 }

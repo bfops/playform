@@ -1,3 +1,4 @@
+use cgmath::Ray3;
 use std::cmp::Ordering;
 
 use voxel;
@@ -54,8 +55,7 @@ pub struct Exit {
 #[inline]
 pub fn cast_ray_branches<'a, MakeBounds, Act, R>(
   this: &'a Branches,
-  origin: [f32; 3],
-  direction: [f32; 3],
+  ray: &Ray3<f32>,
   mut entry: Option<Entry>,
   mut coords: [usize; 3],
   make_bounds: &mut MakeBounds,
@@ -69,11 +69,11 @@ pub fn cast_ray_branches<'a, MakeBounds, Act, R>(
     let child = this.get(coords[0], coords[1], coords[2]);
     let bounds = make_bounds(coords);
 
-    match cast_ray(child, origin, direction, bounds, entry, act) {
+    match cast_ray(child, ray, bounds, entry, act) {
       Ok(r) => return Ok(r),
       Err(exit) => {
         let dim = exit.side % 3;
-        if direction[dim] < 0.0 {
+        if ray.direction[dim] < 0.0 {
           if coords[dim] == 0 {
             return Err(exit)
           }
@@ -93,8 +93,7 @@ pub fn cast_ray_branches<'a, MakeBounds, Act, R>(
 /// Precondition: the ray passes through `this`.
 pub fn cast_ray<'a, Act, R>(
   this: &'a TreeBody,
-  origin: [f32; 3],
-  direction: [f32; 3],
+  ray: &Ray3<f32>,
   bounds: voxel::Bounds,
   entry: Option<Entry>,
   act: &mut Act,
@@ -134,9 +133,9 @@ pub fn cast_ray<'a, Act, R>(
 
       let entry_toi = entry.map(|entry| entry.toi.0).unwrap_or(0.0);
       let intersect = [
-        origin[0] + entry_toi*direction[0],
-        origin[1] + entry_toi*direction[1],
-        origin[2] + entry_toi*direction[2],
+        ray.origin.x + entry_toi*ray.direction.x,
+        ray.origin.y + entry_toi*ray.direction.y,
+        ray.origin.z + entry_toi*ray.direction.z,
       ];
       let coords = [
         if intersect[0] >= mid[0] {1} else {0},
@@ -146,8 +145,7 @@ pub fn cast_ray<'a, Act, R>(
 
       return cast_ray_branches(
         b,
-        origin,
-        direction,
+        ray,
         entry,
         coords,
         &mut make_bounds,
@@ -159,21 +157,21 @@ pub fn cast_ray<'a, Act, R>(
   // We pass through this voxel; calculate the exit.
 
   let sides = [
-    bounds.x,
-    bounds.y,
-    bounds.z,
-    bounds.x + 1,
-    bounds.y + 1,
-    bounds.z + 1,
+    (ray.origin.x, ray.direction.x, bounds.x),
+    (ray.origin.y, ray.direction.y, bounds.y),
+    (ray.origin.z, ray.direction.z, bounds.z),
+    (ray.origin.x, ray.direction.x, bounds.x + 1),
+    (ray.origin.y, ray.direction.y, bounds.y + 1),
+    (ray.origin.z, ray.direction.z, bounds.z + 1),
   ];
 
-  let next_toi = |(side, &bound): (usize, &i32)| {
-    let dim = side % 3;
-    let bound = bound as f32 * bounds.size();
-    if direction[dim] == 0.0 {
+  let voxel_size = bounds.size();
+  let next_toi = |(side, &(origin, direction, bound))| {
+    let bound = bound as f32 * voxel_size;
+    if direction == 0.0 {
       None
     } else {
-      let toi = (bound - origin[dim]) / direction[dim];
+      let toi = (bound - origin) / direction;
       if entry.map(|entry| entry.toi.0 <= toi).unwrap_or(toi >= 0.0) {
         Some(Exit {
           side: side,

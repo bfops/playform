@@ -11,8 +11,9 @@ extern crate stopwatch;
 mod generate;
 mod heightmap;
 mod raycast;
-mod voxel;
-mod voxel_tree;
+
+pub mod voxel;
+pub mod voxel_tree;
 
 pub use noise::Seed;
 
@@ -25,9 +26,11 @@ use common::block_position::BlockPosition;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::LODIndex;
+use common::terrain_block;
 use common::terrain_block::TerrainBlock;
 
 use heightmap::HeightMap;
+use voxel::Voxel;
 use voxel_tree::VoxelTree;
 
 pub const AMPLITUDE: f64 = 64.0;
@@ -112,5 +115,81 @@ impl Terrain {
       );
     }
     mesh.as_ref().unwrap()
+  }
+
+  pub fn remove_voxel<F>(
+    &mut self,
+    timers: &TimerSet,
+    id_allocator: &Mutex<IdAllocator<EntityId>>,
+    bounds: &voxel::Bounds,
+    mut block_changed: F,
+  )
+    where F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
+  {
+    match self.voxels.get_mut(bounds) {
+      None => {
+        return;
+      },
+      Some(voxel) => {
+        *voxel = Voxel::Empty;
+      },
+    }
+
+    macro_rules! tweak_neighbors(
+      ($edge:ident, $x:expr, $y:expr, $z:expr) => {{
+        let bounds = voxel::Bounds::new($x, $y, $z, bounds.lg_size);
+        match self.voxels.get_mut(&bounds) {
+          Some(&mut Voxel::Surface(ref mut voxel)) => {
+            voxel.$edge.is_crossed = false;
+          },
+          _ => {},
+        }
+      }}
+    );
+
+    // TODO: Search for all these voxels in a single tree search.
+    tweak_neighbors!(x_edge, bounds.x, bounds.y,     bounds.z);
+    tweak_neighbors!(x_edge, bounds.x, bounds.y,     bounds.z + 1);
+    tweak_neighbors!(x_edge, bounds.x, bounds.y + 1, bounds.z);
+    tweak_neighbors!(x_edge, bounds.x, bounds.y + 1, bounds.z + 1);
+
+    tweak_neighbors!(y_edge, bounds.x,     bounds.y, bounds.z);
+    tweak_neighbors!(y_edge, bounds.x,     bounds.y, bounds.z + 1);
+    tweak_neighbors!(y_edge, bounds.x + 1, bounds.y, bounds.z);
+    tweak_neighbors!(y_edge, bounds.x + 1, bounds.y, bounds.z + 1);
+
+    tweak_neighbors!(z_edge, bounds.x,     bounds.y,     bounds.z);
+    tweak_neighbors!(z_edge, bounds.x,     bounds.y + 1, bounds.z);
+    tweak_neighbors!(z_edge, bounds.x + 1, bounds.y,     bounds.z);
+    tweak_neighbors!(z_edge, bounds.x + 1, bounds.y + 1, bounds.z);
+
+    // TODO: Consider regenerating the TerrainBlocks for the adjacent voxels too.
+
+    // lg(number of voxels in a block)
+    let lg_scale = terrain_block::LG_WIDTH - bounds.lg_size;
+    let position =
+      BlockPosition::new(bounds.x >> lg_scale, bounds.y >> lg_scale, bounds.z >> lg_scale);
+
+    let lod_index =
+      terrain_block::LG_SAMPLE_SIZE.iter()
+      .position(|&x| x == bounds.lg_size)
+      .unwrap()
+    ;
+    let lod_index = LODIndex(lod_index as u32);
+
+    let mip_mesh = self.all_blocks.get_mut(&position);
+    let mesh = mip_mesh.get_mut(lod_index.0 as usize);
+    *mesh = Some(
+      generate::generate_block(
+        timers,
+        id_allocator,
+        &self.heightmap,
+        &mut self.voxels,
+        &position,
+        lod_index,
+      )
+    );
+
+    block_changed(mesh.as_ref().unwrap(), &position, lod_index);
   }
 }

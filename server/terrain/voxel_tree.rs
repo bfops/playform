@@ -1,5 +1,6 @@
 #![cfg_attr(test, feature(test))]
 
+use cgmath::Ray3;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
@@ -71,7 +72,7 @@ impl VoxelTree {
 
   /// Is this voxel (non-strictly) within an origin-centered voxel with
   /// size `2^lg_size`?
-  pub fn contains_bounds(&self, voxel: voxel::Bounds) -> bool {
+  pub fn contains_bounds(&self, voxel: &voxel::Bounds) -> bool {
     if voxel.lg_size < 0 {
       return true
     }
@@ -132,7 +133,7 @@ impl VoxelTree {
   }
 
   /// Ensure that this tree can hold the provided voxel.
-  pub fn grow_to_hold(&mut self, voxel: voxel::Bounds) {
+  pub fn grow_to_hold(&mut self, voxel: &voxel::Bounds) {
     while !self.contains_bounds(voxel) {
       // Double the bounds in every direction.
       self.lg_size += 1;
@@ -183,7 +184,7 @@ impl VoxelTree {
     }
   }
 
-  fn find_mask(&self, voxel: voxel::Bounds) -> i32 {
+  fn find_mask(&self, voxel: &voxel::Bounds) -> i32 {
     // When we compare the voxel position to octree bounds to choose subtrees
     // for insertion, we'll be comparing voxel position to values of 2^n and
     // -2^n, so we can just use the position bits to branch directly.
@@ -207,7 +208,7 @@ impl VoxelTree {
 
   fn find_mut<'a, Step, E>(
     &'a mut self,
-    voxel: voxel::Bounds,
+    voxel: &voxel::Bounds,
     mut step: Step,
   ) -> Result<&'a mut TreeBody, E> where
     Step: FnMut(&'a mut TreeBody) -> Result<&'a mut Branches, E>,
@@ -243,7 +244,7 @@ impl VoxelTree {
 
   fn find<'a, Step, E>(
     &'a self,
-    voxel: voxel::Bounds,
+    voxel: &voxel::Bounds,
     mut step: Step,
   ) -> Result<&'a TreeBody, E> where
     Step: FnMut(&'a TreeBody) -> Result<&'a Branches, E>,
@@ -279,7 +280,7 @@ impl VoxelTree {
 
   /// Find a voxel inside this tree.
   /// If it doesn't exist, it will be created as empty.
-  pub fn get_mut_or_create<'a>(&'a mut self, voxel: voxel::Bounds) -> &'a mut TreeBody {
+  pub fn get_mut_or_create<'a>(&'a mut self, voxel: &voxel::Bounds) -> &'a mut TreeBody {
     self.grow_to_hold(voxel);
     let branch: Result<_, ()> =
       self.find_mut(voxel, |branch| { Ok(VoxelTree::get_mut_or_create_step(branch)) });
@@ -322,7 +323,7 @@ impl VoxelTree {
   }
 
   /// Find a voxel inside this tree.
-  pub fn get<'a>(&'a self, voxel: voxel::Bounds) -> Option<&'a Voxel> {
+  pub fn get<'a>(&'a self, voxel: &voxel::Bounds) -> Option<&'a Voxel> {
     if !self.contains_bounds(voxel) {
       return None
     }
@@ -341,7 +342,7 @@ impl VoxelTree {
   }
 
   /// Find a voxel inside this tree.
-  pub fn get_mut<'a>(&'a mut self, voxel: voxel::Bounds) -> Option<&'a mut Voxel> {
+  pub fn get_mut<'a>(&'a mut self, voxel: &voxel::Bounds) -> Option<&'a mut Voxel> {
     if !self.contains_bounds(voxel) {
       return None
     }
@@ -361,17 +362,17 @@ impl VoxelTree {
 
   pub fn cast_ray<'a, Act, R>(
     &'a self,
-    origin: [f32; 3],
-    direction: [f32; 3],
+    ray: &Ray3<f32>,
     act: &mut Act,
   ) -> Option<R>
     where
+      // TODO: Does this *have* to be callback-based?
       Act: FnMut(voxel::Bounds, &'a Voxel) -> Option<R>
   {
     let coords = [
-      if origin[0] >= 0.0 {1} else {0},
-      if origin[1] >= 0.0 {1} else {0},
-      if origin[2] >= 0.0 {1} else {0},
+      if ray.origin.x >= 0.0 {1} else {0},
+      if ray.origin.y >= 0.0 {1} else {0},
+      if ray.origin.z >= 0.0 {1} else {0},
     ];
     // NB: The children are half the size of the tree itself,
     // but tree.lg_size=0 means it extends tree.lg_size=0 in *each direction*,
@@ -387,8 +388,7 @@ impl VoxelTree {
     };
     match raycast::cast_ray_branches(
       &self.contents,
-      origin,
-      direction,
+      ray,
       None,
       coords,
       &mut make_bounds,

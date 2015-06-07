@@ -21,7 +21,7 @@ fn generate_voxel<FieldContains, GetNormal>(
   timers: &TimerSet,
   field_contains: &mut FieldContains,
   get_normal: &mut GetNormal,
-  voxel: voxel::Bounds,
+  voxel: &voxel::Bounds,
 ) -> Voxel
   where
     FieldContains: FnMut(f32, f32, f32) -> bool,
@@ -257,9 +257,9 @@ pub fn generate_block(
       macro_rules! get_vertex(($v:expr) => {{
         let bounds = voxel::Bounds::new($v.x, $v.y, $v.z, lg_size);
         let voxel =
-          get_voxel!(bounds)
+          get_voxel!(&bounds)
           .unwrap_or_else(|| panic!("Couldn't find edge neighbor voxel"));
-        (voxel.vertex.to_world_vertex(bounds), voxel.normal.to_world_normal())
+        (voxel.vertex.to_world_vertex(&bounds), voxel.normal.to_world_normal())
       }});
 
       macro_rules! extract((
@@ -296,7 +296,7 @@ pub fn generate_block(
           }
           let bounds = voxel::Bounds::new(w.x, w.y, w.z, lg_size);
           let voxel;
-          match get_voxel!(bounds) {
+          match get_voxel!(&bounds) {
             None => continue,
             Some(v) => voxel = v,
           }
@@ -312,7 +312,7 @@ pub fn generate_block(
 
           let (v1, n1) = get_vertex!(w.add_v(&$d1).add_v(&$d2));
           let (v2, n2) = get_vertex!(w.add_v(&$d1));
-          let v3 = voxel.vertex.to_world_vertex(bounds);
+          let v3 = voxel.vertex.to_world_vertex(&bounds);
           let n3 = voxel.normal.to_world_normal();
           let (v4, n4) = get_vertex!(w.add_v(&$d2));
 

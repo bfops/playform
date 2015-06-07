@@ -3,6 +3,7 @@
 use cgmath::{Vector2, Vector3};
 use sdl2::event::Event;
 use sdl2::keycode::KeyCode;
+use sdl2::mouse::Mouse;
 use sdl2::mouse;
 use sdl2::video;
 use std::f32::consts::PI;
@@ -38,6 +39,9 @@ pub fn process_event<UpdateServer>(
     },
     Event::MouseMotion{x, y, ..} => {
       mouse_move(timers, player_id, update_server, view, window, x, y);
+    },
+    Event::MouseButtonDown{mouse_btn, ..} => {
+      mouse_press(timers, player_id, update_server, mouse_btn);
     },
     _ => {},
   }
@@ -84,6 +88,25 @@ fn key_press<UpdateServer>(
         update_server(RotatePlayer(Copyable(player_id), Copyable(Vector2::new(0.0, -PI / 12.0))));
         view.camera.rotate_vertical(-PI / 12.0);
       },
+      _ => {},
+    }
+  })
+}
+
+fn mouse_press<UpdateServer>(
+  timers: &TimerSet,
+  player_id: EntityId,
+  update_server: &mut UpdateServer,
+  mouse_btn: Mouse,
+) where UpdateServer: FnMut(ClientToServer)
+{
+  timers.time("event.mouse_press", || {
+    match mouse_btn {
+      Mouse::Right => {
+        update_server(
+          ClientToServer::RemoveVoxel(Copyable(player_id))
+        );
+      }
       _ => {},
     }
   })

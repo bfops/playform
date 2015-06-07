@@ -73,7 +73,7 @@ pub struct Vertex {
 }
 
 impl Vertex {
-  pub fn to_world_vertex(&self, parent: Bounds) -> Point3<f32> {
+  pub fn to_world_vertex(&self, parent: &Bounds) -> Point3<f32> {
     // Relative position of the vertex.
     let local =
       Vector3::new(

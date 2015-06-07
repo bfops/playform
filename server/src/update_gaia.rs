@@ -10,16 +10,18 @@ use common::block_position::BlockPosition;
 
 use server::Server;
 use terrain_loader::TerrainLoader;
+use terrain::voxel;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum LoadReason {
   Local(OwnerId),
   ForClient(ClientId),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum ServerToGaia {
   Load(BlockPosition, LODIndex, LoadReason),
+  RemoveVoxel(voxel::Bounds),
 }
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
@@ -74,5 +76,28 @@ pub fn update_gaia(
         }
       });
     },
+    ServerToGaia::RemoveVoxel(bounds) => {
+      let mut terrain_loader = server.terrain_loader.lock().unwrap();
+      let id_allocator = &server.id_allocator;
+      terrain_loader.terrain.remove_voxel(
+        timers,
+        id_allocator,
+        &bounds,
+        |block, position, lod| {
+          // TODO: update physics with the new TerrainBlock.
+
+          let clients = server.clients.lock().unwrap();
+          for client in clients.values() {
+            client.sender.send(Some(
+              ServerToClient::UpdateBlock(TerrainBlockSend {
+                position: Copyable(*position),
+                block: block.clone(),
+                lod: Copyable(lod),
+              })
+            )).unwrap();
+          }
+        },
+      );
+    }
   };
 }
