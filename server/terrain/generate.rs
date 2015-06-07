@@ -1,6 +1,5 @@
 use cgmath::{Point, Point3, Vector, Vector3};
 use cgmath::Aabb3;
-use num::traits::PrimInt;
 use std::cmp::{min, max, partial_min, partial_max};
 use std::sync::Mutex;
 use stopwatch::TimerSet;

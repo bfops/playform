@@ -37,41 +37,41 @@ pub fn update_gaia(
         let terrain_loader = terrain_loader.deref_mut();
         let lod_map = &mut terrain_loader.lod_map;
         let in_progress_terrain = &mut terrain_loader.in_progress_terrain;
-        terrain_loader.terrain.load(
-          timers,
-          &server.id_allocator,
-          &position,
-          lod,
-          |block| {
-            match load_reason {
-              LoadReason::Local(owner) => {
-                // TODO: Check that this block isn't stale, i.e. should still be loaded.
-                // Maybe this should just ping the original thread, same as we ping the client.
-                TerrainLoader::insert_block(
-                  timers,
-                  block,
-                  &position,
-                  lod,
-                  owner,
-                  &server.physics,
-                  lod_map,
-                  in_progress_terrain,
-                );
-              },
-              LoadReason::ForClient(id) => {
-                let clients = server.clients.lock().unwrap();
-                let client = clients.get(&id).unwrap();
-                client.sender.send(Some(
-                  ServerToClient::UpdateBlock(TerrainBlockSend {
-                    position: Copyable(position),
-                    block: block.clone(),
-                    lod: Copyable(lod),
-                  })
-                )).unwrap();
-              },
-            }
+        let block =
+          terrain_loader.terrain.load(
+            timers,
+            &server.id_allocator,
+            &position,
+            lod,
+          );
+
+        match load_reason {
+          LoadReason::Local(owner) => {
+            // TODO: Check that this block isn't stale, i.e. should still be loaded.
+            // Maybe this should just ping the original thread, same as we ping the client.
+            TerrainLoader::insert_block(
+              timers,
+              block,
+              &position,
+              lod,
+              owner,
+              &server.physics,
+              lod_map,
+              in_progress_terrain,
+            );
           },
-        );
+          LoadReason::ForClient(id) => {
+            let clients = server.clients.lock().unwrap();
+            let client = clients.get(&id).unwrap();
+            client.sender.send(Some(
+              ServerToClient::UpdateBlock(TerrainBlockSend {
+                position: Copyable(position),
+                block: block.clone(),
+                lod: Copyable(lod),
+              })
+            )).unwrap();
+          },
+        }
       });
     },
   };
