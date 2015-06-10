@@ -135,7 +135,7 @@ impl Terrain {
       },
     }
 
-    macro_rules! tweak_neighbors(
+    macro_rules! remove_edge(
       ($edge:ident, $x:expr, $y:expr, $z:expr) => {{
         let bounds = voxel::Bounds::new($x, $y, $z, bounds.lg_size);
         match self.voxels.get_mut(&bounds) {
@@ -148,20 +148,20 @@ impl Terrain {
     );
 
     // TODO: Search for all these voxels in a single tree search.
-    tweak_neighbors!(x_edge, bounds.x, bounds.y,     bounds.z);
-    tweak_neighbors!(x_edge, bounds.x, bounds.y,     bounds.z + 1);
-    tweak_neighbors!(x_edge, bounds.x, bounds.y + 1, bounds.z);
-    tweak_neighbors!(x_edge, bounds.x, bounds.y + 1, bounds.z + 1);
+    remove_edge!(x_edge, bounds.x, bounds.y,     bounds.z);
+    remove_edge!(x_edge, bounds.x, bounds.y,     bounds.z + 1);
+    remove_edge!(x_edge, bounds.x, bounds.y + 1, bounds.z);
+    remove_edge!(x_edge, bounds.x, bounds.y + 1, bounds.z + 1);
 
-    tweak_neighbors!(y_edge, bounds.x,     bounds.y, bounds.z);
-    tweak_neighbors!(y_edge, bounds.x,     bounds.y, bounds.z + 1);
-    tweak_neighbors!(y_edge, bounds.x + 1, bounds.y, bounds.z);
-    tweak_neighbors!(y_edge, bounds.x + 1, bounds.y, bounds.z + 1);
+    remove_edge!(y_edge, bounds.x,     bounds.y, bounds.z);
+    remove_edge!(y_edge, bounds.x,     bounds.y, bounds.z + 1);
+    remove_edge!(y_edge, bounds.x + 1, bounds.y, bounds.z);
+    remove_edge!(y_edge, bounds.x + 1, bounds.y, bounds.z + 1);
 
-    tweak_neighbors!(z_edge, bounds.x,     bounds.y,     bounds.z);
-    tweak_neighbors!(z_edge, bounds.x,     bounds.y + 1, bounds.z);
-    tweak_neighbors!(z_edge, bounds.x + 1, bounds.y,     bounds.z);
-    tweak_neighbors!(z_edge, bounds.x + 1, bounds.y + 1, bounds.z);
+    remove_edge!(z_edge, bounds.x,     bounds.y,     bounds.z);
+    remove_edge!(z_edge, bounds.x,     bounds.y + 1, bounds.z);
+    remove_edge!(z_edge, bounds.x + 1, bounds.y,     bounds.z);
+    remove_edge!(z_edge, bounds.x + 1, bounds.y + 1, bounds.z);
 
     // TODO: Consider regenerating the TerrainBlocks for the adjacent voxels too.
 

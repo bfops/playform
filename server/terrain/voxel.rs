@@ -102,8 +102,9 @@ impl Normal {
 /// Tells you whether and where the surface crossed an edge of a cubic voxel.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Edge {
+  /// Does this edge cross the surface?
   pub is_crossed: bool,
-  // If this is true, the edge moves into the volume as its coordinates increase.
+  /// Denotes whether the higher-coordinate corner is inside the surface.
   pub direction: bool,
 }
 
