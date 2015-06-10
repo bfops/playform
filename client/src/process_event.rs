@@ -1,7 +1,6 @@
 //! SDL input event processing code.
 
 use cgmath::{Vector2, Vector3};
-use sdl2::event;
 use sdl2::event::Event;
 use sdl2::keycode::KeyCode;
 use sdl2::mouse;
@@ -23,7 +22,6 @@ pub fn process_event<UpdateServer>(
   update_server: &mut UpdateServer,
   view: &mut View,
   window: &mut video::Window,
-  event_pump: &event::EventPump,
   event: Event,
 ) where UpdateServer: FnMut(ClientToServer)
 {
@@ -39,7 +37,7 @@ pub fn process_event<UpdateServer>(
       }
     },
     Event::MouseMotion{x, y, ..} => {
-      mouse_move(timers, player_id, update_server, view, window, event_pump, x, y);
+      mouse_move(timers, player_id, update_server, view, window, x, y);
     },
     _ => {},
   }
@@ -127,14 +125,13 @@ fn mouse_move<UpdateServer>(
   update_server: &mut UpdateServer,
   view: &mut View,
   window: &mut video::Window,
-  event_pump: &event::EventPump,
   x: i32, y: i32,
 ) where UpdateServer: FnMut(ClientToServer)
 {
   // x and y are measured from the top-left corner.
 
   timers.time("event.mouse_move", || {
-    let (w, h) = window.properties_getters(event_pump).get_size();
+    let (w, h) = window.properties_getters().get_size();
     let (cx, cy) = (w as i32 / 2, h as i32 / 2);
     let d = Vector2::new(x - cx, cy - y);
     // To-radians coefficient. Numbers closer to zero dull the mouse movement more.

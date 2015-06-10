@@ -5,12 +5,12 @@ dependencies = [
  "cgmath 0.2.0 (git+https://github.com/bjz/cgmath-rs)",
  "env_logger 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "playform-common 0.0.0",
  "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
  "terrain 0.0.0",
- "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -18,9 +18,9 @@ name = "cgmath"
 version = "0.2.0"
 source = "git+https://github.com/bjz/cgmath-rs#aebe5fd9bfb2daa468754a19a1eac02aa8f959e8"
 dependencies = [
- "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -29,12 +29,12 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "gcc"
-version = "0.3.5"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -72,17 +72,17 @@ name = "noise"
 version = "0.1.5"
 source = "git+https://github.com/bjz/noise-rs#d46df3fd9e37000a45fa76aad3fcdb85f4967318"
 dependencies = [
- "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "num"
-version = "0.1.24"
+version = "0.1.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -92,9 +92,9 @@ dependencies = [
  "cgmath 0.2.0 (git+https://github.com/bjz/cgmath-rs)",
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.3.4 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
- "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
- "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -107,28 +107,36 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "0.1.30"
+version = "0.1.33"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "regex-syntax 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "regex-syntax"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustc-serialize"
-version = "0.3.14"
+version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "serialize"
 version = "0.0.0"
 dependencies = [
- "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "stopwatch"
 version = "0.0.0"
-source = "git+https://github.com/bfops/stopwatch-rs#ee8078842d167874bc6d38a4d1070a2867bd210e"
+source = "git+https://github.com/bfops/stopwatch-rs#b2823511fffa721a02c8c8164a5b52511aeb6de8"
 dependencies = [
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -138,17 +146,17 @@ dependencies = [
  "cgmath 0.2.0 (git+https://github.com/bjz/cgmath-rs)",
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "noise 0.1.5 (git+https://github.com/bjz/noise-rs)",
- "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "playform-common 0.0.0",
  "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
 ]
 
 [[package]]
 name = "time"
-version = "0.1.25"
+version = "0.1.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "gcc 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gcc 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

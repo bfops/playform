@@ -34,7 +34,7 @@ pub fn view_thread<Recv, UpdateServer>(
 {
   let timers = TimerSet::new();
 
-  let sdl = sdl2::init().everything().build().unwrap();
+  let mut sdl = sdl2::init().everything().build().unwrap();
 
   video::gl_attr::set_context_profile(video::GLProfile::Core);
   video::gl_attr::set_context_version(3, 3);
@@ -70,7 +70,7 @@ pub fn view_thread<Recv, UpdateServer>(
   gl.print_stats();
 
   let window_size = {
-    let (w, h) = window.properties_getters(&event_pump).get_size();
+    let (w, h) = window.properties_getters().get_size();
     Vector2::new(w, h)
   };
 
@@ -122,7 +122,6 @@ pub fn view_thread<Recv, UpdateServer>(
               update_server,
               &mut view,
               &mut window,
-              &event_pump,
               event,
             );
           }
