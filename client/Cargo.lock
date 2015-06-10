@@ -205,7 +205,7 @@ dependencies = [
 [[package]]
 name = "yaglw"
 version = "0.0.0"
-source = "git+https://github.com/bfops/yaglw#baf2202449e3904757651d865af6030b6d343ab8"
+source = "git+https://github.com/bfops/yaglw#e7335ebe1075d5a614392bb3369b80001858f316"
 dependencies = [
  "gl 0.0.12 (git+https://github.com/bjz/gl-rs)",
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -3,7 +3,6 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-#![feature(collections)]
 #![feature(core)]
 #![feature(duration)]
 #![feature(main)]
