@@ -135,12 +135,12 @@ impl Terrain {
       },
     }
 
-    macro_rules! remove_edge(
-      ($edge:ident, $x:expr, $y:expr, $z:expr) => {{
+    macro_rules! remove_corner(
+      ($x:expr, $y:expr, $z:expr) => {{
         let bounds = voxel::Bounds::new($x, $y, $z, bounds.lg_size);
         match self.voxels.get_mut(&bounds) {
           Some(&mut Voxel::Surface(ref mut voxel)) => {
-            voxel.$edge.is_crossed = false;
+            voxel.corner_inside_surface = false;
           },
           _ => {},
         }
@@ -148,20 +148,14 @@ impl Terrain {
     );
 
     // TODO: Search for all these voxels in a single tree search.
-    remove_edge!(x_edge, bounds.x, bounds.y,     bounds.z);
-    remove_edge!(x_edge, bounds.x, bounds.y,     bounds.z + 1);
-    remove_edge!(x_edge, bounds.x, bounds.y + 1, bounds.z);
-    remove_edge!(x_edge, bounds.x, bounds.y + 1, bounds.z + 1);
-
-    remove_edge!(y_edge, bounds.x,     bounds.y, bounds.z);
-    remove_edge!(y_edge, bounds.x,     bounds.y, bounds.z + 1);
-    remove_edge!(y_edge, bounds.x + 1, bounds.y, bounds.z);
-    remove_edge!(y_edge, bounds.x + 1, bounds.y, bounds.z + 1);
-
-    remove_edge!(z_edge, bounds.x,     bounds.y,     bounds.z);
-    remove_edge!(z_edge, bounds.x,     bounds.y + 1, bounds.z);
-    remove_edge!(z_edge, bounds.x + 1, bounds.y,     bounds.z);
-    remove_edge!(z_edge, bounds.x + 1, bounds.y + 1, bounds.z);
+    remove_corner!(bounds.x, bounds.y, bounds.z);
+    remove_corner!(bounds.x, bounds.y, bounds.z + 1);
+    remove_corner!(bounds.x, bounds.y + 1, bounds.z);
+    remove_corner!(bounds.x, bounds.y + 1, bounds.z + 1);
+    remove_corner!(bounds.x + 1, bounds.y, bounds.z);
+    remove_corner!(bounds.x + 1, bounds.y, bounds.z + 1);
+    remove_corner!(bounds.x + 1, bounds.y + 1, bounds.z);
+    remove_corner!(bounds.x + 1, bounds.y + 1, bounds.z + 1);
 
     // TODO: Consider regenerating the TerrainBlocks for the adjacent voxels too.
 

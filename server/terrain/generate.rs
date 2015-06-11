@@ -13,7 +13,7 @@ use common::terrain_block::{TerrainBlock, tri};
 
 use heightmap::HeightMap;
 use voxel;
-use voxel::{Fracu8, Fraci8, Voxel, SurfaceVoxel, Vertex, Normal, Edge};
+use voxel::{Fracu8, Fraci8, Voxel, SurfaceVoxel, Vertex, Normal};
 use voxel_tree;
 use voxel_tree::VoxelTree;
 
@@ -44,41 +44,27 @@ fn generate_voxel<FieldContains, GetNormal>(
       ],
     ];
 
-    let x_edge;
-    let y_edge;
-    let z_edge;
-    let mut any_crossed = false;
+    let corner;
+    let mut any_inside = false;
 
     {
-      let mut edge = |x1:usize, y1:usize, z1:usize, x2:usize, y2:usize, z2:usize| {
-        let is_crossed = corners[x1][y1][z1] != corners[x2][y2][z2];
-        any_crossed = any_crossed || is_crossed;
-        Edge {
-          is_crossed: is_crossed,
-          direction: corners[x2][y2][z2],
-        }
+      let mut get_corner = |x1:usize, y1:usize, z1:usize| {
+        let corner = corners[x1][y1][z1];
+        any_inside = any_inside || corner;
+        corner
       };
 
-      // x-oriented edges
-      x_edge = edge(0,0,0, 1,0,0);
-      let _  = edge(0,0,1, 1,0,1);
-      let _  = edge(0,1,0, 1,1,0);
-      let _  = edge(0,1,1, 1,1,1);
-
-      // y-oriented edges
-      y_edge = edge(0,0,0, 0,1,0);
-      let _  = edge(0,0,1, 0,1,1);
-      let _  = edge(1,0,0, 1,1,0);
-      let _  = edge(1,0,1, 1,1,1);
-
-      // z-oriented edges
-      z_edge = edge(0,0,0, 0,0,1);
-      let _  = edge(0,1,0, 0,1,1);
-      let _  = edge(1,0,0, 1,0,1);
-      let _  = edge(1,1,0, 1,1,1);
+      corner = get_corner(0,0,0);
+      let _ = get_corner(0,0,1);
+      let _ = get_corner(0,1,0);
+      let _ = get_corner(0,1,1);
+      let _ = get_corner(1,0,0);
+      let _ = get_corner(1,0,1);
+      let _ = get_corner(1,1,0);
+      let _ = get_corner(1,1,1);
     }
 
-    if !any_crossed {
+    if !any_inside {
       return Voxel::Empty
     }
 
@@ -152,11 +138,9 @@ fn generate_voxel<FieldContains, GetNormal>(
       };
 
     Voxel::Surface(SurfaceVoxel {
-      vertex: vertex,
+      inner_vertex: vertex,
       normal: normal,
-      x_edge: x_edge,
-      y_edge: y_edge,
-      z_edge: z_edge,
+      corner_inside_surface: corner,
     })
   })
 }
@@ -232,19 +216,23 @@ pub fn generate_block(
         heightmap.normal_at(0.01, x, y, z)
       };
 
+      let bounds_of = |v: &Point3<i32>| {
+        voxel::Bounds::new(v.x, v.y, v.z, lg_size)
+      };
+
       macro_rules! get_voxel(($bounds:expr) => {{
-        let branch = voxels.get_mut_or_create($bounds);
+        let branch = voxels.get_mut_or_create(&$bounds);
         let r;
         match branch {
           &mut voxel_tree::TreeBody::Leaf(v) => r = v,
           &mut voxel_tree::TreeBody::Empty => {
-            r = generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds);
+            r = generate_voxel(timers, &mut field_contains, &mut get_normal, &$bounds);
             *branch = voxel_tree::TreeBody::Leaf(r);
           },
           &mut voxel_tree::TreeBody::Branch(_) => {
             // Overwrite existing for now.
             // TODO: Don't do ^that.
-            r = generate_voxel(timers, &mut field_contains, &mut get_normal, $bounds);
+            r = generate_voxel(timers, &mut field_contains, &mut get_normal, &$bounds);
             *branch = voxel_tree::TreeBody::Leaf(r);
           },
         };
@@ -255,15 +243,17 @@ pub fn generate_block(
       }});
 
       macro_rules! get_vertex(($v:expr) => {{
-        let bounds = voxel::Bounds::new($v.x, $v.y, $v.z, lg_size);
+        let bounds = bounds_of($v);
         let voxel =
           get_voxel!(&bounds)
           .unwrap_or_else(|| panic!("Couldn't find edge neighbor voxel"));
-        (voxel.vertex.to_world_vertex(&bounds), voxel.normal.to_world_normal())
+        (voxel.inner_vertex.to_world_vertex(&bounds), voxel.normal.to_world_normal())
       }});
 
       macro_rules! extract((
-        $edge:ident,
+        // vector to a neighbor to create an edge with
+        $d_edge:expr,
+        // vectors to the two voxels sharing the edge
         $d1:expr,
         $d2:expr,
       ) => (
@@ -294,27 +284,34 @@ pub fn generate_block(
               };
             w = iposition.add_v(&Vector3::new(x, y, z));
           }
-          let bounds = voxel::Bounds::new(w.x, w.y, w.z, lg_size);
           let voxel;
+          let bounds = bounds_of(&w);
           match get_voxel!(&bounds) {
             None => continue,
             Some(v) => voxel = v,
           }
 
-          let edge = voxel.$edge;
-          if !edge.is_crossed {
-            continue
+          {
+            let neighbor_inside_surface;
+            match get_voxel!(bounds_of(&w.add_v(&$d_edge))) {
+              None => neighbor_inside_surface = false,
+              Some(neighbor) => neighbor_inside_surface = neighbor.corner_inside_surface,
+            }
+            let edge_is_uncrossed = voxel.corner_inside_surface == neighbor_inside_surface;
+            if edge_is_uncrossed {
+              continue
+            }
           }
 
           // Make a quad out of the vertices from the 4 voxels adjacent to this edge.
           // We know they have vertices in them because if the surface crosses an edge,
           // it must cross that edge's neighbors.
 
-          let (v1, n1) = get_vertex!(w.add_v(&$d1).add_v(&$d2));
-          let (v2, n2) = get_vertex!(w.add_v(&$d1));
-          let v3 = voxel.vertex.to_world_vertex(&bounds);
+          let (v1, n1) = get_vertex!(&w.add_v(&$d1).add_v(&$d2));
+          let (v2, n2) = get_vertex!(&w.add_v(&$d1));
+          let v3 = voxel.inner_vertex.to_world_vertex(&bounds);
           let n3 = voxel.normal.to_world_normal();
-          let (v4, n4) = get_vertex!(w.add_v(&$d2));
+          let (v4, n4) = get_vertex!(&w.add_v(&$d2));
 
           // Put a vertex at the average of the vertices.
           let center =
@@ -323,37 +320,37 @@ pub fn generate_block(
 
           let mut add_poly = |v1, n1, v2, n2| add_poly(v1, n1, v2, n2, center, center_normal);
 
-          if edge.direction {
-            // The polys are visible from negative infinity.
-            add_poly(v1, n1, v2, n2);
-            add_poly(v2, n2, v3, n3);
-            add_poly(v3, n3, v4, n4);
-            add_poly(v4, n4, v1, n1);
-          } else {
+          if voxel.corner_inside_surface {
             // The polys are visible from positive infinity.
             add_poly(v1, n1, v4, n4);
             add_poly(v4, n4, v3, n3);
             add_poly(v3, n3, v2, n2);
             add_poly(v2, n2, v1, n1);
+          } else {
+            // The polys are visible from negative infinity.
+            add_poly(v1, n1, v2, n2);
+            add_poly(v2, n2, v3, n3);
+            add_poly(v3, n3, v4, n4);
+            add_poly(v4, n4, v1, n1);
           }
         }}}
         )
       );
 
       extract!(
-        x_edge,
+        Vector3::new(1, 0, 0),
         Vector3::new(0, -1, 0),
         Vector3::new(0, 0, -1),
       );
 
       extract!(
-        y_edge,
+        Vector3::new(0, 1, 0),
         Vector3::new(0, 0, -1),
         Vector3::new(-1, 0, 0),
       );
 
       extract!(
-        z_edge,
+        Vector3::new(0, 0, 1),
         Vector3::new(-1, 0, 0),
         Vector3::new(0, -1, 0),
       );

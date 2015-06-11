@@ -45,24 +45,23 @@ impl Bounds {
 // have three low-order bits set to zero).
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Voxel {
-  // TODO: Is the empty case needed? Maybe we can "flatten" these branches
-  // together, since "no edges crossed" is effectively empty.
   Empty,
   Surface(SurfaceVoxel),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+// Every voxel keeps track of a single vertex, as well as whether its
+// lowest-coordinate corner is inside the volume.
+// Since we keep track of an "arbitrarily" large world of voxels, we don't
+// leave out any corners.
 pub struct SurfaceVoxel {
-  pub vertex: Vertex,
+  /// The position of a free-floating vertex on the surface.
+  pub inner_vertex: Vertex,
+  /// The surface normal at `inner_vertex`.
   pub normal: Normal,
 
-  // Each voxel contains edge information about the edges that intersect the
-  // lowest corner of the cube. Assuming the grid is effectively infinite, no
-  // edges will be left out.
-
-  pub x_edge: Edge,
-  pub y_edge: Edge,
-  pub z_edge: Edge,
+  /// Is this voxel's low corner inside the field?
+  pub corner_inside_surface: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -97,15 +96,6 @@ impl Normal {
   pub fn to_world_normal(&self) -> Vector3<f32> {
     Vector3::new(self.x.to_f32(), self.y.to_f32(), self.z.to_f32()).normalize()
   }
-}
-
-/// Tells you whether and where the surface crossed an edge of a cubic voxel.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Edge {
-  /// Does this edge cross the surface?
-  pub is_crossed: bool,
-  /// Denotes whether the higher-coordinate corner is inside the surface.
-  pub direction: bool,
 }
 
 /// Express a `[0,1)` fraction using a `u8`.
