@@ -17,17 +17,21 @@ use voxel::{Fracu8, Fraci8, Voxel, SurfaceVoxel, Vertex, Normal};
 use voxel_tree;
 use voxel_tree::VoxelTree;
 
-fn generate_voxel<FieldContains, GetNormal>(
+fn generate_voxel(
   timers: &TimerSet,
-  field_contains: &mut FieldContains,
-  get_normal: &mut GetNormal,
+  heightmap: &HeightMap,
   voxel: &voxel::Bounds,
 ) -> Voxel
-  where
-    FieldContains: FnMut(f32, f32, f32) -> bool,
-    GetNormal: FnMut(f32, f32, f32) -> Vector3<f32>,
 {
   timers.time("generate_voxel", || {
+    let field_contains = |x, y, z| {
+      heightmap.density_at(x, y, z) >= 0.0
+    };
+
+    let get_normal = |x, y, z| {
+      heightmap.normal_at(0.01, x, y, z)
+    };
+
     let size = voxel.size();
     let (x1, y1, z1) = (voxel.x as f32 * size, voxel.y as f32 * size, voxel.z as f32 * size);
     let delta = size;
@@ -208,14 +212,6 @@ pub fn generate_block(
           ));
         };
 
-      let mut field_contains = |x, y, z| {
-        heightmap.density_at(x, y, z) >= 0.0
-      };
-
-      let mut get_normal = |x, y, z| {
-        heightmap.normal_at(0.01, x, y, z)
-      };
-
       let bounds_of = |v: &Point3<i32>| {
         voxel::Bounds::new(v.x, v.y, v.z, lg_size)
       };
@@ -226,13 +222,13 @@ pub fn generate_block(
         match branch {
           &mut voxel_tree::TreeBody::Leaf(v) => r = v,
           &mut voxel_tree::TreeBody::Empty => {
-            r = generate_voxel(timers, &mut field_contains, &mut get_normal, &$bounds);
+            r = generate_voxel(timers, heightmap, &$bounds);
             *branch = voxel_tree::TreeBody::Leaf(r);
           },
           &mut voxel_tree::TreeBody::Branch(_) => {
             // Overwrite existing for now.
             // TODO: Don't do ^that.
-            r = generate_voxel(timers, &mut field_contains, &mut get_normal, &$bounds);
+            r = generate_voxel(timers, heightmap, &$bounds);
             *branch = voxel_tree::TreeBody::Leaf(r);
           },
         };
