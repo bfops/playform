@@ -30,7 +30,7 @@ use common::terrain_block;
 use common::terrain_block::TerrainBlock;
 
 use heightmap::HeightMap;
-use voxel::Voxel;
+use voxel::{Voxel, Fracu8, Fraci8};
 use voxel_tree::VoxelTree;
 
 pub const AMPLITUDE: f64 = 64.0;
@@ -126,36 +126,74 @@ impl Terrain {
   )
     where F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
   {
+    println!("remove {:?}", bounds);
+
     match self.voxels.get_mut(bounds) {
       None => {
         return;
       },
       Some(voxel) => {
-        *voxel = Voxel::Empty;
+        *voxel = Voxel::Volume(false);
       },
     }
 
-    macro_rules! remove_corner(
-      ($x:expr, $y:expr, $z:expr) => {{
-        let bounds = voxel::Bounds::new($x, $y, $z, bounds.lg_size);
-        match self.voxels.get_mut(&bounds) {
-          Some(&mut Voxel::Surface(ref mut voxel)) => {
-            voxel.corner_inside_surface = false;
-          },
-          _ => {},
-        }
-      }}
-    );
-
+    // Ensure all the neighbors are populated.
     // TODO: Search for all these voxels in a single tree search.
-    remove_corner!(bounds.x, bounds.y, bounds.z);
-    remove_corner!(bounds.x, bounds.y, bounds.z + 1);
-    remove_corner!(bounds.x, bounds.y + 1, bounds.z);
-    remove_corner!(bounds.x, bounds.y + 1, bounds.z + 1);
-    remove_corner!(bounds.x + 1, bounds.y, bounds.z);
-    remove_corner!(bounds.x + 1, bounds.y, bounds.z + 1);
-    remove_corner!(bounds.x + 1, bounds.y + 1, bounds.z);
-    remove_corner!(bounds.x + 1, bounds.y + 1, bounds.z + 1);
+    for &dx in [-1, 0, 1].iter() {
+    for &dy in [-1, 0, 1].iter() {
+    for &dz in [-1, 0, 1].iter() {
+      let (x, y, z) = (bounds.x + dx, bounds.y + dy, bounds.z + dz);
+      println!("x: {}, y: {}, z: {}", x, y, z);
+      let bounds = voxel::Bounds::new(x, y, z, bounds.lg_size);
+      let voxel = self.voxels.get_mut_or_create(&bounds);
+      println!("voxel 00 {:?}", *voxel);
+      match voxel {
+        &mut voxel_tree::TreeBody::Leaf(_) => {},
+        _ => {
+          *voxel =
+            voxel_tree::TreeBody::Leaf(generate::generate_voxel(
+              timers,
+              &self.heightmap,
+              &bounds,
+            ));
+        },
+      }
+      println!("voxel 01 {:?}", *voxel);
+      match voxel {
+        &mut voxel_tree::TreeBody::Leaf(Voxel::Volume(true)) => {
+          let half = Fracu8::of(0x80);
+          let surface =
+            voxel::SurfaceVoxel {
+              inner_vertex: voxel::Vertex { x: half, y: half, z: half },
+              // TODO: Make real normals.
+              normal: voxel::Normal { x: Fraci8::of(0), y: Fraci8::of(0x7F), z: Fraci8::of(0) },
+              corner_inside_surface: true,
+            };
+          *voxel = voxel_tree::TreeBody::Leaf(Voxel::Surface(surface));
+        },
+        _ => {},
+      }
+      println!("voxel 02 {:?}", *voxel);
+    }}}
+
+    // Remove all the corners.
+    // TODO: Search for all these voxels in a single tree search.
+    for &dx in [0, 1].iter() {
+    for &dy in [0, 1].iter() {
+    for &dz in [0, 1].iter() {
+      let (x, y, z) = (bounds.x + dx, bounds.y + dy, bounds.z + dz);
+      println!("x: {}, y: {}, z: {}", x, y, z);
+      let bounds = voxel::Bounds::new(x, y, z, bounds.lg_size);
+      let voxel = self.voxels.get_mut(&bounds);
+      println!("voxel 10 {:?}", voxel.as_ref().map(|&&mut x| x));
+      match voxel {
+        Some(&mut Voxel::Surface(ref mut voxel)) => {
+          voxel.corner_inside_surface = false;
+        },
+        _ => {},
+      }
+      println!("voxel 11 {:?}", voxel.as_ref().map(|&&mut x| x));
+    }}}
 
     // TODO: Consider regenerating the TerrainBlocks for the adjacent voxels too.
 

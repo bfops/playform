@@ -45,7 +45,9 @@ impl Bounds {
 // have three low-order bits set to zero).
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Voxel {
-  Empty,
+  // The voxel is entirely inside or outside the volume. true is inside.
+  Volume(bool),
+  // The voxel crosses the surface of the volume.
   Surface(SurfaceVoxel),
 }
 
@@ -113,7 +115,7 @@ impl Fracu8 {
   }
 }
 
-/// Express a `[0,1)` fraction using a `i8`.
+/// Express a `[-1,1)` fraction using a `i8`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Fraci8 {
   // The denominator is 1 << 8.

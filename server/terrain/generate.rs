@@ -17,7 +17,7 @@ use voxel::{Fracu8, Fraci8, Voxel, SurfaceVoxel, Vertex, Normal};
 use voxel_tree;
 use voxel_tree::VoxelTree;
 
-fn generate_voxel(
+pub fn generate_voxel(
   timers: &TimerSet,
   heightmap: &HeightMap,
   voxel: &voxel::Bounds,
@@ -50,11 +50,13 @@ fn generate_voxel(
 
     let corner;
     let mut any_inside = false;
+    let mut all_inside = true;
 
     {
       let mut get_corner = |x1:usize, y1:usize, z1:usize| {
         let corner = corners[x1][y1][z1];
         any_inside = any_inside || corner;
+        all_inside = all_inside && corner;
         corner
       };
 
@@ -68,8 +70,9 @@ fn generate_voxel(
       let _ = get_corner(1,1,1);
     }
 
-    if !any_inside {
-      return Voxel::Empty
+    let all_corners_same = any_inside == all_inside;
+    if all_corners_same {
+      return Voxel::Volume(all_inside)
     }
 
     let mut vertex: Vector3<u32> = Vector3::new(0, 0, 0);
@@ -232,17 +235,16 @@ pub fn generate_block(
             *branch = voxel_tree::TreeBody::Leaf(r);
           },
         };
-        match r {
-          Voxel::Empty => None,
-          Voxel::Surface(r) => Some(r),
-        }
+        r
       }});
 
       macro_rules! get_vertex(($v:expr) => {{
         let bounds = bounds_of($v);
-        let voxel =
-          get_voxel!(&bounds)
-          .unwrap_or_else(|| panic!("Couldn't find edge neighbor voxel"));
+        let voxel;
+        match get_voxel!(&bounds) {
+          Voxel::Surface(v) => voxel = v,
+          _ => panic!("Couldn't find populated edge neighbor voxel"),
+        }
         (voxel.inner_vertex.to_world_vertex(&bounds), voxel.normal.to_world_normal())
       }});
 
@@ -283,15 +285,19 @@ pub fn generate_block(
           let voxel;
           let bounds = bounds_of(&w);
           match get_voxel!(&bounds) {
-            None => continue,
-            Some(v) => voxel = v,
+            Voxel::Volume(_) => continue,
+            Voxel::Surface(v) => voxel = v,
           }
 
           {
             let neighbor_inside_surface;
             match get_voxel!(bounds_of(&w.add_v(&$d_edge))) {
-              None => neighbor_inside_surface = false,
-              Some(neighbor) => neighbor_inside_surface = neighbor.corner_inside_surface,
+              Voxel::Volume(is_inside) => {
+                neighbor_inside_surface = is_inside;
+              },
+              Voxel::Surface(neighbor) => {
+                neighbor_inside_surface = neighbor.corner_inside_surface;
+              },
             }
             let edge_is_uncrossed = voxel.corner_inside_surface == neighbor_inside_surface;
             if edge_is_uncrossed {

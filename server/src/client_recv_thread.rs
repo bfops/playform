@@ -137,7 +137,7 @@ pub fn apply_client_update<UpdateGaia>(
             &ray,
             &mut |bounds, voxel| {
               match voxel {
-                &Voxel::Empty => None,
+                &Voxel::Volume(false) => None,
                 _ => Some(bounds),
               }
             }
