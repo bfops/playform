@@ -126,8 +126,6 @@ impl Terrain {
   )
     where F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
   {
-    println!("remove {:?}", bounds);
-
     match self.voxels.get_mut(bounds) {
       None => {
         return;
@@ -143,10 +141,8 @@ impl Terrain {
     for &dy in [-1, 0, 1].iter() {
     for &dz in [-1, 0, 1].iter() {
       let (x, y, z) = (bounds.x + dx, bounds.y + dy, bounds.z + dz);
-      println!("x: {}, y: {}, z: {}", x, y, z);
       let bounds = voxel::Bounds::new(x, y, z, bounds.lg_size);
       let voxel = self.voxels.get_mut_or_create(&bounds);
-      println!("voxel 00 {:?}", *voxel);
       match voxel {
         &mut voxel_tree::TreeBody::Leaf(_) => {},
         _ => {
@@ -158,7 +154,6 @@ impl Terrain {
             ));
         },
       }
-      println!("voxel 01 {:?}", *voxel);
       match voxel {
         &mut voxel_tree::TreeBody::Leaf(Voxel::Volume(true)) => {
           let half = Fracu8::of(0x80);
@@ -173,7 +168,6 @@ impl Terrain {
         },
         _ => {},
       }
-      println!("voxel 02 {:?}", *voxel);
     }}}
 
     // Remove all the corners.
@@ -182,17 +176,14 @@ impl Terrain {
     for &dy in [0, 1].iter() {
     for &dz in [0, 1].iter() {
       let (x, y, z) = (bounds.x + dx, bounds.y + dy, bounds.z + dz);
-      println!("x: {}, y: {}, z: {}", x, y, z);
       let bounds = voxel::Bounds::new(x, y, z, bounds.lg_size);
       let voxel = self.voxels.get_mut(&bounds);
-      println!("voxel 10 {:?}", voxel.as_ref().map(|&&mut x| x));
       match voxel {
         Some(&mut Voxel::Surface(ref mut voxel)) => {
           voxel.corner_inside_surface = false;
         },
         _ => {},
       }
-      println!("voxel 11 {:?}", voxel.as_ref().map(|&&mut x| x));
     }}}
 
     // TODO: Consider regenerating the TerrainBlocks for the adjacent voxels too.
