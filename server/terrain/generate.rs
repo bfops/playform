@@ -152,6 +152,43 @@ pub fn generate_voxel(
   })
 }
 
+fn make_bounds(
+  v1: &Point3<f32>,
+  v2: &Point3<f32>,
+  v3: &Point3<f32>,
+) -> Aabb3<f32> {
+  let minx = partial_min(v1.x, v2.x);
+  let minx = minx.and_then(|m| partial_min(m, v3.x));
+  let minx = minx.unwrap();
+
+  let maxx = partial_max(v1.x, v2.x);
+  let maxx = maxx.and_then(|m| partial_max(m, v3.x));
+  let maxx = maxx.unwrap();
+
+  let miny = partial_min(v1.y, v2.y);
+  let miny = miny.and_then(|m| partial_min(m, v3.y));
+  let miny = miny.unwrap();
+
+  let maxy = partial_max(v1.y, v2.y);
+  let maxy = maxy.and_then(|m| partial_max(m, v3.y));
+  let maxy = maxy.unwrap();
+
+  let minz = partial_min(v1.z, v2.z);
+  let minz = minz.and_then(|m| partial_min(m, v3.z));
+  let minz = minz.unwrap();
+
+  let maxz = partial_max(v1.z, v2.z);
+  let maxz = maxz.and_then(|m| partial_max(m, v3.z));
+  let maxz = maxz.unwrap();
+
+  Aabb3::new(
+    // TODO: Remove this - 1.0. It's a temporary hack until voxel collisions work,
+    // to avoid zero-height Aabb3s.
+    Point3::new(minx, miny - 1.0, minz),
+    Point3::new(maxx, maxy, maxz),
+  )
+}
+
 /// Generate a `TerrainBlock` based on a given position in a `VoxelTree`.
 /// Any necessary voxels will be generated.
 pub fn generate_block(
@@ -171,93 +208,54 @@ pub fn generate_block(
     let lateral_samples = terrain_block::EDGE_SAMPLES[lod_index.0 as usize] as i32;
     let lg_size = terrain_block::LG_SAMPLE_SIZE[lod_index.0 as usize] as i16;
 
+    let bounds_of = |v: &Point3<i32>| {
+      voxel::Bounds::new(v.x, v.y, v.z, lg_size)
+    };
+
+    let mut get_voxel = |bounds: &voxel::Bounds| {
+      let branch = voxels.get_mut_or_create(bounds);
+      let r;
+      match branch {
+        &mut voxel_tree::TreeBody::Leaf(v) => r = v,
+        &mut voxel_tree::TreeBody::Empty => {
+          r = generate_voxel(timers, heightmap, bounds);
+          *branch = voxel_tree::TreeBody::Leaf(r);
+        },
+        &mut voxel_tree::TreeBody::Branch(_) => {
+          // Overwrite existing for now.
+          // TODO: Don't do ^that.
+          r = generate_voxel(timers, heightmap, bounds);
+          *branch = voxel_tree::TreeBody::Leaf(r);
+        },
+      };
+      r
+    };
+
+    macro_rules! get_vertex(($v:expr) => {{
+      let bounds = bounds_of($v);
+      let voxel;
+      match get_voxel(&bounds) {
+        Voxel::Surface(v) => voxel = v,
+        _ => panic!("Couldn't find populated edge neighbor voxel"),
+      }
+      (voxel.inner_vertex.to_world_vertex(&bounds), voxel.normal.to_world_normal())
+    }});
+
     {
       let mut add_poly =
         |v1: Point3<f32>, n1, v2: Point3<f32>, n2, center: Point3<f32>, center_normal| {
           let id = id_allocator.lock().unwrap().allocate();
 
-          let minx = partial_min(v1.x, v2.x);
-          let minx = minx.and_then(|m| partial_min(m, center.x));
-          let minx = minx.unwrap();
-
-          let maxx = partial_max(v1.x, v2.x);
-          let maxx = maxx.and_then(|m| partial_max(m, center.x));
-          let maxx = maxx.unwrap();
-
-          let miny = partial_min(v1.y, v2.y);
-          let miny = miny.and_then(|m| partial_min(m, center.y));
-          let miny = miny.unwrap();
-
-          let maxy = partial_max(v1.y, v2.y);
-          let maxy = maxy.and_then(|m| partial_max(m, center.y));
-          let maxy = maxy.unwrap();
-
-          let minz = partial_min(v1.z, v2.z);
-          let minz = minz.and_then(|m| partial_min(m, center.z));
-          let minz = minz.unwrap();
-
-          let maxz = partial_max(v1.z, v2.z);
-          let maxz = maxz.and_then(|m| partial_max(m, center.z));
-          let maxz = maxz.unwrap();
-
           block.vertex_coordinates.push(tri(v1, v2, center));
           block.normals.push(tri(n1, n2, center_normal));
           block.ids.push(id);
-
-          block.bounds.push((
-            id,
-            Aabb3::new(
-              // TODO: Remove this - 1.0. It's a temporary hack until voxel collisions work,
-              // to avoid zero-height Aabb3s.
-              Point3::new(minx, miny - 1.0, minz),
-              Point3::new(maxx, maxy, maxz),
-            ),
-          ));
+          block.bounds.push((id, make_bounds(&v1, &v2, &center)));
         };
 
-      let bounds_of = |v: &Point3<i32>| {
-        voxel::Bounds::new(v.x, v.y, v.z, lg_size)
-      };
-
-      macro_rules! get_voxel(($bounds:expr) => {{
-        let branch = voxels.get_mut_or_create(&$bounds);
-        let r;
-        match branch {
-          &mut voxel_tree::TreeBody::Leaf(v) => r = v,
-          &mut voxel_tree::TreeBody::Empty => {
-            r = generate_voxel(timers, heightmap, &$bounds);
-            *branch = voxel_tree::TreeBody::Leaf(r);
-          },
-          &mut voxel_tree::TreeBody::Branch(_) => {
-            // Overwrite existing for now.
-            // TODO: Don't do ^that.
-            r = generate_voxel(timers, heightmap, &$bounds);
-            *branch = voxel_tree::TreeBody::Leaf(r);
-          },
-        };
-        r
-      }});
-
-      macro_rules! get_vertex(($v:expr) => {{
-        let bounds = bounds_of($v);
-        let voxel;
-        match get_voxel!(&bounds) {
-          Voxel::Surface(v) => voxel = v,
-          _ => panic!("Couldn't find populated edge neighbor voxel"),
-        }
-        (voxel.inner_vertex.to_world_vertex(&bounds), voxel.normal.to_world_normal())
-      }});
-
-      macro_rules! extract((
-        // vector to a neighbor to create an edge with
-        $d_edge:expr,
-        // vectors to the two voxels sharing the edge
-        $d1:expr,
-        $d2:expr,
-      ) => (
-        for x in 0..lateral_samples {
-        for y in 0..lateral_samples {
-        for z in 0..lateral_samples {
+      for x in 0..lateral_samples {
+      for y in 0..lateral_samples {
+      for z in 0..lateral_samples {
+        let mut extract = |d_edge, d1, d2| {
           let w;
           {
             let iposition =
@@ -284,14 +282,14 @@ pub fn generate_block(
           }
           let voxel;
           let bounds = bounds_of(&w);
-          match get_voxel!(&bounds) {
-            Voxel::Volume(_) => continue,
+          match get_voxel(&bounds) {
+            Voxel::Volume(_) => return,
             Voxel::Surface(v) => voxel = v,
           }
 
           {
             let neighbor_inside_surface;
-            match get_voxel!(bounds_of(&w.add_v(&$d_edge))) {
+            match get_voxel(&bounds_of(&w.add_v(&d_edge))) {
               Voxel::Volume(is_inside) => {
                 neighbor_inside_surface = is_inside;
               },
@@ -301,7 +299,7 @@ pub fn generate_block(
             }
             let edge_is_uncrossed = voxel.corner_inside_surface == neighbor_inside_surface;
             if edge_is_uncrossed {
-              continue
+              return
             }
           }
 
@@ -309,11 +307,11 @@ pub fn generate_block(
           // We know they have vertices in them because if the surface crosses an edge,
           // it must cross that edge's neighbors.
 
-          let (v1, n1) = get_vertex!(&w.add_v(&$d1).add_v(&$d2));
-          let (v2, n2) = get_vertex!(&w.add_v(&$d1));
+          let (v1, n1) = get_vertex!(&w.add_v(&d1).add_v(&d2));
+          let (v2, n2) = get_vertex!(&w.add_v(&d1));
           let v3 = voxel.inner_vertex.to_world_vertex(&bounds);
           let n3 = voxel.normal.to_world_normal();
-          let (v4, n4) = get_vertex!(&w.add_v(&$d2));
+          let (v4, n4) = get_vertex!(&w.add_v(&d2));
 
           // Put a vertex at the average of the vertices.
           let center =
@@ -335,27 +333,26 @@ pub fn generate_block(
             add_poly(v3, n3, v4, n4);
             add_poly(v4, n4, v1, n1);
           }
-        }}}
-        )
-      );
+        };
 
-      extract!(
-        Vector3::new(1, 0, 0),
-        Vector3::new(0, -1, 0),
-        Vector3::new(0, 0, -1),
-      );
+        extract(
+          Vector3::new(1, 0, 0),
+          Vector3::new(0, -1, 0),
+          Vector3::new(0, 0, -1),
+        );
 
-      extract!(
-        Vector3::new(0, 1, 0),
-        Vector3::new(0, 0, -1),
-        Vector3::new(-1, 0, 0),
-      );
+        extract(
+          Vector3::new(0, 1, 0),
+          Vector3::new(0, 0, -1),
+          Vector3::new(-1, 0, 0),
+        );
 
-      extract!(
-        Vector3::new(0, 0, 1),
-        Vector3::new(-1, 0, 0),
-        Vector3::new(0, -1, 0),
-      );
+        extract(
+          Vector3::new(0, 0, 1),
+          Vector3::new(-1, 0, 0),
+          Vector3::new(0, -1, 0),
+        );
+      }}}
     }
 
     block
