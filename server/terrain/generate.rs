@@ -1,6 +1,8 @@
 use cgmath::{Point, Point3, Vector, Vector3};
 use cgmath::Aabb3;
 use std::cmp::{min, max, partial_min, partial_max};
+use std::collections::hash_map;
+use std::collections::HashMap;
 use std::sync::Mutex;
 use stopwatch::TimerSet;
 
@@ -202,13 +204,10 @@ pub fn generate_block(
   timers.time("update.generate_block", || {
     let mut block = TerrainBlock::empty();
 
-    let position = position.to_world_position();
-    let iposition = Point3::new(position.x as i32, position.y as i32, position.z as i32);
-
     let lateral_samples = terrain_block::EDGE_SAMPLES[lod_index.0 as usize] as i32;
     let lg_size = terrain_block::LG_SAMPLE_SIZE[lod_index.0 as usize] as i16;
 
-    let bounds_of = |v: &Point3<i32>| {
+    let bounds_at = |v: &Point3<i32>| {
       voxel::Bounds::new(v.x, v.y, v.z, lg_size)
     };
 
@@ -231,128 +230,142 @@ pub fn generate_block(
       r
     };
 
-    macro_rules! get_vertex(($v:expr) => {{
-      let bounds = bounds_of($v);
+    let lg_ratio = terrain_block::LG_WIDTH - lg_size;
+    let block_position = position.as_pnt();
+    let voxel_position =
+      Point3::new(
+        block_position.x << lg_ratio,
+        block_position.y << lg_ratio,
+        block_position.z << lg_ratio,
+      );
+
+    let mut coords = Vec::new();
+    let mut normals = Vec::new();
+    let mut indices = HashMap::new();
+    let mut polys = Vec::new();
+
+    for dx in 0..lateral_samples {
+    for dy in 0..lateral_samples {
+    for dz in 0..lateral_samples {
+      let voxel_position = voxel_position.add_v(&Vector3::new(dx, dy, dz));
       let voxel;
+      let bounds = bounds_at(&voxel_position);
       match get_voxel(&bounds) {
         Voxel::Surface(v) => voxel = v,
-        _ => panic!("Couldn't find populated edge neighbor voxel"),
+        _ => continue,
       }
-      (voxel.inner_vertex.to_world_vertex(&bounds), voxel.normal.to_world_normal())
-    }});
+      let index = coords.len();
+      let vertex = voxel.inner_vertex.to_world_vertex(&bounds);
+      let normal = voxel.normal.to_world_normal();
+      coords.push(vertex);
+      normals.push(normal);
+      indices.insert(voxel_position, index);
 
-    {
-      let mut add_poly =
-        |v1: Point3<f32>, n1, v2: Point3<f32>, n2, center: Point3<f32>, center_normal| {
-          let id = id_allocator.lock().unwrap().allocate();
+      let mut edge = |
+        d_neighbor, // Vector to the neighbor to make an edge toward.
+        d1, d2,     // Vector to the voxels adjacent to the edge.
+      | {
+        let neighbor_inside_surface;
+        match get_voxel(&bounds_at(&voxel_position.add_v(&d_neighbor))) {
+          Voxel::Surface(v) => neighbor_inside_surface = v.corner_inside_surface,
+          Voxel::Volume(inside) => neighbor_inside_surface = inside,
+        }
+        if voxel.corner_inside_surface == neighbor_inside_surface {
+          // This edge doesn't cross the surface, and doesn't generate polys.
 
-          block.vertex_coordinates.push(tri(v1, v2, center));
-          block.normals.push(tri(n1, n2, center_normal));
-          block.ids.push(id);
-          block.bounds.push((id, make_bounds(&v1, &v2, &center)));
-        };
+          return
+        }
 
-      for x in 0..lateral_samples {
-      for y in 0..lateral_samples {
-      for z in 0..lateral_samples {
-        let mut extract = |d_edge, d1, d2| {
-          let w;
-          {
-            let iposition =
-              if lg_size >= 0 {
-                let mask = (1 << lg_size) - 1;
-                assert!(
-                  (iposition.x|iposition.y|iposition.z) & mask == 0,
-                  "Block position should be a multiple of voxel sizes."
-                );
-                Point3::new(
-                  iposition.x >> lg_size,
-                  iposition.y >> lg_size,
-                  iposition.z >> lg_size,
-                )
-              } else {
-                let lg_size = -lg_size;
-                Point3::new(
-                  iposition.x << lg_size,
-                  iposition.y << lg_size,
-                  iposition.z << lg_size,
-                )
-              };
-            w = iposition.add_v(&Vector3::new(x, y, z));
-          }
-          let voxel;
-          let bounds = bounds_of(&w);
-          match get_voxel(&bounds) {
-            Voxel::Volume(_) => return,
-            Voxel::Surface(v) => voxel = v,
-          }
+        let v1; let v2; let v3; let v4;
+        let n1; let n2; let n3; let n4;
+        let i1; let i2; let i3; let i4;
 
-          {
-            let neighbor_inside_surface;
-            match get_voxel(&bounds_of(&w.add_v(&d_edge))) {
-              Voxel::Volume(is_inside) => {
-                neighbor_inside_surface = is_inside;
+        {
+          let mut voxel_index = |position: &Point3<i32>| {
+            match indices.entry(*position) {
+              hash_map::Entry::Occupied(entry) => {
+                let i = *entry.get();
+                (coords[i], normals[i], i)
               },
-              Voxel::Surface(neighbor) => {
-                neighbor_inside_surface = neighbor.corner_inside_surface;
+              hash_map::Entry::Vacant(entry) => {
+                let bounds = bounds_at(position);
+                match get_voxel(&bounds) {
+                  Voxel::Surface(voxel) => {
+                    let i = coords.len();
+                    let vertex = voxel.inner_vertex.to_world_vertex(&bounds);
+                    let normal = voxel.normal.to_world_normal();
+                    coords.push(vertex);
+                    normals.push(normal);
+                    entry.insert(i);
+                    (vertex, normal, i)
+                  },
+                  _ => panic!("Unitialized neighbor"),
+                }
               },
             }
-            let edge_is_uncrossed = voxel.corner_inside_surface == neighbor_inside_surface;
-            if edge_is_uncrossed {
-              return
-            }
-          }
+          };
 
-          // Make a quad out of the vertices from the 4 voxels adjacent to this edge.
-          // We know they have vertices in them because if the surface crosses an edge,
-          // it must cross that edge's neighbors.
+          let (tv1, tn1, ti1) = voxel_index(&voxel_position.add_v(&d1).add_v(&d2));
+          let (tv2, tn2, ti2) = voxel_index(&voxel_position.add_v(&d1));
+          let (tv3, tn3, ti3) = (vertex, normal, index);
+          let (tv4, tn4, ti4) = voxel_index(&voxel_position.add_v(&d2));
 
-          let (v1, n1) = get_vertex!(&w.add_v(&d1).add_v(&d2));
-          let (v2, n2) = get_vertex!(&w.add_v(&d1));
-          let v3 = voxel.inner_vertex.to_world_vertex(&bounds);
-          let n3 = voxel.normal.to_world_normal();
-          let (v4, n4) = get_vertex!(&w.add_v(&d2));
+          v1 = tv1; v2 = tv2; v3 = tv3; v4 = tv4;
+          n1 = tn1; n2 = tn2; n3 = tn3; n4 = tn4;
+          i1 = ti1; i2 = ti2; i3 = ti3; i4 = ti4;
+        }
 
-          // Put a vertex at the average of the vertices.
-          let center =
-            v1.add_v(&v2.to_vec()).add_v(&v3.to_vec()).add_v(&v4.to_vec()).div_s(4.0);
-          let center_normal = n1.add_v(&n2).add_v(&n3).add_v(&n4).div_s(4.0);
+        // Put a vertex at the average of the vertices.
+        let v_center =
+          v1.add_v(&v2.to_vec()).add_v(&v3.to_vec()).add_v(&v4.to_vec()).div_s(4.0);
+        let n_center =
+          n1.add_v(&n2).add_v(&n3).add_v(&n4).div_s(4.0);
 
-          let mut add_poly = |v1, n1, v2, n2| add_poly(v1, n1, v2, n2, center, center_normal);
+        let i_center = coords.len();
+        coords.push(v_center);
+        normals.push(n_center);
 
-          if voxel.corner_inside_surface {
-            // The polys are visible from positive infinity.
-            add_poly(v1, n1, v4, n4);
-            add_poly(v4, n4, v3, n3);
-            add_poly(v3, n3, v2, n2);
-            add_poly(v2, n2, v1, n1);
-          } else {
-            // The polys are visible from negative infinity.
-            add_poly(v1, n1, v2, n2);
-            add_poly(v2, n2, v3, n3);
-            add_poly(v3, n3, v4, n4);
-            add_poly(v4, n4, v1, n1);
-          }
-        };
+        if voxel.corner_inside_surface {
+          // The polys are visible from positive infinity.
+          polys.push([i2, i1, i_center]);
+          polys.push([i3, i2, i_center]);
+          polys.push([i4, i3, i_center]);
+          polys.push([i1, i4, i_center]);
+        } else {
+          // The polys are visible from negative infinity.
+          polys.push([i1, i2, i_center]);
+          polys.push([i2, i3, i_center]);
+          polys.push([i3, i4, i_center]);
+          polys.push([i4, i1, i_center]);
+        }
+      };
 
-        extract(
-          Vector3::new(1, 0, 0),
-          Vector3::new(0, -1, 0),
-          Vector3::new(0, 0, -1),
-        );
+      edge(
+        Vector3::new(1, 0, 0),
+        Vector3::new(0, -1, 0),
+        Vector3::new(0, 0, -1),
+      );
 
-        extract(
-          Vector3::new(0, 1, 0),
-          Vector3::new(0, 0, -1),
-          Vector3::new(-1, 0, 0),
-        );
+      edge(
+        Vector3::new(0, 1, 0),
+        Vector3::new(0, 0, -1),
+        Vector3::new(-1, 0, 0),
+      );
 
-        extract(
-          Vector3::new(0, 0, 1),
-          Vector3::new(-1, 0, 0),
-          Vector3::new(0, -1, 0),
-        );
-      }}}
+      edge(
+        Vector3::new(0, 0, 1),
+        Vector3::new(-1, 0, 0),
+        Vector3::new(0, -1, 0),
+      );
+    }}}
+
+    for poly in polys.iter() {
+      block.vertex_coordinates.push(tri(coords[poly[0]], coords[poly[1]], coords[poly[2]]));
+      block.normals.push(tri(normals[poly[0]], normals[poly[1]], normals[poly[2]]));
+
+      let id = id_allocator.lock().unwrap().allocate();
+      block.ids.push(id);
+      block.bounds.push((id, make_bounds(&coords[poly[0]], &coords[poly[1]], &coords[poly[2]])));
     }
 
     block
