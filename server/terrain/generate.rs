@@ -13,6 +13,7 @@ use common::lod::LODIndex;
 use common::terrain_block;
 use common::terrain_block::{TerrainBlock, tri};
 
+use field::Field;
 use heightmap::HeightMap;
 use voxel;
 use voxel::{Fracu8, Fraci8, Voxel, SurfaceVoxel, Vertex, Normal};

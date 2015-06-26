@@ -10,6 +10,7 @@ extern crate noise;
 extern crate num;
 extern crate stopwatch;
 
+mod field;
 mod generate;
 mod heightmap;
 mod raycast;
