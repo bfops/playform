@@ -2,6 +2,7 @@
 
 #![deny(missing_docs)]
 #![deny(warnings)]
+#![allow(deprecated)]
 
 #![feature(duration)]
 #![feature(main)]

@@ -4,9 +4,9 @@
 // TODO: Make this work with less common endiannesses too.
 
 #![deny(warnings)]
-#![feature(collections)]
 #![feature(convert)]
-#![feature(core)]
+#![feature(raw)]
+#![feature(vec_push_all)]
 
 #![cfg_attr(test, feature(test))] 
 
