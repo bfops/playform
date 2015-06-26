@@ -1,4 +1,6 @@
-#![feature(core)]
+#![feature(range_inclusive)]
+#![feature(cmp_partial)]
+#![feature(iter_cmp)]
 
 extern crate cgmath;
 extern crate common;

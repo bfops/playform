@@ -2,13 +2,16 @@
 
 #![deny(missing_docs)]
 #![deny(warnings)]
+#![allow(deprecated)]
 
-#![feature(core)]
 #![feature(duration)]
 #![feature(main)]
 #![feature(scoped)]
 #![feature(test)]
 #![feature(unboxed_closures)]
+#![feature(range_inclusive)]
+#![feature(cmp_partial)]
+#![feature(ptr_as_ref)]
 
 extern crate cgmath;
 extern crate common;

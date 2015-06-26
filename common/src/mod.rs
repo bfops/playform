@@ -3,10 +3,11 @@
 
 //! Data structures and functions shared between server and client.
 
-#![feature(core)]
 #![feature(duration)]
 #![feature(test)]
 #![feature(unboxed_closures)]
+#![feature(range_inclusive)]
+#![feature(iter_cmp)]
 
 extern crate cgmath;
 #[macro_use]
