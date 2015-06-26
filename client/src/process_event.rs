@@ -2,7 +2,7 @@
 
 use cgmath::{Vector2, Vector3};
 use sdl2::event::Event;
-use sdl2::keycode::KeyCode;
+use sdl2::keyboard::Keycode;
 use sdl2::mouse::Mouse;
 use sdl2::mouse;
 use sdl2::video;
@@ -28,14 +28,18 @@ pub fn process_event<UpdateServer>(
 {
   match event {
     Event::KeyDown{keycode, repeat, ..} => {
-      if !repeat {
-        key_press(timers, player_id, update_server, view, keycode);
-      }
+      keycode.map(|keycode| {
+        if !repeat {
+          key_press(timers, player_id, update_server, view, keycode);
+        }
+      });
     },
     Event::KeyUp{keycode, repeat, ..} => {
-      if !repeat {
-        key_release(timers, player_id, update_server, keycode);
-      }
+      keycode.map(|keycode| {
+        if !repeat {
+          key_release(timers, player_id, update_server, keycode);
+        }
+      });
     },
     Event::MouseMotion{x, y, ..} => {
       mouse_move(timers, player_id, update_server, view, window, x, y);
@@ -52,39 +56,39 @@ fn key_press<UpdateServer>(
   player_id: EntityId,
   update_server: &mut UpdateServer,
   view: &mut View,
-  key: KeyCode,
+  key: Keycode,
 ) where UpdateServer: FnMut(ClientToServer)
 {
   timers.time("event.key_press", || {
     match key {
-      KeyCode::A => {
+      Keycode::A => {
         update_server(Walk(Copyable(player_id), Copyable(Vector3::new(-1.0, 0.0, 0.0))));
       },
-      KeyCode::D => {
+      Keycode::D => {
         update_server(Walk(Copyable(player_id), Copyable(Vector3::new(1.0, 0.0, 0.0))));
       },
-      KeyCode::Space => {
+      Keycode::Space => {
         update_server(StartJump(Copyable(player_id)));
       },
-      KeyCode::W => {
+      Keycode::W => {
         update_server(Walk(Copyable(player_id), Copyable(Vector3::new(0.0, 0.0, -1.0))));
       },
-      KeyCode::S => {
+      Keycode::S => {
         update_server(Walk(Copyable(player_id), Copyable(Vector3::new(0.0, 0.0, 1.0))));
       },
-      KeyCode::Left => {
+      Keycode::Left => {
         update_server(RotatePlayer(Copyable(player_id), Copyable(Vector2::new(PI / 12.0, 0.0))));
         view.camera.rotate_lateral(PI / 12.0);
       },
-      KeyCode::Right => {
+      Keycode::Right => {
         update_server(RotatePlayer(Copyable(player_id), Copyable(Vector2::new(-PI / 12.0, 0.0))));
         view.camera.rotate_lateral(-PI / 12.0);
       },
-      KeyCode::Up => {
+      Keycode::Up => {
         update_server(RotatePlayer(Copyable(player_id), Copyable(Vector2::new(0.0, PI / 12.0))));
         view.camera.rotate_vertical(PI / 12.0);
       },
-      KeyCode::Down => {
+      Keycode::Down => {
         update_server(RotatePlayer(Copyable(player_id), Copyable(Vector2::new(0.0, -PI / 12.0))));
         view.camera.rotate_vertical(-PI / 12.0);
       },
@@ -116,25 +120,25 @@ fn key_release<UpdateServer>(
   timers: &TimerSet,
   player_id: EntityId,
   update_server: &mut UpdateServer,
-  key: KeyCode,
+  key: Keycode,
 ) where UpdateServer: FnMut(ClientToServer)
 {
   timers.time("event.key_release", || {
     match key {
       // accelerations are negated from those in key_press.
-      KeyCode::A => {
+      Keycode::A => {
         update_server(Walk(Copyable(player_id), Copyable(Vector3::new(1.0, 0.0, 0.0))));
       },
-      KeyCode::D => {
+      Keycode::D => {
         update_server(Walk(Copyable(player_id), Copyable(Vector3::new(-1.0, 0.0, 0.0))));
       },
-      KeyCode::Space => {
+      Keycode::Space => {
         update_server(StopJump(Copyable(player_id)));
       },
-      KeyCode::W => {
+      Keycode::W => {
         update_server(Walk(Copyable(player_id), Copyable(Vector3::new(0.0, 0.0, 1.0))));
       },
-      KeyCode::S => {
+      Keycode::S => {
         update_server(Walk(Copyable(player_id), Copyable(Vector3::new(0.0, 0.0, -1.0))));
       },
       _ => {}
