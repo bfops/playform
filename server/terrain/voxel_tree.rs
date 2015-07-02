@@ -21,6 +21,7 @@ pub struct VoxelTree {
 #[repr(C)]
 pub struct Branches {
   // xyz ordering
+  // This isn't an array because we can't move out of an array.
 
   lll: TreeBody,
   llh: TreeBody,
@@ -60,6 +61,13 @@ impl Branches {
     };
     &this[x][y][z]
   }
+
+  pub fn get_mut<'a>(&'a mut self, x: usize, y: usize, z: usize) -> &'a mut TreeBody {
+    let this: &'a mut [[[TreeBody; 2]; 2]; 2] = unsafe {
+      mem::transmute(self)
+    };
+    &mut this[x][y][z]
+  }
 }
 
 impl VoxelTree {
@@ -88,48 +96,6 @@ impl VoxelTree {
     && (voxel.x + 1) <= high
     && (voxel.y + 1) <= high
     && (voxel.z + 1) <= high
-  }
-
-  #[inline(always)]
-  fn get_branch<'a, ChooseBranch>(
-    branches: &'a Branches,
-    mut choose_branch: ChooseBranch,
-    x: i32, y: i32, z: i32,
-  ) -> &'a TreeBody
-    where ChooseBranch: FnMut(i32) -> bool,
-  {
-    // TODO: Make this branch-free by constructing the bools into an offset.
-    match (choose_branch(x), choose_branch(y), choose_branch(z)) {
-      (false, false, false) => &branches.lll,
-      (false, false, true ) => &branches.llh,
-      (false, true , false) => &branches.lhl,
-      (false, true , true ) => &branches.lhh,
-      (true , false, false) => &branches.hll,
-      (true , false, true ) => &branches.hlh,
-      (true , true , false) => &branches.hhl,
-      (true , true , true ) => &branches.hhh,
-    }
-  }
-
-  #[inline(always)]
-  fn get_branch_mut<'a, ChooseBranch>(
-    branches: &'a mut Branches,
-    mut choose_branch: ChooseBranch,
-    x: i32, y: i32, z: i32,
-  ) -> &'a mut TreeBody
-    where ChooseBranch: FnMut(i32) -> bool,
-  {
-    // TODO: Make this branch-free by constructing the bools into an offset.
-    match (choose_branch(x), choose_branch(y), choose_branch(z)) {
-      (false, false, false) => &mut branches.lll,
-      (false, false, true ) => &mut branches.llh,
-      (false, true , false) => &mut branches.lhl,
-      (false, true , true ) => &mut branches.lhh,
-      (true , false, false) => &mut branches.hll,
-      (true , false, true ) => &mut branches.hlh,
-      (true , true , false) => &mut branches.hhl,
-      (true , true , true ) => &mut branches.hhh,
-    }
   }
 
   /// Ensure that this tree can hold the provided voxel.
@@ -217,9 +183,12 @@ impl VoxelTree {
     let mut branches = &mut self.contents;
 
     macro_rules! iter(
-      ($mask:expr, $step:block) => {{
+      ($select:expr, $step:block) => {{
         let branches_temp = branches;
-        let branch = VoxelTree::get_branch_mut(branches_temp, $mask, voxel.x, voxel.y, voxel.z);
+        let x = $select(voxel.x);
+        let y = $select(voxel.y);
+        let z = $select(voxel.z);
+        let branch = branches_temp.get_mut(x, y, z);
 
         $step;
         // We've reached the voxel.
@@ -231,11 +200,11 @@ impl VoxelTree {
       }}
     );
 
-    iter!(|x| x >= 0, {});
+    iter!(|x| (x >= 0) as usize, {});
 
     loop {
       iter!(
-        |x| { (x & mask) != 0 },
+        |x| ((x & mask) != 0) as usize,
         // Branch through half this size next time.
         { mask = mask >> 1; }
       );
@@ -253,9 +222,12 @@ impl VoxelTree {
     let mut branches = &self.contents;
 
     macro_rules! iter(
-      ($mask:expr, $step:block) => {{
+      ($select:expr, $step:block) => {{
         let branches_temp = branches;
-        let branch = VoxelTree::get_branch(branches_temp, $mask, voxel.x, voxel.y, voxel.z);
+        let x = $select(voxel.x);
+        let y = $select(voxel.y);
+        let z = $select(voxel.z);
+        let branch = branches_temp.get(x, y, z);
 
         $step;
         // We've reached the voxel.
@@ -267,11 +239,11 @@ impl VoxelTree {
       }}
     );
 
-    iter!(|x| x >= 0, {});
+    iter!(|x| (x >= 0) as usize, {});
 
     loop {
       iter!(
-        |x| { (x & mask) != 0 },
+        |x| { ((x & mask) != 0) as usize },
         // Branch through half this size next time.
         { mask = mask >> 1; }
       );
