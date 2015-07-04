@@ -66,7 +66,7 @@ pub fn cast_ray_branches<'a, MakeBounds, Act, R>(
     Act: FnMut(voxel::Bounds, &'a Voxel) -> Option<R>,
 {
   loop {
-    let child = this.get(coords[0], coords[1], coords[2]);
+    let child = &this.as_array()[coords[0]][coords[1]][coords[2]];
     let bounds = make_bounds(coords);
 
     match cast_ray(child, ray, bounds, entry, act) {

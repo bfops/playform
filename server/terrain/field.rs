@@ -1,8 +1,14 @@
 use cgmath::{EuclideanVector, Vector3};
 
+use voxel;
+
 pub trait Field {
   /// The height of the field at a given x,y,z.
   fn density_at(&self, x: f32, y: f32, z: f32) -> f32;
+
+  fn contains(&self, x: f32, y: f32, z: f32) -> bool {
+    self.density_at(x, y, z) >= 0.0
+  }
 
   /// The lighting normal of the tile at a given x,y,z.
   fn normal_at(&self, delta: f32, x: f32, y: f32, z: f32) -> Vector3<f32> {

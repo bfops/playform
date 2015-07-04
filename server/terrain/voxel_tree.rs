@@ -1,16 +1,20 @@
 #![cfg_attr(test, feature(test))]
 
-use cgmath::Ray3;
+use cgmath::{Vector, Vector3, Ray3};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
+use brush;
+use brush::Brush;
+use field;
 use raycast;
 use voxel;
 use voxel::Voxel;
 
 #[derive(Debug)]
 pub struct VoxelTree {
-  /// The log_2 of the tree's size.
+  /// The tree extends 2^lg_size in each direction.
+  /// i.e. the total width is 2^(lg_size + 1).
   lg_size: u8,
   /// Force the top level to always be branches;
   /// it saves a branch in the grow logic.
@@ -55,18 +59,76 @@ impl Branches {
     }
   }
 
-  pub fn get<'a>(&'a self, x: usize, y: usize, z: usize) -> &'a TreeBody {
-    let this: &'a [[[TreeBody; 2]; 2]; 2] = unsafe {
-      mem::transmute(self)
-    };
-    &this[x][y][z]
+  pub fn as_array(&self) -> &[[[TreeBody; 2]; 2]; 2] {
+    mem::transmute(self)
   }
 
-  pub fn get_mut<'a>(&'a mut self, x: usize, y: usize, z: usize) -> &'a mut TreeBody {
-    let this: &'a mut [[[TreeBody; 2]; 2]; 2] = unsafe {
-      mem::transmute(self)
+  pub fn as_array_mut(&self) -> &mut [[[TreeBody; 2]; 2]; 2] {
+    mem::transmute(self)
+  }
+}
+
+fn brush_overlaps(voxel: &voxel::Bounds, brush: &brush::Bounds) -> bool {
+
+}
+
+impl TreeBody {
+  pub fn remove<B>(
+    &mut self,
+    bounds: &voxel::Bounds,
+    brush: &B,
+    brush_bounds: &brush::Bounds,
+  ) where
+    B: Brush,
+  {
+    if !brush_overlaps(bounds, brush_bounds) {
+      return
+    }
+
+    let set_leaf = |this: &mut TreeBody, corner_inside_surface| {
+      let size = bounds.size();
+      let low = Vector3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
+      let low = low.mul_s(size);
+      let (vertex, normal) = brush.vertex_in(bounds);
+      let corner_inside_surface =
+        corner_inside_surface && !brush.contains(low.x, low.y, low.z);
+      let voxel =
+        voxel::SurfaceVoxel {
+          inner_vertex: vertex,
+          normal: normal,
+          corner_inside_surface: corner_inside_surface,
+        };
+      *this = TreeBody::Leaf(Voxel::Surface(voxel));
     };
-    &mut this[x][y][z]
+
+    match self {
+      &mut TreeBody::Branch(branches) => {
+        // Bounds of the lowest branch
+        let bounds = voxel::Bounds::new(bounds.x << 1, bounds.y << 1, bounds.z << 1, bounds.lg_size - 1);
+
+        macro_rules! recurse(($branch: ident, $update_bounds: expr) => {{
+          let mut bounds = bounds;
+          $update_bounds(&mut bounds);
+          branches.$branch.remove(&bounds, brush, brush_bounds);
+        }});
+        recurse!(lll, |_|                     {                            });
+        recurse!(llh, |b: &mut voxel::Bounds| {                    b.z += 1});
+        recurse!(lhl, |b: &mut voxel::Bounds| {          b.y += 1          });
+        recurse!(lhh, |b: &mut voxel::Bounds| {          b.y += 1; b.z += 1});
+        recurse!(hll, |b: &mut voxel::Bounds| {b.x += 1                    });
+        recurse!(hlh, |b: &mut voxel::Bounds| {b.x += 1;           b.z += 1});
+        recurse!(hhl, |b: &mut voxel::Bounds| {b.x += 1; b.y += 1});
+        recurse!(hhh, |b: &mut voxel::Bounds| {b.x += 1; b.y += 1; b.z += 1});
+      },
+      &mut TreeBody::Empty => {},
+      &mut TreeBody::Leaf(Voxel::Volume(false)) => {},
+      &mut TreeBody::Leaf(Voxel::Volume(true)) => {
+        set_leaf(self, true);
+      },
+      &mut TreeBody::Leaf(Voxel::Surface(voxel)) => {
+        set_leaf(self, voxel.corner_inside_surface);
+      },
+    }
   }
 }
 
@@ -79,8 +141,10 @@ impl VoxelTree {
   }
 
   /// Is this voxel (non-strictly) within an origin-centered voxel with
-  /// size `2^lg_size`?
+  /// width `2^(lg_size + 1)`?
   pub fn contains_bounds(&self, voxel: &voxel::Bounds) -> bool {
+    // BUG: This isn't necessarily true.
+    // TODO: ^ fix
     if voxel.lg_size < 0 {
       return true
     }
@@ -185,10 +249,12 @@ impl VoxelTree {
     macro_rules! iter(
       ($select:expr, $step:block) => {{
         let branches_temp = branches;
-        let x = $select(voxel.x);
-        let y = $select(voxel.y);
-        let z = $select(voxel.z);
-        let branch = branches_temp.get_mut(x, y, z);
+        let branch =
+          &mut branches_temp.as_array_mut()
+            [$select(voxel.x)]
+            [$select(voxel.y)]
+            [$select(voxel.z)]
+          ;
 
         $step;
         // We've reached the voxel.
@@ -224,10 +290,12 @@ impl VoxelTree {
     macro_rules! iter(
       ($select:expr, $step:block) => {{
         let branches_temp = branches;
-        let x = $select(voxel.x);
-        let y = $select(voxel.y);
-        let z = $select(voxel.z);
-        let branch = branches_temp.get(x, y, z);
+        let branch =
+          &branches_temp.as_array()
+            [$select(voxel.x)]
+            [$select(voxel.y)]
+            [$select(voxel.z)]
+          ;
 
         $step;
         // We've reached the voxel.
@@ -369,6 +437,30 @@ impl VoxelTree {
       Ok(r) => Some(r),
       Err(_) => None,
     }
+  }
+
+  pub fn remove<Brush>(
+    &mut self,
+    brush: &Brush,
+    brush_bounds: &brush::Bounds,
+  ) where
+    Brush: brush::Brush,
+  {
+    macro_rules! recurse(($branch: ident, $x: expr, $y: expr, $z: expr) => {{
+      self.contents.$branch.remove(
+        &voxel::Bounds::new($x, $y, $z, self.lg_size as i16),
+        brush,
+        brush_bounds,
+      );
+    }});
+    recurse!(lll, -1, -1, -1);
+    recurse!(llh, -1, -1,  0);
+    recurse!(lhl, -1,  0, -1);
+    recurse!(lhh, -1,  0,  0);
+    recurse!(hll,  0, -1, -1);
+    recurse!(hlh,  0, -1,  0);
+    recurse!(hhl,  0,  0, -1);
+    recurse!(hhh,  0,  0,  0);
   }
 }
 
