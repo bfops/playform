@@ -186,23 +186,23 @@ impl VoxelTree {
   /// Is this voxel (non-strictly) within an origin-centered voxel with
   /// width `2^(lg_size + 1)`?
   pub fn contains_bounds(&self, voxel: &voxel::Bounds) -> bool {
-    // BUG: This isn't necessarily true.
-    // TODO: ^ fix
-    if voxel.lg_size < 0 {
-      return true
+    let high;
+    if voxel.lg_size >= 0 {
+      high = (1 << self.lg_size) >> voxel.lg_size;
+    } else {
+      high = (1 << self.lg_size) << (-voxel.lg_size);
     }
 
-    let high = (1 << self.lg_size) >> voxel.lg_size;
-    let low = -high;
-
-    if voxel.x < low || voxel.y < low || voxel.z < low {
-      return false
+    voxel.x < high &&
+    voxel.y < high &&
+    voxel.z < high &&
+    {
+      let low = -high;
+      voxel.x >= low &&
+      voxel.y >= low &&
+      voxel.z >= low &&
+      true
     }
-
-    true
-    && (voxel.x + 1) <= high
-    && (voxel.y + 1) <= high
-    && (voxel.z + 1) <= high
   }
 
   /// Ensure that this tree can hold the provided voxel.
