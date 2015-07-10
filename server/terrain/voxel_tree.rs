@@ -6,7 +6,6 @@ use std::ops::{Deref, DerefMut};
 
 use brush;
 use brush::Brush;
-use field;
 use raycast;
 use voxel;
 use voxel::Voxel;
@@ -60,16 +59,60 @@ impl Branches {
   }
 
   pub fn as_array(&self) -> &[[[TreeBody; 2]; 2]; 2] {
-    mem::transmute(self)
+    unsafe {
+      mem::transmute(self)
+    }
   }
 
-  pub fn as_array_mut(&self) -> &mut [[[TreeBody; 2]; 2]; 2] {
-    mem::transmute(self)
+  pub fn as_array_mut(&mut self) -> &mut [[[TreeBody; 2]; 2]; 2] {
+    unsafe {
+      mem::transmute(self)
+    }
   }
 }
 
 fn brush_overlaps(voxel: &voxel::Bounds, brush: &brush::Bounds) -> bool {
-
+  if voxel.lg_size >= 0 {
+    let low =
+      Vector3::new(
+        voxel.x << voxel.lg_size,
+        voxel.y << voxel.lg_size,
+        voxel.z << voxel.lg_size,
+      );
+    low.x < brush.high.x &&
+    low.y < brush.high.y &&
+    low.z < brush.high.z &&
+    {
+      let high = low.add_s(1 << voxel.lg_size);
+      brush.low.x < high.x &&
+      brush.low.y < high.y &&
+      brush.low.z < high.z &&
+      true
+    }
+  } else {
+    let lg_size = -voxel.lg_size;
+    let high =
+      Vector3::new(
+        brush.high.x << lg_size,
+        brush.high.y << lg_size,
+        brush.high.z << lg_size,
+      );
+    voxel.x < high.x &&
+    voxel.y < high.y &&
+    voxel.z < high.z &&
+    {
+      let low =
+        Vector3::new(
+          brush.low.x << lg_size,
+          brush.low.y << lg_size,
+          brush.low.z << lg_size,
+        );
+      low.x <= voxel.x &&
+      low.y <= voxel.y &&
+      low.z <= voxel.z &&
+      true
+    }
+  }
 }
 
 impl TreeBody {
@@ -102,7 +145,7 @@ impl TreeBody {
     };
 
     match self {
-      &mut TreeBody::Branch(branches) => {
+      &mut TreeBody::Branch(ref mut branches) => {
         // Bounds of the lowest branch
         let bounds = voxel::Bounds::new(bounds.x << 1, bounds.y << 1, bounds.z << 1, bounds.lg_size - 1);
 

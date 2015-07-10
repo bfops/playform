@@ -8,6 +8,6 @@ pub trait Brush: field::Field {
 }
 
 pub struct Bounds {
-  low: Vector3<i32>,
-  high: Vector3<i32>,
+  pub low: Vector3<i32>,
+  pub high: Vector3<i32>,
 }

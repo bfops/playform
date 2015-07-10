@@ -1,7 +1,5 @@
 use cgmath::{EuclideanVector, Vector3};
 
-use voxel;
-
 pub trait Field {
   /// The height of the field at a given x,y,z.
   fn density_at(&self, x: f32, y: f32, z: f32) -> f32;
