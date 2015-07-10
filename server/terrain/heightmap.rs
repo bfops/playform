@@ -1,3 +1,4 @@
+use cgmath::Point3;
 use noise::{Seed, Brownian3, perlin3};
 
 use field::Field;
@@ -29,8 +30,8 @@ impl HeightMap {
 
 impl Field for HeightMap {
   /// The height of the field at a given x,y,z.
-  fn density_at(&self, x: f32, y: f32, z: f32) -> f32 {
-    let coords = [x as f64, y as f64, z as f64];
-    self.perlin.apply(&self.seed, &coords) as f32 - y/64.0
+  fn density_at(&self, p: &Point3<f32>) -> f32 {
+    let coords = [p.x as f64, p.y as f64, p.z as f64];
+    self.perlin.apply(&self.seed, &coords) as f32 - p.y/64.0
   }
 }

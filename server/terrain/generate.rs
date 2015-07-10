@@ -1,6 +1,6 @@
 use cgmath::{Point, Point3, Vector, Vector3};
 use cgmath::Aabb3;
-use std::cmp::{min, max, partial_min, partial_max};
+use std::cmp::{partial_min, partial_max};
 use std::collections::hash_map;
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -16,7 +16,7 @@ use common::terrain_block::{TerrainBlock, tri};
 use field::Field;
 use heightmap::HeightMap;
 use voxel;
-use voxel::{Fracu8, Fraci8, Voxel, SurfaceVoxel, Vertex, Normal};
+use voxel::{Fracu8, Voxel, SurfaceVoxel, Vertex, Normal};
 use voxel_tree;
 use voxel_tree::VoxelTree;
 
@@ -27,27 +27,20 @@ pub fn generate_voxel(
 ) -> Voxel
 {
   timers.time("generate_voxel", || {
-    let field_contains = |x, y, z| {
-      heightmap.density_at(x, y, z) >= 0.0
-    };
-
-    let get_normal = |x, y, z| {
-      heightmap.normal_at(0.01, x, y, z)
-    };
-
     let size = voxel.size();
-    let (x1, y1, z1) = (voxel.x as f32 * size, voxel.y as f32 * size, voxel.z as f32 * size);
-    let delta = size;
-    let (x2, y2, z2) = (x1 + delta, y1 + delta, z1 + delta);
+    let (low, high) = voxel.corners();
+    macro_rules! contained(($x:expr, $y:expr, $z:expr) => {{
+      heightmap.contains(&Point3::new($x.x, $y.y, $z.z))
+    }});
     // corners[x][y][z]
     let corners = [
       [
-        [ field_contains(x1, y1, z1), field_contains(x1, y1, z2) ],
-        [ field_contains(x1, y2, z1), field_contains(x1, y2, z2) ],
+        [ contained!( low,  low, low), contained!( low,  low, high) ],
+        [ contained!( low, high, low), contained!( low, high, high) ],
       ],
       [
-        [ field_contains(x2, y1, z1), field_contains(x2, y1, z2) ],
-        [ field_contains(x2, y2, z1), field_contains(x2, y2, z2) ],
+        [ contained!(high,  low, low), contained!(high,  low, high) ],
+        [ contained!(high, high, low), contained!(high, high, high) ],
       ],
     ];
 
@@ -102,7 +95,7 @@ pub fn generate_voxel(
           [((voxel.y as f32 + fs) * size, s), ((voxel.y as f32 + mfs) * size, ms)].iter() {
         for &(wz, z) in
           [((voxel.z as f32 + fs) * size, s), ((voxel.z as f32 + mfs) * size, ms)].iter() {
-          if field_contains(wx, wy, wz) {
+          if heightmap.contains(&Point3::new(wx, wy, wz)) {
             vertex.add_self_v(&Vector3::new(x, y, z).mul_s(lg_s as u32));
             n += lg_s as u32;
           }
@@ -124,28 +117,8 @@ pub fn generate_voxel(
     {
       // Okay, this is silly to have right after we construct the vertex.
       let vertex = vertex.to_world_vertex(voxel);
-      normal = get_normal(vertex.x, vertex.y, vertex.z).mul_s(127.0);
+      normal = voxel::Normal::of_float_normal(&heightmap.normal_at(0.01, &vertex));
     }
-
-    // Okay, so we scale the normal by 127, and use 127 to represent 1.0.
-    // Then we store it in a `Fraci8`, which scales by 128 and represents a
-    // fraction in [0,1). That seems wrong, but this is normal data, so scaling
-    // doesn't matter. Sketch factor is over 9000, but it's not wrong.
-
-    let normal = Vector3::new(normal.x as i32, normal.y as i32, normal.z as i32);
-    let normal =
-      Vector3::new(
-        max(-127, min(127, normal.x)) as i8,
-        max(-127, min(127, normal.y)) as i8,
-        max(-127, min(127, normal.z)) as i8,
-      );
-
-    let normal =
-      Normal {
-        x: Fraci8::of(normal.x),
-        y: Fraci8::of(normal.y),
-        z: Fraci8::of(normal.z),
-      };
 
     Voxel::Surface(SurfaceVoxel {
       inner_vertex: vertex,
@@ -257,7 +230,7 @@ pub fn generate_block(
       }
       let index = coords.len();
       let vertex = voxel.inner_vertex.to_world_vertex(&bounds);
-      let normal = voxel.normal.to_world_normal();
+      let normal = voxel.normal.to_float_normal();
       coords.push(vertex);
       normals.push(normal);
       indices.insert(voxel_position, index);
@@ -294,7 +267,7 @@ pub fn generate_block(
                   Voxel::Surface(voxel) => {
                     let i = coords.len();
                     let vertex = voxel.inner_vertex.to_world_vertex(&bounds);
-                    let normal = voxel.normal.to_world_normal();
+                    let normal = voxel.normal.to_float_normal();
                     coords.push(vertex);
                     normals.push(normal);
                     entry.insert(i);

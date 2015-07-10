@@ -1,4 +1,4 @@
-use cgmath::Vector3;
+use cgmath::Point3;
 
 use field;
 use voxel;
@@ -8,6 +8,6 @@ pub trait Brush: field::Field {
 }
 
 pub struct Bounds {
-  pub low: Vector3<i32>,
-  pub high: Vector3<i32>,
+  pub low: Point3<i32>,
+  pub high: Point3<i32>,
 }

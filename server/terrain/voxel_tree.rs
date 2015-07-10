@@ -1,6 +1,6 @@
 #![cfg_attr(test, feature(test))]
 
-use cgmath::{Vector, Vector3, Ray3};
+use cgmath::{Point, Vector, Point3, Vector3, Ray3};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
@@ -130,11 +130,10 @@ impl TreeBody {
 
     let set_leaf = |this: &mut TreeBody, corner_inside_surface| {
       let size = bounds.size();
-      let low = Vector3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
+      let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
       let low = low.mul_s(size);
       let (vertex, normal) = brush.vertex_in(bounds);
-      let corner_inside_surface =
-        corner_inside_surface && !brush.contains(low.x, low.y, low.z);
+      let corner_inside_surface = corner_inside_surface && !brush.contains(&low);
       let voxel =
         voxel::SurfaceVoxel {
           inner_vertex: vertex,

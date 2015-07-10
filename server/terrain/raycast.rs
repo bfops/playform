@@ -1,4 +1,4 @@
-use cgmath::Ray3;
+use cgmath::{Point, Vector, Ray3};
 use std::cmp::Ordering;
 
 use voxel;
@@ -113,11 +113,7 @@ pub fn cast_ray<'a, Act, R>(
       // No return value for this voxel; fall through.
     },
     &TreeBody::Branch(ref b) => {
-      let mid = [
-        (bounds.x as f32 + 0.5) * bounds.size(),
-        (bounds.y as f32 + 0.5) * bounds.size(),
-        (bounds.z as f32 + 0.5) * bounds.size(),
-      ];
+      let mid = bounds.center();
 
       let mut make_bounds = |coords: [usize; 3]| {
         let mut bounds = bounds;
@@ -132,15 +128,11 @@ pub fn cast_ray<'a, Act, R>(
       };
 
       let entry_toi = entry.map(|entry| entry.toi.0).unwrap_or(0.0);
-      let intersect = [
-        ray.origin.x + entry_toi*ray.direction.x,
-        ray.origin.y + entry_toi*ray.direction.y,
-        ray.origin.z + entry_toi*ray.direction.z,
-      ];
+      let intersect = ray.origin.add_v(&ray.direction.mul_s(entry_toi));
       let coords = [
-        if intersect[0] >= mid[0] {1} else {0},
-        if intersect[1] >= mid[1] {1} else {0},
-        if intersect[2] >= mid[2] {1} else {0},
+        if intersect.x >= mid.x {1} else {0},
+        if intersect.y >= mid.y {1} else {0},
+        if intersect.z >= mid.z {1} else {0},
       ];
 
       return cast_ray_branches(

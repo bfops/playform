@@ -1,4 +1,5 @@
-use cgmath::{Point, Point3, EuclideanVector, Vector3};
+use cgmath::{Point, Point3, Vector, EuclideanVector, Vector3};
+use std::cmp::{min, max};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Bounds {
@@ -34,6 +35,23 @@ impl Bounds {
     } else {
       1.0 / (1 << -self.lg_size) as f32
     }
+  }
+
+  pub fn low_corner(&self) -> Point3<f32> {
+    let size = self.size();
+    Point3::new(self.x as f32, self.y as f32, self.z as f32).mul_s(size)
+  }
+
+  pub fn corners(&self) -> (Point3<f32>, Point3<f32>) {
+    let size = self.size();
+    let low = Point3::new(self.x as f32, self.y as f32, self.z as f32).mul_s(size);
+    (low, low.add_v(&Vector3::new(size, size, size)))
+  }
+
+  pub fn center(&self) -> Point3<f32> {
+    let size = self.size();
+    let half = Vector3::new(0.5, 0.5, 0.5);
+    Point3::new(self.x as f32, self.y as f32, self.z as f32).add_v(&half).mul_s(size)
   }
 }
 
@@ -95,7 +113,22 @@ pub struct Normal {
 }
 
 impl Normal {
-  pub fn to_world_normal(&self) -> Vector3<f32> {
+  pub fn of_float_normal(normal: &Vector3<f32>) -> Normal {
+    // Okay, so we scale the normal by 127, and use 127 to represent 1.0.
+    // Then we store it in a `Fraci8`, which scales by 128 and represents a
+    // fraction in [0,1). That seems wrong, but this is normal data, so scaling
+    // doesn't matter. Sketch factor is over 9000, but it's not wrong.
+
+    let normal = normal.mul_s(127.0);
+    let normal = Vector3::new(normal.x as i32, normal.y as i32, normal.z as i32);
+    Normal {
+      x: Fraci8::of(max(-127, min(127, normal.x)) as i8),
+      y: Fraci8::of(max(-127, min(127, normal.y)) as i8),
+      z: Fraci8::of(max(-127, min(127, normal.z)) as i8),
+    }
+  }
+
+  pub fn to_float_normal(&self) -> Vector3<f32> {
     Vector3::new(self.x.to_f32(), self.y.to_f32(), self.z.to_f32()).normalize()
   }
 }

@@ -1,26 +1,34 @@
-use cgmath::{EuclideanVector, Vector3};
+use cgmath::{EuclideanVector, Point3, Vector3};
 
 pub trait Field {
   /// The height of the field at a given x,y,z.
-  fn density_at(&self, x: f32, y: f32, z: f32) -> f32;
+  fn density_at(&self, p: &Point3<f32>) -> f32;
 
-  fn contains(&self, x: f32, y: f32, z: f32) -> bool {
-    self.density_at(x, y, z) >= 0.0
+  fn contains(&self, p: &Point3<f32>) -> bool {
+    self.density_at(p) >= 0.0
   }
 
   /// The lighting normal of the tile at a given x,y,z.
-  fn normal_at(&self, delta: f32, x: f32, y: f32, z: f32) -> Vector3<f32> {
-    // Get the density differential in each dimension.
-    // Use that as the approximate normal.
+  fn normal_at(&self, delta: f32, p: &Point3<f32>) -> Vector3<f32> {
+    // Use density differential in each dimension as an approximation of the normal.
 
-    let dx = self.density_at(x + delta, y, z) - self.density_at(x - delta, y, z);
-    let dy = self.density_at(x, y + delta, z) - self.density_at(x, y - delta, z);
-    let dz = self.density_at(x, y, z + delta) - self.density_at(x, y, z - delta);
+    macro_rules! differential(($d:ident) => {{
+      let high: f32 = {
+        let mut p = *p;
+        p.$d += delta;
+        self.density_at(&p)
+      };
+      let low: f32 = {
+        let mut p = *p;
+        p.$d -= delta;
+        self.density_at(&p)
+      };
+      high - low
+    }});
 
-    let v = Vector3::new(dx, dy, dz);
-
-    // Negate because we're leaving the volume when density is *decreasing*.
-    let v = -v.normalize();
-    v
+    let v = Vector3::new(differential!(x), differential!(y), differential!(z));
+    // Negate because we're leaving the volume when density is decreasing.
+    let v = -v;
+    v.normalize()
   }
 }
