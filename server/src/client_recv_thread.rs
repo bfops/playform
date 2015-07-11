@@ -13,6 +13,7 @@ use common::socket::SendSocket;
 use player::Player;
 use server::{Client, Server};
 use terrain;
+use terrain::brush;
 use terrain::voxel;
 use terrain::voxel::Voxel;
 use update_gaia::{ServerToGaia, LoadReason};
@@ -121,7 +122,7 @@ pub fn apply_client_update<UpdateGaia>(
     ClientToServer::RequestBlock(Copyable(client_id), Copyable(position), Copyable(lod)) => {
       update_gaia(ServerToGaia::Load(position, lod, LoadReason::ForClient(client_id)));
     },
-    ClientToServer::RemoveVoxel(Copyable(player_id)) => {
+    ClientToServer::Remove(Copyable(player_id)) => {
       let ray;
       {
         let players = server.players.lock().unwrap();
@@ -145,7 +146,12 @@ pub fn apply_client_update<UpdateGaia>(
       }
 
       bounds.map(|bounds| {
-        update_gaia(ServerToGaia::RemoveVoxel(bounds));
+        let brush =
+          brush::Sphere {
+            center: bounds.center(),
+            radius: 1,
+          };
+        update_gaia(ServerToGaia::Remove(brush));
       });
     },
   };

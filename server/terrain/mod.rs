@@ -10,7 +10,7 @@ extern crate noise;
 extern crate num;
 extern crate stopwatch;
 
-mod brush;
+pub mod brush;
 mod field;
 mod generate;
 mod heightmap;
@@ -22,7 +22,6 @@ pub mod voxel_tree;
 pub use noise::Seed;
 
 use std::collections::hash_map::HashMap;
-use std::collections::hash_set::HashSet;
 use std::iter::range_inclusive;
 use std::sync::Mutex;
 use stopwatch::TimerSet;
@@ -35,7 +34,6 @@ use common::terrain_block;
 use common::terrain_block::TerrainBlock;
 
 use heightmap::HeightMap;
-use voxel::{Voxel, Fracu8, Fraci8};
 use voxel_tree::VoxelTree;
 
 pub const AMPLITUDE: f64 = 64.0;
@@ -122,127 +120,51 @@ impl Terrain {
     mesh.as_ref().unwrap()
   }
 
-  pub fn remove_voxel<F>(
+  pub fn remove<F, Brush>(
     &mut self,
     timers: &TimerSet,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
-    bounds: &voxel::Bounds,
+    brush: &Brush,
+    brush_bounds: &brush::Bounds,
     mut block_changed: F,
-  )
-    where F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
+  ) where
+    F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
+    Brush: brush::Brush,
   {
-   debug!("remove {:?}", bounds);
+    self.voxels.remove(brush, brush_bounds);
 
-    match self.voxels.get_mut(bounds) {
-      None => {
-        return;
-      },
-      Some(voxel) => {
-        *voxel = Voxel::Volume(false);
-      },
-    }
+    macro_rules! block_range(($d:ident) => {{
+      let low = brush_bounds.low.$d >> terrain_block::LG_WIDTH;
+      let high = brush_bounds.high.$d >> terrain_block::LG_WIDTH;
+      range_inclusive(low, high)
+    }});
 
-    // Ensure all the neighbors are populated.
-    // TODO: Search for all these voxels in a single tree search.
-    for &dx in [-1, 0, 1].iter() {
-    for &dy in [-1, 0, 1].iter() {
-    for &dz in [-1, 0, 1].iter() {
-      let (x, y, z) = (bounds.x + dx, bounds.y + dy, bounds.z + dz);
-      debug!("adjacent {:?} {:?} {:?}", x, y, z);
-
-      let bounds = voxel::Bounds::new(x, y, z, bounds.lg_size);
-      let voxel = self.voxels.get_mut_or_create(&bounds);
-      debug!("voxel {:?}", *voxel);
-
-      match voxel {
-        &mut voxel_tree::TreeBody::Leaf(_) => {},
-        _ => {
-          *voxel =
-            voxel_tree::TreeBody::Leaf(generate::generate_voxel(
-              timers,
-              &self.heightmap,
-              &bounds,
-            ));
-
-          debug!("voxel changing to {:?}", *voxel);
-        },
-      }
-      match voxel {
-        &mut voxel_tree::TreeBody::Leaf(Voxel::Volume(true)) => {
-          let half = Fracu8::of(0x80);
-          let surface =
-            voxel::SurfaceVoxel {
-              inner_vertex: voxel::Vertex { x: half, y: half, z: half },
-              // TODO: Make real normals.
-              normal: voxel::Normal { x: Fraci8::of(0), y: Fraci8::of(0x7F), z: Fraci8::of(0) },
-              corner_inside_surface: true,
-            };
-          *voxel = voxel_tree::TreeBody::Leaf(Voxel::Surface(surface));
-
-          debug!("voxel detailing to {:?}", *voxel);
-        },
-        _ => {},
-      }
-    }}}
-
-    // Remove all the corners.
-    // TODO: Search for all these voxels in a single tree search.
-    for &dx in [0, 1].iter() {
-    for &dy in [0, 1].iter() {
-    for &dz in [0, 1].iter() {
-      let (x, y, z) = (bounds.x + dx, bounds.y + dy, bounds.z + dz);
-      debug!("corner {:?} {:?} {:?}", x, y, z);
-
-      let bounds = voxel::Bounds::new(x, y, z, bounds.lg_size);
-      let voxel = self.voxels.get_mut(&bounds);
-
-      debug!("voxel {:?}", voxel.as_ref().map(|&&mut v| v));
-      match voxel {
-        Some(&mut Voxel::Surface(ref mut voxel)) => {
-          voxel.corner_inside_surface = false;
-        },
-        _ => {},
-      }
-    }}}
-
-    // TODO: Consider regenerating the TerrainBlocks for the adjacent voxels too.
-
-    // lg(number of voxels in a block)
-    let lg_scale = terrain_block::LG_WIDTH - bounds.lg_size;
-
-    let mut positions = HashSet::new();
-    for &dx in [-1, 0, 1].iter() {
-    for &dy in [-1, 0, 1].iter() {
-    for &dz in [-1, 0, 1].iter() {
-      let (x, y, z) = (bounds.x + dx, bounds.y + dy, bounds.z + dz);
-      let bounds = voxel::Bounds::new(x, y, z, bounds.lg_size);
-      let position =
-        BlockPosition::new(bounds.x >> lg_scale, bounds.y >> lg_scale, bounds.z >> lg_scale);
-      positions.insert(position);
-    }}}
-
-    for position in positions.into_iter() {
-      let lod_index =
-        terrain_block::LG_SAMPLE_SIZE.iter()
-        .position(|&x| x == bounds.lg_size)
-        .unwrap()
-      ;
-      let lod_index = LODIndex(lod_index as u32);
-
+    for x in block_range!(x) {
+    for y in block_range!(y) {
+    for z in block_range!(z) {
+      let position = BlockPosition::new(x, y, z);
       let mip_mesh = self.all_blocks.get_mut(&position);
-      let mesh = mip_mesh.get_mut(lod_index.0 as usize);
-      *mesh = Some(
-        generate::generate_block(
-          timers,
-          id_allocator,
-          &self.heightmap,
-          &mut self.voxels,
-          &position,
-          lod_index,
-        )
-      );
 
-      block_changed(mesh.as_ref().unwrap(), &position, lod_index);
-    }
+      for (i, mesh) in mip_mesh.lods.iter_mut().enumerate() {
+        match mesh {
+          &mut None => {},
+          &mut Some(ref mut mesh) => {
+            let lod_index = LODIndex(i as u32);
+            *mesh =
+              generate::generate_block(
+                timers,
+                id_allocator,
+                &self.heightmap,
+                &mut self.voxels,
+                &position,
+                lod_index,
+              )
+            ;
+
+            block_changed(mesh, &position, lod_index);
+          },
+        }
+      }
+    }}}
   }
 }

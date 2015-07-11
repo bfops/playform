@@ -92,14 +92,32 @@ pub struct Vertex {
 }
 
 impl Vertex {
+  pub fn of_world_vertex_in(vertex: &Point3<f32>, voxel: &Bounds) -> Vertex {
+    let local = vertex.sub_p(&voxel.low_corner());
+    let local = local.mul_s(256.0);
+    let local =
+      Vector3::new(
+        local.x as u32 >> voxel.lg_size,
+        local.y as u32 >> voxel.lg_size,
+        local.z as u32 >> voxel.lg_size,
+      );
+    Vertex {
+      x: Fracu8::of(min(0, max(255, local.x as u8))),
+      y: Fracu8::of(min(0, max(255, local.y as u8))),
+      z: Fracu8::of(min(0, max(255, local.z as u8))),
+    }
+  }
+
   pub fn to_world_vertex(&self, parent: &Bounds) -> Point3<f32> {
     // Relative position of the vertex.
     let local =
       Vector3::new(
-        self.x.numerator as f32 / 256.0,
-        self.y.numerator as f32 / 256.0,
-        self.z.numerator as f32 / 256.0,
-      );
+        self.x.numerator as f32,
+        self.y.numerator as f32,
+        self.z.numerator as f32,
+      )
+      .div_s(256.0)
+    ;
     let fparent = Point3::new(parent.x as f32, parent.y as f32, parent.z as f32);
     fparent.add_v(&local).mul_s(parent.size())
   }

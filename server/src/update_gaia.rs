@@ -1,5 +1,6 @@
 /// Creator of the earth.
 
+use cgmath::{Point, Vector, Point3, Vector3};
 use std::ops::DerefMut;
 use stopwatch::TimerSet;
 
@@ -10,7 +11,7 @@ use common::block_position::BlockPosition;
 
 use server::Server;
 use terrain_loader::TerrainLoader;
-use terrain::voxel;
+use terrain::brush;
 
 #[derive(Debug, Clone, Copy)]
 pub enum LoadReason {
@@ -18,10 +19,10 @@ pub enum LoadReason {
   ForClient(ClientId),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub enum ServerToGaia {
   Load(BlockPosition, LODIndex, LoadReason),
-  RemoveVoxel(voxel::Bounds),
+  Remove(brush::Sphere),
 }
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
@@ -76,13 +77,27 @@ pub fn update_gaia(
         }
       });
     },
-    ServerToGaia::RemoveVoxel(bounds) => {
+    ServerToGaia::Remove(sphere) => {
       let mut terrain_loader = server.terrain_loader.lock().unwrap();
       let id_allocator = &server.id_allocator;
-      terrain_loader.terrain.remove_voxel(
+      let r = (sphere.radius + 1) as f32;
+      let brush = sphere;
+      let brush_bounds =
+        brush::Bounds {
+          low: {
+            let low = sphere.center.add_v(&-Vector3::new(r, r, r));
+            Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
+          },
+          high: {
+            let high = sphere.center.add_v(&Vector3::new(r, r, r));
+            Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
+          },
+        };
+      terrain_loader.terrain.remove(
         timers,
         id_allocator,
-        &bounds,
+        &brush,
+        &brush_bounds,
         |block, position, lod| {
           // TODO: update physics with the new TerrainBlock.
 
