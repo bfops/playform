@@ -45,10 +45,10 @@ impl<'a> TerrainShader<'a> {
       (gl::FRAGMENT_SHADER, format!("
         #version 330 core
 
-        uniform struct Light {{
-          vec3 position;
+        uniform struct Sun {{
+          vec3 direction;
           vec3 intensity;
-        }} light;
+        }} sun;
 
         uniform vec3 ambient_light;
 
@@ -100,13 +100,10 @@ impl<'a> TerrainShader<'a> {
           base_color.b = (1 - p) / 5;
           base_color.a = 1.0;
 
-          // vector from here to the light
-          vec3 light_path = light.position - world_position;
-          light_path = normalize(light_path);
-          float brightness = dot(normal, light_path);
+          float brightness = dot(normal, sun.direction);
           brightness = clamp(brightness, 0, 1);
 
-          vec3 lighting = brightness * light.intensity + ambient_light;
+          vec3 lighting = brightness * sun.intensity + ambient_light;
           frag_color = vec4(clamp(lighting, 0, 1), 1) * base_color;
         }}",
         )),

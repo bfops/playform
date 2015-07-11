@@ -7,7 +7,7 @@ use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
 use common::serialize::Copyable;
 
 use client::Client;
-use light::Light;
+use light;
 use vertex::ColoredVertex;
 use view_update::ClientToView;
 
@@ -71,13 +71,9 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
           (s * 0.75 + 0.25).abs(),
         );
 
-      let radius = (1 << 30) as f32;
-      let rel_position = Vector3::new(c, s, 0.0);
-      rel_position.mul_s(radius);
-
-      update_view(ClientToView::SetPointLight(
-        Light {
-          position: client.player_position.lock().unwrap().add_v(&rel_position),
+      update_view(ClientToView::SetSun(
+        light::Sun {
+          direction: Vector3::new(c, s, 0.0),
           intensity: sun_color,
         }
       ));

@@ -5,12 +5,14 @@ pub mod terrain;
 pub mod texture;
 
 use camera;
-use common::color::Color3;
 use cgmath;
+use cgmath::{Vector2, Vector3};
 use gl;
-use light::{Light, set_point_light, set_ambient_light};
-use cgmath::{Point3, Vector2};
+use light;
+use light::{set_sun, set_ambient_light};
 use yaglw::gl_context::GLContext;
+
+use common::color::Color3;
 
 /// The game's custom shader structs.
 pub struct Shaders<'a> {
@@ -32,11 +34,11 @@ impl<'a> Shaders<'a> {
     let mut hud_color_shader = self::color::ColorShader::new(gl);
     let mut hud_texture_shader = self::texture::TextureShader::new(gl);
 
-    set_point_light(
+    set_sun(
       &mut terrain_shader.shader,
       gl,
-      &Light {
-        position: Point3::new(0.0, 0.0, 0.0),
+      &light::Sun {
+        direction: Vector3::new(0.0, 0.0, 0.0),
         intensity: Color3::of_rgb(0.0, 0.0, 0.0),
       }
     );
