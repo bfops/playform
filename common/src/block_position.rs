@@ -3,11 +3,11 @@
 use cgmath::{Point3, Vector3};
 use std::ops::Add;
 
-pub const BLOCK_WIDTH: i32 = 8;
+use terrain_block;
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 /// Position of blocks on an "infinite" regular grid.
-/// The position is implicitly in units of BLOCK_WIDTH.
+/// The position is implicitly in units of terrain_block::WIDTH.
 pub struct BlockPosition(Point3<i32>);
 
 impl BlockPosition {
@@ -38,11 +38,11 @@ impl BlockPosition {
         let x = $x.floor() as i32;
         let x =
           if x < 0 {
-            x - (BLOCK_WIDTH - 1)
+            x - (terrain_block::WIDTH - 1)
           } else {
             x
           };
-        x / BLOCK_WIDTH
+        x / terrain_block::WIDTH
       })
     );
     BlockPosition(
@@ -57,9 +57,9 @@ impl BlockPosition {
   #[allow(missing_docs)]
   pub fn to_world_position(&self) -> Point3<f32> {
     Point3::new(
-      (self.as_pnt().x * BLOCK_WIDTH) as f32,
-      (self.as_pnt().y * BLOCK_WIDTH) as f32,
-      (self.as_pnt().z * BLOCK_WIDTH) as f32,
+      (self.as_pnt().x * terrain_block::WIDTH) as f32,
+      (self.as_pnt().y * terrain_block::WIDTH) as f32,
+      (self.as_pnt().z * terrain_block::WIDTH) as f32,
     )
   }
 }

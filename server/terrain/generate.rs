@@ -273,7 +273,9 @@ pub fn generate_block(
                     entry.insert(i);
                     (vertex, normal, i)
                   },
-                  _ => panic!("Unitialized neighbor"),
+                  voxel => {
+                    panic!("Unexpected neighbor {:?}", voxel)
+                  }
                 }
               },
             }
