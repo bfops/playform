@@ -9,13 +9,6 @@ use serialize::{Flatten, MemStream, EOF};
 
 pub const LG_WIDTH: i16 = 3;
 pub const WIDTH: i32 = 1 << LG_WIDTH;
-pub const TEXTURE_WIDTH: [u32; 4] = [32, 16, 8, 2];
-pub const TEXTURE_LEN: [usize; 4] = [
-  TEXTURE_WIDTH[0] as usize * TEXTURE_WIDTH[0] as usize,
-  TEXTURE_WIDTH[1] as usize * TEXTURE_WIDTH[1] as usize,
-  TEXTURE_WIDTH[2] as usize * TEXTURE_WIDTH[2] as usize,
-  TEXTURE_WIDTH[3] as usize * TEXTURE_WIDTH[3] as usize,
-];
 
 pub const LG_EDGE_SAMPLES: [u16; 4] = [3, 2, 1, 0];
 /// Quality across different LODs.

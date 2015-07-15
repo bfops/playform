@@ -8,9 +8,6 @@ use std::cmp::max;
 use std::collections::VecDeque;
 use surroundings_iter::SurroundingsIter;
 
-// Rough budget (in microseconds) for how long block updating can take PER SurroundingsLoader.
-pub const BLOCK_UPDATE_BUDGET: u64 = 20000;
-
 /// Find the minimum cube shell radius it would take from one point to intersect the other.
 pub fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
   let dx = (p1.as_pnt().x - p2.as_pnt().x).abs();
