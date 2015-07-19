@@ -129,18 +129,24 @@ impl TreeBody {
     }
 
     let set_leaf = |this: &mut TreeBody, corner_inside_surface| {
-      let size = bounds.size();
-      let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
-      let low = low.mul_s(size);
-      let (vertex, normal) = brush.vertex_in(bounds);
-      let corner_inside_surface = corner_inside_surface && !brush.contains(&low);
-      let voxel =
-        voxel::SurfaceVoxel {
-          inner_vertex: vertex,
-          normal: normal,
-          corner_inside_surface: corner_inside_surface,
-        };
-      *this = TreeBody::Leaf(Voxel::Surface(voxel));
+      match brush.vertex_in(bounds) {
+        None => {},
+        Some((vertex, normal)) => {
+          let size = bounds.size();
+          let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
+          let low = low.mul_s(size);
+          // The brush is negative space, so the normal should point into it, not out of it.
+          let normal = -normal;
+          let corner_inside_surface = corner_inside_surface && !brush.contains(&low);
+          let voxel =
+            voxel::SurfaceVoxel {
+              inner_vertex: vertex,
+              normal: normal,
+              corner_inside_surface: corner_inside_surface,
+            };
+          *this = TreeBody::Leaf(Voxel::Surface(voxel));
+        },
+      }
     };
 
     match self {

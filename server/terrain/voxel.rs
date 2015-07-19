@@ -1,5 +1,6 @@
 use cgmath::{Point, Point3, Vector, EuclideanVector, Vector3};
 use std::cmp::{min, max};
+use std::ops::Neg;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Bounds {
@@ -53,6 +54,17 @@ impl Bounds {
     let half = Vector3::new(0.5, 0.5, 0.5);
     Point3::new(self.x as f32, self.y as f32, self.z as f32).add_v(&half).mul_s(size)
   }
+
+  pub fn contains(&self, p: &Point3<f32>) -> bool {
+    let (low, high) = self.corners();
+    p.x >= low.x &&
+    p.y >= low.y &&
+    p.z >= low.z &&
+    p.x < high.x &&
+    p.y < high.y &&
+    p.z < high.z &&
+    true
+  }
 }
 
 // NOTE: When voxel size and storage become an issue, this should be shrunk to
@@ -93,11 +105,9 @@ pub struct Vertex {
 
 impl Vertex {
   pub fn of_world_vertex_in(vertex: &Point3<f32>, voxel: &Bounds) -> Vertex {
-    let (low, high) = voxel.corners();
-    assert!(vertex.x >= low.x && vertex.y >= low.y && vertex.z >= low.z);
-    assert!(vertex.x < high.x && vertex.y < high.y && vertex.z < high.z);
+    assert!(voxel.contains(vertex));
 
-    let local = vertex.sub_p(&low);
+    let local = vertex.sub_p(&voxel.low_corner());
     let local = local.mul_s(256.0);
     let local =
       Vector3::new(
@@ -138,7 +148,7 @@ impl Normal {
   pub fn of_float_normal(normal: &Vector3<f32>) -> Normal {
     // Okay, so we scale the normal by 127, and use 127 to represent 1.0.
     // Then we store it in a `Fraci8`, which scales by 128 and represents a
-    // fraction in [0,1). That seems wrong, but this is normal data, so scaling
+    // fraction in [-1,1). That seems wrong, but this is normal data, so scaling
     // doesn't matter. Sketch factor is over 9000, but it's not wrong.
 
     let normal = normal.mul_s(127.0);
@@ -152,6 +162,18 @@ impl Normal {
 
   pub fn to_float_normal(&self) -> Vector3<f32> {
     Vector3::new(self.x.to_f32(), self.y.to_f32(), self.z.to_f32()).normalize()
+  }
+}
+
+impl Neg for Normal {
+  type Output = Normal;
+
+  fn neg(self) -> Normal {
+    Normal {
+      x: Fraci8::of(-max(-127, self.x.numerator)),
+      y: Fraci8::of(-max(-127, self.y.numerator)),
+      z: Fraci8::of(-max(-127, self.z.numerator)),
+    }
   }
 }
 

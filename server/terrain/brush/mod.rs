@@ -4,7 +4,7 @@ use super::field::Field;
 use super::voxel;
 
 pub trait Brush: Field {
-  fn vertex_in(&self, bounds: &voxel::Bounds) -> (voxel::Vertex, voxel::Normal);
+  fn vertex_in(&self, bounds: &voxel::Bounds) -> Option<(voxel::Vertex, voxel::Normal)>;
 }
 
 #[derive(Debug)]
@@ -40,19 +40,21 @@ impl Field for Sphere {
 }
 
 impl Brush for Sphere {
-  fn vertex_in(&self, voxel: &voxel::Bounds) -> (voxel::Vertex, voxel::Normal) {
+  fn vertex_in(&self, voxel: &voxel::Bounds) -> Option<(voxel::Vertex, voxel::Normal)> {
     // The vertex will be placed on the surface of the sphere,
     // on the line formed by the center of the sphere and the center of the voxel.
 
-    let v = voxel.center().sub_p(&self.center);
-    let ratio = self.radius as f32 / v.length();
-    // `self.center.x + ratio*dx - bounds.x` simplifies to `(ratio - 1) * dx`
-    let v = v.mul_s(ratio - 1.0);
-    let p = Point3::new(v.x, v.y, v.z);
+    let d = voxel.center().sub_p(&self.center);
+    let ratio = self.radius as f32 / d.length();
+    let p = self.center.add_v(&d.mul_s(ratio));
 
-    (
-      voxel::Vertex::of_world_vertex_in(&p, voxel),
-      voxel::Normal::of_float_normal(&v.normalize()),
-    )
+    if voxel.contains(&p) {
+      Some((
+        voxel::Vertex::of_world_vertex_in(&p, voxel),
+        voxel::Normal::of_float_normal(&d.normalize()),
+      ))
+    } else {
+      None
+    }
   }
 }
