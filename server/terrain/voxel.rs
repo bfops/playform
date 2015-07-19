@@ -93,7 +93,11 @@ pub struct Vertex {
 
 impl Vertex {
   pub fn of_world_vertex_in(vertex: &Point3<f32>, voxel: &Bounds) -> Vertex {
-    let local = vertex.sub_p(&voxel.low_corner());
+    let (low, high) = voxel.corners();
+    assert!(vertex.x >= low.x && vertex.y >= low.y && vertex.z >= low.z);
+    assert!(vertex.x < high.x && vertex.y < high.y && vertex.z < high.z);
+
+    let local = vertex.sub_p(&low);
     let local = local.mul_s(256.0);
     let local =
       Vector3::new(
