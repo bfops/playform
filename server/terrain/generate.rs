@@ -202,6 +202,7 @@ pub fn generate_block(
   position: &BlockPosition,
   lod_index: LODIndex,
 ) -> TerrainBlock {
+  println!("position {:?}", position);
   timers.time("update.generate_block", || {
     let mut block = TerrainBlock::empty();
 

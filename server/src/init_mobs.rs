@@ -5,7 +5,6 @@ use common::surroundings_loader::SurroundingsLoader;
 
 use mob;
 use server::Server;
-use terrain;
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
   bounds.min.add_v(&bounds.max.to_vec()).mul_s(0.5)
@@ -90,7 +89,8 @@ pub fn init_mobs(
 
   add_mob(
     server,
-    Point3::new(0.0, terrain::AMPLITUDE as f32, -1.0),
+    // TODO: shift upward until outside terrain
+    Point3::new(0.0, 64.0, -1.0),
     mob_behavior,
   );
 }

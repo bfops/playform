@@ -12,7 +12,6 @@ use common::socket::SendSocket;
 
 use player::Player;
 use server::{Client, Server};
-use terrain;
 use terrain::voxel;
 use terrain::voxel::Voxel;
 use update_gaia::{ServerToGaia, LoadReason};
@@ -70,7 +69,8 @@ pub fn apply_client_update<UpdateGaia>(
           &server.owner_allocator,
         );
 
-      let min = Point3::new(0.0, terrain::AMPLITUDE as f32, 4.0);
+      // TODO: shift upward until outside terrain
+      let min = Point3::new(0.0, 64.0, 4.0);
       let max = min.add_v(&Vector3::new(1.0, 2.0, 1.0));
       let bounds = Aabb3::new(min, max);
       server.physics.lock().unwrap().insert_misc(player.entity_id, bounds.clone());

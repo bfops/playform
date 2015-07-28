@@ -16,7 +16,6 @@ use mob;
 use physics::Physics;
 use player::Player;
 use sun::Sun;
-use terrain;
 use terrain_loader::TerrainLoader;
 
 const UPDATES_PER_SECOND: u64 = 30;
@@ -53,8 +52,8 @@ impl Server {
     let physics =
       Physics::new(
         Aabb3::new(
-          Point3 { x: -world_width, y: -2.0 * terrain::AMPLITUDE as f32, z: -world_width },
-          Point3 { x: world_width, y: 2.0 * terrain::AMPLITUDE as f32, z: world_width },
+          Point3 { x: -world_width, y: -128.0, z: -world_width },
+          Point3 { x: world_width, y: 128.0, z: world_width },
         )
       );
 
