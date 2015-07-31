@@ -9,8 +9,8 @@ dependencies = [
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "playform-common 0.0.0",
- "sdl2 0.5.0 (git+https://github.com/AngryLawyer/rust-sdl2)",
- "sdl2-sys 0.5.0 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "sdl2 0.6.1 (git+https://github.com/bfops/rust-sdl2)",
+ "sdl2-sys 0.6.1 (git+https://github.com/bfops/rust-sdl2)",
  "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
  "time 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "yaglw 0.0.0 (git+https://github.com/bfops/yaglw)",
@@ -181,20 +181,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "sdl2"
-version = "0.5.0"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#9fae82138506d91e8994597e973074d19c7c45c6"
+version = "0.6.1"
+source = "git+https://github.com/bfops/rust-sdl2#88469115835c54ac110b66cf3b37da1ab411b53b"
 dependencies = [
  "bitflags 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "sdl2-sys 0.5.0 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "sdl2-sys 0.6.1 (git+https://github.com/bfops/rust-sdl2)",
 ]
 
 [[package]]
 name = "sdl2-sys"
-version = "0.5.0"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#9fae82138506d91e8994597e973074d19c7c45c6"
+version = "0.6.1"
+source = "git+https://github.com/bfops/rust-sdl2#88469115835c54ac110b66cf3b37da1ab411b53b"
 dependencies = [
  "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
