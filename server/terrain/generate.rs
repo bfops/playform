@@ -1,6 +1,5 @@
 use cgmath::{Point, Point3, Vector, Vector3};
 use cgmath::Aabb3;
-use std::cmp::{partial_min, partial_max};
 use std::collections::hash_map;
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -128,34 +127,57 @@ pub fn generate_voxel(
   })
 }
 
+#[inline]
+fn partial_min<I, It>(mut it: It) -> Option<I>
+where
+  I: PartialOrd,
+  It: Iterator<Item=I>,
+{
+  match it.next() {
+    None => None,
+    Some(mut best) => {
+      for thing in it {
+        if thing < best {
+          best = thing;
+        }
+      }
+      Some(best)
+    },
+  }
+}
+
+#[inline]
+fn partial_max<I, It>(mut it: It) -> Option<I>
+where
+  I: PartialOrd,
+  It: Iterator<Item=I>,
+{
+  match it.next() {
+    None => None,
+    Some(mut best) => {
+      for thing in it {
+        if thing > best {
+          best = thing;
+        }
+      }
+      Some(best)
+    },
+  }
+}
+
 fn make_bounds(
   v1: &Point3<f32>,
   v2: &Point3<f32>,
   v3: &Point3<f32>,
 ) -> Aabb3<f32> {
-  let minx = partial_min(v1.x, v2.x);
-  let minx = minx.and_then(|m| partial_min(m, v3.x));
-  let minx = minx.unwrap();
+  let minx = *partial_min([v1.x, v2.x, v3.x].iter()).unwrap();
+  let maxx = *partial_max([v1.x, v2.x, v3.x].iter()).unwrap();
 
-  let maxx = partial_max(v1.x, v2.x);
-  let maxx = maxx.and_then(|m| partial_max(m, v3.x));
-  let maxx = maxx.unwrap();
+  let miny = *partial_min([v1.y, v2.y, v3.y].iter()).unwrap();
+  let maxy = *partial_max([v1.y, v2.y, v3.y].iter()).unwrap();
 
-  let miny = partial_min(v1.y, v2.y);
-  let miny = miny.and_then(|m| partial_min(m, v3.y));
-  let miny = miny.unwrap();
-
-  let maxy = partial_max(v1.y, v2.y);
-  let maxy = maxy.and_then(|m| partial_max(m, v3.y));
-  let maxy = maxy.unwrap();
-
-  let minz = partial_min(v1.z, v2.z);
-  let minz = minz.and_then(|m| partial_min(m, v3.z));
-  let minz = minz.unwrap();
-
-  let maxz = partial_max(v1.z, v2.z);
-  let maxz = maxz.and_then(|m| partial_max(m, v3.z));
-  let maxz = maxz.unwrap();
+  let minz = *partial_min([v1.z, v2.z, v3.z].iter()).unwrap();
+  let maxz = *partial_max([v1.z, v2.z, v3.z].iter()).unwrap();
 
   Aabb3::new(
     // TODO: Remove this - 1.0. It's a temporary hack until voxel collisions work,
