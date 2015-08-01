@@ -34,7 +34,7 @@ impl Field for HeightMap {
   /// The height of the field at a given x,y,z.
   fn density_at(&self, x: f32, y: f32, z: f32) -> f32 {
     let coords = [x as f64, z as f64];
-    let height = 32.0 + self.height.apply(&self.seed, &coords);
+    let height = self.height.apply(&self.seed, &coords);
     let height = height as f32;
     height - y
   }
