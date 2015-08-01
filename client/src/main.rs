@@ -136,27 +136,23 @@ fn main() {
       })
     };
 
-    let view_thread = {
+    {
       let server_send_thread_send = server_send_thread_send.clone();
-      thread::scoped(move || {
-        view_thread(
-          client.player_id,
-          &mut || {
-            match view_thread_recv.try_recv() {
-              Ok(msg) => Some(msg),
-              Err(TryRecvError::Empty) => None,
-              Err(TryRecvError::Disconnected) =>
-                panic!("view_thread_send should not be closed."),
-            }
-          },
-          &mut |server_update| {
-            server_send_thread_send.send(Some(server_update)).unwrap();
-          },
-        )
-      })
-    };
-
-    view_thread.join();
+      view_thread(
+        client.player_id,
+        &mut || {
+          match view_thread_recv.try_recv() {
+            Ok(msg) => Some(msg),
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) =>
+              panic!("view_thread_send should not be closed."),
+          }
+        },
+        &mut |server_update| {
+          server_send_thread_send.send(Some(server_update)).unwrap();
+        },
+      )
+    }
 
     // View thread returned, so we got a quit event.
     *quit.lock().unwrap() = true;
