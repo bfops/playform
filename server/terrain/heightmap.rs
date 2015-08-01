@@ -15,10 +15,10 @@ impl HeightMap {
     HeightMap {
       seed: seed,
       height:
-        Brownian2::new(perlin2, 5)
+        Brownian2::new(perlin2, 4)
         .frequency(1.0 / 8.0)
-        .persistence(4.0)
-        .lacunarity(1.0 / 3.0)
+        .persistence(8.0)
+        .lacunarity(1.0 / 4.0)
       ,
       features:
         Brownian3::new(perlin3, 2)
