@@ -22,9 +22,9 @@ impl HeightMap {
       ,
       features:
         Brownian3::new(perlin3, 2)
-        .frequency(1.0 / 64.0)
-        .persistence(1.0 / 16.0)
-        .lacunarity(8.0)
+        .frequency(1.0 / 32.0)
+        .persistence(8.0)
+        .lacunarity(1.0 / 4.0)
       ,
     }
   }
@@ -33,9 +33,13 @@ impl HeightMap {
 impl Field for HeightMap {
   /// The height of the field at a given x,y,z.
   fn density_at(&self, x: f32, y: f32, z: f32) -> f32 {
-    let coords = [x as f64, z as f64];
-    let height = self.height.apply(&self.seed, &coords);
+    let height = self.height.apply(&self.seed, &[x as f64, z as f64]);
     let height = height as f32;
-    height - y
+    let heightmap_density = height - y;
+
+    let feature_density = self.features.apply(&self.seed, &[x as f64, y as f64, z as f64]) * 8.0;
+    let feature_density = feature_density as f32;
+
+    heightmap_density + feature_density
   }
 }
