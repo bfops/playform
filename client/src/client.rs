@@ -16,7 +16,7 @@ use common::terrain_block::TerrainBlock;
 use terrain_buffers;
 
 /// The distances at which LOD switches.
-pub const LOD_THRESHOLDS: [i32; 3] = [1, 8, 32];
+pub const LOD_THRESHOLDS: [i32; 3] = [2, 16, 32];
 
 /// The main client state.
 pub struct Client {
