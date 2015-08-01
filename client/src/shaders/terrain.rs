@@ -88,11 +88,16 @@ impl<'a> TerrainShader<'a> {
         void main() {{
           int color_id = face_id * 3;
 
-          vec4 base_color;
+          vec4 base_color = vec4(0, 0.5, 0, 1);
 
-          float p = perlin(world_position.x, world_position.z);
+          float p = 0
+            + perlin(0, world_position.x)
+            + perlin(0, world_position.y)
+            + perlin(0, world_position.z)
+          ;
+
           // shift, scale, clamp to [0, 1]
-          p = (p + 1) / 2;
+          p = (p + 3) / 6;
           p = clamp(p, 0, 1);
 
           base_color.r = (1 - p) / 2;

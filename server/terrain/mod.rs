@@ -35,12 +35,6 @@ use common::terrain_block::TerrainBlock;
 use heightmap::HeightMap;
 use voxel_tree::VoxelTree;
 
-pub const AMPLITUDE: f64 = 64.0;
-pub const FREQUENCY: f64 = 1.0 / 64.0;
-pub const PERSISTENCE: f64 = 1.0 / 16.0;
-pub const LACUNARITY: f64 = 8.0;
-pub const OCTAVES: usize = 2;
-
 pub struct MipMesh {
   pub lods: Vec<Option<TerrainBlock>>,
 }
@@ -87,7 +81,7 @@ pub struct Terrain {
 impl Terrain {
   pub fn new(terrain_seed: Seed) -> Terrain {
     Terrain {
-      heightmap: HeightMap::new(terrain_seed, OCTAVES, FREQUENCY, PERSISTENCE, LACUNARITY),
+      heightmap: HeightMap::new(terrain_seed),
       all_blocks: MipMeshMap::new(),
       voxels: VoxelTree::new(),
     }
