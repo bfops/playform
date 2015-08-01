@@ -52,8 +52,8 @@ impl Server {
     let physics =
       Physics::new(
         Aabb3::new(
-          Point3 { x: -world_width, y: -128.0, z: -world_width },
-          Point3 { x: world_width, y: 128.0, z: world_width },
+          Point3 { x: -world_width, y: -512.0, z: -world_width },
+          Point3 { x: world_width, y: 512.0, z: world_width },
         )
       );
 
