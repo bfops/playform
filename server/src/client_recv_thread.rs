@@ -146,10 +146,12 @@ pub fn apply_client_update<UpdateGaia>(
       }
 
       bounds.map(|bounds| {
+        let center = bounds.center();
+        let r = 4.0;
         let brush =
-          brush::Sphere {
-            center: bounds.center(),
-            radius: 1,
+          brush::Cube {
+            low: center.add_v(&-Vector3::new(r, r, r)),
+            high: center.add_v(&Vector3::new(r, r, r)),
           };
         update_gaia(ServerToGaia::Remove(brush));
       });

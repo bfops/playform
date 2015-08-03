@@ -8,6 +8,7 @@ pub trait Field {
     self.density_at(p) >= 0.0
   }
 
+  // TODO: Should delta be part of the struct instead of the trait?
   /// The lighting normal of the tile at a given x,y,z.
   fn normal_at(&self, delta: f32, p: &Point3<f32>) -> Vector3<f32> {
     // Use density differential in each dimension as an approximation of the normal.

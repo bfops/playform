@@ -22,7 +22,7 @@ pub enum LoadReason {
 #[derive(Debug)]
 pub enum ServerToGaia {
   Load(BlockPosition, LODIndex, LoadReason),
-  Remove(brush::Sphere),
+  Remove(brush::Cube),
 }
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
@@ -77,19 +77,17 @@ pub fn update_gaia(
         }
       });
     },
-    ServerToGaia::Remove(sphere) => {
+    ServerToGaia::Remove(brush) => {
       let mut terrain_loader = server.terrain_loader.lock().unwrap();
       let id_allocator = &server.id_allocator;
-      let r = (sphere.radius + 1) as f32;
-      let brush = sphere;
       let brush_bounds =
         brush::Bounds {
           low: {
-            let low = sphere.center.add_v(&-Vector3::new(r, r, r));
+            let low = brush.low.add_v(&-Vector3::new(1.0, 1.0, 1.0));
             Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
           },
           high: {
-            let high = sphere.center.add_v(&Vector3::new(r, r, r));
+            let high = brush.high.add_v(&Vector3::new(1.0, 1.0, 1.0));
             Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
           },
         };
