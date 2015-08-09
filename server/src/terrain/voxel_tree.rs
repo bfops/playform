@@ -4,11 +4,11 @@ use cgmath::{Point, Vector, Point3, Vector3, Ray3};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use brush;
-use brush::Brush;
-use raycast;
-use voxel;
-use voxel::Voxel;
+use super::brush;
+use super::brush::Brush;
+use super::raycast;
+use super::voxel;
+use super::voxel::Voxel;
 
 #[derive(Debug)]
 pub struct VoxelTree {
@@ -325,6 +325,7 @@ impl VoxelTree {
     }
   }
 
+  #[allow(dead_code)]
   fn find<'a, Step, E>(
     &'a self,
     voxel: &voxel::Bounds,
@@ -366,6 +367,7 @@ impl VoxelTree {
     }
   }
 
+  #[allow(dead_code)]
   /// Find a voxel inside this tree.
   /// If it doesn't exist, it will be created as empty.
   pub fn get_mut_or_create<'a>(&'a mut self, voxel: &voxel::Bounds) -> &'a mut TreeBody {
@@ -410,6 +412,7 @@ impl VoxelTree {
     }
   }
 
+  #[allow(dead_code)]
   /// Find a voxel inside this tree.
   pub fn get<'a>(&'a self, voxel: &voxel::Bounds) -> Option<&'a Voxel> {
     if !self.contains_bounds(voxel) {
@@ -430,6 +433,7 @@ impl VoxelTree {
   }
 
   /// Find a voxel inside this tree.
+  #[allow(dead_code)]
   pub fn get_mut<'a>(&'a mut self, voxel: &voxel::Bounds) -> Option<&'a mut Voxel> {
     if !self.contains_bounds(voxel) {
       return None

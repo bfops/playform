@@ -1,7 +1,7 @@
 use cgmath::Point3;
 use noise::{Seed, Brownian2, Brownian3, perlin2, perlin3};
 
-use field::Field;
+use super::field::Field;
 
 pub struct HeightMap {
   pub height: Brownian2<f64, fn (&Seed, &[f64; 2]) -> f64>,

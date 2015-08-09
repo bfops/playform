@@ -1,14 +1,3 @@
-#![feature(range_inclusive)]
-#![feature(iter_cmp)]
-
-extern crate cgmath;
-extern crate common;
-#[macro_use]
-extern crate log;
-extern crate noise;
-extern crate num;
-extern crate stopwatch;
-
 pub mod brush;
 mod field;
 mod generate;
@@ -32,8 +21,8 @@ use common::lod::LODIndex;
 use common::terrain_block;
 use common::terrain_block::TerrainBlock;
 
-use heightmap::HeightMap;
-use voxel_tree::VoxelTree;
+use self::heightmap::HeightMap;
+use self::voxel_tree::VoxelTree;
 
 pub struct MipMesh {
   pub lods: Vec<Option<TerrainBlock>>,

@@ -1,9 +1,11 @@
 use cgmath::{EuclideanVector, Point3, Vector3};
 
+/// A trait representing a density field.
 pub trait Field {
   /// The height of the field at a given x,y,z.
   fn density_at(&self, p: &Point3<f32>) -> f32;
 
+  /// [field.contains(p)] == [field.density_at(p) >= 0.0]
   fn contains(&self, p: &Point3<f32>) -> bool {
     self.density_at(p) >= 0.0
   }

@@ -12,12 +12,12 @@ use common::lod::LODIndex;
 use common::terrain_block;
 use common::terrain_block::{TerrainBlock, tri};
 
-use field::Field;
-use heightmap::HeightMap;
-use voxel;
-use voxel::{Fracu8, Voxel, SurfaceStruct, Vertex, Normal};
-use voxel_tree;
-use voxel_tree::VoxelTree;
+use super::field::Field;
+use super::heightmap::HeightMap;
+use super::voxel;
+use super::voxel::{Fracu8, Voxel, SurfaceStruct, Vertex, Normal};
+use super::voxel_tree;
+use super::voxel_tree::VoxelTree;
 
 pub fn generate_voxel(
   timers: &TimerSet,

@@ -1,9 +1,9 @@
 use cgmath::{Point, Vector, Ray3};
 use std::cmp::Ordering;
 
-use voxel;
-use voxel::Voxel;
-use voxel_tree::{TreeBody, Branches};
+use super::voxel;
+use super::voxel::Voxel;
+use super::voxel_tree::{TreeBody, Branches};
 
 // Time-of-intersection. Implements `Ord` for sanity reasons;
 // let's hope the floating-points are all valid.
