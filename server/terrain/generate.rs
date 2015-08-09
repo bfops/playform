@@ -15,7 +15,7 @@ use common::terrain_block::{TerrainBlock, tri};
 use field::Field;
 use heightmap::HeightMap;
 use voxel;
-use voxel::{Fracu8, Voxel, SurfaceVoxel, Vertex, Normal};
+use voxel::{Fracu8, Voxel, SurfaceStruct, Vertex, Normal};
 use voxel_tree;
 use voxel_tree::VoxelTree;
 
@@ -119,7 +119,7 @@ pub fn generate_voxel(
       normal = voxel::Normal::of_float_normal(&heightmap.normal_at(0.01, &vertex));
     }
 
-    Voxel::Surface(SurfaceVoxel {
+    Voxel::Surface(SurfaceStruct {
       inner_vertex: vertex,
       normal: normal,
       corner_inside_surface: corner,

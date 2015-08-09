@@ -78,7 +78,7 @@ pub enum Voxel {
   // The voxel is entirely inside or outside the volume. true is inside.
   Volume(bool),
   // The voxel crosses the surface of the volume.
-  Surface(SurfaceVoxel),
+  Surface(SurfaceStruct),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -86,7 +86,7 @@ pub enum Voxel {
 // lowest-coordinate corner is inside the volume.
 // Since we keep track of an "arbitrarily" large world of voxels, we don't
 // leave out any corners.
-pub struct SurfaceVoxel {
+pub struct SurfaceStruct {
   /// The position of a free-floating vertex on the surface.
   pub inner_vertex: Vertex,
   /// The surface normal at `inner_vertex`.

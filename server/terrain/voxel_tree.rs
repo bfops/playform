@@ -139,7 +139,7 @@ impl TreeBody {
           let normal = -normal;
           let corner_inside_surface = corner_inside_surface && !brush.contains(&low);
           let voxel =
-            voxel::SurfaceVoxel {
+            voxel::SurfaceStruct {
               inner_vertex: vertex,
               normal: normal,
               corner_inside_surface: corner_inside_surface,
