@@ -38,3 +38,4 @@ mod terrain;
 mod terrain_loader;
 mod update_gaia;
 mod update_world;
+mod voxel;

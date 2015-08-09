@@ -1,11 +1,5 @@
-pub mod brush;
-mod field;
 mod generate;
 mod heightmap;
-mod raycast;
-
-pub mod voxel;
-pub mod voxel_tree;
 
 pub use noise::Seed;
 
@@ -21,8 +15,8 @@ use common::lod::LODIndex;
 use common::terrain_block;
 use common::terrain_block::TerrainBlock;
 
-use self::heightmap::HeightMap;
-use self::voxel_tree::VoxelTree;
+use voxel;
+use voxel::tree::VoxelTree;
 
 pub struct MipMesh {
   pub lods: Vec<Option<TerrainBlock>>,
@@ -61,7 +55,7 @@ impl MipMeshMap {
 
 /// This struct contains and lazily generates the world's terrain.
 pub struct Terrain {
-  pub heightmap: HeightMap,
+  pub heightmap: heightmap::T,
   // all the blocks that have ever been created.
   pub all_blocks: MipMeshMap,
   pub voxels: VoxelTree,
@@ -70,7 +64,7 @@ pub struct Terrain {
 impl Terrain {
   pub fn new(terrain_seed: Seed) -> Terrain {
     Terrain {
-      heightmap: HeightMap::new(terrain_seed),
+      heightmap: heightmap::T::new(terrain_seed),
       all_blocks: MipMeshMap::new(),
       voxels: VoxelTree::new(),
     }
@@ -107,11 +101,11 @@ impl Terrain {
     timers: &TimerSet,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
     brush: &Brush,
-    brush_bounds: &brush::Bounds,
+    brush_bounds: &voxel::brush::Bounds,
     mut block_changed: F,
   ) where
     F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
-    Brush: brush::Brush,
+    Brush: voxel::brush::T,
   {
     self.voxels.remove(brush, brush_bounds);
 

@@ -1,12 +1,14 @@
-use cgmath::Point3;
+use cgmath::{Point3};
 
-use super::super::field::Field;
-use super::super::voxel;
+use voxel;
+
+pub mod cube;
+pub mod sphere;
 
 /// Fields that can act as voxel brushes.
-pub trait Brush: Field {
+pub trait T: voxel::field::T {
   /// Get a "representative" vertex for some voxel.
-  fn vertex_in(&self, bounds: &voxel::Bounds) -> Option<(voxel::Vertex, voxel::Normal)>;
+  fn vertex_in(&Self, bounds: &voxel::Bounds) -> Option<(voxel::Vertex, voxel::Normal)>;
 }
 
 /// The (approximate) area covered by the brush.

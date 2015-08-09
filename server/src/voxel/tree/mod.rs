@@ -4,11 +4,11 @@ use cgmath::{Point, Vector, Point3, Vector3, Ray3};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use super::brush;
-use super::brush::Brush;
-use super::raycast;
-use super::voxel;
-use super::voxel::Voxel;
+use voxel;
+use voxel::brush;
+use voxel::field;
+
+mod raycast;
 
 #[derive(Debug)]
 pub struct VoxelTree {
@@ -40,7 +40,7 @@ pub struct Branches {
 #[derive(Debug, PartialEq, Eq)]
 pub enum TreeBody {
   Empty,
-  Leaf(Voxel),
+  Leaf(voxel::T),
   Branch(Box<Branches>),
 }
 
@@ -122,14 +122,14 @@ impl TreeBody {
     brush: &B,
     brush_bounds: &brush::Bounds,
   ) where
-    B: Brush,
+    B: brush::T,
   {
     if !brush_overlaps(bounds, brush_bounds) {
       return
     }
 
     let set_leaf = |this: &mut TreeBody, corner_inside_surface| {
-      match brush.vertex_in(bounds) {
+      match brush::T::vertex_in(brush, bounds) {
         None => {},
         Some((vertex, normal)) => {
           let size = bounds.size();
@@ -137,14 +137,14 @@ impl TreeBody {
           let low = low.mul_s(size);
           // The brush is negative space, so the normal should point into it, not out of it.
           let normal = -normal;
-          let corner_inside_surface = corner_inside_surface && !brush.contains(&low);
+          let corner_inside_surface = corner_inside_surface && !field::T::contains(brush, &low);
           let voxel =
             voxel::SurfaceStruct {
               inner_vertex: vertex,
               normal: normal,
               corner_inside_surface: corner_inside_surface,
             };
-          *this = TreeBody::Leaf(Voxel::Surface(voxel));
+          *this = TreeBody::Leaf(voxel::T::Surface(voxel));
         },
       }
     };
@@ -169,11 +169,11 @@ impl TreeBody {
         recurse!(hhh, |b: &mut voxel::Bounds| {b.x += 1; b.y += 1; b.z += 1});
       },
       &mut TreeBody::Empty => {},
-      &mut TreeBody::Leaf(Voxel::Volume(false)) => {},
-      &mut TreeBody::Leaf(Voxel::Volume(true)) => {
+      &mut TreeBody::Leaf(voxel::T::Volume(false)) => {},
+      &mut TreeBody::Leaf(voxel::T::Volume(true)) => {
         set_leaf(self, true);
       },
-      &mut TreeBody::Leaf(Voxel::Surface(voxel)) => {
+      &mut TreeBody::Leaf(voxel::T::Surface(voxel)) => {
         set_leaf(self, voxel.corner_inside_surface);
       },
     }
@@ -414,7 +414,7 @@ impl VoxelTree {
 
   #[allow(dead_code)]
   /// Find a voxel inside this tree.
-  pub fn get<'a>(&'a self, voxel: &voxel::Bounds) -> Option<&'a Voxel> {
+  pub fn get<'a>(&'a self, voxel: &voxel::Bounds) -> Option<&'a voxel::T> {
     if !self.contains_bounds(voxel) {
       return None
     }
@@ -434,7 +434,7 @@ impl VoxelTree {
 
   /// Find a voxel inside this tree.
   #[allow(dead_code)]
-  pub fn get_mut<'a>(&'a mut self, voxel: &voxel::Bounds) -> Option<&'a mut Voxel> {
+  pub fn get_mut<'a>(&'a mut self, voxel: &voxel::Bounds) -> Option<&'a mut voxel::T> {
     if !self.contains_bounds(voxel) {
       return None
     }
@@ -459,7 +459,7 @@ impl VoxelTree {
   ) -> Option<R>
     where
       // TODO: Does this *have* to be callback-based?
-      Act: FnMut(voxel::Bounds, &'a Voxel) -> Option<R>
+      Act: FnMut(voxel::Bounds, &'a voxel::T) -> Option<R>
   {
     let coords = [
       if ray.origin.x >= 0.0 {1} else {0},
@@ -496,7 +496,7 @@ impl VoxelTree {
     brush: &Brush,
     brush_bounds: &brush::Bounds,
   ) where
-    Brush: brush::Brush,
+    Brush: brush::T,
   {
     macro_rules! recurse(($branch: ident, $x: expr, $y: expr, $z: expr) => {{
       self.contents.$branch.remove(

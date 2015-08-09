@@ -1,3 +1,7 @@
+pub mod brush;
+pub mod field;
+pub mod tree;
+
 use cgmath::{Point, Point3, Vector, EuclideanVector, Vector3};
 use std::cmp::{min, max};
 use std::ops::Neg;
@@ -74,7 +78,7 @@ impl Bounds {
 // low-order bits can be used to figure out which one it is, since pointers
 // have three low-order bits set to zero).
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Voxel {
+pub enum T {
   // The voxel is entirely inside or outside the volume. true is inside.
   Volume(bool),
   // The voxel crosses the surface of the volume.

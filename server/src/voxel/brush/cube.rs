@@ -1,36 +1,32 @@
 use cgmath::{Point3, Vector3, EuclideanVector};
 
-use super::super::field::Field;
-use super::super::voxel;
-
-use super::types::Brush;
-use super::types::Bounds;
+use voxel;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Cube {
+pub struct T {
   pub low: Point3<f32>,
   pub high: Point3<f32>,
 }
 
-unsafe impl Send for Cube {}
+unsafe impl Send for T {}
 
-impl Field for Cube {
-  fn density_at(&self, p: &Point3<f32>) -> f32 {
-    (p.x - self.low.x) * (self.high.x - p.x) *
-    (p.y - self.low.y) * (self.high.y - p.y) *
-    (p.z - self.low.z) * (self.high.z - p.z) *
+impl voxel::field::T for T {
+  fn density_at(this: &Self, p: &Point3<f32>) -> f32 {
+    (p.x - this.low.x) * (this.high.x - p.x) *
+    (p.y - this.low.y) * (this.high.y - p.y) *
+    (p.z - this.low.z) * (this.high.z - p.z) *
     1.0
   }
 
-  fn contains(&self, p: &Point3<f32>) -> bool {
-    self.low.x <= p.x && p.x <= self.high.x &&
-    self.low.y <= p.y && p.y <= self.high.y &&
-    self.low.z <= p.z && p.z <= self.high.z &&
+  fn contains(this: &Self, p: &Point3<f32>) -> bool {
+    this.low.x <= p.x && p.x <= this.high.x &&
+    this.low.y <= p.y && p.y <= this.high.y &&
+    this.low.z <= p.z && p.z <= this.high.z &&
     true
   }
 
-  fn normal_at(&self, _: f32, _: &Point3<f32>) -> Vector3<f32> {
-    panic!("Cube::normal_at");
+  fn normal_at(_: &Self, _: f32, _: &Point3<f32>) -> Vector3<f32> {
+    unimplemented!();
   }
 }
 
@@ -73,14 +69,14 @@ impl SegmentOverlap {
   }
 }
 
-impl Brush for Cube {
-  fn vertex_in(&self, voxel: &voxel::Bounds) -> Option<(voxel::Vertex, voxel::Normal)> {
+impl voxel::brush::T for T {
+  fn vertex_in(this: &Self, voxel: &voxel::Bounds) -> Option<(voxel::Vertex, voxel::Normal)> {
     let (low, high) = voxel.corners();
 
     let mut touches_surface = false;
 
     macro_rules! in1D(($d:ident) => {{
-      match SegmentOverlap::of(low.$d, high.$d, self.low.$d, self.high.$d) {
+      match SegmentOverlap::of(low.$d, high.$d, this.low.$d, this.high.$d) {
         SegmentOverlap::None => {
           return None
         },
@@ -93,7 +89,7 @@ impl Brush for Cube {
         },
         SegmentOverlap::Partial(_, surface_point) => {
           touches_surface = true;
-          if surface_point == self.low.$d {
+          if surface_point == this.low.$d {
             (surface_point, 1.0)
           } else {
             (surface_point, -1.0)
