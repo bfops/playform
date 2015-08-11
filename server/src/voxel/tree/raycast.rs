@@ -52,8 +52,8 @@ pub struct Exit {
 // TODO: Audit all the divisions for divide-by-zeros.
 
 #[inline]
-pub fn cast_ray_branches<'a, MakeBounds, Act, R>(
-  this: &'a Branches,
+pub fn cast_ray_branches<'a, Voxel, MakeBounds, Act, R>(
+  this: &'a Branches<Voxel>,
   ray: &Ray3<f32>,
   mut entry: Option<Entry>,
   mut coords: [usize; 3],
@@ -62,7 +62,7 @@ pub fn cast_ray_branches<'a, MakeBounds, Act, R>(
 ) -> Result<R, Exit>
   where
     MakeBounds: FnMut([usize; 3]) -> voxel::Bounds,
-    Act: FnMut(voxel::Bounds, &'a voxel::T) -> Option<R>,
+    Act: FnMut(voxel::Bounds, &'a Voxel) -> Option<R>,
 {
   loop {
     let child = &this.as_array()[coords[0]][coords[1]][coords[2]];
@@ -90,15 +90,15 @@ pub fn cast_ray_branches<'a, MakeBounds, Act, R>(
 }
 
 /// Precondition: the ray passes through `this`.
-pub fn cast_ray<'a, Act, R>(
-  this: &'a TreeBody,
+pub fn cast_ray<'a, Voxel, Act, R>(
+  this: &'a TreeBody<Voxel>,
   ray: &Ray3<f32>,
   bounds: voxel::Bounds,
   entry: Option<Entry>,
   act: &mut Act,
 ) -> Result<R, Exit>
   where
-    Act: FnMut(voxel::Bounds, &'a voxel::T) -> Option<R>
+    Act: FnMut(voxel::Bounds, &'a Voxel) -> Option<R>
 {
   match this {
     &TreeBody::Empty => {

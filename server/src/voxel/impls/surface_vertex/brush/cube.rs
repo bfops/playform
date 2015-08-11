@@ -69,7 +69,7 @@ impl SegmentOverlap {
   }
 }
 
-impl voxel::brush::T for T {
+impl super::T for T {
   fn vertex_in(this: &Self, voxel: &voxel::Bounds) -> Option<(voxel::Vertex, voxel::Normal)> {
     let (low, high) = voxel.corners();
 

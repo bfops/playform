@@ -28,7 +28,7 @@ impl voxel::field::T for T {
   }
 }
 
-impl voxel::brush::T for T {
+impl super::T for T {
   fn vertex_in(this: &Self, voxel: &voxel::Bounds) -> Option<(voxel::Vertex, voxel::Normal)> {
     // The vertex will be placed on the surface of the sphere,
     // on the line formed by the center of the sphere and the center of the voxel.

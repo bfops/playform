@@ -1,5 +1,4 @@
-use cgmath::{Point, Point3, Vector, Vector3};
-use cgmath::Aabb3;
+use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
 use std::collections::hash_map;
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -13,22 +12,20 @@ use common::terrain_block;
 use common::terrain_block::{TerrainBlock, tri};
 
 use terrain::heightmap;
-use voxel::field;
+use terrain;
 use voxel;
-use voxel::{Fracu8, SurfaceStruct, Vertex, Normal};
-use voxel::tree::VoxelTree;
 
 pub fn generate_voxel(
   timers: &TimerSet,
   heightmap: &heightmap::T,
-  voxel: &voxel::Bounds,
-) -> voxel::T
+  voxel: &::voxel::brush::Bounds,
+) -> terrain::voxel::T
 {
   timers.time("generate_voxel", || {
     let size = voxel.size();
     let (low, high) = voxel.corners();
     macro_rules! contained(($x:expr, $y:expr, $z:expr) => {{
-      field::T::contains(heightmap, &Point3::new($x.x, $y.y, $z.z))
+      voxel::field::T::contains(heightmap, &Point3::new($x.x, $y.y, $z.z))
     }});
     // corners[x][y][z]
     let corners = [
@@ -66,7 +63,7 @@ pub fn generate_voxel(
 
     let all_corners_same = any_inside == all_inside;
     if all_corners_same {
-      return voxel::T::Volume(all_inside)
+      return terrain::voxel::T::Volume(all_inside)
     }
 
     let mut vertex: Vector3<u32> = Vector3::new(0, 0, 0);
@@ -93,7 +90,7 @@ pub fn generate_voxel(
           [((voxel.y as f32 + fs) * size, s), ((voxel.y as f32 + mfs) * size, ms)].iter() {
         for &(wz, z) in
           [((voxel.z as f32 + fs) * size, s), ((voxel.z as f32 + mfs) * size, ms)].iter() {
-          if field::T::contains(heightmap, &Point3::new(wx, wy, wz)) {
+          if voxel::field::T::contains(heightmap, &Point3::new(wx, wy, wz)) {
             vertex.add_self_v(&Vector3::new(x, y, z).mul_s(lg_s as u32));
             n += lg_s as u32;
           }
@@ -105,20 +102,20 @@ pub fn generate_voxel(
 
     let vertex = vertex.div_s(n);
     let vertex =
-      Vertex {
-        x: Fracu8::of(vertex.x as u8),
-        y: Fracu8::of(vertex.y as u8),
-        z: Fracu8::of(vertex.z as u8),
+      voxel::Vertex {
+        x: voxel::Fracu8::of(vertex.x as u8),
+        y: voxel::Fracu8::of(vertex.y as u8),
+        z: voxel::Fracu8::of(vertex.z as u8),
       };
 
     let normal;
     {
       // Okay, this is silly to have right after we construct the vertex.
       let vertex = vertex.to_world_vertex(voxel);
-      normal = voxel::Normal::of_float_normal(&field::T::normal_at(heightmap, 0.01, &vertex));
+      normal = voxel::Normal::of_float_normal(&voxel::field::T::normal_at(heightmap, 0.01, &vertex));
     }
 
-    voxel::T::Surface(SurfaceStruct {
+    terrain::voxel::T::Surface(terrain::voxel::SurfaceStruct {
       inner_vertex: vertex,
       normal: normal,
       corner_inside_surface: corner,
@@ -186,13 +183,13 @@ fn make_bounds(
   )
 }
 
-/// Generate a `TerrainBlock` based on a given position in a `VoxelTree`.
+/// Generate a `TerrainBlock` based on a given position in a `terrain::voxel::tree::T`.
 /// Any necessary voxels will be generated.
 pub fn generate_block(
   timers: &TimerSet,
   id_allocator: &Mutex<IdAllocator<EntityId>>,
   heightmap: &heightmap::T,
-  voxels: &mut VoxelTree,
+  voxels: &mut terrain::voxel::tree::T,
   position: &BlockPosition,
   lod_index: LODIndex,
 ) -> TerrainBlock {
@@ -210,16 +207,16 @@ pub fn generate_block(
       let branch = voxels.get_mut_or_create(bounds);
       let r;
       match branch {
-        &mut voxel::tree::TreeBody::Leaf(v) => r = v,
-        &mut voxel::tree::TreeBody::Empty => {
+        &mut terrain::voxel::tree::TreeBody::Leaf(v) => r = v,
+        &mut terrain::voxel::tree::TreeBody::Empty => {
           r = generate_voxel(timers, heightmap, bounds);
-          *branch = voxel::tree::TreeBody::Leaf(r);
+          *branch = terrain::voxel::tree::TreeBody::Leaf(r);
         },
-        &mut voxel::tree::TreeBody::Branch(_) => {
+        &mut terrain::voxel::tree::TreeBody::Branch(_) => {
           // Overwrite existing for now.
           // TODO: Don't do ^that.
           r = generate_voxel(timers, heightmap, bounds);
-          *branch = voxel::tree::TreeBody::Leaf(r);
+          *branch = terrain::voxel::tree::TreeBody::Leaf(r);
         },
       };
       r
@@ -246,7 +243,7 @@ pub fn generate_block(
       let voxel;
       let bounds = bounds_at(&voxel_position);
       match get_voxel(&bounds) {
-        voxel::T::Surface(v) => voxel = v,
+        terrain::voxel::T::Surface(v) => voxel = v,
         _ => continue,
       }
       let index = coords.len();
@@ -262,8 +259,8 @@ pub fn generate_block(
       | {
         let neighbor_inside_surface;
         match get_voxel(&bounds_at(&voxel_position.add_v(&d_neighbor))) {
-          voxel::T::Surface(v) => neighbor_inside_surface = v.corner_inside_surface,
-          voxel::T::Volume(inside) => neighbor_inside_surface = inside,
+          terrain::voxel::T::Surface(v) => neighbor_inside_surface = v.corner_inside_surface,
+          terrain::voxel::T::Volume(inside) => neighbor_inside_surface = inside,
         }
         if voxel.corner_inside_surface == neighbor_inside_surface {
           // This edge doesn't cross the surface, and doesn't generate polys.
@@ -285,7 +282,7 @@ pub fn generate_block(
               hash_map::Entry::Vacant(entry) => {
                 let bounds = bounds_at(position);
                 match get_voxel(&bounds) {
-                  voxel::T::Surface(voxel) => {
+                  terrain::voxel::T::Surface(voxel) => {
                     let i = coords.len();
                     let vertex = voxel.inner_vertex.to_world_vertex(&bounds);
                     let normal = voxel.normal.to_float_normal();

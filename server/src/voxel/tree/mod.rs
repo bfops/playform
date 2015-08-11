@@ -1,51 +1,47 @@
-#![cfg_attr(test, feature(test))]
-
-use cgmath::{Point, Vector, Point3, Vector3, Ray3};
+use cgmath::{Aabb, Aabb3, Point, Vector, Point3, Vector3, Ray3};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use voxel;
-use voxel::brush;
-use voxel::field;
 
 mod raycast;
 
 #[derive(Debug)]
-pub struct VoxelTree {
+pub struct T<Voxel> {
   /// The tree extends 2^lg_size in each direction.
   /// i.e. the total width is 2^(lg_size + 1).
   lg_size: u8,
   /// Force the top level to always be branches;
   /// it saves a branch in the grow logic.
-  contents: Branches,
+  contents: Branches<Voxel>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 #[repr(C)]
-pub struct Branches {
+pub struct Branches<Voxel> {
   // xyz ordering
   // This isn't an array because we can't move out of an array.
 
-  lll: TreeBody,
-  llh: TreeBody,
-  lhl: TreeBody,
-  lhh: TreeBody,
-  hll: TreeBody,
-  hlh: TreeBody,
-  hhl: TreeBody,
-  hhh: TreeBody,
+  lll: TreeBody<Voxel>,
+  llh: TreeBody<Voxel>,
+  lhl: TreeBody<Voxel>,
+  lhh: TreeBody<Voxel>,
+  hll: TreeBody<Voxel>,
+  hlh: TreeBody<Voxel>,
+  hhl: TreeBody<Voxel>,
+  hhh: TreeBody<Voxel>,
 }
 
-/// The main, recursive, tree-y part of the `VoxelTree`.
+/// The main, recursive, tree-y part of the voxel tree.
 #[derive(Debug, PartialEq, Eq)]
-pub enum TreeBody {
+pub enum TreeBody<Voxel> {
   Empty,
-  Leaf(voxel::T),
-  Branch(Box<Branches>),
+  Leaf(Voxel),
+  Branch(Box<Branches<Voxel>>),
 }
 
-impl Branches {
-  pub fn empty() -> Branches {
+impl<Voxel> Branches<Voxel> {
+  pub fn empty() -> Branches<Voxel> {
     Branches {
       lll: TreeBody::Empty,
       llh: TreeBody::Empty,
@@ -58,96 +54,75 @@ impl Branches {
     }
   }
 
-  pub fn as_array(&self) -> &[[[TreeBody; 2]; 2]; 2] {
+  pub fn as_array(&self) -> &[[[TreeBody<Voxel>; 2]; 2]; 2] {
     unsafe {
       mem::transmute(self)
     }
   }
 
-  pub fn as_array_mut(&mut self) -> &mut [[[TreeBody; 2]; 2]; 2] {
+  pub fn as_array_mut(&mut self) -> &mut [[[TreeBody<Voxel>; 2]; 2]; 2] {
     unsafe {
       mem::transmute(self)
     }
   }
 }
 
-fn brush_overlaps(voxel: &voxel::Bounds, brush: &brush::Bounds) -> bool {
+fn brush_overlaps(voxel: &voxel::Bounds, brush: &::voxel::brush::Bounds) -> bool {
   if voxel.lg_size >= 0 {
-    let low =
+    let min =
       Vector3::new(
         voxel.x << voxel.lg_size,
         voxel.y << voxel.lg_size,
         voxel.z << voxel.lg_size,
       );
-    low.x < brush.high.x &&
-    low.y < brush.high.y &&
-    low.z < brush.high.z &&
+    min.x < brush.max().x &&
+    min.y < brush.max().y &&
+    min.z < brush.max().z &&
     {
-      let high = low.add_s(1 << voxel.lg_size);
-      brush.low.x < high.x &&
-      brush.low.y < high.y &&
-      brush.low.z < high.z &&
+      let max = min.add_s(1 << voxel.lg_size);
+      brush.min().x < max.x &&
+      brush.min().y < max.y &&
+      brush.min().z < max.z &&
       true
     }
   } else {
     let lg_size = -voxel.lg_size;
-    let high =
+    let max =
       Vector3::new(
-        brush.high.x << lg_size,
-        brush.high.y << lg_size,
-        brush.high.z << lg_size,
+        brush.max().x << lg_size,
+        brush.max().y << lg_size,
+        brush.max().z << lg_size,
       );
-    voxel.x < high.x &&
-    voxel.y < high.y &&
-    voxel.z < high.z &&
+    voxel.x < max.x &&
+    voxel.y < max.y &&
+    voxel.z < max.z &&
     {
-      let low =
+      let min =
         Vector3::new(
-          brush.low.x << lg_size,
-          brush.low.y << lg_size,
-          brush.low.z << lg_size,
+          brush.min().x << lg_size,
+          brush.min().y << lg_size,
+          brush.min().z << lg_size,
         );
-      low.x <= voxel.x &&
-      low.y <= voxel.y &&
-      low.z <= voxel.z &&
+      min.x <= voxel.x &&
+      min.y <= voxel.y &&
+      min.z <= voxel.z &&
       true
     }
   }
 }
 
-impl TreeBody {
-  pub fn remove<B>(
+impl<Voxel> TreeBody<Voxel> {
+  pub fn remove<Brush>(
     &mut self,
     bounds: &voxel::Bounds,
-    brush: &B,
-    brush_bounds: &brush::Bounds,
+    brush: &Brush,
+    brush_bounds: &::voxel::brush::Bounds,
   ) where
-    B: brush::T,
+    Brush: voxel::brush::T<Voxel=Voxel>,
   {
     if !brush_overlaps(bounds, brush_bounds) {
       return
     }
-
-    let set_leaf = |this: &mut TreeBody, corner_inside_surface| {
-      match brush::T::vertex_in(brush, bounds) {
-        None => {},
-        Some((vertex, normal)) => {
-          let size = bounds.size();
-          let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
-          let low = low.mul_s(size);
-          // The brush is negative space, so the normal should point into it, not out of it.
-          let normal = -normal;
-          let corner_inside_surface = corner_inside_surface && !field::T::contains(brush, &low);
-          let voxel =
-            voxel::SurfaceStruct {
-              inner_vertex: vertex,
-              normal: normal,
-              corner_inside_surface: corner_inside_surface,
-            };
-          *this = TreeBody::Leaf(voxel::T::Surface(voxel));
-        },
-      }
-    };
 
     match self {
       &mut TreeBody::Branch(ref mut branches) => {
@@ -169,22 +144,18 @@ impl TreeBody {
         recurse!(hhh, |b: &mut voxel::Bounds| {b.x += 1; b.y += 1; b.z += 1});
       },
       &mut TreeBody::Empty => {},
-      &mut TreeBody::Leaf(voxel::T::Volume(false)) => {},
-      &mut TreeBody::Leaf(voxel::T::Volume(true)) => {
-        set_leaf(self, true);
-      },
-      &mut TreeBody::Leaf(voxel::T::Surface(voxel)) => {
-        set_leaf(self, voxel.corner_inside_surface);
-      },
+      &mut TreeBody::Leaf(ref mut voxel) => {
+        voxel::brush::T::<Brush>::remove(voxel, bounds, brush, brush_bounds);
+      }
     }
   }
 }
 
-impl VoxelTree {
-  pub fn new() -> VoxelTree {
-    VoxelTree {
+impl<Voxel> T<Voxel> {
+  pub fn new() -> T<Voxel> {
+    T {
       lg_size: 0,
-      contents: Branches::empty(),
+      contents: Branches::<Voxel>::empty(),
     }
   }
 
@@ -217,7 +188,7 @@ impl VoxelTree {
       self.lg_size += 1;
 
       // Pull out `self.contents` so we can move out of it.
-      let contents = mem::replace(&mut self.contents, Branches::empty());
+      let contents = mem::replace(&mut self.contents, Branches::<Voxel>::empty());
 
       // We re-construct the tree with bounds twice the size (but still centered
       // around the origin) by deconstructing the top level of branches,
@@ -242,7 +213,7 @@ impl VoxelTree {
 
       macro_rules! at(
         ($c_idx:ident, $b_idx:ident) => {{
-          let mut branches = Branches::empty();
+          let mut branches = Branches::<Voxel>::empty();
           branches.$b_idx = contents.$c_idx;
           TreeBody::Branch(Box::new(branches))
         }}
@@ -288,8 +259,8 @@ impl VoxelTree {
     &'a mut self,
     voxel: &voxel::Bounds,
     mut step: Step,
-  ) -> Result<&'a mut TreeBody, E> where
-    Step: FnMut(&'a mut TreeBody) -> Result<&'a mut Branches, E>,
+  ) -> Result<&'a mut TreeBody<Voxel>, E> where
+    Step: FnMut(&'a mut TreeBody<Voxel>) -> Result<&'a mut Branches<Voxel>, E>,
   {
     let mut mask = self.find_mask(voxel);
     let mut branches = &mut self.contents;
@@ -330,8 +301,8 @@ impl VoxelTree {
     &'a self,
     voxel: &voxel::Bounds,
     mut step: Step,
-  ) -> Result<&'a TreeBody, E> where
-    Step: FnMut(&'a TreeBody) -> Result<&'a Branches, E>,
+  ) -> Result<&'a TreeBody<Voxel>, E> where
+    Step: FnMut(&'a TreeBody<Voxel>) -> Result<&'a Branches<Voxel>, E>,
   {
     let mut mask = self.find_mask(voxel);
     let mut branches = &self.contents;
@@ -370,19 +341,19 @@ impl VoxelTree {
   #[allow(dead_code)]
   /// Find a voxel inside this tree.
   /// If it doesn't exist, it will be created as empty.
-  pub fn get_mut_or_create<'a>(&'a mut self, voxel: &voxel::Bounds) -> &'a mut TreeBody {
+  pub fn get_mut_or_create<'a>(&'a mut self, voxel: &voxel::Bounds) -> &'a mut TreeBody<Voxel> {
     self.grow_to_hold(voxel);
     let branch: Result<_, ()> =
-      self.find_mut(voxel, |branch| { Ok(VoxelTree::get_mut_or_create_step(branch)) });
+      self.find_mut(voxel, |branch| { Ok(T::<Voxel>::get_mut_or_create_step(branch)) });
     branch.unwrap()
   }
 
   fn get_mut_or_create_step<'a>(
-    branch: &'a mut TreeBody,
-  ) -> &'a mut Branches {
+    branch: &'a mut TreeBody<Voxel>,
+  ) -> &'a mut Branches<Voxel> {
     // "Step down" the tree.
     match *branch {
-      // Branches; we can go straight to the branching logic.
+      // Branches<Voxel>; we can go straight to the branching logic.
       TreeBody::Branch(ref mut b) => b,
 
       // Otherwise, keep going, but we need to insert a voxel inside the
@@ -390,7 +361,7 @@ impl VoxelTree {
 
       TreeBody::Empty => {
         // Replace this branch with 8 empty sub-branches - who's gonna notice?
-        *branch = TreeBody::Branch(Box::new(Branches::empty()));
+        *branch = TreeBody::Branch(Box::new(Branches::<Voxel>::empty()));
 
         match *branch {
           TreeBody::Branch(ref mut b) => b,
@@ -402,7 +373,7 @@ impl VoxelTree {
         // This behavior is pretty debatable, but we need to do something,
         // and it's easier to debug accidentally replacing a big chunk
         // with a smaller one than to debug a nop.
-        *branch = TreeBody::Branch(Box::new(Branches::empty()));
+        *branch = TreeBody::Branch(Box::new(Branches::<Voxel>::empty()));
 
         match *branch {
           TreeBody::Branch(ref mut b) => b,
@@ -414,7 +385,7 @@ impl VoxelTree {
 
   #[allow(dead_code)]
   /// Find a voxel inside this tree.
-  pub fn get<'a>(&'a self, voxel: &voxel::Bounds) -> Option<&'a voxel::T> {
+  pub fn get<'a>(&'a self, voxel: &voxel::Bounds) -> Option<&'a Voxel> {
     if !self.contains_bounds(voxel) {
       return None
     }
@@ -434,7 +405,7 @@ impl VoxelTree {
 
   /// Find a voxel inside this tree.
   #[allow(dead_code)]
-  pub fn get_mut<'a>(&'a mut self, voxel: &voxel::Bounds) -> Option<&'a mut voxel::T> {
+  pub fn get_mut<'a>(&'a mut self, voxel: &voxel::Bounds) -> Option<&'a mut Voxel> {
     if !self.contains_bounds(voxel) {
       return None
     }
@@ -459,7 +430,7 @@ impl VoxelTree {
   ) -> Option<R>
     where
       // TODO: Does this *have* to be callback-based?
-      Act: FnMut(voxel::Bounds, &'a voxel::T) -> Option<R>
+      Act: FnMut(voxel::Bounds, &'a Voxel) -> Option<R>
   {
     let coords = [
       if ray.origin.x >= 0.0 {1} else {0},
@@ -494,9 +465,9 @@ impl VoxelTree {
   pub fn remove<Brush>(
     &mut self,
     brush: &Brush,
-    brush_bounds: &brush::Bounds,
+    brush_bounds: &::voxel::brush::Bounds,
   ) where
-    Brush: brush::T,
+    Brush: voxel::brush::T<Voxel=Voxel>,
   {
     macro_rules! recurse(($branch: ident, $x: expr, $y: expr, $z: expr) => {{
       self.contents.$branch.remove(
@@ -521,16 +492,16 @@ mod tests {
   extern crate test;
 
   use voxel;
-  use super::{VoxelTree, TreeBody};
+  use super::{T, TreeBody};
 
   #[test]
   fn insert_and_lookup() {
-    let mut tree: VoxelTree<i32> = VoxelTree::new();
-    *tree.get_mut_or_create(voxel::Bounds::new(1, 1, 1, 0)) = TreeBody::Leaf(1);
-    *tree.get_mut_or_create(voxel::Bounds::new(8, -8, 4, 0)) = TreeBody::Leaf(2);
-    *tree.get_mut_or_create(voxel::Bounds::new(2, 0, 4, 4)) = TreeBody::Leaf(3);
-    *tree.get_mut_or_create(voxel::Bounds::new(9, 0, 16, 2)) = TreeBody::Leaf(4);
-    *tree.get_mut_or_create(voxel::Bounds::new(9, 0, 16, 2)) = TreeBody::Leaf(5);
+    let mut tree: T<i32> = T::<i32>::new();
+    *tree.get_mut_or_create(voxel::Bounds::new(1, 1, 1, 0)) = TreeBody::<i32>::Leaf(1);
+    *tree.get_mut_or_create(voxel::Bounds::new(8, -8, 4, 0)) = TreeBody::<i32>::Leaf(2);
+    *tree.get_mut_or_create(voxel::Bounds::new(2, 0, 4, 4)) = TreeBody::<i32>::Leaf(3);
+    *tree.get_mut_or_create(voxel::Bounds::new(9, 0, 16, 2)) = TreeBody::<i32>::Leaf(4);
+    *tree.get_mut_or_create(voxel::Bounds::new(9, 0, 16, 2)) = TreeBody::<i32>::Leaf(5);
 
     assert_eq!(tree.get(voxel::Bounds::new(1, 1, 1, 0)), Some(&1));
     assert_eq!(tree.get(voxel::Bounds::new(8, -8, 4, 0)), Some(&2));
@@ -541,7 +512,7 @@ mod tests {
 
   #[test]
   fn wrong_voxel_size_is_not_found() {
-    let mut tree: VoxelTree<i32> = VoxelTree::new();
+    let mut tree: T<i32> = T::<i32>::new();
     *tree.get_mut_or_create(voxel::Bounds::new(4, 4, -4, 1)) = TreeBody::Leaf(1);
     assert_eq!(tree.get(voxel::Bounds::new(4, 4, -4, 0)), None);
     assert_eq!(tree.get(voxel::Bounds::new(4, 4, -4, 2)), None);
@@ -549,7 +520,7 @@ mod tests {
 
   #[test]
   fn grow_is_transparent() {
-    let mut tree: VoxelTree<i32> = VoxelTree::new();
+    let mut tree: T<i32> = T::<i32>::new();
     *tree.get_mut_or_create(voxel::Bounds::new(1, 1, 1, 0)) = TreeBody::Leaf(1);
     tree.grow_to_hold(voxel::Bounds::new(0, 0, 0, 1));
     tree.grow_to_hold(voxel::Bounds::new(0, 0, 0, 2));
@@ -560,7 +531,7 @@ mod tests {
 
   #[test]
   fn simple_cast_ray() {
-    let mut tree: VoxelTree<i32> = VoxelTree::new();
+    let mut tree: T<i32> = T::<i32>::new();
     *tree.get_mut_or_create(voxel::Bounds::new(1, 1, 1, 0)) = TreeBody::Leaf(1);
     *tree.get_mut_or_create(voxel::Bounds::new(4, 4, 4, 0)) = TreeBody::Leaf(2);
 
@@ -576,7 +547,7 @@ mod tests {
 
   #[bench]
   fn simple_inserts(bencher: &mut test::Bencher) {
-    let mut tree: VoxelTree<i32> = VoxelTree::new();
+    let mut tree: T<i32> = T::<i32>::new();
     tree.grow_to_hold(voxel::Bounds::new(0, 0, 0, 30));
     bencher.iter(|| {
       *tree.get_mut_or_create(voxel::Bounds::new(0, 0, 0, 0)) = TreeBody::Leaf(0);
@@ -586,7 +557,7 @@ mod tests {
 
   #[bench]
   fn bench_cast_ray(bencher: &mut test::Bencher) {
-    let mut tree: VoxelTree<i32> = VoxelTree::new();
+    let mut tree: T<i32> = T::<i32>::new();
     tree.grow_to_hold(voxel::Bounds::new(0, 0, 0, 30));
     *tree.get_mut_or_create(voxel::Bounds::new(1, 1, 1, 0)) = TreeBody::Leaf(1);
     *tree.get_mut_or_create(voxel::Bounds::new(4, 4, 4, 0)) = TreeBody::Leaf(2);

@@ -12,6 +12,7 @@ use common::socket::SendSocket;
 
 use player::Player;
 use server::{Client, Server};
+use terrain;
 use voxel;
 use update_gaia::{ServerToGaia, LoadReason};
 
@@ -136,7 +137,7 @@ pub fn apply_client_update<UpdateGaia>(
             &ray,
             &mut |bounds, voxel| {
               match voxel {
-                &voxel::T::Volume(false) => None,
+                &terrain::voxel::T::Volume(false) => None,
                 _ => Some(bounds),
               }
             }
@@ -147,7 +148,7 @@ pub fn apply_client_update<UpdateGaia>(
         let center = bounds.center();
         let r = 4.0;
         let brush =
-          voxel::brush::cube::T {
+          terrain::voxel::brush::cube::T {
             low: center.add_v(&-Vector3::new(r, r, r)),
             high: center.add_v(&Vector3::new(r, r, r)),
           };

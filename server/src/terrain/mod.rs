@@ -15,8 +15,15 @@ use common::lod::LODIndex;
 use common::terrain_block;
 use common::terrain_block::TerrainBlock;
 
-use voxel;
-use voxel::tree::VoxelTree;
+pub mod voxel {
+  pub use ::voxel::impls::surface_vertex::*;
+
+  pub mod tree {
+    pub type T = ::voxel::tree::T<super::T>;
+    pub type TreeBody = ::voxel::tree::TreeBody<super::T>;
+    pub type Branches = ::voxel::tree::Branches<super::T>;
+  }
+}
 
 pub struct MipMesh {
   pub lods: Vec<Option<TerrainBlock>>,
@@ -58,7 +65,7 @@ pub struct Terrain {
   pub heightmap: heightmap::T,
   // all the blocks that have ever been created.
   pub all_blocks: MipMeshMap,
-  pub voxels: VoxelTree,
+  pub voxels: voxel::tree::T,
 }
 
 impl Terrain {
@@ -66,7 +73,7 @@ impl Terrain {
     Terrain {
       heightmap: heightmap::T::new(terrain_seed),
       all_blocks: MipMeshMap::new(),
-      voxels: VoxelTree::new(),
+      voxels: voxel::tree::T::new(),
     }
   }
 
