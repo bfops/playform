@@ -4,7 +4,6 @@
 #![deny(warnings)]
 #![allow(deprecated)]
 
-#![feature(duration)]
 #![feature(iter_cmp)]
 #![feature(main)]
 #![feature(range_inclusive)]

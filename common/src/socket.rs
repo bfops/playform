@@ -12,7 +12,7 @@ pub struct SendSocket {
 }
 
 fn as_millis(duration: Duration) -> isize {
-  (duration.secs() * 1_000) as isize + (duration.extra_nanos() / 1_000_000) as isize
+  (duration.as_secs() * 1_000) as isize + (duration.subsec_nanos() / 1_000_000) as isize
 }
 
 impl SendSocket {

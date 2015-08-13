@@ -3,7 +3,6 @@
 
 //! Data structures and functions shared between server and client.
 
-#![feature(duration)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(range_inclusive)]
