@@ -1,4 +1,4 @@
-use cgmath::{Aabb, Aabb3, Point, Vector, Point3, Vector3, Ray3};
+use cgmath::{Aabb, Point, Vector, Vector3, Ray3};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
@@ -145,7 +145,7 @@ impl<Voxel> TreeBody<Voxel> {
       },
       &mut TreeBody::Empty => {},
       &mut TreeBody::Leaf(ref mut voxel) => {
-        voxel::brush::T::<Brush>::remove(voxel, bounds, brush, brush_bounds);
+        voxel::brush::T::remove(voxel, bounds, brush);
       }
     }
   }

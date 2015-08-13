@@ -3,6 +3,7 @@ mod heightmap;
 
 pub use noise::Seed;
 
+use cgmath::Aabb;
 use std::collections::hash_map::HashMap;
 use std::iter::range_inclusive;
 use std::sync::Mutex;
@@ -19,6 +20,7 @@ pub mod voxel {
   pub use ::voxel::impls::surface_vertex::*;
 
   pub mod tree {
+    pub use ::voxel::tree::TreeBody::*;
     pub type T = ::voxel::tree::T<super::T>;
     pub type TreeBody = ::voxel::tree::TreeBody<super::T>;
     pub type Branches = ::voxel::tree::Branches<super::T>;
@@ -108,7 +110,7 @@ impl Terrain {
     timers: &TimerSet,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
     brush: &Brush,
-    brush_bounds: &voxel::brush::Bounds,
+    brush_bounds: &::voxel::brush::Bounds,
     mut block_changed: F,
   ) where
     F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
@@ -117,8 +119,8 @@ impl Terrain {
     self.voxels.remove(brush, brush_bounds);
 
     macro_rules! block_range(($d:ident) => {{
-      let low = brush_bounds.low.$d >> terrain_block::LG_WIDTH;
-      let high = brush_bounds.high.$d >> terrain_block::LG_WIDTH;
+      let low = brush_bounds.min().$d >> terrain_block::LG_WIDTH;
+      let high = brush_bounds.max().$d >> terrain_block::LG_WIDTH;
       range_inclusive(low, high)
     }});
 

@@ -18,7 +18,7 @@ use voxel;
 pub fn generate_voxel(
   timers: &TimerSet,
   heightmap: &heightmap::T,
-  voxel: &::voxel::brush::Bounds,
+  voxel: &::voxel::Bounds,
 ) -> terrain::voxel::T
 {
   timers.time("generate_voxel", || {
@@ -207,16 +207,16 @@ pub fn generate_block(
       let branch = voxels.get_mut_or_create(bounds);
       let r;
       match branch {
-        &mut terrain::voxel::tree::TreeBody::Leaf(v) => r = v,
-        &mut terrain::voxel::tree::TreeBody::Empty => {
+        &mut terrain::voxel::tree::Leaf(v) => r = v,
+        &mut terrain::voxel::tree::Empty => {
           r = generate_voxel(timers, heightmap, bounds);
-          *branch = terrain::voxel::tree::TreeBody::Leaf(r);
+          *branch = terrain::voxel::tree::Leaf(r);
         },
-        &mut terrain::voxel::tree::TreeBody::Branch(_) => {
+        &mut terrain::voxel::tree::Branch(_) => {
           // Overwrite existing for now.
           // TODO: Don't do ^that.
           r = generate_voxel(timers, heightmap, bounds);
-          *branch = terrain::voxel::tree::TreeBody::Leaf(r);
+          *branch = terrain::voxel::tree::Leaf(r);
         },
       };
       r

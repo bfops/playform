@@ -1,6 +1,4 @@
-use cgmath::{Point, Point3, Vector, EuclideanVector, Vector3};
-use std::cmp::{min, max};
-use std::ops::Neg;
+use cgmath::{Point, Point3, Vector};
 
 use voxel;
 
@@ -15,9 +13,9 @@ pub mod brush;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum T {
   // The voxel is entirely inside or outside the volume. true is inside.
-  pub Volume(bool),
+  Volume(bool),
   // The voxel crosses the surface of the volume.
-  pub Surface(SurfaceStruct),
+  Surface(SurfaceStruct),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -42,10 +40,9 @@ impl<Brush> voxel::brush::T for Brush where Brush: brush::T {
     this: &mut T,
     bounds: &voxel::Bounds,
     brush: &Brush,
-    brush_bounds: &::voxel::brush::Bounds,
   ) {
     let set_leaf = |this: &mut T, corner_inside_surface| {
-      match voxel::brush::T::<Brush>::vertex_in(brush, bounds) {
+      match brush::T::vertex_in(brush, bounds) {
         None => {},
         Some((vertex, normal)) => {
           let size = bounds.size();
