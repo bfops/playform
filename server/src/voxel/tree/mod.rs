@@ -491,53 +491,54 @@ impl<Voxel> T<Voxel> {
 mod tests {
   extern crate test;
 
+  use cgmath::{Ray3, Vector3, Point3};
+
   use voxel;
   use super::{T, TreeBody};
 
   #[test]
   fn insert_and_lookup() {
     let mut tree: T<i32> = T::<i32>::new();
-    *tree.get_mut_or_create(voxel::Bounds::new(1, 1, 1, 0)) = TreeBody::<i32>::Leaf(1);
-    *tree.get_mut_or_create(voxel::Bounds::new(8, -8, 4, 0)) = TreeBody::<i32>::Leaf(2);
-    *tree.get_mut_or_create(voxel::Bounds::new(2, 0, 4, 4)) = TreeBody::<i32>::Leaf(3);
-    *tree.get_mut_or_create(voxel::Bounds::new(9, 0, 16, 2)) = TreeBody::<i32>::Leaf(4);
-    *tree.get_mut_or_create(voxel::Bounds::new(9, 0, 16, 2)) = TreeBody::<i32>::Leaf(5);
+    *tree.get_mut_or_create(&voxel::Bounds::new(1, 1, 1, 0)) = TreeBody::Leaf(1);
+    *tree.get_mut_or_create(&voxel::Bounds::new(8, -8, 4, 0)) = TreeBody::Leaf(2);
+    *tree.get_mut_or_create(&voxel::Bounds::new(2, 0, 4, 4)) = TreeBody::Leaf(3);
+    *tree.get_mut_or_create(&voxel::Bounds::new(9, 0, 16, 2)) = TreeBody::Leaf(4);
+    *tree.get_mut_or_create(&voxel::Bounds::new(9, 0, 16, 2)) = TreeBody::Leaf(5);
 
-    assert_eq!(tree.get(voxel::Bounds::new(1, 1, 1, 0)), Some(&1));
-    assert_eq!(tree.get(voxel::Bounds::new(8, -8, 4, 0)), Some(&2));
-    assert_eq!(tree.get(voxel::Bounds::new(9, 0, 16, 2)), Some(&5));
+    assert_eq!(tree.get(&voxel::Bounds::new(1, 1, 1, 0)), Some(&1));
+    assert_eq!(tree.get(&voxel::Bounds::new(8, -8, 4, 0)), Some(&2));
+    assert_eq!(tree.get(&voxel::Bounds::new(9, 0, 16, 2)), Some(&5));
 
-    assert_eq!(tree.get(voxel::Bounds::new(2, 0, 4, 4)), None);
+    assert_eq!(tree.get(&voxel::Bounds::new(2, 0, 4, 4)), None);
   }
 
   #[test]
   fn wrong_voxel_size_is_not_found() {
     let mut tree: T<i32> = T::<i32>::new();
-    *tree.get_mut_or_create(voxel::Bounds::new(4, 4, -4, 1)) = TreeBody::Leaf(1);
-    assert_eq!(tree.get(voxel::Bounds::new(4, 4, -4, 0)), None);
-    assert_eq!(tree.get(voxel::Bounds::new(4, 4, -4, 2)), None);
+    *tree.get_mut_or_create(&voxel::Bounds::new(4, 4, -4, 1)) = TreeBody::Leaf(1);
+    assert_eq!(tree.get(&voxel::Bounds::new(4, 4, -4, 0)), None);
+    assert_eq!(tree.get(&voxel::Bounds::new(4, 4, -4, 2)), None);
   }
 
   #[test]
   fn grow_is_transparent() {
     let mut tree: T<i32> = T::<i32>::new();
-    *tree.get_mut_or_create(voxel::Bounds::new(1, 1, 1, 0)) = TreeBody::Leaf(1);
-    tree.grow_to_hold(voxel::Bounds::new(0, 0, 0, 1));
-    tree.grow_to_hold(voxel::Bounds::new(0, 0, 0, 2));
-    tree.grow_to_hold(voxel::Bounds::new(-32, 32, -128, 3));
+    *tree.get_mut_or_create(&voxel::Bounds::new(1, 1, 1, 0)) = TreeBody::Leaf(1);
+    tree.grow_to_hold(&voxel::Bounds::new(0, 0, 0, 1));
+    tree.grow_to_hold(&voxel::Bounds::new(0, 0, 0, 2));
+    tree.grow_to_hold(&voxel::Bounds::new(-32, 32, -128, 3));
 
-    assert_eq!(tree.get(voxel::Bounds::new(1, 1, 1, 0)), Some(&1));
+    assert_eq!(tree.get(&voxel::Bounds::new(1, 1, 1, 0)), Some(&1));
   }
 
   #[test]
   fn simple_cast_ray() {
     let mut tree: T<i32> = T::<i32>::new();
-    *tree.get_mut_or_create(voxel::Bounds::new(1, 1, 1, 0)) = TreeBody::Leaf(1);
-    *tree.get_mut_or_create(voxel::Bounds::new(4, 4, 4, 0)) = TreeBody::Leaf(2);
+    *tree.get_mut_or_create(&voxel::Bounds::new(1, 1, 1, 0)) = TreeBody::Leaf(1);
+    *tree.get_mut_or_create(&voxel::Bounds::new(4, 4, 4, 0)) = TreeBody::Leaf(2);
 
     let actual = tree.cast_ray(
-      [4.5, 3.0, 4.5],
-      [0.1, 0.8, 0.1],
+      &Ray3::new(Point3::new(4.5, 3.0, 4.5), Vector3::new(0.1, 0.8, 0.1)),
       // Return the first voxel we hit.
       &mut |bounds, v| Some((bounds, v)),
     );
@@ -548,9 +549,9 @@ mod tests {
   #[bench]
   fn simple_inserts(bencher: &mut test::Bencher) {
     let mut tree: T<i32> = T::<i32>::new();
-    tree.grow_to_hold(voxel::Bounds::new(0, 0, 0, 30));
+    tree.grow_to_hold(&voxel::Bounds::new(0, 0, 0, 30));
     bencher.iter(|| {
-      *tree.get_mut_or_create(voxel::Bounds::new(0, 0, 0, 0)) = TreeBody::Leaf(0);
+      *tree.get_mut_or_create(&voxel::Bounds::new(0, 0, 0, 0)) = TreeBody::Leaf(0);
     });
     test::black_box(tree);
   }
@@ -558,14 +559,13 @@ mod tests {
   #[bench]
   fn bench_cast_ray(bencher: &mut test::Bencher) {
     let mut tree: T<i32> = T::<i32>::new();
-    tree.grow_to_hold(voxel::Bounds::new(0, 0, 0, 30));
-    *tree.get_mut_or_create(voxel::Bounds::new(1, 1, 1, 0)) = TreeBody::Leaf(1);
-    *tree.get_mut_or_create(voxel::Bounds::new(4, 4, 4, 0)) = TreeBody::Leaf(2);
+    tree.grow_to_hold(&voxel::Bounds::new(0, 0, 0, 30));
+    *tree.get_mut_or_create(&voxel::Bounds::new(1, 1, 1, 0)) = TreeBody::Leaf(1);
+    *tree.get_mut_or_create(&voxel::Bounds::new(4, 4, 4, 0)) = TreeBody::Leaf(2);
 
     bencher.iter(|| {
       let r = tree.cast_ray(
-        [4.5, 3.0, 4.5],
-        [0.1, 0.8, 0.1],
+        &Ray3::new(Point3::new(4.5, 3.0, 4.5), Vector3::new(0.1, 0.8, 0.1)),
         // Return the first voxel we hit.
         &mut |bounds, v| Some((bounds, v)),
       );
