@@ -257,8 +257,9 @@ pub fn generate_block(
         d_neighbor, // Vector to the neighbor to make an edge toward.
         d1, d2,     // Vector to the voxels adjacent to the edge.
       | {
+        let neighbor_position = voxel_position.add_v(&d_neighbor);
         let neighbor_inside_surface;
-        match get_voxel(&bounds_at(&voxel_position.add_v(&d_neighbor))) {
+        match get_voxel(&bounds_at(&neighbor_position)) {
           terrain::voxel::T::Surface(v) => neighbor_inside_surface = v.corner_inside_surface,
           terrain::voxel::T::Volume(inside) => neighbor_inside_surface = inside,
         }
@@ -292,7 +293,7 @@ pub fn generate_block(
                     (vertex, normal, i)
                   },
                   voxel => {
-                    panic!("Unexpected neighbor {:?}", voxel)
+                    panic!("Unexpected neighbor {:?} at {:?}", voxel, bounds)
                   }
                 }
               },
