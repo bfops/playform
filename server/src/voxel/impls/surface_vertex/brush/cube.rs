@@ -70,7 +70,7 @@ impl SegmentOverlap {
 }
 
 impl super::T for T {
-  fn vertex_in(this: &Self, voxel: &voxel::Bounds) -> Option<(voxel::Vertex, voxel::Normal)> {
+  fn intersect(this: &Self, voxel: &voxel::Bounds) -> super::Intersection {
     let (low, high) = voxel.corners();
 
     let mut touches_surface = false;
@@ -78,7 +78,7 @@ impl super::T for T {
     macro_rules! in1D(($d:ident) => {{
       match SegmentOverlap::of(low.$d, high.$d, this.low.$d, this.high.$d) {
         SegmentOverlap::None => {
-          return None
+          return super::Intersection::Outside
         },
         SegmentOverlap::FirstContainsSecond => {
           panic!("FirstContainsSecond");
@@ -103,12 +103,12 @@ impl super::T for T {
     let (z, nz) = in1D!(z);
 
     if !touches_surface {
-      return None;
+      return super::Intersection::Inside;
     }
 
     let vtx = voxel::Vertex::of_world_vertex_in(&Point3::new(x, y, z), voxel);
     let normal = voxel::Normal::of_float_normal(&Vector3::new(nx, ny, nz).normalize());
 
-    Some((vtx, normal))
+    super::Intersection::Crosses(vtx, normal)
   }
 }

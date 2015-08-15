@@ -1,10 +1,18 @@
 use voxel;
 
 pub mod cube;
-pub mod sphere;
+
+pub enum Intersection {
+  /// The voxel is entirely outside the brush.
+  Outside,
+  /// The voxel is entirely inside the brush.
+  Inside,
+  /// The voxel crosses the brush surface.
+  Crosses (voxel::Vertex, voxel::Normal),
+}
 
 /// Fields that can act as voxel brushes.
 pub trait T: voxel::field::T {
   /// Get a "representative" vertex for some voxel.
-  fn vertex_in(&Self, bounds: &voxel::Bounds) -> Option<(voxel::Vertex, voxel::Normal)>;
+  fn intersect(&Self, bounds: &voxel::Bounds) -> Intersection;
 }

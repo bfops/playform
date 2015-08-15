@@ -42,9 +42,12 @@ impl<Brush> voxel::brush::T for Brush where Brush: brush::T {
     brush: &Brush,
   ) {
     let set_leaf = |this: &mut T, corner_inside_surface| {
-      match brush::T::vertex_in(brush, bounds) {
-        None => {},
-        Some((vertex, normal)) => {
+      match brush::T::intersect(brush, bounds) {
+        brush::Intersection::Outside => {},
+        brush::Intersection::Inside => {
+          *this = T::Volume(false);
+        },
+        brush::Intersection::Crosses(vertex, normal) => {
           let size = bounds.size();
           let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
           let low = low.mul_s(size);
