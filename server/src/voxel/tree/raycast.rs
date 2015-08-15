@@ -29,7 +29,7 @@ pub struct Entry {
 impl Entry {
   pub fn from_exit(exit: Exit) -> Entry {
     Entry {
-      side: 
+      side:
         if exit.side < 3 {
           exit.side + 3
         } else {
@@ -39,7 +39,7 @@ impl Entry {
     }
   }
 }
- 
+
 #[derive(Debug, Copy, Clone)]
 /// Information about a ray exit a voxel.
 pub struct Exit {
@@ -106,44 +106,44 @@ pub fn cast_ray<'a, Voxel, Act, R>(
     },
     &TreeBody::Branch { ref data, ref branches } => {
       match data {
-        &None => {},
         &Some(ref voxel) => {
           if let Some(r) = act(bounds, voxel) {
             return Ok(r)
           }
         },
+        &None => {
+          let mid = bounds.center();
+
+          let mut make_bounds = |coords: [usize; 3]| {
+            let mut bounds = bounds;
+            bounds.lg_size -= 1;
+            bounds.x <<= 1;
+            bounds.y <<= 1;
+            bounds.z <<= 1;
+            bounds.x += coords[0] as i32;
+            bounds.y += coords[1] as i32;
+            bounds.z += coords[2] as i32;
+            bounds
+          };
+
+          let entry_toi = entry.map(|entry| entry.toi.0).unwrap_or(0.0);
+          let intersect = ray.origin.add_v(&ray.direction.mul_s(entry_toi));
+          let coords = [
+            if intersect.x >= mid.x {1} else {0},
+            if intersect.y >= mid.y {1} else {0},
+            if intersect.z >= mid.z {1} else {0},
+          ];
+
+          return cast_ray_branches(
+            branches,
+            ray,
+            entry,
+            coords,
+            &mut make_bounds,
+            act,
+          )
+        },
       }
-
-      let mid = bounds.center();
-
-      let mut make_bounds = |coords: [usize; 3]| {
-        let mut bounds = bounds;
-        bounds.lg_size -= 1;
-        bounds.x <<= 1;
-        bounds.y <<= 1;
-        bounds.z <<= 1;
-        bounds.x += coords[0] as i32;
-        bounds.y += coords[1] as i32;
-        bounds.z += coords[2] as i32;
-        bounds
-      };
-
-      let entry_toi = entry.map(|entry| entry.toi.0).unwrap_or(0.0);
-      let intersect = ray.origin.add_v(&ray.direction.mul_s(entry_toi));
-      let coords = [
-        if intersect.x >= mid.x {1} else {0},
-        if intersect.y >= mid.y {1} else {0},
-        if intersect.z >= mid.z {1} else {0},
-      ];
-
-      return cast_ray_branches(
-        branches,
-        ray,
-        entry,
-        coords,
-        &mut make_bounds,
-        act,
-      )
     }
   };
 
