@@ -207,16 +207,24 @@ pub fn generate_block(
       let branch = voxels.get_mut_or_create(bounds);
       let r;
       match branch {
-        &mut terrain::voxel::tree::Leaf(v) => r = v,
         &mut terrain::voxel::tree::Empty => {
           r = generate_voxel(timers, heightmap, bounds);
-          *branch = terrain::voxel::tree::Leaf(r);
+          *branch =
+            terrain::voxel::tree::Branch {
+              data: Some(r),
+              branches: Box::new(terrain::voxel::tree::Branches::empty()),
+            };
         },
-        &mut terrain::voxel::tree::Branch(_) => {
-          // Overwrite existing for now.
-          // TODO: Don't do ^that.
-          r = generate_voxel(timers, heightmap, bounds);
-          *branch = terrain::voxel::tree::Leaf(r);
+        &mut terrain::voxel::tree::Branch { ref mut data, branches: _ }  => {
+          match data {
+            &mut None => {
+              r = generate_voxel(timers, heightmap, bounds);
+              *data = Some(r);
+            },
+            &mut Some(ref data) => {
+              r = *data;
+            },
+          }
         },
       };
       r

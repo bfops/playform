@@ -1,5 +1,4 @@
 use cgmath::{Aabb, Point, Vector, Vector3, Ray3};
-use std;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
@@ -37,8 +36,10 @@ pub struct Branches<Voxel> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum TreeBody<Voxel> {
   Empty,
-  Leaf(Voxel),
-  Branch(Box<Branches<Voxel>>),
+  Branch {
+    data: Option<Voxel>,
+    branches: Box<Branches<Voxel>>,
+  },
 }
 
 impl<Voxel> Branches<Voxel> {
@@ -126,7 +127,14 @@ impl<Voxel> TreeBody<Voxel> {
     }
 
     match self {
-      &mut TreeBody::Branch(ref mut branches) => {
+      &mut TreeBody::Branch { ref mut data, ref mut branches } => {
+        match data {
+          &mut None => {},
+          &mut Some(ref mut voxel) => {
+            voxel::brush::T::remove(voxel, bounds, brush);
+          },
+        }
+
         // Bounds of the lowest branch
         let bounds = voxel::Bounds::new(bounds.x << 1, bounds.y << 1, bounds.z << 1, bounds.lg_size - 1);
 
@@ -145,9 +153,6 @@ impl<Voxel> TreeBody<Voxel> {
         recurse!(hhh, |b: &mut voxel::Bounds| {b.x += 1; b.y += 1; b.z += 1});
       },
       &mut TreeBody::Empty => {},
-      &mut TreeBody::Leaf(ref mut voxel) => {
-        voxel::brush::T::remove(voxel, bounds, brush);
-      }
     }
   }
 }
@@ -216,7 +221,10 @@ impl<Voxel> T<Voxel> {
         ($c_idx:ident, $b_idx:ident) => {{
           let mut branches = Branches::<Voxel>::empty();
           branches.$b_idx = contents.$c_idx;
-          TreeBody::Branch(Box::new(branches))
+          TreeBody::Branch {
+            data: None,
+            branches: Box::new(branches),
+          }
         }}
       );
 
@@ -354,30 +362,18 @@ impl<Voxel> T<Voxel> {
   ) -> &'a mut Branches<Voxel> {
     // "Step down" the tree.
     match *branch {
-      // Branches<Voxel>; we can go straight to the branching logic.
-      TreeBody::Branch(ref mut b) => b,
-
-      // Otherwise, keep going, but we need to insert a voxel inside the
-      // space occupied by the current branch.
+      // Branches: we can go straight to the branching logic.
+      TreeBody::Branch { data: _, ref mut branches } => branches,
 
       TreeBody::Empty => {
         // Replace this branch with 8 empty sub-branches - who's gonna notice?
-        *branch = TreeBody::Branch(Box::new(Branches::<Voxel>::empty()));
+        *branch = TreeBody::Branch {
+          data: None,
+          branches: Box::new(Branches::<Voxel>::empty()),
+        };
 
         match *branch {
-          TreeBody::Branch(ref mut b) => b,
-          _ => unreachable!(),
-        }
-      },
-      TreeBody::Leaf(_) => {
-        // Erase this leaf and replace it with 8 empty sub-branches.
-        // This behavior is pretty debatable, but we need to do something,
-        // and it's easier to debug accidentally replacing a big chunk
-        // with a smaller one than to debug a nop.
-        *branch = TreeBody::Branch(Box::new(Branches::<Voxel>::empty()));
-
-        match *branch {
-          TreeBody::Branch(ref mut b) => b,
+          TreeBody::Branch { ref mut branches, data: _ } => branches,
           _ => unreachable!(),
         }
       },
@@ -393,13 +389,13 @@ impl<Voxel> T<Voxel> {
 
     let get_step = |branch| {
       match branch {
-        &TreeBody::Branch(ref branches) => Ok(branches.deref()),
+        &TreeBody::Branch { ref branches, data: _ } => Ok(branches.deref()),
         _ => Err(()),
       }
     };
 
     match self.find(voxel, get_step) {
-      Ok(&TreeBody::Leaf(ref t)) => Some(t),
+      Ok(&TreeBody::Branch { ref data, branches: _ }) => data.as_ref(),
       _ => None,
     }
   }
@@ -413,13 +409,13 @@ impl<Voxel> T<Voxel> {
 
     let get_step = |branch| {
       match branch {
-        &mut TreeBody::Branch(ref mut branches) => Ok(branches.deref_mut()),
+        &mut TreeBody::Branch { ref mut branches, data: _ } => Ok(branches.deref_mut()),
         _ => Err(()),
       }
     };
 
     match self.find_mut(voxel, get_step) {
-      Ok(&mut TreeBody::Leaf(ref mut t)) => Some(t),
+      Ok(&mut TreeBody::Branch { ref mut data, branches: _ }) => data.as_mut(),
       _ => None,
     }
   }

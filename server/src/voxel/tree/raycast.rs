@@ -104,14 +104,16 @@ pub fn cast_ray<'a, Voxel, Act, R>(
     &TreeBody::Empty => {
       // We pass through empty voxels; fall through.
     },
-    &TreeBody::Leaf(ref leaf) => {
-      if let Some(r) = act(bounds, leaf) {
-        return Ok(r)
+    &TreeBody::Branch { ref data, ref branches } => {
+      match data {
+        &None => {},
+        &Some(ref voxel) => {
+          if let Some(r) = act(bounds, voxel) {
+            return Ok(r)
+          }
+        },
       }
 
-      // No return value for this voxel; fall through.
-    },
-    &TreeBody::Branch(ref b) => {
       let mid = bounds.center();
 
       let mut make_bounds = |coords: [usize; 3]| {
@@ -135,7 +137,7 @@ pub fn cast_ray<'a, Voxel, Act, R>(
       ];
 
       return cast_ray_branches(
-        b,
+        branches,
         ray,
         entry,
         coords,
