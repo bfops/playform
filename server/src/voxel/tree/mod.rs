@@ -1,4 +1,5 @@
 use cgmath::{Aabb, Point, Vector, Vector3, Ray3};
+use std;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
@@ -494,7 +495,45 @@ mod tests {
   use cgmath::{Ray3, Vector3, Point3};
 
   use voxel;
-  use super::{T, TreeBody};
+  use super::{T, Branches, TreeBody};
+
+  #[derive(Debug)]
+  struct EraseAll;
+
+  impl voxel::brush::T for EraseAll {
+    type Voxel = i32;
+
+    fn remove(this: &mut i32, _: &voxel::Bounds, _: &EraseAll) {
+      *this = 999;
+    }
+  }
+
+  #[test]
+  fn simple_lookup() {
+    let tree: T<i32> =
+      T {
+        lg_size: 0,
+        contents: Branches {
+          lll: TreeBody::Leaf(0),
+          llh: TreeBody::Leaf(1),
+          lhl: TreeBody::Leaf(2),
+          lhh: TreeBody::Leaf(3),
+          hll: TreeBody::Leaf(4),
+          hlh: TreeBody::Leaf(5),
+          hhl: TreeBody::Leaf(6),
+          hhh: TreeBody::Leaf(7),
+        },
+      };
+
+    assert_eq!(tree.get(&voxel::Bounds::new(-1, -1, -1, 0)), Some(&0));
+    assert_eq!(tree.get(&voxel::Bounds::new(-1, -1,  0, 0)), Some(&1));
+    assert_eq!(tree.get(&voxel::Bounds::new(-1,  0, -1, 0)), Some(&2));
+    assert_eq!(tree.get(&voxel::Bounds::new(-1,  0,  0, 0)), Some(&3));
+    assert_eq!(tree.get(&voxel::Bounds::new( 0, -1, -1, 0)), Some(&4));
+    assert_eq!(tree.get(&voxel::Bounds::new( 0, -1,  0, 0)), Some(&5));
+    assert_eq!(tree.get(&voxel::Bounds::new( 0,  0, -1, 0)), Some(&6));
+    assert_eq!(tree.get(&voxel::Bounds::new( 0,  0,  0, 0)), Some(&7));
+  }
 
   #[test]
   fn insert_and_lookup() {
@@ -544,6 +583,22 @@ mod tests {
     );
 
     assert_eq!(actual, Some((voxel::Bounds::new(4, 4, 4, 0), &2)));
+  }
+
+  #[test]
+  fn simple_remove() {
+    let mut tree: T<i32> = T::new();
+    *tree.get_mut_or_create(&voxel::Bounds::new(9, -1, 3, 0)) = TreeBody::Leaf(1);
+
+    tree.remove(
+      &EraseAll,
+      &voxel::brush::Bounds::new(
+        Point3::new(9, -1, 3),
+        Point3::new(10, 0, 4),
+      )
+    );
+
+    assert_eq!(tree.get(&voxel::Bounds::new(9, -1, 3, 0)), Some(&999));
   }
 
   #[bench]
