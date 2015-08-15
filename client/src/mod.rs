@@ -4,7 +4,6 @@
 #![deny(warnings)]
 #![allow(deprecated)]
 
-#![feature(duration)]
 #![feature(main)]
 #![feature(scoped)]
 #![feature(test)]
