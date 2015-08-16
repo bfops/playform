@@ -1,4 +1,6 @@
-use voxel;
+mod voxel {
+  pub use super::super::*;
+}
 
 pub mod cube;
 
@@ -12,7 +14,7 @@ pub enum Intersection {
 }
 
 /// Fields that can act as voxel brushes.
-pub trait T: voxel::field::T {
+pub trait T: ::voxel::field::T {
   /// Get a "representative" vertex for some voxel.
-  fn intersect(&Self, bounds: &voxel::Bounds) -> Intersection;
+  fn intersect(&Self, bounds: &::voxel::Bounds) -> Intersection;
 }

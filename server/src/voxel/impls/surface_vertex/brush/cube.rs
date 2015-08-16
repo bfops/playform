@@ -1,6 +1,8 @@
 use cgmath::{Point3, Vector3, EuclideanVector};
 
-use voxel;
+mod voxel {
+  pub use super::super::super::*;
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct T {
@@ -10,7 +12,7 @@ pub struct T {
 
 unsafe impl Send for T {}
 
-impl voxel::field::T for T {
+impl ::voxel::field::T for T {
   fn density_at(this: &Self, p: &Point3<f32>) -> f32 {
     (p.x - this.low.x) * (this.high.x - p.x) *
     (p.y - this.low.y) * (this.high.y - p.y) *
@@ -69,8 +71,8 @@ impl SegmentOverlap {
   }
 }
 
-impl super::T for T {
-  fn intersect(this: &Self, voxel: &voxel::Bounds) -> super::Intersection {
+impl voxel::brush::T for T {
+  fn intersect(this: &Self, voxel: &::voxel::Bounds) -> voxel::brush::Intersection {
     let (low, high) = voxel.corners();
 
     let mut touches_surface = false;
@@ -78,7 +80,7 @@ impl super::T for T {
     macro_rules! in1D(($d:ident) => {{
       match SegmentOverlap::of(low.$d, high.$d, this.low.$d, this.high.$d) {
         SegmentOverlap::None => {
-          return super::Intersection::Outside
+          return voxel::brush::Intersection::Outside
         },
         SegmentOverlap::FirstContainsSecond => {
           panic!("FirstContainsSecond");

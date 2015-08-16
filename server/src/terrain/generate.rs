@@ -102,17 +102,17 @@ pub fn generate_voxel(
 
     let vertex = vertex.div_s(n);
     let vertex =
-      voxel::Vertex {
-        x: voxel::Fracu8::of(vertex.x as u8),
-        y: voxel::Fracu8::of(vertex.y as u8),
-        z: voxel::Fracu8::of(vertex.z as u8),
+      terrain::voxel::Vertex {
+        x: terrain::voxel::Fracu8::of(vertex.x as u8),
+        y: terrain::voxel::Fracu8::of(vertex.y as u8),
+        z: terrain::voxel::Fracu8::of(vertex.z as u8),
       };
 
     let normal;
     {
       // Okay, this is silly to have right after we construct the vertex.
       let vertex = vertex.to_world_vertex(voxel);
-      normal = voxel::Normal::of_float_normal(&voxel::field::T::normal_at(heightmap, 0.01, &vertex));
+      normal = terrain::voxel::Normal::of_float_normal(&voxel::field::T::normal_at(heightmap, 0.01, &vertex));
     }
 
     terrain::voxel::T::Surface(terrain::voxel::SurfaceStruct {
