@@ -92,9 +92,11 @@ impl voxel::brush::T for T {
         SegmentOverlap::Partial(_, surface_point) => {
           touches_surface = true;
           if surface_point == this.low.$d {
+            (surface_point, -1.0)
+          } else if surface_point == this.high.$d {
             (surface_point, 1.0)
           } else {
-            (surface_point, -1.0)
+            panic!("SegmentOverlap::Partial matches no inputs");
           }
         },
       }
@@ -108,8 +110,11 @@ impl voxel::brush::T for T {
       return super::Intersection::Inside;
     }
 
-    let vtx = voxel::Vertex::of_world_vertex_in(&Point3::new(x, y, z), voxel);
-    let normal = voxel::Normal::of_float_normal(&Vector3::new(nx, ny, nz).normalize());
+    let vtx = Point3::new(x, y, z);
+    let normal = Vector3::new(nx, ny, nz);
+
+    let vtx = voxel::Vertex::of_world_vertex_in(&vtx, voxel);
+    let normal = voxel::Normal::of_float_normal(&normal.normalize());
 
     super::Intersection::Crosses(vtx, normal)
   }
