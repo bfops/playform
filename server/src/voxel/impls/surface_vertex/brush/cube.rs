@@ -116,6 +116,6 @@ impl voxel::brush::T for T {
     let vtx = voxel::Vertex::of_world_vertex_in(&vtx, voxel);
     let normal = voxel::Normal::of_float_normal(&normal.normalize());
 
-    super::Intersection::Crosses(vtx, normal)
+    voxel::brush::Intersection::Crosses(vtx, normal)
   }
 }

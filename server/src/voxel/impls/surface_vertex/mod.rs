@@ -88,7 +88,7 @@ pub struct Vertex {
 
 impl Vertex {
   pub fn of_world_vertex_in(vertex: &Point3<f32>, voxel: &voxel::Bounds) -> Vertex {
-    assert!(voxel.contains(vertex));
+    assert!(voxel.contains(vertex), "{:?} does not contain {:?}", voxel, vertex);
 
     let local = vertex.sub_p(&voxel.low_corner());
     let local = local.mul_s(256.0);
