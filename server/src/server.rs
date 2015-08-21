@@ -2,7 +2,7 @@ use cgmath::{Aabb3, Point3};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::sync::mpsc::Sender;
-use std::thread::JoinGuard;
+use thread_scoped;
 use time;
 
 use common::communicate::{ServerToClient, ClientId};
@@ -23,7 +23,7 @@ const SUN_TICK_NS: u64 = 32000000;
 
 pub struct Client {
   pub sender: Sender<Option<ServerToClient>>,
-  pub thread: JoinGuard<'static, ()>,
+  pub thread: thread_scoped::JoinGuard<'static, ()>,
 }
 
 // TODO: Audit for s/Mutex/RwLock.

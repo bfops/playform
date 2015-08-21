@@ -10,6 +10,7 @@ dependencies = [
  "playform-common 0.0.0",
  "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
+ "thread-scoped 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -156,6 +157,11 @@ dependencies = [
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "thread-scoped"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "time"

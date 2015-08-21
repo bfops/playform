@@ -2,12 +2,10 @@
 
 #![deny(missing_docs)]
 #![deny(warnings)]
-#![allow(deprecated)]
 
 #![feature(iter_cmp)]
 #![feature(main)]
 #![feature(range_inclusive)]
-#![feature(scoped)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 
@@ -21,6 +19,7 @@ extern crate num;
 extern crate rand;
 extern crate stopwatch;
 extern crate test;
+extern crate thread_scoped;
 extern crate time;
 
 mod client_recv_thread;

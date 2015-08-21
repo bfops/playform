@@ -2,8 +2,8 @@ use cgmath::{Point, Point3, Vector3, Aabb3};
 use std::convert::AsRef;
 use std::f32::consts::PI;
 use std::sync::mpsc::channel;
-use std::thread;
 use std::time::Duration;
+use thread_scoped;
 
 use common::communicate::{ClientToServer, ServerToClient};
 use common::serialize;
@@ -33,8 +33,8 @@ pub fn apply_client_update<UpdateGaia>(
       info!("Sending to {}.", client_url);
 
       let (to_client_send, to_client_recv) = channel();
-      let client_thread = {
-        thread::scoped(move || {
+      let client_thread = unsafe {
+        thread_scoped::scoped(move || {
           let mut socket = SendSocket::new(client_url.as_ref(), Some(Duration::from_secs(30)));
           while let Some(msg) = to_client_recv.recv().unwrap() {
             // TODO: Don't do this allocation on every packet!

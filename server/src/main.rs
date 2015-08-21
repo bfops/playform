@@ -5,6 +5,7 @@ use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Mutex;
 use std::thread;
 use stopwatch::TimerSet;
+use thread_scoped;
 use time;
 
 use common::serialize as binary;
@@ -70,9 +71,9 @@ fn main() {
   let listen_thread_recv = Mutex::new(listen_thread_recv);
   let gaia_thread_recv = Mutex::new(gaia_thread_recv);
 
-  let _listen_thread = {
+  let _listen_thread = unsafe {
     let listen_thread_send = listen_thread_send.clone();
-    thread::scoped(move || {
+    thread_scoped::scoped(move || {
       let mut socket = ReceiveSocket::new(listen_url.as_ref(), None);
       loop {
         let msg = socket.read();
@@ -102,10 +103,10 @@ fn main() {
 
   let mut threads = Vec::new();
 
-  {
+  unsafe {
     let gaia_thread_send = gaia_thread_send.clone();
     let listen_thread_recv = &listen_thread_recv;
-    threads.push(thread::scoped(move || {
+    threads.push(thread_scoped::scoped(move || {
       let timers = TimerSet::new();
       let timers = &timers;
 

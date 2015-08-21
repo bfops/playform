@@ -13,6 +13,7 @@ env_logger= "*"
 log = "*"
 num = "*"
 rand = "*"
+thread-scoped = "*"
 time = "*"
 
 [dependencies.playform-common]
