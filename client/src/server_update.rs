@@ -1,5 +1,5 @@
 use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
-use std::cmp::partial_max;
+use std::f32;
 use std::f32::consts::PI;
 
 use common::color::{Color3, Color4};
@@ -78,7 +78,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
         }
       ));
 
-      let ambient_light = partial_max(0.4, s / 2.0).unwrap();
+      let ambient_light = f32::max(0.4, s / 2.0);
 
       update_view(ClientToView::SetAmbientLight(
         Color3::of_rgb(

@@ -17,6 +17,7 @@ env_logger= "*"
 libc = "*"
 log = "*"
 num = "*"
+thread-scoped = "*"
 time = "*"
 
 [dependencies.playform-common]

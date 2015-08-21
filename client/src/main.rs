@@ -4,6 +4,7 @@ use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
+use thread_scoped;
 
 use common::communicate::{ClientToServer, ServerToClient};
 use common::serialize;
@@ -120,20 +121,22 @@ fn main() {
       let view_thread_send = view_thread_send.clone();
       let server_send_thread_send = server_send_thread_send.clone();
       let terrain_blocks_send = terrain_blocks_send.clone();
-      thread::scoped(move || {
-        update_thread(
-          quit,
-          client,
-          &mut || {
-            try_recv(server_recv_thread_recv)
-              .map(|msg| serialize::decode(msg.as_ref()).unwrap())
-          },
-          &mut || { try_recv(terrain_blocks_recv) },
-          &mut |up| { view_thread_send.send(up).unwrap() },
-	        &mut |up| { server_send_thread_send.send(Some(up)).unwrap() },
-          &mut |block| { terrain_blocks_send.send(block).unwrap() },
-        )
-      })
+      unsafe {
+        thread_scoped::scoped(move || {
+          update_thread(
+            quit,
+            client,
+            &mut || {
+              try_recv(server_recv_thread_recv)
+                .map(|msg| serialize::decode(msg.as_ref()).unwrap())
+            },
+            &mut || { try_recv(terrain_blocks_recv) },
+            &mut |up| { view_thread_send.send(up).unwrap() },
+  	        &mut |up| { server_send_thread_send.send(Some(up)).unwrap() },
+            &mut |block| { terrain_blocks_send.send(block).unwrap() },
+          )
+        })
+      }
     };
 
     {
