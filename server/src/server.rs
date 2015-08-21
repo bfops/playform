@@ -19,7 +19,7 @@ use sun::Sun;
 use terrain_loader::TerrainLoader;
 
 const UPDATES_PER_SECOND: u64 = 30;
-const SUN_TICK_NS: u64 = 5000000;
+const SUN_TICK_NS: u64 = 32000000;
 
 pub struct Client {
   pub sender: Sender<Option<ServerToClient>>,
