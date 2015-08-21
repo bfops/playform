@@ -108,7 +108,7 @@ fn mouse_press<UpdateServer>(
     match mouse_btn {
       Mouse::Right => {
         update_server(
-          ClientToServer::RemoveVoxel(Copyable(player_id))
+          ClientToServer::Remove(Copyable(player_id))
         );
       }
       _ => {},

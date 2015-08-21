@@ -1,9 +1,8 @@
-use cgmath::Ray3;
+use cgmath::{Point, Vector, Ray3};
 use std::cmp::Ordering;
 
 use voxel;
-use voxel::Voxel;
-use voxel_tree::{TreeBody, Branches};
+use voxel::tree::{TreeBody, Branches};
 
 // Time-of-intersection. Implements `Ord` for sanity reasons;
 // let's hope the floating-points are all valid.
@@ -30,7 +29,7 @@ pub struct Entry {
 impl Entry {
   pub fn from_exit(exit: Exit) -> Entry {
     Entry {
-      side: 
+      side:
         if exit.side < 3 {
           exit.side + 3
         } else {
@@ -40,7 +39,7 @@ impl Entry {
     }
   }
 }
- 
+
 #[derive(Debug, Copy, Clone)]
 /// Information about a ray exit a voxel.
 pub struct Exit {
@@ -53,8 +52,8 @@ pub struct Exit {
 // TODO: Audit all the divisions for divide-by-zeros.
 
 #[inline]
-pub fn cast_ray_branches<'a, MakeBounds, Act, R>(
-  this: &'a Branches,
+pub fn cast_ray_branches<'a, Voxel, MakeBounds, Act, R>(
+  this: &'a Branches<Voxel>,
   ray: &Ray3<f32>,
   mut entry: Option<Entry>,
   mut coords: [usize; 3],
@@ -66,7 +65,7 @@ pub fn cast_ray_branches<'a, MakeBounds, Act, R>(
     Act: FnMut(voxel::Bounds, &'a Voxel) -> Option<R>,
 {
   loop {
-    let child = this.get(coords[0], coords[1], coords[2]);
+    let child = &this.as_array()[coords[0]][coords[1]][coords[2]];
     let bounds = make_bounds(coords);
 
     match cast_ray(child, ray, bounds, entry, act) {
@@ -91,8 +90,8 @@ pub fn cast_ray_branches<'a, MakeBounds, Act, R>(
 }
 
 /// Precondition: the ray passes through `this`.
-pub fn cast_ray<'a, Act, R>(
-  this: &'a TreeBody,
+pub fn cast_ray<'a, Voxel, Act, R>(
+  this: &'a TreeBody<Voxel>,
   ray: &Ray3<f32>,
   bounds: voxel::Bounds,
   entry: Option<Entry>,
@@ -105,52 +104,46 @@ pub fn cast_ray<'a, Act, R>(
     &TreeBody::Empty => {
       // We pass through empty voxels; fall through.
     },
-    &TreeBody::Leaf(ref leaf) => {
-      if let Some(r) = act(bounds, leaf) {
-        return Ok(r)
+    &TreeBody::Branch { ref data, ref branches } => {
+      match data {
+        &Some(ref voxel) => {
+          if let Some(r) = act(bounds, voxel) {
+            return Ok(r)
+          }
+        },
+        &None => {
+          let mid = bounds.center();
+
+          let mut make_bounds = |coords: [usize; 3]| {
+            let mut bounds = bounds;
+            bounds.lg_size -= 1;
+            bounds.x <<= 1;
+            bounds.y <<= 1;
+            bounds.z <<= 1;
+            bounds.x += coords[0] as i32;
+            bounds.y += coords[1] as i32;
+            bounds.z += coords[2] as i32;
+            bounds
+          };
+
+          let entry_toi = entry.map(|entry| entry.toi.0).unwrap_or(0.0);
+          let intersect = ray.origin.add_v(&ray.direction.mul_s(entry_toi));
+          let coords = [
+            if intersect.x >= mid.x {1} else {0},
+            if intersect.y >= mid.y {1} else {0},
+            if intersect.z >= mid.z {1} else {0},
+          ];
+
+          return cast_ray_branches(
+            branches,
+            ray,
+            entry,
+            coords,
+            &mut make_bounds,
+            act,
+          )
+        },
       }
-
-      // No return value for this voxel; fall through.
-    },
-    &TreeBody::Branch(ref b) => {
-      let mid = [
-        (bounds.x as f32 + 0.5) * bounds.size(),
-        (bounds.y as f32 + 0.5) * bounds.size(),
-        (bounds.z as f32 + 0.5) * bounds.size(),
-      ];
-
-      let mut make_bounds = |coords: [usize; 3]| {
-        let mut bounds = bounds;
-        bounds.lg_size -= 1;
-        bounds.x <<= 1;
-        bounds.y <<= 1;
-        bounds.z <<= 1;
-        bounds.x += coords[0] as i32;
-        bounds.y += coords[1] as i32;
-        bounds.z += coords[2] as i32;
-        bounds
-      };
-
-      let entry_toi = entry.map(|entry| entry.toi.0).unwrap_or(0.0);
-      let intersect = [
-        ray.origin.x + entry_toi*ray.direction.x,
-        ray.origin.y + entry_toi*ray.direction.y,
-        ray.origin.z + entry_toi*ray.direction.z,
-      ];
-      let coords = [
-        if intersect[0] >= mid[0] {1} else {0},
-        if intersect[1] >= mid[1] {1} else {0},
-        if intersect[2] >= mid[2] {1} else {0},
-      ];
-
-      return cast_ray_branches(
-        b,
-        ray,
-        entry,
-        coords,
-        &mut make_bounds,
-        act,
-      )
     }
   };
 

@@ -1,6 +1,4 @@
-use cgmath::{Point, Point3, Vector, Vector3};
-use cgmath::Aabb3;
-use std::cmp::{min, max};
+use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
 use std::collections::hash_map;
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -13,41 +11,31 @@ use common::lod::LODIndex;
 use common::terrain_block;
 use common::terrain_block::{TerrainBlock, tri};
 
-use field::Field;
-use heightmap::HeightMap;
+use terrain::heightmap;
+use terrain;
 use voxel;
-use voxel::{Fracu8, Fraci8, Voxel, SurfaceVoxel, Vertex, Normal};
-use voxel_tree;
-use voxel_tree::VoxelTree;
 
 pub fn generate_voxel(
   timers: &TimerSet,
-  heightmap: &HeightMap,
-  voxel: &voxel::Bounds,
-) -> Voxel
+  heightmap: &heightmap::T,
+  voxel: &::voxel::Bounds,
+) -> terrain::voxel::T
 {
   timers.time("generate_voxel", || {
-    let field_contains = |x, y, z| {
-      heightmap.density_at(x, y, z) >= 0.0
-    };
-
-    let get_normal = |x, y, z| {
-      heightmap.normal_at(0.01, x, y, z)
-    };
-
     let size = voxel.size();
-    let (x1, y1, z1) = (voxel.x as f32 * size, voxel.y as f32 * size, voxel.z as f32 * size);
-    let delta = size;
-    let (x2, y2, z2) = (x1 + delta, y1 + delta, z1 + delta);
+    let (low, high) = voxel.corners();
+    macro_rules! contained(($x:expr, $y:expr, $z:expr) => {{
+      voxel::field::T::contains(heightmap, &Point3::new($x.x, $y.y, $z.z))
+    }});
     // corners[x][y][z]
     let corners = [
       [
-        [ field_contains(x1, y1, z1), field_contains(x1, y1, z2) ],
-        [ field_contains(x1, y2, z1), field_contains(x1, y2, z2) ],
+        [ contained!( low,  low, low), contained!( low,  low, high) ],
+        [ contained!( low, high, low), contained!( low, high, high) ],
       ],
       [
-        [ field_contains(x2, y1, z1), field_contains(x2, y1, z2) ],
-        [ field_contains(x2, y2, z1), field_contains(x2, y2, z2) ],
+        [ contained!(high,  low, low), contained!(high,  low, high) ],
+        [ contained!(high, high, low), contained!(high, high, high) ],
       ],
     ];
 
@@ -75,7 +63,7 @@ pub fn generate_voxel(
 
     let all_corners_same = any_inside == all_inside;
     if all_corners_same {
-      return Voxel::Volume(all_inside)
+      return terrain::voxel::T::Volume(all_inside)
     }
 
     let mut vertex: Vector3<u32> = Vector3::new(0, 0, 0);
@@ -102,7 +90,7 @@ pub fn generate_voxel(
           [((voxel.y as f32 + fs) * size, s), ((voxel.y as f32 + mfs) * size, ms)].iter() {
         for &(wz, z) in
           [((voxel.z as f32 + fs) * size, s), ((voxel.z as f32 + mfs) * size, ms)].iter() {
-          if field_contains(wx, wy, wz) {
+          if voxel::field::T::contains(heightmap, &Point3::new(wx, wy, wz)) {
             vertex.add_self_v(&Vector3::new(x, y, z).mul_s(lg_s as u32));
             n += lg_s as u32;
           }
@@ -114,40 +102,20 @@ pub fn generate_voxel(
 
     let vertex = vertex.div_s(n);
     let vertex =
-      Vertex {
-        x: Fracu8::of(vertex.x as u8),
-        y: Fracu8::of(vertex.y as u8),
-        z: Fracu8::of(vertex.z as u8),
+      terrain::voxel::Vertex {
+        x: terrain::voxel::Fracu8::of(vertex.x as u8),
+        y: terrain::voxel::Fracu8::of(vertex.y as u8),
+        z: terrain::voxel::Fracu8::of(vertex.z as u8),
       };
 
     let normal;
     {
       // Okay, this is silly to have right after we construct the vertex.
       let vertex = vertex.to_world_vertex(voxel);
-      normal = get_normal(vertex.x, vertex.y, vertex.z).mul_s(127.0);
+      normal = terrain::voxel::Normal::of_float_normal(&voxel::field::T::normal_at(heightmap, 0.01, &vertex));
     }
 
-    // Okay, so we scale the normal by 127, and use 127 to represent 1.0.
-    // Then we store it in a `Fraci8`, which scales by 128 and represents a
-    // fraction in [0,1). That seems wrong, but this is normal data, so scaling
-    // doesn't matter. Sketch factor is over 9000, but it's not wrong.
-
-    let normal = Vector3::new(normal.x as i32, normal.y as i32, normal.z as i32);
-    let normal =
-      Vector3::new(
-        max(-127, min(127, normal.x)) as i8,
-        max(-127, min(127, normal.y)) as i8,
-        max(-127, min(127, normal.z)) as i8,
-      );
-
-    let normal =
-      Normal {
-        x: Fraci8::of(normal.x),
-        y: Fraci8::of(normal.y),
-        z: Fraci8::of(normal.z),
-      };
-
-    Voxel::Surface(SurfaceVoxel {
+    terrain::voxel::T::Surface(terrain::voxel::SurfaceStruct {
       inner_vertex: vertex,
       normal: normal,
       corner_inside_surface: corner,
@@ -215,13 +183,13 @@ fn make_bounds(
   )
 }
 
-/// Generate a `TerrainBlock` based on a given position in a `VoxelTree`.
+/// Generate a `TerrainBlock` based on a given position in a `terrain::voxel::tree::T`.
 /// Any necessary voxels will be generated.
 pub fn generate_block(
   timers: &TimerSet,
   id_allocator: &Mutex<IdAllocator<EntityId>>,
-  heightmap: &HeightMap,
-  voxels: &mut VoxelTree,
+  heightmap: &heightmap::T,
+  voxels: &mut terrain::voxel::tree::T,
   position: &BlockPosition,
   lod_index: LODIndex,
 ) -> TerrainBlock {
@@ -239,16 +207,24 @@ pub fn generate_block(
       let branch = voxels.get_mut_or_create(bounds);
       let r;
       match branch {
-        &mut voxel_tree::TreeBody::Leaf(v) => r = v,
-        &mut voxel_tree::TreeBody::Empty => {
+        &mut terrain::voxel::tree::Empty => {
           r = generate_voxel(timers, heightmap, bounds);
-          *branch = voxel_tree::TreeBody::Leaf(r);
+          *branch =
+            terrain::voxel::tree::Branch {
+              data: Some(r),
+              branches: Box::new(terrain::voxel::tree::Branches::empty()),
+            };
         },
-        &mut voxel_tree::TreeBody::Branch(_) => {
-          // Overwrite existing for now.
-          // TODO: Don't do ^that.
-          r = generate_voxel(timers, heightmap, bounds);
-          *branch = voxel_tree::TreeBody::Leaf(r);
+        &mut terrain::voxel::tree::Branch { ref mut data, branches: _ }  => {
+          match data {
+            &mut None => {
+              r = generate_voxel(timers, heightmap, bounds);
+              *data = Some(r);
+            },
+            &mut Some(ref data) => {
+              r = *data;
+            },
+          }
         },
       };
       r
@@ -275,12 +251,12 @@ pub fn generate_block(
       let voxel;
       let bounds = bounds_at(&voxel_position);
       match get_voxel(&bounds) {
-        Voxel::Surface(v) => voxel = v,
+        terrain::voxel::T::Surface(v) => voxel = v,
         _ => continue,
       }
       let index = coords.len();
       let vertex = voxel.inner_vertex.to_world_vertex(&bounds);
-      let normal = voxel.normal.to_world_normal();
+      let normal = voxel.normal.to_float_normal();
       coords.push(vertex);
       normals.push(normal);
       indices.insert(voxel_position, index);
@@ -289,10 +265,12 @@ pub fn generate_block(
         d_neighbor, // Vector to the neighbor to make an edge toward.
         d1, d2,     // Vector to the voxels adjacent to the edge.
       | {
+        let neighbor_position = voxel_position.add_v(&d_neighbor);
+        debug!("edge from {:?} to {:?}", voxel_position, neighbor_position);
         let neighbor_inside_surface;
-        match get_voxel(&bounds_at(&voxel_position.add_v(&d_neighbor))) {
-          Voxel::Surface(v) => neighbor_inside_surface = v.corner_inside_surface,
-          Voxel::Volume(inside) => neighbor_inside_surface = inside,
+        match get_voxel(&bounds_at(&neighbor_position)) {
+          terrain::voxel::T::Surface(v) => neighbor_inside_surface = v.corner_inside_surface,
+          terrain::voxel::T::Volume(inside) => neighbor_inside_surface = inside,
         }
         if voxel.corner_inside_surface == neighbor_inside_surface {
           // This edge doesn't cross the surface, and doesn't generate polys.
@@ -314,17 +292,17 @@ pub fn generate_block(
               hash_map::Entry::Vacant(entry) => {
                 let bounds = bounds_at(position);
                 match get_voxel(&bounds) {
-                  Voxel::Surface(voxel) => {
+                  terrain::voxel::T::Surface(voxel) => {
                     let i = coords.len();
                     let vertex = voxel.inner_vertex.to_world_vertex(&bounds);
-                    let normal = voxel.normal.to_world_normal();
+                    let normal = voxel.normal.to_float_normal();
                     coords.push(vertex);
                     normals.push(normal);
                     entry.insert(i);
                     (vertex, normal, i)
                   },
                   voxel => {
-                    panic!("Unexpected neighbor {:?}", voxel)
+                    panic!("Unexpected neighbor {:?} at {:?}", voxel, bounds)
                   }
                 }
               },

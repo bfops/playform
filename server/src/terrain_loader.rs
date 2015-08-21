@@ -12,6 +12,8 @@ use physics::Physics;
 use terrain::{Terrain, Seed};
 use update_gaia::{ServerToGaia, LoadReason};
 
+// TODO: Consider factoring this logic such that what to load is separated from how it's loaded.
+
 /// Load and unload TerrainBlocks from the game.
 /// Each TerrainBlock can be owned by a set of owners, each of which can independently request LODs.
 /// The maximum LOD requested is the one that is actually loaded.

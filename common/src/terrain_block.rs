@@ -7,15 +7,17 @@ use serialize::{Flatten, MemStream, EOF};
 
 // TODO: Move the server-only parts to the server, like BLOCK_WIDTH and sample_info.
 
+/// Number of LODs
+pub const LOD_COUNT: usize = 4;
 /// lg(WIDTH)
 pub const LG_WIDTH: i16 = 3;
 /// The width of a block of terrain.
 pub const WIDTH: i32 = 1 << LG_WIDTH;
 
 /// lg(EDGE_SAMPLES)
-pub const LG_EDGE_SAMPLES: [u16; 4] = [3, 2, 1, 0];
+pub const LG_EDGE_SAMPLES: [u16; LOD_COUNT] = [3, 2, 1, 0];
 /// The number of voxels along an axis within a block, indexed by LOD.
-pub const EDGE_SAMPLES: [u16; 4] = [
+pub const EDGE_SAMPLES: [u16; LOD_COUNT] = [
   1 << LG_EDGE_SAMPLES[0],
   1 << LG_EDGE_SAMPLES[1],
   1 << LG_EDGE_SAMPLES[2],
@@ -23,7 +25,7 @@ pub const EDGE_SAMPLES: [u16; 4] = [
 ];
 
 /// The width of a voxel within a block, indexed by LOD.
-pub const LG_SAMPLE_SIZE: [i16; 4] = [
+pub const LG_SAMPLE_SIZE: [i16; LOD_COUNT] = [
   LG_WIDTH - LG_EDGE_SAMPLES[0] as i16,
   LG_WIDTH - LG_EDGE_SAMPLES[1] as i16,
   LG_WIDTH - LG_EDGE_SAMPLES[2] as i16,

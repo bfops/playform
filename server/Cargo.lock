@@ -5,11 +5,11 @@ dependencies = [
  "cgmath 0.2.0 (git+https://github.com/bjz/cgmath-rs)",
  "env_logger 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "noise 0.1.5 (git+https://github.com/bjz/noise-rs)",
  "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "playform-common 0.0.0",
  "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
- "terrain 0.0.0",
  "time 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -155,18 +155,6 @@ source = "git+https://github.com/bfops/stopwatch-rs#b2823511fffa721a02c8c8164a5b
 dependencies = [
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "terrain"
-version = "0.0.0"
-dependencies = [
- "cgmath 0.2.0 (git+https://github.com/bjz/cgmath-rs)",
- "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "noise 0.1.5 (git+https://github.com/bjz/noise-rs)",
- "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "playform-common 0.0.0",
- "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
 ]
 
 [[package]]

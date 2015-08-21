@@ -19,12 +19,11 @@ time = "*"
 path = "../common"
 version = "*"
 
-[dependencies.terrain]
-path = "terrain"
-version = "*"
-
 [dependencies.cgmath]
 git = "https://github.com/bjz/cgmath-rs"
+
+[dependencies.noise]
+git = "https://github.com/bjz/noise-rs"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
