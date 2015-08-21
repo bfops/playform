@@ -266,6 +266,7 @@ pub fn generate_block(
         d1, d2,     // Vector to the voxels adjacent to the edge.
       | {
         let neighbor_position = voxel_position.add_v(&d_neighbor);
+        debug!("edge from {:?} to {:?}", voxel_position, neighbor_position);
         let neighbor_inside_surface;
         match get_voxel(&bounds_at(&neighbor_position)) {
           terrain::voxel::T::Surface(v) => neighbor_inside_surface = v.corner_inside_surface,

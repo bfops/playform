@@ -116,6 +116,41 @@ impl Terrain {
     F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
     Brush: voxel::brush::T,
   {
+    macro_rules! voxel_range(($d:ident, $scale:expr) => {{
+      let low = brush_bounds.min().$d >> $scale;
+      let high = brush_bounds.max().$d >> $scale;
+      range_inclusive(low, high)
+    }});
+
+    // Make sure that all the voxels this brush might touch are generated; if they're not generated
+    // now, the brush might "expose" them, the mesh extraction phase will generate them, and there
+    // may be inconsistencies between the brush-altered voxels and the newly-generated ones.
+    for &lg_size in terrain_block::LG_SAMPLE_SIZE.iter() {
+      for x in voxel_range!(x, lg_size) {
+      for y in voxel_range!(y, lg_size) {
+      for z in voxel_range!(z, lg_size) {
+        let bounds = ::voxel::Bounds::new(x, y, z, lg_size);
+        let voxel = self.voxels.get_mut_or_create(&bounds);
+        match voxel {
+          &mut voxel::tree::Empty => {
+            *voxel =
+              voxel::tree::TreeBody::leaf(
+                Some(generate::generate_voxel(timers, &self.heightmap, &bounds))
+              );
+          },
+          &mut voxel::tree::Branch { ref mut data, branches: _ } => {
+            match data {
+              &mut None => {
+                *data =
+                  Some(generate::generate_voxel(timers, &self.heightmap, &bounds));
+              },
+              &mut Some(_) => {},
+            }
+          },
+        }
+      }}}
+    }
+
     self.voxels.remove(brush, brush_bounds);
 
     macro_rules! block_range(($d:ident) => {{

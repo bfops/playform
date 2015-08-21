@@ -21,9 +21,16 @@ impl ::voxel::field::T for T {
   }
 
   fn contains(this: &Self, p: &Point3<f32>) -> bool {
-    this.low.x <= p.x && p.x <= this.high.x &&
-    this.low.y <= p.y && p.y <= this.high.y &&
-    this.low.z <= p.z && p.z <= this.high.z &&
+    // If we remove a voxel's corner (which is its bottom corner), we may create edges in
+    // neighboring voxels, which requires vertices in all the voxels neighboring the edge.
+    // We use a strict inequality on the bottom so that we don't create edges in areas where the
+    // brush can't create vertices; similarly, we use a non-strict inequality on the high area
+    // because the brush can place vertices in voxels on the "high" side (it can just place
+    // vertices at those corners).
+
+    this.low.x < p.x && p.x <= this.high.x &&
+    this.low.y < p.y && p.y <= this.high.y &&
+    this.low.z < p.z && p.z <= this.high.z &&
     true
   }
 
@@ -47,6 +54,8 @@ impl SegmentOverlap {
     assert!(x00 < x01);
     assert!(x10 < x11);
 
+    // TODO: Document this terrifyingly edgy logic.
+    // Basically x00, x10, and x11 are inclusive, but x01 isn't (because it's a voxel bound).
     if x00 <= x10 {
       if x01 < x11 {
         if x01 <= x10 {
@@ -58,10 +67,10 @@ impl SegmentOverlap {
         SegmentOverlap::FirstContainsSecond
       }
     } else {
-      if x01 < x11 {
+      if x01 <= x11 {
         SegmentOverlap::SecondContainsFirst
       } else {
-        if x11 <= x00 {
+        if x11 < x00 {
           SegmentOverlap::None
         } else {
           SegmentOverlap::Partial(x00, x11)

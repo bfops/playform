@@ -129,7 +129,9 @@ impl<Voxel> TreeBody<Voxel> {
   ) where
     Brush: voxel::brush::T<Voxel=Voxel>,
   {
+    debug!("remove considers {:?}", bounds);
     if !brush_overlaps(bounds, brush_bounds) {
+      debug!("ignoring {:?}", bounds);
       return
     }
 

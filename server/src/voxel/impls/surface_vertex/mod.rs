@@ -44,10 +44,12 @@ impl<Brush> voxel::brush::T for Brush where Brush: brush::T {
     brush: &Brush,
   ) {
     let set_leaf = |this: &mut T, corner_inside_surface| {
+      debug!("leaf {:?} is {:?}", bounds, *this);
       match brush::T::intersect(brush, bounds) {
         brush::Intersection::Outside => {},
         brush::Intersection::Inside => {
           *this = T::Volume(false);
+          debug!("leaf {:?} set to {:?}", bounds, *this);
         },
         brush::Intersection::Crosses(vertex, normal) => {
           let size = bounds.size();
@@ -63,6 +65,7 @@ impl<Brush> voxel::brush::T for Brush where Brush: brush::T {
               corner_inside_surface: corner_inside_surface,
             };
           *this = T::Surface(voxel);
+          debug!("leaf {:?} set to {:?}", bounds, *this);
         },
       }
     };

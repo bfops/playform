@@ -91,6 +91,7 @@ pub fn update_gaia(
             Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
           },
         );
+      debug!("remove {:?} with bounds {:?}", brush, brush_bounds);
       terrain_loader.terrain.remove(
         timers,
         id_allocator,

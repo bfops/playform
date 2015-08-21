@@ -145,8 +145,9 @@ pub fn apply_client_update<UpdateGaia>(
       }
 
       bounds.map(|bounds| {
+        debug!("bounds {:?}", bounds);
         let center = bounds.center();
-        let r = 4.0;
+        let r = 8.0;
         let brush =
           terrain::voxel::brush::cube::T {
             low: center.add_v(&-Vector3::new(r, r, r)),
