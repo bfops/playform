@@ -107,9 +107,16 @@ impl<'a> TerrainShader<'a> {
 
           float brightness = dot(normal, sun.direction);
           brightness = clamp(brightness, 0, 1);
-
           vec3 lighting = brightness * sun.intensity + ambient_light;
-          frag_color = vec4(clamp(lighting, 0, 1), 1) * base_color;
+
+          float fog_factor = gl_FragCoord.z / gl_FragCoord.w / 512;
+          float fog_density = 1 - exp(-fog_factor);
+          vec3 fog_color = sun.intensity;
+          vec4 fog_component = vec4(fog_color, 1) * fog_density;
+          vec4 material_component =
+            vec4(clamp(lighting, 0, 1), 1) * base_color * vec4(1, 1, 1, 1 - fog_density);
+
+          frag_color = fog_component + material_component;
         }}",
         )),
     );
