@@ -16,10 +16,10 @@ impl T {
     T {
       seed: seed,
       height:
-        Brownian2::new(perlin2, 4)
-        .frequency(1.0 / 8.0)
-        .persistence(8.0)
-        .lacunarity(1.0 / 4.0)
+        Brownian2::new(perlin2, 5)
+        .frequency(1.0 / 4.0)
+        .persistence(2.0)
+        .lacunarity(1.0 / 2.0)
       ,
       features:
         Brownian3::new(perlin3, 2)
