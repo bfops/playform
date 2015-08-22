@@ -1,6 +1,7 @@
 use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
 use std::collections::hash_map;
 use std::collections::HashMap;
+use std::f32;
 use std::sync::Mutex;
 use stopwatch::TimerSet;
 
@@ -22,20 +23,19 @@ pub fn generate_voxel(
 ) -> terrain::voxel::T
 {
   timers.time("generate_voxel", || {
-    let size = voxel.size();
     let (low, high) = voxel.corners();
-    macro_rules! contained(($x:expr, $y:expr, $z:expr) => {{
-      voxel::field::T::contains(heightmap, &Point3::new($x.x, $y.y, $z.z))
+    macro_rules! density(($x:expr, $y:expr, $z:expr) => {{
+      voxel::field::T::density_at(heightmap, &Point3::new($x.x, $y.y, $z.z))
     }});
     // corners[x][y][z]
-    let corners = [
+    let mut corners = [
       [
-        [ contained!( low,  low, low), contained!( low,  low, high) ],
-        [ contained!( low, high, low), contained!( low, high, high) ],
+        [ density!( low,  low, low), density!( low,  low, high) ],
+        [ density!( low, high, low), density!( low, high, high) ],
       ],
       [
-        [ contained!(high,  low, low), contained!(high,  low, high) ],
-        [ contained!(high, high, low), contained!(high, high, high) ],
+        [ density!(high,  low, low), density!(high,  low, high) ],
+        [ density!(high, high, low), density!(high, high, high) ],
       ],
     ];
 
@@ -45,7 +45,8 @@ pub fn generate_voxel(
 
     {
       let mut get_corner = |x1:usize, y1:usize, z1:usize| {
-        let corner = corners[x1][y1][z1];
+        let corner = corners[x1][y1][z1] >= 0.0;
+        corners[x1][y1][z1] = 1.0 / (corners[x1][y1][z1].abs() + f32::EPSILON);
         any_inside = any_inside || corner;
         all_inside = all_inside && corner;
         corner
@@ -66,46 +67,30 @@ pub fn generate_voxel(
       return terrain::voxel::T::Volume(all_inside)
     }
 
-    let mut vertex: Vector3<u32> = Vector3::new(0, 0, 0);
-    let mut n = 0;
-    for (&x, corners) in [0, 0xFF].iter().zip(corners.iter()) {
-    for (&y, corners) in [0, 0xFF].iter().zip(corners.iter()) {
-    for (&z, &corner) in [0, 0xFF].iter().zip(corners.iter()) {
-      if corner {
-        vertex.add_self_v(&Vector3::new(x, y, z));
-        n += 1;
-      }
-    }}}
+    let corner_coords = [0.0, 256.0];
+    let mut total_weight = 0.0;
+    macro_rules! weighted(($x:expr, $y:expr, $z:expr) => {{
+      total_weight += corners[$x][$y][$z];
+      Vector3::new(corner_coords[$x], corner_coords[$y], corner_coords[$z])
+        .mul_s(corners[$x][$y][$z])
+    }});
 
-    {
-      // Sample in extra areas to help weight the vertex to the appropriate place.
-      let mut sample_extra = |lg_s: u8| {
-        let fs = 1.0 / ((1 << lg_s) as f32);
-        let mfs = 1.0 - fs;
-        let s = 0x100 >> lg_s;
-        let ms = 0x100 - s;
-        for &(wx, x) in
-          [((voxel.x as f32 + fs) * size, s), ((voxel.x as f32 + mfs) * size, ms)].iter() {
-        for &(wy, y) in
-          [((voxel.y as f32 + fs) * size, s), ((voxel.y as f32 + mfs) * size, ms)].iter() {
-        for &(wz, z) in
-          [((voxel.z as f32 + fs) * size, s), ((voxel.z as f32 + mfs) * size, ms)].iter() {
-          if voxel::field::T::contains(heightmap, &Point3::new(wx, wy, wz)) {
-            vertex.add_self_v(&Vector3::new(x, y, z).mul_s(lg_s as u32));
-            n += lg_s as u32;
-          }
-        }}}
-      };
-
-      sample_extra(2);
-    }
-
-    let vertex = vertex.div_s(n);
+    let vertex =
+      weighted!(0, 0, 0) +
+      weighted!(0, 0, 1) +
+      weighted!(0, 1, 0) +
+      weighted!(0, 1, 1) +
+      weighted!(1, 0, 0) +
+      weighted!(1, 0, 1) +
+      weighted!(1, 1, 0) +
+      weighted!(1, 1, 1) +
+      Vector3::new(0.0, 0.0, 0.0);
+    let vertex = Point3::from_vec(&vertex.div_s(total_weight));
     let vertex =
       terrain::voxel::Vertex {
-        x: terrain::voxel::Fracu8::of(vertex.x as u8),
-        y: terrain::voxel::Fracu8::of(vertex.y as u8),
-        z: terrain::voxel::Fracu8::of(vertex.z as u8),
+        x: terrain::voxel::Fracu8::of(f32::min(vertex.x, 255.0) as u8),
+        y: terrain::voxel::Fracu8::of(f32::min(vertex.y, 255.0) as u8),
+        z: terrain::voxel::Fracu8::of(f32::min(vertex.z, 255.0) as u8),
       };
 
     let normal;
