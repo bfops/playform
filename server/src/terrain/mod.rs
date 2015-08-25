@@ -135,14 +135,14 @@ impl Terrain {
           &mut voxel::tree::Empty => {
             *voxel =
               voxel::tree::TreeBody::leaf(
-                Some(generate::generate_voxel(timers, &self.heightmap, &bounds))
+                Some(voxel::of_field(timers, &self.heightmap, &bounds))
               );
           },
           &mut voxel::tree::Branch { ref mut data, branches: _ } => {
             match data {
               &mut None => {
                 *data =
-                  Some(generate::generate_voxel(timers, &self.heightmap, &bounds));
+                  Some(voxel::of_field(timers, &self.heightmap, &bounds));
               },
               &mut Some(_) => {},
             }

@@ -1,7 +1,6 @@
 use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
 use std::collections::hash_map;
 use std::collections::HashMap;
-use std::f32;
 use std::sync::Mutex;
 use stopwatch::TimerSet;
 
@@ -15,98 +14,6 @@ use common::terrain_block::{TerrainBlock, tri};
 use terrain::heightmap;
 use terrain;
 use voxel;
-
-pub fn generate_voxel(
-  timers: &TimerSet,
-  heightmap: &heightmap::T,
-  voxel: &::voxel::Bounds,
-) -> terrain::voxel::T
-{
-  timers.time("generate_voxel", || {
-    let (low, high) = voxel.corners();
-    macro_rules! density(($x:expr, $y:expr, $z:expr) => {{
-      voxel::field::T::density_at(heightmap, &Point3::new($x.x, $y.y, $z.z))
-    }});
-    // corners[x][y][z]
-    let mut corners = [
-      [
-        [ density!( low,  low, low), density!( low,  low, high) ],
-        [ density!( low, high, low), density!( low, high, high) ],
-      ],
-      [
-        [ density!(high,  low, low), density!(high,  low, high) ],
-        [ density!(high, high, low), density!(high, high, high) ],
-      ],
-    ];
-
-    let corner;
-    let mut any_inside = false;
-    let mut all_inside = true;
-
-    {
-      let mut get_corner = |x1:usize, y1:usize, z1:usize| {
-        let corner = corners[x1][y1][z1] >= 0.0;
-        corners[x1][y1][z1] = 1.0 / (corners[x1][y1][z1].abs() + f32::EPSILON);
-        any_inside = any_inside || corner;
-        all_inside = all_inside && corner;
-        corner
-      };
-
-      corner = get_corner(0,0,0);
-      let _ = get_corner(0,0,1);
-      let _ = get_corner(0,1,0);
-      let _ = get_corner(0,1,1);
-      let _ = get_corner(1,0,0);
-      let _ = get_corner(1,0,1);
-      let _ = get_corner(1,1,0);
-      let _ = get_corner(1,1,1);
-    }
-
-    let all_corners_same = any_inside == all_inside;
-    if all_corners_same {
-      return terrain::voxel::T::Volume(all_inside)
-    }
-
-    let corner_coords = [0.0, 256.0];
-    let mut total_weight = 0.0;
-    macro_rules! weighted(($x:expr, $y:expr, $z:expr) => {{
-      total_weight += corners[$x][$y][$z];
-      Vector3::new(corner_coords[$x], corner_coords[$y], corner_coords[$z])
-        .mul_s(corners[$x][$y][$z])
-    }});
-
-    let vertex =
-      weighted!(0, 0, 0) +
-      weighted!(0, 0, 1) +
-      weighted!(0, 1, 0) +
-      weighted!(0, 1, 1) +
-      weighted!(1, 0, 0) +
-      weighted!(1, 0, 1) +
-      weighted!(1, 1, 0) +
-      weighted!(1, 1, 1) +
-      Vector3::new(0.0, 0.0, 0.0);
-    let vertex = Point3::from_vec(&vertex.div_s(total_weight));
-    let vertex =
-      terrain::voxel::Vertex {
-        x: terrain::voxel::Fracu8::of(f32::min(vertex.x, 255.0) as u8),
-        y: terrain::voxel::Fracu8::of(f32::min(vertex.y, 255.0) as u8),
-        z: terrain::voxel::Fracu8::of(f32::min(vertex.z, 255.0) as u8),
-      };
-
-    let normal;
-    {
-      // Okay, this is silly to have right after we construct the vertex.
-      let vertex = vertex.to_world_vertex(voxel);
-      normal = terrain::voxel::Normal::of_float_normal(&voxel::field::T::normal_at(heightmap, 0.01, &vertex));
-    }
-
-    terrain::voxel::T::Surface(terrain::voxel::SurfaceStruct {
-      inner_vertex: vertex,
-      normal: normal,
-      corner_inside_surface: corner,
-    })
-  })
-}
 
 #[inline]
 fn partial_min<I, It>(mut it: It) -> Option<I>
@@ -193,7 +100,7 @@ pub fn generate_block(
       let r;
       match branch {
         &mut terrain::voxel::tree::Empty => {
-          r = generate_voxel(timers, heightmap, bounds);
+          r = terrain::voxel::of_field(timers, heightmap, bounds);
           *branch =
             terrain::voxel::tree::Branch {
               data: Some(r),
@@ -203,7 +110,7 @@ pub fn generate_block(
         &mut terrain::voxel::tree::Branch { ref mut data, branches: _ }  => {
           match data {
             &mut None => {
-              r = generate_voxel(timers, heightmap, bounds);
+              r = terrain::voxel::of_field(timers, heightmap, bounds);
               *data = Some(r);
             },
             &mut Some(ref data) => {
