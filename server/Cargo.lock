@@ -152,7 +152,7 @@ dependencies = [
 [[package]]
 name = "stopwatch"
 version = "0.0.0"
-source = "git+https://github.com/bfops/stopwatch-rs#b2823511fffa721a02c8c8164a5b52511aeb6de8"
+source = "git+https://github.com/bfops/stopwatch-rs#da2876226ff7e5c0175c05f9e5638615c6779d2a"
 dependencies = [
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -7,7 +7,6 @@ use cgmath::Aabb;
 use std::collections::hash_map::HashMap;
 use std::iter::range_inclusive;
 use std::sync::Mutex;
-use stopwatch::TimerSet;
 
 use common::block_position::BlockPosition;
 use common::entity::EntityId;
@@ -82,7 +81,6 @@ impl Terrain {
   // TODO: Allow this to be performed in such a way that self is only briefly locked.
   pub fn load<'a>(
     &'a mut self,
-    timers: &TimerSet,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
     position: &BlockPosition,
     lod_index: LODIndex,
@@ -93,7 +91,6 @@ impl Terrain {
     if mesh.is_none() {
       *mesh = Some(
         generate::generate_block(
-          timers,
           id_allocator,
           &self.heightmap,
           &mut self.voxels,
@@ -107,7 +104,6 @@ impl Terrain {
 
   pub fn remove<F, Brush>(
     &mut self,
-    timers: &TimerSet,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
     brush: &Brush,
     brush_bounds: &::voxel::brush::Bounds,
@@ -135,14 +131,14 @@ impl Terrain {
           &mut voxel::tree::Empty => {
             *voxel =
               voxel::tree::TreeBody::leaf(
-                Some(voxel::of_field(timers, &self.heightmap, &bounds))
+                Some(voxel::of_field(&self.heightmap, &bounds))
               );
           },
           &mut voxel::tree::Branch { ref mut data, branches: _ } => {
             match data {
               &mut None => {
                 *data =
-                  Some(voxel::of_field(timers, &self.heightmap, &bounds));
+                  Some(voxel::of_field(&self.heightmap, &bounds));
               },
               &mut Some(_) => {},
             }
@@ -172,7 +168,6 @@ impl Terrain {
             let lod_index = LODIndex(i as u32);
             *mesh =
               generate::generate_block(
-                timers,
                 id_allocator,
                 &self.heightmap,
                 &mut self.voxels,

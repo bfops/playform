@@ -23,13 +23,12 @@ pub enum T {
 }
 
 pub fn of_field<Field>(
-  timers: &stopwatch::TimerSet,
   field: &Field,
   voxel: &::voxel::Bounds,
 ) -> T where
   Field: voxel::field::T,
 {
-  timers.time("voxel.surface_vertex.of_field", || {
+  stopwatch::time("voxel.surface_vertex.of_field", || {
     let (low, high) = voxel.corners();
     macro_rules! density(($x:expr, $y:expr, $z:expr) => {{
       voxel::field::T::density_at(field, &Point3::new($x.x, $y.y, $z.z))

@@ -1,7 +1,7 @@
 use cgmath::{Point, Vector, Vector3};
 use std::ops::Neg;
 use std::sync::mpsc::Sender;
-use stopwatch::TimerSet;
+use stopwatch;
 
 use common::block_position::BlockPosition;
 use common::communicate::ServerToClient::*;
@@ -16,16 +16,15 @@ use update_gaia::ServerToGaia;
 // TODO: Consider removing the IntervalTimer.
 
 pub fn update_world(
-  timers: &TimerSet,
   server: &Server,
   request_block: &Sender<ServerToGaia>,
 ) {
   let mut request_block = |block| { request_block.send(block).unwrap() };
 
-  timers.time("update", || {
-    timers.time("update.player", || {
+  stopwatch::time("update", || {
+    stopwatch::time("update.player", || {
       for (_, player) in server.players.lock().unwrap().iter_mut() {
-        player.update(timers, server, &mut request_block);
+        player.update(server, &mut request_block);
       }
 
       let players: Vec<_> = server.players.lock().unwrap().keys().map(|&x| x).collect();
@@ -37,7 +36,7 @@ pub fn update_world(
       }
     });
 
-    timers.time("update.mobs", || {
+    stopwatch::time("update.mobs", || {
       for (_, mob) in server.mobs.lock().unwrap().iter_mut() {
         let block_position = BlockPosition::from_world_position(&mob.position);
 
@@ -47,7 +46,6 @@ pub fn update_world(
           || { true },
           |lod_change|
             load_placeholders(
-              timers,
               owner_id,
               server,
               &mut request_block,
@@ -111,7 +109,6 @@ fn translate_mob(
 
 #[inline]
 pub fn load_placeholders<RequestBlock>(
-  timers: &TimerSet,
   owner: OwnerId,
   server: &Server,
   request_block: &mut RequestBlock,
@@ -122,7 +119,6 @@ pub fn load_placeholders<RequestBlock>(
   match lod_change {
     LODChange::Load(pos, _) => {
       server.terrain_loader.lock().unwrap().load(
-        timers,
         &server.id_allocator,
         &server.physics,
         &pos,
@@ -133,7 +129,6 @@ pub fn load_placeholders<RequestBlock>(
     },
     LODChange::Unload(pos) => {
       server.terrain_loader.lock().unwrap().unload(
-        timers,
         &server.physics,
         &pos,
         owner,

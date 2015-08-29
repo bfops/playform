@@ -2,7 +2,7 @@ use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
 use std::collections::hash_map;
 use std::collections::HashMap;
 use std::sync::Mutex;
-use stopwatch::TimerSet;
+use stopwatch;
 
 use common::block_position::BlockPosition;
 use common::entity::EntityId;
@@ -78,14 +78,13 @@ fn make_bounds(
 /// Generate a `TerrainBlock` based on a given position in a `terrain::voxel::tree::T`.
 /// Any necessary voxels will be generated.
 pub fn generate_block(
-  timers: &TimerSet,
   id_allocator: &Mutex<IdAllocator<EntityId>>,
   heightmap: &heightmap::T,
   voxels: &mut terrain::voxel::tree::T,
   position: &BlockPosition,
   lod_index: LODIndex,
 ) -> TerrainBlock {
-  timers.time("update.generate_block", || {
+  stopwatch::time("update.generate_block", || {
     let mut block = TerrainBlock::empty();
 
     let lateral_samples = terrain_block::EDGE_SAMPLES[lod_index.0 as usize] as i32;
@@ -100,7 +99,7 @@ pub fn generate_block(
       let r;
       match branch {
         &mut terrain::voxel::tree::Empty => {
-          r = terrain::voxel::of_field(timers, heightmap, bounds);
+          r = terrain::voxel::of_field(heightmap, bounds);
           *branch =
             terrain::voxel::tree::Branch {
               data: Some(r),
@@ -110,7 +109,7 @@ pub fn generate_block(
         &mut terrain::voxel::tree::Branch { ref mut data, branches: _ }  => {
           match data {
             &mut None => {
-              r = terrain::voxel::of_field(timers, heightmap, bounds);
+              r = terrain::voxel::of_field(heightmap, bounds);
               *data = Some(r);
             },
             &mut Some(ref data) => {

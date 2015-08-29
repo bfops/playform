@@ -2,7 +2,7 @@
 
 use cgmath::{Aabb3, Point, Vector, Point3, Vector3};
 use std::ops::DerefMut;
-use stopwatch::TimerSet;
+use stopwatch;
 
 use common::communicate::{ClientId, ServerToClient, TerrainBlockSend};
 use common::lod::{LODIndex, OwnerId};
@@ -27,13 +27,12 @@ pub enum ServerToGaia {
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
 pub fn update_gaia(
-  timers: &TimerSet,
   server: &Server,
   update: ServerToGaia,
 ) {
   match update {
     ServerToGaia::Load(position, lod, load_reason) => {
-      timers.time("terrain.load", || {
+      stopwatch::time("terrain.load", || {
         // TODO: Just lock `terrain` for the check and then the move;
         // don't lock for the whole time where we're generating the block.
         let mut terrain_loader = server.terrain_loader.lock().unwrap();
@@ -42,7 +41,6 @@ pub fn update_gaia(
         let in_progress_terrain = &mut terrain_loader.in_progress_terrain;
         let block =
           terrain_loader.terrain.load(
-            timers,
             &server.id_allocator,
             &position,
             lod,
@@ -53,7 +51,6 @@ pub fn update_gaia(
             // TODO: Check that this block isn't stale, i.e. should still be loaded.
             // Maybe this should just ping the original thread, same as we ping the client.
             TerrainLoader::insert_block(
-              timers,
               block,
               &position,
               lod,
@@ -93,7 +90,6 @@ pub fn update_gaia(
         );
       debug!("remove {:?} with bounds {:?}", brush, brush_bounds);
       terrain_loader.terrain.remove(
-        timers,
         id_allocator,
         &brush,
         &brush_bounds,

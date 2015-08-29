@@ -3,7 +3,7 @@ use cgmath::{Aabb3, Point, Point3, Matrix, Matrix3, Ray, Ray3, Vector, Vector3};
 use std::f32::consts::PI;
 use std::ops::DerefMut;
 use std::sync::Mutex;
-use stopwatch::TimerSet;
+use stopwatch;
 
 use common::block_position::BlockPosition;
 use common::entity::EntityId;
@@ -138,7 +138,6 @@ impl Player {
 
   pub fn update<RequestBlock>(
     &mut self,
-    timers: &TimerSet,
     server: &Server,
     request_block: &mut RequestBlock,
   ) where
@@ -146,7 +145,7 @@ impl Player {
   {
     let block_position = BlockPosition::from_world_position(&self.position);
 
-    timers.time("update.player.surroundings", || {
+    stopwatch::time("update.player.surroundings", || {
       let owner = self.surroundings_owner;
       self.surroundings_loader.update(
         block_position,
@@ -155,7 +154,6 @@ impl Player {
           match lod_change {
             LODChange::Load(pos, _) => {
               server.terrain_loader.lock().unwrap().load(
-                timers,
                 &server.id_allocator,
                 &server.physics,
                 &pos,
@@ -166,7 +164,6 @@ impl Player {
             },
             LODChange::Unload(pos) => {
               server.terrain_loader.lock().unwrap().unload(
-                timers,
                 &server.physics,
                 &pos,
                 owner,
@@ -182,7 +179,6 @@ impl Player {
         || { true },
         |lod_change|
           load_placeholders(
-            timers,
             owner,
             server,
             request_block,

@@ -4,7 +4,6 @@ use std::env;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Mutex;
 use std::thread;
-use stopwatch::TimerSet;
 use thread_scoped;
 use time;
 
@@ -107,14 +106,10 @@ fn main() {
     let gaia_thread_send = gaia_thread_send.clone();
     let listen_thread_recv = &listen_thread_recv;
     threads.push(thread_scoped::scoped(move || {
-      let timers = TimerSet::new();
-      let timers = &timers;
-
       in_series!(
         {
           if server.update_timer.lock().unwrap().update(time::precise_time_ns()) > 0 {
             update_world(
-              timers,
               server,
               &gaia_thread_send,
             );
@@ -133,7 +128,7 @@ fn main() {
         {
           gaia_thread_recv.lock().unwrap().try_recv_opt()
             .map_to_bool(|up| {
-              update_gaia(timers, server, up)
+              update_gaia(server, up)
             })
         },
       );

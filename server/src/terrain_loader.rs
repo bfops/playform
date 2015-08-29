@@ -1,5 +1,5 @@
 use std::sync::Mutex;
-use stopwatch::TimerSet;
+use stopwatch;
 
 use common::block_position::BlockPosition;
 use common::entity::EntityId;
@@ -36,7 +36,6 @@ impl TerrainLoader {
 
   pub fn load<LoadBlock>(
     &mut self,
-    timers: &TimerSet,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
     physics: &Mutex<Physics>,
     block_position: &BlockPosition,
@@ -104,7 +103,6 @@ impl TerrainLoader {
               },
               Some(block) => {
                 TerrainLoader::insert_block(
-                  timers,
                   block,
                   block_position,
                   new_lod,
@@ -122,7 +120,6 @@ impl TerrainLoader {
   }
 
   pub fn insert_block(
-    timers: &TimerSet,
     block: &TerrainBlock,
     position: &BlockPosition,
     lod: LODIndex,
@@ -147,7 +144,7 @@ impl TerrainLoader {
           in_progress_terrain.remove(physics, position);
         }
         LOD::LodIndex(_) => {
-          timers.time("terrain_loader.load.unload", || {
+          stopwatch::time("terrain_loader.load.unload", || {
             let mut physics = physics.lock().unwrap();
             for id in block.ids.iter() {
               physics.remove_terrain(*id);
@@ -157,7 +154,7 @@ impl TerrainLoader {
       }
     );
 
-    timers.time("terrain_loader.load.physics", || {
+    stopwatch::time("terrain_loader.load.physics", || {
       let mut physics = physics.lock().unwrap();
       for &(ref id, ref bounds) in block.bounds.iter() {
         physics.insert_terrain(*id, bounds.clone());
@@ -167,7 +164,6 @@ impl TerrainLoader {
 
   pub fn unload(
     &mut self,
-    timers: &TimerSet,
     physics: &Mutex<Physics>,
     block_position: &BlockPosition,
     owner: OwnerId,
@@ -189,7 +185,7 @@ impl TerrainLoader {
           self.in_progress_terrain.remove(physics, block_position);
         }
         LOD::LodIndex(loaded_lod) => {
-          timers.time("terrain_loader.unload", || {
+          stopwatch::time("terrain_loader.unload", || {
             match self.terrain.all_blocks.get(block_position) {
               None => {
                 // Unloaded before the load request completed.
