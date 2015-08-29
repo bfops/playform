@@ -7,7 +7,7 @@ use sdl2::mouse::Mouse;
 use sdl2::mouse;
 use sdl2::video;
 use std::f32::consts::PI;
-use stopwatch::TimerSet;
+use stopwatch;
 
 use common::communicate::ClientToServer;
 use common::entity::EntityId;
@@ -18,7 +18,6 @@ use view::View;
 
 #[allow(missing_docs)]
 pub fn process_event<UpdateServer>(
-  timers: &TimerSet,
   player_id: EntityId,
   update_server: &mut UpdateServer,
   view: &mut View,
@@ -30,36 +29,35 @@ pub fn process_event<UpdateServer>(
     Event::KeyDown{keycode, repeat, ..} => {
       keycode.map(|keycode| {
         if !repeat {
-          key_press(timers, player_id, update_server, view, keycode);
+          key_press(player_id, update_server, view, keycode);
         }
       });
     },
     Event::KeyUp{keycode, repeat, ..} => {
       keycode.map(|keycode| {
         if !repeat {
-          key_release(timers, player_id, update_server, keycode);
+          key_release(player_id, update_server, keycode);
         }
       });
     },
     Event::MouseMotion{x, y, ..} => {
-      mouse_move(timers, player_id, update_server, view, window, x, y);
+      mouse_move(player_id, update_server, view, window, x, y);
     },
     Event::MouseButtonDown{mouse_btn, ..} => {
-      mouse_press(timers, player_id, update_server, mouse_btn);
+      mouse_press(player_id, update_server, mouse_btn);
     },
     _ => {},
   }
 }
 
 fn key_press<UpdateServer>(
-  timers: &TimerSet,
   player_id: EntityId,
   update_server: &mut UpdateServer,
   view: &mut View,
   key: Keycode,
 ) where UpdateServer: FnMut(ClientToServer)
 {
-  timers.time("event.key_press", || {
+  stopwatch::time("event.key_press", || {
     match key {
       Keycode::A => {
         update_server(Walk(Copyable(player_id), Copyable(Vector3::new(-1.0, 0.0, 0.0))));
@@ -98,13 +96,12 @@ fn key_press<UpdateServer>(
 }
 
 fn mouse_press<UpdateServer>(
-  timers: &TimerSet,
   player_id: EntityId,
   update_server: &mut UpdateServer,
   mouse_btn: Mouse,
 ) where UpdateServer: FnMut(ClientToServer)
 {
-  timers.time("event.mouse_press", || {
+  stopwatch::time("event.mouse_press", || {
     match mouse_btn {
       Mouse::Right => {
         update_server(
@@ -117,13 +114,12 @@ fn mouse_press<UpdateServer>(
 }
 
 fn key_release<UpdateServer>(
-  timers: &TimerSet,
   player_id: EntityId,
   update_server: &mut UpdateServer,
   key: Keycode,
 ) where UpdateServer: FnMut(ClientToServer)
 {
-  timers.time("event.key_release", || {
+  stopwatch::time("event.key_release", || {
     match key {
       // accelerations are negated from those in key_press.
       Keycode::A => {
@@ -147,7 +143,6 @@ fn key_release<UpdateServer>(
 }
 
 fn mouse_move<UpdateServer>(
-  timers: &TimerSet,
   player_id: EntityId,
   update_server: &mut UpdateServer,
   view: &mut View,
@@ -157,7 +152,7 @@ fn mouse_move<UpdateServer>(
 {
   // x and y are measured from the top-left corner.
 
-  timers.time("event.mouse_move", || {
+  stopwatch::time("event.mouse_move", || {
     let (w, h) = window.properties_getters().get_size();
     let (cx, cy) = (w as i32 / 2, h as i32 / 2);
     let d = Vector2::new(x - cx, cy - y);

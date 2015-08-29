@@ -7,7 +7,7 @@ use sdl2::event::Event;
 use sdl2::video;
 use std::mem;
 use std::thread;
-use stopwatch::TimerSet;
+use stopwatch;
 use time;
 use yaglw::gl_context::GLContext;
 
@@ -32,8 +32,6 @@ pub fn view_thread<Recv, UpdateServer>(
   Recv: FnMut() -> Option<ClientToView>,
   UpdateServer: FnMut(ClientToServer),
 {
-  let timers = TimerSet::new();
-
   let mut sdl = sdl2::init().everything().build().unwrap();
 
   video::gl_attr::set_context_profile(video::GLProfile::Core);
@@ -117,7 +115,6 @@ pub fn view_thread<Recv, UpdateServer>(
         Some(event) => {
           if has_focus {
             process_event(
-              &timers,
               player_id,
               update_server,
               &mut view,
@@ -135,7 +132,7 @@ pub fn view_thread<Recv, UpdateServer>(
 
     let renders = render_timer.update(time::precise_time_ns());
     if renders > 0 {
-      render(&timers, &mut view);
+      render(&mut view);
       // swap buffers
       window.gl_swap_window();
     }
@@ -143,7 +140,7 @@ pub fn view_thread<Recv, UpdateServer>(
     thread::yield_now();
   }
 
-  timers.print();
+  stopwatch::clone().print();
 
   debug!("view exiting.");
 }

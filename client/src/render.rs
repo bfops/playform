@@ -1,6 +1,6 @@
 //! Draw the view.
 
-use stopwatch::TimerSet;
+use stopwatch;
 
 use camera::set_camera;
 use gl;
@@ -8,10 +8,9 @@ use view::View;
 
 #[allow(missing_docs)]
 pub fn render(
-  timers: &TimerSet,
   rndr: &mut View,
 ) {
-  timers.time("render", || {
+  stopwatch::time("render", || {
     &mut rndr.gl.clear_buffer();
 
     set_camera(&mut rndr.shaders.mob_shader.shader, &mut rndr.gl, &rndr.camera);
