@@ -61,7 +61,9 @@ pub enum ClientToServer {
   StopJump(Copyable<EntityId>),
   /// Ask the server to send a block of terrain.
   RequestBlock(Copyable<ClientId>, Copyable<BlockPosition>, Copyable<LODIndex>),
-  /// Remove the voxel the given player's looking at.
+  /// Brush-remove where the player's looking.
+  Add(Copyable<EntityId>),
+  /// Brush-add at where the player's looking.
   Remove(Copyable<EntityId>),
 }
 
@@ -76,7 +78,8 @@ flatten_enum_impl!(
   (StartJump, Copyable(5), Copyable(5), x),
   (StopJump, Copyable(6), Copyable(6), x),
   (RequestBlock, Copyable(7), Copyable(7), x, y, z),
-  (Remove, Copyable(8), Copyable(8), x),
+  (Add, Copyable(8), Copyable(8), x),
+  (Remove, Copyable(9), Copyable(9), x),
 );
 
 #[derive(Debug, Clone)]

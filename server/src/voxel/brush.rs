@@ -13,6 +13,7 @@ pub type Bounds = Aabb3<i32>;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Action {
+  Add,
   Remove,
 }
 

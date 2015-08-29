@@ -139,7 +139,44 @@ impl<Brush> voxel::brush::T for Brush where Brush: brush::T {
     brush: &Brush,
     action: voxel::brush::Action,
   ) {
+    // TODO: factor out duplicate code
     match action {
+      voxel::brush::Action::Add => {
+        let set_leaf = |this: &mut T, corner_inside_surface| {
+          debug!("leaf {:?} is {:?}", bounds, *this);
+          match brush::T::intersect(brush, bounds) {
+            brush::Intersection::Outside => {},
+            brush::Intersection::Inside => {
+              *this = T::Volume(true);
+              debug!("leaf {:?} set to {:?}", bounds, *this);
+            },
+            brush::Intersection::Crosses(vertex, normal) => {
+              let size = bounds.size();
+              let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
+              let low = low.mul_s(size);
+              let corner_inside_surface = corner_inside_surface || voxel::field::T::contains(brush, &low);
+              let voxel =
+                SurfaceStruct {
+                  inner_vertex: vertex,
+                  normal: normal,
+                  corner_inside_surface: corner_inside_surface,
+                };
+              *this = T::Surface(voxel);
+              debug!("leaf {:?} set to {:?}", bounds, *this);
+            },
+          }
+        };
+
+        match this {
+          &mut T::Volume(true) => {},
+          &mut T::Volume(false) => {
+            set_leaf(this, false);
+          },
+          &mut T::Surface(voxel) => {
+            set_leaf(this, voxel.corner_inside_surface);
+          },
+        }
+      },
       voxel::brush::Action::Remove => {
         let set_leaf = |this: &mut T, corner_inside_surface| {
           debug!("leaf {:?} is {:?}", bounds, *this);
@@ -167,7 +204,7 @@ impl<Brush> voxel::brush::T for Brush where Brush: brush::T {
             },
           }
         };
-    
+
         match this {
           &mut T::Volume(false) => {},
           &mut T::Volume(true) => {

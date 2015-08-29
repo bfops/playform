@@ -6,6 +6,7 @@ use std::time::Duration;
 use thread_scoped;
 
 use common::communicate::{ClientToServer, ServerToClient};
+use common::entity;
 use common::serialize;
 use common::serialize::Copyable;
 use common::socket::SendSocket;
@@ -18,6 +19,49 @@ use update_gaia::{ServerToGaia, LoadReason};
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
   bounds.min.add_v(&bounds.max.to_vec()).mul_s(1.0 / 2.0)
+}
+
+fn brush<UpdateGaia>(
+  server: &Server,
+  update_gaia: &mut UpdateGaia,
+  player_id: entity::EntityId,
+  action: voxel::brush::Action,
+) where
+  UpdateGaia: FnMut(ServerToGaia),
+{
+  let ray;
+  {
+    let players = server.players.lock().unwrap();
+    let player = players.get(&player_id).unwrap();
+    ray = player.forward_ray();
+  }
+
+  let bounds: Option<voxel::Bounds>;
+  {
+    let terrain_loader = server.terrain_loader.lock().unwrap();
+    bounds =
+      terrain_loader.terrain.voxels.cast_ray(
+        &ray,
+        &mut |bounds, voxel| {
+          match voxel {
+            &terrain::voxel::T::Volume(false) => None,
+            _ => Some(bounds),
+          }
+        }
+      );
+  }
+
+  bounds.map(|bounds| {
+    debug!("bounds {:?}", bounds);
+    let center = bounds.center();
+    let r = 8.0;
+    let brush =
+      terrain::voxel::brush::sphere::T {
+        center: center,
+        radius: r,
+      };
+    update_gaia(ServerToGaia::Brush(action, brush));
+  });
 }
 
 #[inline]
@@ -121,40 +165,11 @@ pub fn apply_client_update<UpdateGaia>(
     ClientToServer::RequestBlock(Copyable(client_id), Copyable(position), Copyable(lod)) => {
       update_gaia(ServerToGaia::Load(position, lod, LoadReason::ForClient(client_id)));
     },
+    ClientToServer::Add(Copyable(player_id)) => {
+      brush(server, update_gaia, player_id, voxel::brush::Action::Add)
+    },
     ClientToServer::Remove(Copyable(player_id)) => {
-      let ray;
-      {
-        let players = server.players.lock().unwrap();
-        let player = players.get(&player_id).unwrap();
-        ray = player.forward_ray();
-      }
-
-      let bounds: Option<voxel::Bounds>;
-      {
-        let terrain_loader = server.terrain_loader.lock().unwrap();
-        bounds =
-          terrain_loader.terrain.voxels.cast_ray(
-            &ray,
-            &mut |bounds, voxel| {
-              match voxel {
-                &terrain::voxel::T::Volume(false) => None,
-                _ => Some(bounds),
-              }
-            }
-          );
-      }
-
-      bounds.map(|bounds| {
-        debug!("bounds {:?}", bounds);
-        let center = bounds.center();
-        let r = 8.0;
-        let brush =
-          terrain::voxel::brush::sphere::T {
-            center: center,
-            radius: r,
-          };
-        update_gaia(ServerToGaia::Brush(voxel::brush::Action::Remove, brush));
-      });
+      brush(server, update_gaia, player_id, voxel::brush::Action::Remove)
     },
   };
 }

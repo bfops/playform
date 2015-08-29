@@ -103,11 +103,16 @@ fn mouse_press<UpdateServer>(
 {
   stopwatch::time("event.mouse_press", || {
     match mouse_btn {
+      Mouse::Left => {
+        update_server(
+          ClientToServer::Add(Copyable(player_id))
+        );
+      },
       Mouse::Right => {
         update_server(
           ClientToServer::Remove(Copyable(player_id))
         );
-      }
+      },
       _ => {},
     }
   })
