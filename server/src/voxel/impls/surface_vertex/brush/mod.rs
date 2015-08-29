@@ -3,7 +3,9 @@ mod voxel {
 }
 
 pub mod cube;
+pub mod sphere;
 
+// TODO: Is this necessary when we have the voxel type itself?
 pub enum Intersection {
   /// The voxel is entirely outside the brush.
   Outside,

@@ -149,9 +149,9 @@ pub fn apply_client_update<UpdateGaia>(
         let center = bounds.center();
         let r = 8.0;
         let brush =
-          terrain::voxel::brush::cube::T {
-            low: center.add_v(&-Vector3::new(r, r, r)),
-            high: center.add_v(&Vector3::new(r, r, r)),
+          terrain::voxel::brush::sphere::T {
+            center: center,
+            radius: r,
           };
         update_gaia(ServerToGaia::Remove(brush));
       });

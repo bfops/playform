@@ -22,6 +22,7 @@ pub enum T {
   Surface(SurfaceStruct),
 }
 
+// TODO: Should this be moved into the general voxel interface?
 pub fn of_field<Field>(
   field: &Field,
   voxel: &::voxel::Bounds,
