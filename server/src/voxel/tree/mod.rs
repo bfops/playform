@@ -121,15 +121,16 @@ impl<Voxel> TreeBody<Voxel> {
     }
   }
 
-  pub fn remove<Brush>(
+  pub fn brush<Brush>(
     &mut self,
     bounds: &voxel::Bounds,
     brush: &Brush,
     brush_bounds: &::voxel::brush::Bounds,
+    action: ::voxel::brush::Action,
   ) where
     Brush: voxel::brush::T<Voxel=Voxel>,
   {
-    debug!("remove considers {:?}", bounds);
+    debug!("brush considers {:?}", bounds);
     if !brush_overlaps(bounds, brush_bounds) {
       debug!("ignoring {:?}", bounds);
       return
@@ -140,7 +141,7 @@ impl<Voxel> TreeBody<Voxel> {
         match data {
           &mut None => {},
           &mut Some(ref mut voxel) => {
-            voxel::brush::T::remove(voxel, bounds, brush);
+            voxel::brush::T::apply(voxel, bounds, brush, action);
           },
         }
 
@@ -150,7 +151,7 @@ impl<Voxel> TreeBody<Voxel> {
         macro_rules! recurse(($branch: ident, $update_bounds: expr) => {{
           let mut bounds = bounds;
           $update_bounds(&mut bounds);
-          branches.$branch.remove(&bounds, brush, brush_bounds);
+          branches.$branch.brush(&bounds, brush, brush_bounds, action);
         }});
         recurse!(lll, |_|                     {                            });
         recurse!(llh, |b: &mut voxel::Bounds| {                    b.z += 1});
@@ -465,18 +466,20 @@ impl<Voxel> T<Voxel> {
     }
   }
 
-  pub fn remove<Brush>(
+  pub fn brush<Brush>(
     &mut self,
     brush: &Brush,
     brush_bounds: &::voxel::brush::Bounds,
+    action: ::voxel::brush::Action,
   ) where
     Brush: voxel::brush::T<Voxel=Voxel>,
   {
     macro_rules! recurse(($branch: ident, $x: expr, $y: expr, $z: expr) => {{
-      self.contents.$branch.remove(
+      self.contents.$branch.brush(
         &voxel::Bounds::new($x, $y, $z, self.lg_size as i16),
         brush,
         brush_bounds,
+        action,
       );
     }});
     recurse!(lll, -1, -1, -1);
@@ -505,7 +508,7 @@ mod tests {
   impl voxel::brush::T for EraseAll {
     type Voxel = i32;
 
-    fn remove(this: &mut i32, _: &voxel::Bounds, _: &EraseAll) {
+    fn apply(this: &mut i32, _: &voxel::Bounds, _: &EraseAll, _: ::voxel::brush::Action) {
       *this = 999;
     }
   }
@@ -593,12 +596,13 @@ mod tests {
     let mut tree: T<i32> = T::new();
     *tree.get_mut_or_create(&voxel::Bounds::new(9, -1, 3, 0)) = TreeBody::leaf(Some(1));
 
-    tree.remove(
+    tree.brush(
       &EraseAll,
       &voxel::brush::Bounds::new(
         Point3::new(9, -1, 3),
         Point3::new(10, 0, 4),
-      )
+      ),
+      voxel::brush::Action::Remove,
     );
 
     assert_eq!(tree.get(&voxel::Bounds::new(9, -1, 3, 0)), Some(&999));

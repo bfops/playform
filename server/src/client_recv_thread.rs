@@ -153,7 +153,7 @@ pub fn apply_client_update<UpdateGaia>(
             center: center,
             radius: r,
           };
-        update_gaia(ServerToGaia::Remove(brush));
+        update_gaia(ServerToGaia::Brush(voxel::brush::Action::Remove, brush));
       });
     },
   };

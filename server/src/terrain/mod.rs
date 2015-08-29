@@ -102,11 +102,12 @@ impl Terrain {
     mesh.as_ref().unwrap()
   }
 
-  pub fn remove<F, Brush>(
+  pub fn brush<F, Brush>(
     &mut self,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
     brush: &Brush,
     brush_bounds: &::voxel::brush::Bounds,
+    action: ::voxel::brush::Action,
     mut block_changed: F,
   ) where
     F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
@@ -147,7 +148,7 @@ impl Terrain {
       }}}
     }
 
-    self.voxels.remove(brush, brush_bounds);
+    self.voxels.brush(brush, brush_bounds, action);
 
     macro_rules! block_range(($d:ident) => {{
       let low = brush_bounds.min().$d >> terrain_block::LG_WIDTH;

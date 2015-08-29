@@ -11,15 +11,21 @@ use voxel;
 
 pub type Bounds = Aabb3<i32>;
 
+#[derive(Debug, Copy, Clone)]
+pub enum Action {
+  Remove,
+}
+
 /// The interface provided by voxel brushes.
 pub trait T {
   /// The type of voxel this brush operates on.
   type Voxel;
 
   /// Use this brush to remove volume from a voxel.
-  fn remove(
+  fn apply(
     this: &mut Self::Voxel,
     bounds: &voxel::Bounds,
     brush: &Self,
+    action: Action,
   );
 }

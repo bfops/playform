@@ -133,45 +133,50 @@ pub struct SurfaceStruct {
 impl<Brush> voxel::brush::T for Brush where Brush: brush::T {
   type Voxel = T;
 
-  fn remove(
+  fn apply(
     this: &mut T,
     bounds: &voxel::Bounds,
     brush: &Brush,
+    action: voxel::brush::Action,
   ) {
-    let set_leaf = |this: &mut T, corner_inside_surface| {
-      debug!("leaf {:?} is {:?}", bounds, *this);
-      match brush::T::intersect(brush, bounds) {
-        brush::Intersection::Outside => {},
-        brush::Intersection::Inside => {
-          *this = T::Volume(false);
-          debug!("leaf {:?} set to {:?}", bounds, *this);
-        },
-        brush::Intersection::Crosses(vertex, normal) => {
-          let size = bounds.size();
-          let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
-          let low = low.mul_s(size);
-          // The brush is negative space, so the normal should point into it, not out of it.
-          let normal = -normal;
-          let corner_inside_surface = corner_inside_surface && !voxel::field::T::contains(brush, &low);
-          let voxel =
-            SurfaceStruct {
-              inner_vertex: vertex,
-              normal: normal,
-              corner_inside_surface: corner_inside_surface,
-            };
-          *this = T::Surface(voxel);
-          debug!("leaf {:?} set to {:?}", bounds, *this);
-        },
-      }
-    };
-
-    match this {
-      &mut T::Volume(false) => {},
-      &mut T::Volume(true) => {
-        set_leaf(this, true);
-      },
-      &mut T::Surface(voxel) => {
-        set_leaf(this, voxel.corner_inside_surface);
+    match action {
+      voxel::brush::Action::Remove => {
+        let set_leaf = |this: &mut T, corner_inside_surface| {
+          debug!("leaf {:?} is {:?}", bounds, *this);
+          match brush::T::intersect(brush, bounds) {
+            brush::Intersection::Outside => {},
+            brush::Intersection::Inside => {
+              *this = T::Volume(false);
+              debug!("leaf {:?} set to {:?}", bounds, *this);
+            },
+            brush::Intersection::Crosses(vertex, normal) => {
+              let size = bounds.size();
+              let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
+              let low = low.mul_s(size);
+              // The brush is negative space, so the normal should point into it, not out of it.
+              let normal = -normal;
+              let corner_inside_surface = corner_inside_surface && !voxel::field::T::contains(brush, &low);
+              let voxel =
+                SurfaceStruct {
+                  inner_vertex: vertex,
+                  normal: normal,
+                  corner_inside_surface: corner_inside_surface,
+                };
+              *this = T::Surface(voxel);
+              debug!("leaf {:?} set to {:?}", bounds, *this);
+            },
+          }
+        };
+    
+        match this {
+          &mut T::Volume(false) => {},
+          &mut T::Volume(true) => {
+            set_leaf(this, true);
+          },
+          &mut T::Surface(voxel) => {
+            set_leaf(this, voxel.corner_inside_surface);
+          },
+        }
       },
     }
   }
