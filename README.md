@@ -6,14 +6,14 @@ Playform aspires to be an open-world sandbox game written in Rust, taking
 inspiration from [Voxel Farm](http://procworld.blogspot.com/) and Minecraft.
 
 It's currently.. well, very much a WIP. As
-[michaelwu's C++ bindgen fork](https://github.com/michaelwu/rust-bindgen/tree/sm-hacks)
-becomes more and more capable, part of the plan is to start using seasoned C++
+[michaelwu's rust-bindgen fork](https://github.com/michaelwu/rust-bindgen/tree/sm-hacks) supports C++
+better and better, part of the plan is to start using seasoned C++
 libraries like [bullet physics](https://github.com/bulletphysics/bullet3).
 
 Help is great! PRs and [issues](https://github.com/bfops/playform/issues)
 are appreciated.
 
-Some (oudated) screenshots:
+Some picture things:
 
 ![screenshot 1](/../screenshots/screenshots/screenshot1.png?raw=true)
 ![screenshot 2](/../screenshots/screenshots/screenshot2.png?raw=true)
@@ -49,8 +49,10 @@ If you find `playform` itself won't build on the latest `rustc`, please open an 
   * Move: WASD
   * Jump: Space
   * Look around: Mouse
+  * Sphere placing tool: Left mouse button
+  * Sphere eraser tool: Right mouse button
 
-One mob spawns that will play "tag" with you: tag it and it will chase you until it tags you back.
+One mob spawns that will play "tag" with you: tag it and it will chase you until it tags you back. If you get too far away from it, it'll probably get lost and fall through the planet. It's a little needy.
 
 ## If things don't work
 
