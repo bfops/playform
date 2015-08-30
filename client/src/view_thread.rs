@@ -32,33 +32,32 @@ pub fn view_thread<Recv, UpdateServer>(
   Recv: FnMut() -> Option<ClientToView>,
   UpdateServer: FnMut(ClientToServer),
 {
-  let mut sdl = sdl2::init().everything().build().unwrap();
+  let sdl = sdl2::init().unwrap();
+  let _event = sdl.event().unwrap();
+  let video = sdl.video().unwrap();
 
-  video::gl_attr::set_context_profile(video::GLProfile::Core);
-  video::gl_attr::set_context_version(3, 3);
+  video.gl_attr().set_context_profile(video::GLProfile::Core);
+  video.gl_attr().set_context_version(3, 3);
 
   // Open the window as fullscreen at the current resolution.
   let mut window =
-    video::WindowBuilder::new(
-      &sdl,
+    video.window(
       "Playform",
       1600, 900,
     );
 
   let window = window.position(0, 0);
-  window.opengl();
+  let window = window.opengl();
 
   let mut window = window.build().unwrap();
 
-  // Send text input events.
-  sdl2::keyboard::start_text_input();
-  let mut event_pump = sdl.event_pump();
+  let mut event_pump = sdl.event_pump().unwrap();
 
   let _sdl_gl_context = window.gl_create_context().unwrap();
 
   // Load the OpenGL function pointers.
   gl::load_with(|s| unsafe {
-    mem::transmute(video::gl_get_proc_address(s))
+    mem::transmute(video.gl_get_proc_address(s))
   });
 
   let gl = unsafe {
@@ -68,8 +67,8 @@ pub fn view_thread<Recv, UpdateServer>(
   gl.print_stats();
 
   let window_size = {
-    let (w, h) = window.properties_getters().get_size();
-    Vector2::new(w, h)
+    let (w, h) = window.size();
+    Vector2::new(w as i32, h as i32)
   };
 
   let mut view = View::new(gl, window_size);
@@ -103,11 +102,11 @@ pub fn view_thread<Recv, UpdateServer>(
           match event_id {
             sdl2::event::WindowEventId::FocusGained => {
               has_focus = true;
-              sdl2::mouse::show_cursor(false);
+              sdl.mouse().show_cursor(false);
             }
             sdl2::event::WindowEventId::FocusLost => {
               has_focus = false;
-              sdl2::mouse::show_cursor(true);
+              sdl.mouse().show_cursor(true);
             }
             _ => {}
           }
@@ -115,6 +114,7 @@ pub fn view_thread<Recv, UpdateServer>(
         Some(event) => {
           if has_focus {
             process_event(
+              &sdl,
               player_id,
               update_server,
               &mut view,

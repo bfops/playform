@@ -1,10 +1,10 @@
 //! SDL input event processing code.
 
 use cgmath::{Vector2, Vector3};
+use sdl2;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::Mouse;
-use sdl2::mouse;
 use sdl2::video;
 use std::f32::consts::PI;
 use stopwatch;
@@ -18,6 +18,7 @@ use view::View;
 
 #[allow(missing_docs)]
 pub fn process_event<UpdateServer>(
+  sdl: &sdl2::Sdl,
   player_id: EntityId,
   update_server: &mut UpdateServer,
   view: &mut View,
@@ -41,7 +42,7 @@ pub fn process_event<UpdateServer>(
       });
     },
     Event::MouseMotion{x, y, ..} => {
-      mouse_move(player_id, update_server, view, window, x, y);
+      mouse_move(sdl, player_id, update_server, view, window, x, y);
     },
     Event::MouseButtonDown{mouse_btn, ..} => {
       mouse_press(player_id, update_server, mouse_btn);
@@ -148,6 +149,7 @@ fn key_release<UpdateServer>(
 }
 
 fn mouse_move<UpdateServer>(
+  sdl: &sdl2::Sdl,
   player_id: EntityId,
   update_server: &mut UpdateServer,
   view: &mut View,
@@ -158,7 +160,7 @@ fn mouse_move<UpdateServer>(
   // x and y are measured from the top-left corner.
 
   stopwatch::time("event.mouse_move", || {
-    let (w, h) = window.properties_getters().get_size();
+    let (w, h) = window.size();
     let (cx, cy) = (w as i32 / 2, h as i32 / 2);
     let d = Vector2::new(x - cx, cy - y);
     // To-radians coefficient. Numbers closer to zero dull the mouse movement more.
@@ -169,6 +171,6 @@ fn mouse_move<UpdateServer>(
     view.camera.rotate_lateral(r.x);
     view.camera.rotate_vertical(r.y);
 
-    mouse::warp_mouse_in_window(window, cx, cy);
+    sdl.mouse().warp_mouse_in_window(window, cx, cy);
   })
 }
