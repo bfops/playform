@@ -22,7 +22,7 @@ Some picture things:
 
 Make sure you have:
 
-  * The **nightly build** of the Rust compiler and package manager, `cargo`.
+  * The **August 20th nightly build** of the Rust compiler and package manager, `cargo`.
   * `libpng`
   * `SDL2`
   * `SDL2_ttf`
@@ -55,7 +55,7 @@ One mob spawns that will play "tag" with you: tag it and it will chase you until
 
 ## If things don't work
 
-**The build triggers an ICE on the latest `rustc`. An [issue](https://github.com/rust-lang/rust/issues/28181) has been filed.**
+**The build triggers an ICE on the latest `rustc`. An [issue](https://github.com/rust-lang/rust/issues/28181) has been filed. Use an earlier nightly version!**
 
 If things are broken, like compile errors, problems getting it to start, crashes, etc.
 please consider opening an issue! If you can take the time to do it in a non-optimized
