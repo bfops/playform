@@ -3,6 +3,7 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
+#![feature(convert)]
 #![feature(main)]
 #![feature(test)]
 #![feature(unboxed_closures)]
