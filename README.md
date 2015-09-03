@@ -23,14 +23,13 @@ Some picture things:
 Make sure you have:
 
   * The **nightly build** of the Rust compiler and package manager, `cargo`.
-  * OpenCL
   * `libpng`
   * `SDL2`
   * `SDL2_ttf`
   * `libnanomsg`
 
 At any point, `--release` can be appended onto `cargo build` or `cargo run` for a slower
-build, but a much more optimized result.
+build, but a much more optimized binary.
 
 Run the Playform server using `cargo run` in the `server` folder. It takes one parameter:
 the listen URL for the server. It defaults to running locally: `ipc:///tmp/server.ipc`.
@@ -55,6 +54,8 @@ If you find `playform` itself won't build on the latest `rustc`, please open an 
 One mob spawns that will play "tag" with you: tag it and it will chase you until it tags you back. If you get too far away from it, it'll probably get lost and fall through the planet. It's a little needy.
 
 ## If things don't work
+
+**The build triggers an ICE on the latest `rustc`. An [issue](https://github.com/rust-lang/rust/issues/28181) has been filed.**
 
 If things are broken, like compile errors, problems getting it to start, crashes, etc.
 please consider opening an issue! If you can take the time to do it in a non-optimized
