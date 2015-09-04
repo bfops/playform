@@ -7,7 +7,7 @@ pub fn dirt() -> String {
   let mut waves = Vec::new();
   for i in 0..10 {
     waves.push(
-      Wave { freq:  ((1 << i) as f32) / 4.0, amp: 1.0 / (1 << i) as f32 }
+      Wave { freq: (1 << i) as f32, amp: 1.0 / (1 << i) as f32 }
     );
   }
 
