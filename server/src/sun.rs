@@ -28,6 +28,8 @@ impl Sun {
 
     // Fraction completed of a full cycle.
     let fraction = (self.position as f32) / 65536.0;
+    // Longer day, shorter night.
+    let fraction = fraction * fraction;
 
     if self.print_timer.update(time::precise_time_ns()) > 0 {
       debug!("Sun is at {:.1}%.", fraction * 100.0);
