@@ -63,7 +63,11 @@ impl<'a> TerrainShader<'a> {
         // include cnoise
         {}
 
-        vec4 grass() {{
+        vec3 grass() {{
+          {}
+        }}
+
+        vec3 dirt() {{
           {}
         }}
 
@@ -72,7 +76,8 @@ impl<'a> TerrainShader<'a> {
 
           vec4 base_color;
 
-          base_color = grass();
+          float grad = (cnoise(world_position / 32) + 1) / 2;
+          base_color = vec4(mix(grass(), dirt(), grad), 1);
 
           float brightness = dot(normal, sun.direction);
           brightness = clamp(brightness, 0, 1);
@@ -86,7 +91,7 @@ impl<'a> TerrainShader<'a> {
             vec4(clamp(lighting, 0, 1), 1) * base_color * vec4(1, 1, 1, 1 - fog_density);
 
           frag_color = fog_component + material_component;
-        }}", ::shaders::noise::cnoise(), ::shaders::grass::grass(),
+        }}", ::shaders::noise::cnoise(), ::shaders::grass::grass(), ::shaders::dirt::dirt(),
         )),
     );
     TerrainShader {

@@ -37,6 +37,6 @@ pub fn grass() -> String {
     noise /= total_amp;
     noise = (noise + 1) / 2;
 
-    return vec4(0.1 + 0.2*noise, 0.4 + 0.2*noise, 0.0, 1);
+    return mix(vec3(0.1, 0.4, 0.0), vec3(0.3, 0.6, 0.0), noise);
   "#, contents)
 }
