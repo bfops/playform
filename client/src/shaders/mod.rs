@@ -4,6 +4,9 @@ pub mod color;
 pub mod terrain;
 pub mod texture;
 
+mod grass;
+mod noise;
+
 use camera;
 use cgmath;
 use cgmath::{Vector2, Vector3};
