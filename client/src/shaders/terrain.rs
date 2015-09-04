@@ -76,8 +76,12 @@ impl<'a> TerrainShader<'a> {
 
           vec4 base_color;
 
-          float grad = (cnoise(world_position / 32) + 1) / 2;
-          base_color = vec4(mix(grass(), dirt(), grad), 1);
+          float grass_amount =
+            (cnoise(world_position / 32) + 1) / 2 *
+            dot(normal, vec3(0, 1, 0)) *
+            1.5;
+          grass_amount = clamp(grass_amount, 0, 1);
+          base_color = vec4(mix(dirt(), grass(), grass_amount), 1);
 
           float brightness = dot(normal, sun.direction);
           brightness = clamp(brightness, 0, 1);
