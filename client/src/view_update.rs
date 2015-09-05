@@ -78,6 +78,7 @@ pub fn apply_client_to_view(up: ClientToView, view: &mut View) {
         block.vertex_coordinates.as_ref(),
         block.normals.as_ref(),
         block.ids.as_ref(),
+        block.materials.as_ref(),
       );
     },
     ClientToView::RemoveTerrain(id) => {

@@ -1,13 +1,15 @@
 //! Data structures for loading/unloading/maintaining terrain data in VRAM.
 
-use common::entity::EntityId;
-use common::id_allocator::IdAllocator;
-use common::terrain_block::Triangle;
 use gl;
 use gl::types::*;
 use cgmath::{Point3, Vector3};
-use shaders::terrain::TerrainShader;
 use std::collections::HashMap;
+
+use common::entity::EntityId;
+use common::id_allocator::IdAllocator;
+use common::terrain_block::Triangle;
+
+use shaders::terrain::TerrainShader;
 use yaglw::gl_context::GLContext;
 use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
@@ -35,6 +37,7 @@ pub struct TerrainBuffers<'a> {
 
   vertex_positions: BufferTexture<'a, Triangle<Point3<GLfloat>>>,
   normals: BufferTexture<'a, Triangle<Vector3<GLfloat>>>,
+  materials: BufferTexture<'a, GLint>,
 }
 
 #[test]
@@ -63,6 +66,7 @@ impl<'a> TerrainBuffers<'a> {
       length: 0,
       vertex_positions: BufferTexture::new(gl, gl::R32F, POLYGON_BUDGET),
       normals: BufferTexture::new(gl, gl::R32F, POLYGON_BUDGET),
+      materials: BufferTexture::new(gl, gl::R32UI, POLYGON_BUDGET),
     }
   }
 
@@ -88,6 +92,7 @@ impl<'a> TerrainBuffers<'a> {
 
     bind("positions", self.vertex_positions.handle.gl_id);
     bind("normals", self.normals.handle.gl_id);
+    bind("materials", self.materials.handle.gl_id);
   }
 
   /// Add a series of entites into VRAM.
@@ -97,15 +102,15 @@ impl<'a> TerrainBuffers<'a> {
     vertices: &[Triangle<Point3<GLfloat>>],
     normals: &[Triangle<Vector3<GLfloat>>],
     ids: &[EntityId],
-  ) -> bool {
+    materials: &[GLint],
+  ) {
     assert_eq!(vertices.len(), ids.len());
     assert_eq!(normals.len(), ids.len());
+    assert_eq!(materials.len(), ids.len());
 
     self.vertex_positions.buffer.byte_buffer.bind(gl);
     let success = self.vertex_positions.buffer.push(gl, vertices);
-    if !success {
-      return false;
-    }
+    assert!(success);
 
     self.normals.buffer.byte_buffer.bind(gl);
     let success = self.normals.buffer.push(gl, normals);
@@ -116,9 +121,11 @@ impl<'a> TerrainBuffers<'a> {
       self.index_to_id.push(id);
     }
 
-    self.length += VERTICES_PER_TRIANGLE as usize * ids.len();
+    self.materials.buffer.byte_buffer.bind(gl);
+    let success = self.materials.buffer.push(gl, materials);
+    assert!(success);
 
-    true
+    self.length += VERTICES_PER_TRIANGLE as usize * ids.len();
   }
 
   // TODO: Make this take many ids as a parameter, to reduce `bind`s.
@@ -141,6 +148,9 @@ impl<'a> TerrainBuffers<'a> {
 
     self.normals.buffer.byte_buffer.bind(gl);
     self.normals.buffer.swap_remove(gl, idx, 1);
+
+    self.materials.buffer.byte_buffer.bind(gl);
+    self.materials.buffer.swap_remove(gl, idx, 1);
   }
 
   /// Draw the terrain.

@@ -166,7 +166,8 @@ pub fn generate_block(
         }
         debug!("edge from {:?} to {:?}", voxel_position, neighbor_position);
         debug!("neighbor is {:?}", neighbor_material);
-        if (voxel.corner == voxel::Material::Empty) == (neighbor_material == voxel::Material::Empty) {
+        let empty = voxel::Material::Empty;
+        if (voxel.corner == empty) == (neighbor_material == empty) {
           // This edge doesn't cross the surface, and doesn't generate polys.
 
           return
@@ -229,12 +230,14 @@ pub fn generate_block(
           polys.push([i2, i3, i_center]);
           polys.push([i3, i4, i_center]);
           polys.push([i4, i1, i_center]);
+          block.materials.push_all(&[neighbor_material as i32; 4]);
         } else {
           // The polys are visible from positive infinity.
           polys.push([i2, i1, i_center]);
           polys.push([i3, i2, i_center]);
           polys.push([i4, i3, i_center]);
           polys.push([i1, i4, i_center]);
+          block.materials.push_all(&[voxel.corner as i32; 4]);
         }
       };
 

@@ -63,6 +63,8 @@ pub struct TerrainBlock {
   pub normals: Vec<Triangle<Vector3<f32>>>,
   /// Entity IDs for each triangle.
   pub ids: Vec<EntityId>,
+  /// Material IDs for each triangle.
+  pub materials: Vec<i32>,
   // TODO: Change this back to a HashMap once initial capacity is zero for those.
   /// Per-triangle bounding boxes.
   pub bounds: Vec<(EntityId, Aabb3<f32>)>,
@@ -76,9 +78,10 @@ impl TerrainBlock {
       normals: Vec::new(),
 
       ids: Vec::new(),
+      materials: Vec::new(),
       bounds: Vec::new(),
     }
   }
 }
 
-flatten_struct_impl!(TerrainBlock, vertex_coordinates, normals, ids, bounds);
+flatten_struct_impl!(TerrainBlock, vertex_coordinates, normals, ids, materials, bounds);

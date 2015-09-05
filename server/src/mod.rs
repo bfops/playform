@@ -8,6 +8,7 @@
 #![feature(range_inclusive)]
 #![feature(test)]
 #![feature(unboxed_closures)]
+#![feature(vec_push_all)]
 
 extern crate cgmath;
 extern crate common;

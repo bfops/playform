@@ -21,10 +21,11 @@ impl<'a> TerrainShader<'a> {
 
         uniform samplerBuffer positions;
         uniform samplerBuffer normals;
+        uniform isamplerBuffer materials;
 
-        flat out int face_id;
         out vec3 world_position;
         out vec3 normal;
+        flat out int material;
 
         void main() {
           // Mutiply by 3 because there are 3 components for each normal vector.
@@ -38,7 +39,9 @@ impl<'a> TerrainShader<'a> {
           normal.y = texelFetch(normals, normal_id + 1).r;
           normal.z = texelFetch(normals, normal_id + 2).r;
 
-          face_id = gl_VertexID / 3;
+          int face_id = gl_VertexID / 3;
+
+          material = texelFetch(materials, face_id).r;
 
           gl_Position = projection_matrix * vec4(world_position, 1.0);
         }".to_string()),
@@ -54,9 +57,9 @@ impl<'a> TerrainShader<'a> {
 
         uniform samplerBuffer positions;
 
-        flat in int face_id;
         in vec3 world_position;
         in vec3 normal;
+        flat in int material;
 
         out vec4 frag_color;
 
@@ -72,16 +75,18 @@ impl<'a> TerrainShader<'a> {
         }}
 
         void main() {{
-          int color_id = face_id * 3;
-
           vec4 base_color;
 
-          float grass_amount =
-            (cnoise(world_position / 32) + 1) / 2 *
-            dot(normal, vec3(0, 1, 0)) *
-            1.5;
-          grass_amount = clamp(grass_amount, 0, 1);
-          base_color = vec4(mix(dirt(), grass(), grass_amount), 1);
+          if (material == 1) {{
+            float grass_amount =
+              (cnoise(world_position / 32) + 1) / 2 *
+              dot(normal, vec3(0, 1, 0)) *
+              1.5;
+            grass_amount = clamp(grass_amount, 0, 1);
+            base_color = vec4(mix(dirt(), grass(), grass_amount), 1);
+          }} else {{
+            base_color = vec4(0.5, 0, 0.5, 0.5);
+          }}
 
           float brightness = dot(normal, sun.direction);
           brightness = clamp(brightness, 0, 1);
