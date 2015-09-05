@@ -22,6 +22,21 @@ pub enum T {
   Surface(SurfaceStruct),
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+// Every voxel keeps track of a single vertex, as well as whether its
+// lowest-coordinate corner is inside the volume.
+// Since we keep track of an "arbitrarily" large world of voxels, we don't
+// leave out any corners.
+pub struct SurfaceStruct {
+  /// The position of a free-floating vertex on the surface.
+  pub surface_vertex: Vertex,
+  /// The surface normal at `surface_vertex`.
+  pub normal: Normal,
+
+  /// Is this voxel's low corner inside the field?
+  pub corner_inside_surface: bool,
+}
+
 // TODO: Should this be moved into the general voxel interface?
 pub fn of_field<Field>(
   field: &Field,
@@ -108,26 +123,11 @@ pub fn of_field<Field>(
     }
 
     T::Surface(SurfaceStruct {
-      inner_vertex: vertex,
+      surface_vertex: vertex,
       normal: normal,
       corner_inside_surface: corner,
     })
   })
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-// Every voxel keeps track of a single vertex, as well as whether its
-// lowest-coordinate corner is inside the volume.
-// Since we keep track of an "arbitrarily" large world of voxels, we don't
-// leave out any corners.
-pub struct SurfaceStruct {
-  /// The position of a free-floating vertex on the surface.
-  pub inner_vertex: Vertex,
-  /// The surface normal at `inner_vertex`.
-  pub normal: Normal,
-
-  /// Is this voxel's low corner inside the field?
-  pub corner_inside_surface: bool,
 }
 
 impl<Brush> voxel::brush::T for Brush where Brush: brush::T {
@@ -157,7 +157,7 @@ impl<Brush> voxel::brush::T for Brush where Brush: brush::T {
               let corner_inside_surface = corner_inside_surface || voxel::field::T::contains(brush, &low);
               let voxel =
                 SurfaceStruct {
-                  inner_vertex: vertex,
+                  surface_vertex: vertex,
                   normal: normal,
                   corner_inside_surface: corner_inside_surface,
                 };
@@ -195,7 +195,7 @@ impl<Brush> voxel::brush::T for Brush where Brush: brush::T {
               let corner_inside_surface = corner_inside_surface && !voxel::field::T::contains(brush, &low);
               let voxel =
                 SurfaceStruct {
-                  inner_vertex: vertex,
+                  surface_vertex: vertex,
                   normal: normal,
                   corner_inside_surface: corner_inside_surface,
                 };

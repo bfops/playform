@@ -39,7 +39,7 @@ impl voxel::brush::T for T {
       },
       voxel::T::Surface(surface) => {
         voxel::brush::Intersection::Crosses (
-          surface.inner_vertex,
+          surface.surface_vertex,
           surface.normal,
         )
       },

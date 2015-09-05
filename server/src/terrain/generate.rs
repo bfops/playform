@@ -146,7 +146,7 @@ pub fn generate_block(
         _ => continue,
       }
       let index = coords.len();
-      let vertex = voxel.inner_vertex.to_world_vertex(&bounds);
+      let vertex = voxel.surface_vertex.to_world_vertex(&bounds);
       let normal = voxel.normal.to_float_normal();
       coords.push(vertex);
       normals.push(normal);
@@ -185,7 +185,7 @@ pub fn generate_block(
                 match get_voxel(&bounds) {
                   terrain::voxel::T::Surface(voxel) => {
                     let i = coords.len();
-                    let vertex = voxel.inner_vertex.to_world_vertex(&bounds);
+                    let vertex = voxel.surface_vertex.to_world_vertex(&bounds);
                     let normal = voxel.normal.to_float_normal();
                     coords.push(vertex);
                     normals.push(normal);
