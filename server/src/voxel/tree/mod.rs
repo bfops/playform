@@ -126,7 +126,6 @@ impl<Voxel> TreeBody<Voxel> {
     bounds: &voxel::Bounds,
     brush: &Brush,
     brush_bounds: &::voxel::brush::Bounds,
-    action: ::voxel::brush::Action,
   ) where
     Brush: voxel::brush::T<Voxel=Voxel>,
   {
@@ -141,7 +140,7 @@ impl<Voxel> TreeBody<Voxel> {
         match data {
           &mut None => {},
           &mut Some(ref mut voxel) => {
-            voxel::brush::T::apply(voxel, bounds, brush, action);
+            voxel::brush::T::apply(voxel, bounds, brush);
           },
         }
 
@@ -151,7 +150,7 @@ impl<Voxel> TreeBody<Voxel> {
         macro_rules! recurse(($branch: ident, $update_bounds: expr) => {{
           let mut bounds = bounds;
           $update_bounds(&mut bounds);
-          branches.$branch.brush(&bounds, brush, brush_bounds, action);
+          branches.$branch.brush(&bounds, brush, brush_bounds);
         }});
         recurse!(lll, |_|                     {                            });
         recurse!(llh, |b: &mut voxel::Bounds| {                    b.z += 1});
@@ -470,7 +469,6 @@ impl<Voxel> T<Voxel> {
     &mut self,
     brush: &Brush,
     brush_bounds: &::voxel::brush::Bounds,
-    action: ::voxel::brush::Action,
   ) where
     Brush: voxel::brush::T<Voxel=Voxel>,
   {
@@ -479,7 +477,6 @@ impl<Voxel> T<Voxel> {
         &voxel::Bounds::new($x, $y, $z, self.lg_size as i16),
         brush,
         brush_bounds,
-        action,
       );
     }});
     recurse!(lll, -1, -1, -1);

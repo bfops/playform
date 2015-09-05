@@ -11,12 +11,6 @@ use voxel;
 
 pub type Bounds = Aabb3<i32>;
 
-#[derive(Debug, Copy, Clone)]
-pub enum Action {
-  Add,
-  Remove,
-}
-
 /// The interface provided by voxel brushes.
 pub trait T {
   /// The type of voxel this brush operates on.
@@ -27,6 +21,5 @@ pub trait T {
     this: &mut Self::Voxel,
     bounds: &voxel::Bounds,
     brush: &Self,
-    action: Action,
   );
 }

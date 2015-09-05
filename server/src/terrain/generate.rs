@@ -99,7 +99,7 @@ pub fn generate_block(
       let r;
       match branch {
         &mut terrain::voxel::tree::Empty => {
-          r = terrain::voxel::of_field(heightmap, bounds);
+          r = terrain::voxel::unwrap(terrain::voxel::of_field(heightmap, bounds));
           *branch =
             terrain::voxel::tree::Branch {
               data: Some(r),
@@ -109,7 +109,7 @@ pub fn generate_block(
         &mut terrain::voxel::tree::Branch { ref mut data, branches: _ }  => {
           match data {
             &mut None => {
-              r = terrain::voxel::of_field(heightmap, bounds);
+              r = terrain::voxel::unwrap(terrain::voxel::of_field(heightmap, bounds));
               *data = Some(r);
             },
             &mut Some(ref data) => {
@@ -145,6 +145,8 @@ pub fn generate_block(
         terrain::voxel::T::Surface(v) => voxel = v,
         _ => continue,
       }
+
+      debug!("Generate from {:?}, contents {:?}", bounds, voxel);
       let index = coords.len();
       let vertex = voxel.surface_vertex.to_world_vertex(&bounds);
       let normal = voxel.normal.to_float_normal();
@@ -157,13 +159,14 @@ pub fn generate_block(
         d1, d2,     // Vector to the voxels adjacent to the edge.
       | {
         let neighbor_position = voxel_position.add_v(&d_neighbor);
-        debug!("edge from {:?} to {:?}", voxel_position, neighbor_position);
-        let neighbor_inside_surface;
+        let neighbor_material;
         match get_voxel(&bounds_at(&neighbor_position)) {
-          terrain::voxel::T::Surface(v) => neighbor_inside_surface = v.corner_inside_surface,
-          terrain::voxel::T::Volume(inside) => neighbor_inside_surface = inside,
+          terrain::voxel::T::Surface(v) => neighbor_material = v.corner,
+          terrain::voxel::T::Volume(material) => neighbor_material = material,
         }
-        if voxel.corner_inside_surface == neighbor_inside_surface {
+        debug!("edge from {:?} to {:?}", voxel_position, neighbor_position);
+        debug!("neighbor is {:?}", neighbor_material);
+        if (voxel.corner == voxel::Material::Empty) == (neighbor_material == voxel::Material::Empty) {
           // This edge doesn't cross the surface, and doesn't generate polys.
 
           return
@@ -220,18 +223,18 @@ pub fn generate_block(
         coords.push(v_center);
         normals.push(n_center);
 
-        if voxel.corner_inside_surface {
-          // The polys are visible from positive infinity.
-          polys.push([i2, i1, i_center]);
-          polys.push([i3, i2, i_center]);
-          polys.push([i4, i3, i_center]);
-          polys.push([i1, i4, i_center]);
-        } else {
+        if voxel.corner == voxel::Material::Empty {
           // The polys are visible from negative infinity.
           polys.push([i1, i2, i_center]);
           polys.push([i2, i3, i_center]);
           polys.push([i3, i4, i_center]);
           polys.push([i4, i1, i_center]);
+        } else {
+          // The polys are visible from positive infinity.
+          polys.push([i2, i1, i_center]);
+          polys.push([i3, i2, i_center]);
+          polys.push([i4, i3, i_center]);
+          polys.push([i1, i4, i_center]);
         }
       };
 

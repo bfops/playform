@@ -25,7 +25,7 @@ fn brush<UpdateGaia>(
   server: &Server,
   update_gaia: &mut UpdateGaia,
   player_id: entity::EntityId,
-  action: voxel::brush::Action,
+  material: voxel::Material,
 ) where
   UpdateGaia: FnMut(ServerToGaia),
 {
@@ -44,7 +44,7 @@ fn brush<UpdateGaia>(
         &ray,
         &mut |bounds, voxel| {
           match voxel {
-            &terrain::voxel::T::Volume(false) => None,
+            &terrain::voxel::T::Volume(voxel::Material::Empty) => None,
             _ => Some(bounds),
           }
         }
@@ -59,8 +59,9 @@ fn brush<UpdateGaia>(
       terrain::voxel::brush::sphere::T {
         center: center,
         radius: r,
+        material: material,
       };
-    update_gaia(ServerToGaia::Brush(action, brush));
+    update_gaia(ServerToGaia::Brush(brush));
   });
 }
 
@@ -166,10 +167,10 @@ pub fn apply_client_update<UpdateGaia>(
       update_gaia(ServerToGaia::Load(position, lod, LoadReason::ForClient(client_id)));
     },
     ClientToServer::Add(Copyable(player_id)) => {
-      brush(server, update_gaia, player_id, voxel::brush::Action::Add)
+      brush(server, update_gaia, player_id, voxel::Material::Terrain);
     },
     ClientToServer::Remove(Copyable(player_id)) => {
-      brush(server, update_gaia, player_id, voxel::brush::Action::Remove)
+      brush(server, update_gaia, player_id, voxel::Material::Empty);
     },
   };
 }

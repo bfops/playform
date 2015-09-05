@@ -6,6 +6,12 @@ pub mod impls;
 use cgmath::{Point, Point3, Vector, Vector3};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Material {
+  Empty,
+  Terrain,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Bounds {
   /// x-coordinate as a multiple of 2^lg_size.
   pub x: i32,

@@ -15,11 +15,11 @@ pub mod brush;
 // low-order bits can be used to figure out which one it is, since pointers
 // have three low-order bits set to zero).
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum T {
-  // The voxel is entirely inside or outside the volume. true is inside.
-  Volume(bool),
+pub enum T<Material> {
+  // The entire voxel is a single material.
+  Volume(Material),
   // The voxel crosses the surface of the volume.
-  Surface(SurfaceStruct),
+  Surface(SurfaceStruct<Material>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -27,74 +27,69 @@ pub enum T {
 // lowest-coordinate corner is inside the volume.
 // Since we keep track of an "arbitrarily" large world of voxels, we don't
 // leave out any corners.
-pub struct SurfaceStruct {
+pub struct SurfaceStruct<Material> {
   /// The position of a free-floating vertex on the surface.
   pub surface_vertex: Vertex,
   /// The surface normal at `surface_vertex`.
   pub normal: Normal,
 
-  /// Is this voxel's low corner inside the field?
-  pub corner_inside_surface: bool,
+  /// The material of the voxel's lowest corner.
+  pub corner: Material,
 }
 
 // TODO: Should this be moved into the general voxel interface?
 pub fn of_field<Field>(
   field: &Field,
   voxel: &::voxel::Bounds,
-) -> T where
+) -> T<Option<::voxel::Material>> where
   Field: voxel::field::T,
 {
   stopwatch::time("voxel.surface_vertex.of_field", || {
     let (low, high) = voxel.corners();
-    macro_rules! density(($x:expr, $y:expr, $z:expr) => {{
-      voxel::field::T::density_at(field, &Point3::new($x.x, $y.y, $z.z))
+    macro_rules! material_at(($x:expr, $y:expr, $z:expr) => {{
+      let p = Point3::new($x.x, $y.y, $z.z);
+      debug!("Finding material at {:?}", p);
+      voxel::field::T::material_at(field, &p)
     }});
-    // corners[x][y][z]
-    let mut corners = [
-      [
-        [ density!( low,  low, low), density!( low,  low, high) ],
-        [ density!( low, high, low), density!( low, high, high) ],
-      ],
-      [
-        [ density!(high,  low, low), density!(high,  low, high) ],
-        [ density!(high, high, low), density!(high, high, high) ],
-      ],
-    ];
 
-    let corner;
-    let mut any_inside = false;
-    let mut all_inside = true;
+    // TODO: Re=evaluating the density function is costly. Do it only once for each corner.
 
-    {
-      let mut get_corner = |x1:usize, y1:usize, z1:usize| {
-        let corner = corners[x1][y1][z1] >= 0.0;
-        corners[x1][y1][z1] = 1.0 / (corners[x1][y1][z1].abs() + f32::EPSILON);
-        any_inside = any_inside || corner;
-        all_inside = all_inside && corner;
-        corner
-      };
+    let corner = material_at!(low, low, low);
+    let is_homogenous = || {
+      macro_rules! check_corner(($x:expr, $y:expr, $z:expr) => {{
+        let material = material_at!($x, $y, $z);
+        debug!("material is {:?}", material);
+        if material != corner {
+          return false
+        }
+      }});
+      check_corner!( low,  low, high);
+      check_corner!( low, high,  low);
+      check_corner!( low, high, high);
+      check_corner!(high,  low,  low);
+      check_corner!(high,  low, high);
+      check_corner!(high, high,  low);
+      check_corner!(high, high, high);
+      return true
+    };
+    let is_homogenous = is_homogenous();
+    debug!("is_homogenous: {:?}", is_homogenous);
 
-      corner = get_corner(0,0,0);
-      let _ = get_corner(0,0,1);
-      let _ = get_corner(0,1,0);
-      let _ = get_corner(0,1,1);
-      let _ = get_corner(1,0,0);
-      let _ = get_corner(1,0,1);
-      let _ = get_corner(1,1,0);
-      let _ = get_corner(1,1,1);
-    }
-
-    let all_corners_same = any_inside == all_inside;
-    if all_corners_same {
-      return T::Volume(all_inside)
+    if is_homogenous {
+      return T::Volume(corner)
     }
 
     let corner_coords = [0.0, 256.0];
     let mut total_weight = 0.0;
     macro_rules! weighted(($x:expr, $y:expr, $z:expr) => {{
-      total_weight += corners[$x][$y][$z];
-      Vector3::new(corner_coords[$x], corner_coords[$y], corner_coords[$z])
-        .mul_s(corners[$x][$y][$z])
+      let x = if $x == 0 { low.x } else { high.x };
+      let y = if $y == 0 { low.y } else { high.y };
+      let z = if $z == 0 { low.z } else { high.z };
+      let corner = voxel::field::T::density_at(field, &Point3::new(x, y, z));
+      assert!(corner >= 0.0);
+      let corner = 1.0 / (corner + f32::EPSILON);
+      total_weight += corner;
+      Vector3::new(corner_coords[$x], corner_coords[$y], corner_coords[$z]).mul_s(corner)
     }});
 
     let vertex =
@@ -125,95 +120,67 @@ pub fn of_field<Field>(
     T::Surface(SurfaceStruct {
       surface_vertex: vertex,
       normal: normal,
-      corner_inside_surface: corner,
+      corner: corner,
     })
   })
 }
 
+pub fn unwrap<X>(voxel: T<Option<X>>) -> T<X> {
+  match voxel {
+    T::Volume(x) => T::Volume(x.unwrap()),
+    T::Surface(x) => {
+      T::Surface(SurfaceStruct {
+        surface_vertex: x.surface_vertex,
+        normal: x.normal,
+        corner: x.corner.unwrap(),
+      })
+    }
+  }
+}
+
 impl<Brush> voxel::brush::T for Brush where Brush: voxel::field::T {
-  type Voxel = T;
+  type Voxel = T<::voxel::Material>;
 
   fn apply(
-    this: &mut T,
+    this: &mut T<::voxel::Material>,
     bounds: &voxel::Bounds,
     brush: &Brush,
-    action: voxel::brush::Action,
   ) {
-    // TODO: factor out duplicate code
-    match action {
-      voxel::brush::Action::Add => {
-        let set_leaf = |this: &mut T, corner_inside_surface| {
-          debug!("leaf {:?} is {:?}", bounds, *this);
-          match of_field(brush, bounds) {
-            T::Volume(false) => {},
-            T::Volume(true) => {
-              *this = T::Volume(true);
-              debug!("leaf {:?} set to {:?}", bounds, *this);
-            },
-            T::Surface(surface) => {
-              let size = bounds.size();
-              let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
-              let low = low.mul_s(size);
-              let corner_inside_surface = corner_inside_surface || voxel::field::T::contains(brush, &low);
-              let voxel =
-                SurfaceStruct {
-                  surface_vertex: surface.surface_vertex,
-                  normal: surface.normal,
-                  corner_inside_surface: corner_inside_surface,
-                };
-              *this = T::Surface(voxel);
-              debug!("leaf {:?} set to {:?}", bounds, *this);
-            },
-          }
-        };
+    let set_leaf = |this: &mut T<::voxel::Material>, corner| {
+      debug!("leaf {:?} is {:?}", bounds, *this);
+      match of_field(brush, bounds) {
+        T::Volume(None) => {}
+        T::Volume(Some(material)) => {
+          *this = T::Volume(material);
+          debug!("leaf {:?} set to {:?}", bounds, *this);
+        },
+        T::Surface(surface) => {
+          let size = bounds.size();
+          let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
+          let low = low.mul_s(size);
+          let corner =
+            match voxel::field::T::material_at(brush, &low) {
+              None => corner,
+              Some(material) => material,
+            };
+          let voxel =
+            SurfaceStruct {
+              surface_vertex: surface.surface_vertex,
+              normal: surface.normal,
+              corner: corner,
+            };
+          *this = T::Surface(voxel);
+          debug!("leaf {:?} set to {:?}", bounds, *this);
+        },
+      }
+    };
 
-        match this {
-          &mut T::Volume(true) => {},
-          &mut T::Volume(false) => {
-            set_leaf(this, false);
-          },
-          &mut T::Surface(voxel) => {
-            set_leaf(this, voxel.corner_inside_surface);
-          },
-        }
+    match this {
+      &mut T::Volume(material) => {
+        set_leaf(this, material);
       },
-      voxel::brush::Action::Remove => {
-        let set_leaf = |this: &mut T, corner_inside_surface| {
-          debug!("leaf {:?} is {:?}", bounds, *this);
-          match of_field(brush, bounds) {
-            T::Volume(false) => {},
-            T::Volume(true) => {
-              *this = T::Volume(false);
-              debug!("leaf {:?} set to {:?}", bounds, *this);
-            },
-            T::Surface(surface) => {
-              let size = bounds.size();
-              let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
-              let low = low.mul_s(size);
-              // The brush is negative space, so the normal should point into it, not out of it.
-              let normal = -surface.normal;
-              let corner_inside_surface = corner_inside_surface && !voxel::field::T::contains(brush, &low);
-              let voxel =
-                SurfaceStruct {
-                  surface_vertex: surface.surface_vertex,
-                  normal: normal,
-                  corner_inside_surface: corner_inside_surface,
-                };
-              *this = T::Surface(voxel);
-              debug!("leaf {:?} set to {:?}", bounds, *this);
-            },
-          }
-        };
-
-        match this {
-          &mut T::Volume(false) => {},
-          &mut T::Volume(true) => {
-            set_leaf(this, true);
-          },
-          &mut T::Surface(voxel) => {
-            set_leaf(this, voxel.corner_inside_surface);
-          },
-        }
+      &mut T::Surface(voxel) => {
+        set_leaf(this, voxel.corner);
       },
     }
   }

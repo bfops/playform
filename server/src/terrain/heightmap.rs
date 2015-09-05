@@ -1,4 +1,4 @@
-use cgmath::Point3;
+use cgmath::{Point3, Vector3, EuclideanVector};
 use noise::{Seed, Brownian2, Brownian3, perlin2, perlin3};
 
 use voxel;
@@ -31,16 +31,54 @@ impl T {
   }
 }
 
+/// Density at a given point. Positive means terrain, negative means air.
+fn signed_density(this: &T, p: &Point3<f32>) -> f32 {
+  let height = this.height.apply(&this.seed, &[p.x as f64, p.z as f64]);
+  let height = height as f32;
+  let heightmap_density = height - p.y;
+
+  let feature_density = this.features.apply(&this.seed, &[p.x as f64, p.y as f64, p.z as f64]) * 8.0;
+  let feature_density = feature_density as f32;
+
+  heightmap_density + feature_density
+}
+
 impl voxel::field::T for T {
-  /// The height of the field at a given x,y,z.
   fn density_at(this: &Self, p: &Point3<f32>) -> f32 {
-    let height = this.height.apply(&this.seed, &[p.x as f64, p.z as f64]);
-    let height = height as f32;
-    let heightmap_density = height - p.y;
+    signed_density(this, p).abs()
+  }
 
-    let feature_density = this.features.apply(&this.seed, &[p.x as f64, p.y as f64, p.z as f64]) * 8.0;
-    let feature_density = feature_density as f32;
+  fn material_at(this: &Self, p: &Point3<f32>) -> Option<voxel::Material> {
+    Some(
+      if signed_density(this, p) >= 0.0 {
+        voxel::Material::Terrain
+      } else {
+        voxel::Material::Empty
+      }
+    )
+  }
 
-    heightmap_density + feature_density
+  // TODO: Should delta be part of the struct instead of the trait?
+  fn normal_at(this: &Self, delta: f32, p: &Point3<f32>) -> Vector3<f32> {
+    // Use density differential in each dimension as an approximation of the normal.
+
+    macro_rules! differential(($d:ident) => {{
+      let high: f32 = {
+        let mut p = *p;
+        p.$d += delta;
+        signed_density(this, &p)
+      };
+      let low: f32 = {
+        let mut p = *p;
+        p.$d -= delta;
+        signed_density(this, &p)
+      };
+      high - low
+    }});
+
+    let v = Vector3::new(differential!(x), differential!(y), differential!(z));
+    // Negate because we're leaving the volume when density is decreasing.
+    let v = -v;
+    v.normalize()
   }
 }

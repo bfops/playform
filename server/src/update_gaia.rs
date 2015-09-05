@@ -12,7 +12,6 @@ use common::block_position::BlockPosition;
 use server::Server;
 use terrain;
 use terrain_loader::TerrainLoader;
-use voxel;
 
 #[derive(Debug, Clone, Copy)]
 pub enum LoadReason {
@@ -23,7 +22,7 @@ pub enum LoadReason {
 #[derive(Debug)]
 pub enum ServerToGaia {
   Load(BlockPosition, LODIndex, LoadReason),
-  Brush(voxel::brush::Action, terrain::voxel::brush::sphere::T),
+  Brush(terrain::voxel::brush::sphere::T),
 }
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
@@ -75,7 +74,7 @@ pub fn update_gaia(
         }
       });
     },
-    ServerToGaia::Brush(action, brush) => {
+    ServerToGaia::Brush(brush) => {
       let mut terrain_loader = server.terrain_loader.lock().unwrap();
       let id_allocator = &server.id_allocator;
       let r = brush.radius + 1.0;
@@ -95,7 +94,6 @@ pub fn update_gaia(
         id_allocator,
         &brush,
         &brush_bounds,
-        action,
         |block, position, lod| {
           let clients = server.clients.lock().unwrap();
           for client in clients.values() {

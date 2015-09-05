@@ -20,9 +20,9 @@ pub mod voxel {
 
   pub mod tree {
     pub use ::voxel::tree::TreeBody::*;
-    pub type T = ::voxel::tree::T<super::T>;
-    pub type TreeBody = ::voxel::tree::TreeBody<super::T>;
-    pub type Branches = ::voxel::tree::Branches<super::T>;
+    pub type T = ::voxel::tree::T<super::T<::voxel::Material>>;
+    pub type TreeBody = ::voxel::tree::TreeBody<super::T<::voxel::Material>>;
+    pub type Branches = ::voxel::tree::Branches<super::T<::voxel::Material>>;
   }
 }
 
@@ -107,11 +107,10 @@ impl Terrain {
     id_allocator: &Mutex<IdAllocator<EntityId>>,
     brush: &Brush,
     brush_bounds: &::voxel::brush::Bounds,
-    action: ::voxel::brush::Action,
     mut block_changed: F,
   ) where
     F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
-    Brush: ::voxel::brush::T<Voxel=voxel::T>,
+    Brush: ::voxel::brush::T<Voxel=voxel::T<::voxel::Material>>,
   {
     macro_rules! voxel_range(($d:ident, $scale:expr) => {{
       let low = brush_bounds.min().$d >> $scale;
@@ -132,14 +131,14 @@ impl Terrain {
           &mut voxel::tree::Empty => {
             *voxel =
               voxel::tree::TreeBody::leaf(
-                Some(voxel::of_field(&self.heightmap, &bounds))
+                Some(voxel::unwrap(voxel::of_field(&self.heightmap, &bounds)))
               );
           },
           &mut voxel::tree::Branch { ref mut data, branches: _ } => {
             match data {
               &mut None => {
                 *data =
-                  Some(voxel::of_field(&self.heightmap, &bounds));
+                  Some(voxel::unwrap(voxel::of_field(&self.heightmap, &bounds)));
               },
               &mut Some(_) => {},
             }
@@ -148,7 +147,7 @@ impl Terrain {
       }}}
     }
 
-    self.voxels.brush(brush, brush_bounds, action);
+    self.voxels.brush(brush, brush_bounds);
 
     macro_rules! block_range(($d:ident) => {{
       let low = brush_bounds.min().$d >> terrain_block::LG_WIDTH;
