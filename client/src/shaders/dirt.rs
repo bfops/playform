@@ -26,10 +26,11 @@ pub fn dirt() -> String {
   }
 
   format!(r#"
-  float total_amp = 0.0;
-  float noise = 0.0;
-  {}
-  noise /= total_amp;
-  return mix(vec3(0.4, 0.3, 0.1), vec3(0.7, 0.6, 0.4), noise);
+    float total_amp = 0.0;
+    float noise = 0.0;
+    {}
+    noise /= total_amp;
+
+    return mix(vec3(0.4, 0.3, 0.1), vec3(0.7, 0.6, 0.4), noise);
   "#, contents)
 }

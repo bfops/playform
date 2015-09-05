@@ -95,8 +95,11 @@ impl<'a> TerrainShader<'a> {
             vec4(clamp(lighting, 0, 1), 1) * base_color * vec4(1, 1, 1, 1 - fog_density);
 
           frag_color = fog_component + material_component;
-        }}", ::shaders::noise::cnoise(), ::shaders::grass::grass(), ::shaders::dirt::dirt(),
-        )),
+        }}",
+        ::shaders::noise::cnoise(),
+        ::shaders::grass::grass(),
+        ::shaders::dirt::dirt(),
+      )),
     );
     TerrainShader {
       shader: Shader::new(gl, components.into_iter()),
