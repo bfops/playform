@@ -130,7 +130,7 @@ pub fn of_field<Field>(
   })
 }
 
-impl<Brush> voxel::brush::T for Brush where Brush: brush::T {
+impl<Brush> voxel::brush::T for Brush where Brush: voxel::field::T {
   type Voxel = T;
 
   fn apply(
@@ -144,21 +144,21 @@ impl<Brush> voxel::brush::T for Brush where Brush: brush::T {
       voxel::brush::Action::Add => {
         let set_leaf = |this: &mut T, corner_inside_surface| {
           debug!("leaf {:?} is {:?}", bounds, *this);
-          match brush::T::intersect(brush, bounds) {
-            brush::Intersection::Outside => {},
-            brush::Intersection::Inside => {
+          match of_field(brush, bounds) {
+            T::Volume(false) => {},
+            T::Volume(true) => {
               *this = T::Volume(true);
               debug!("leaf {:?} set to {:?}", bounds, *this);
             },
-            brush::Intersection::Crosses(vertex, normal) => {
+            T::Surface(surface) => {
               let size = bounds.size();
               let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
               let low = low.mul_s(size);
               let corner_inside_surface = corner_inside_surface || voxel::field::T::contains(brush, &low);
               let voxel =
                 SurfaceStruct {
-                  surface_vertex: vertex,
-                  normal: normal,
+                  surface_vertex: surface.surface_vertex,
+                  normal: surface.normal,
                   corner_inside_surface: corner_inside_surface,
                 };
               *this = T::Surface(voxel);
@@ -180,22 +180,22 @@ impl<Brush> voxel::brush::T for Brush where Brush: brush::T {
       voxel::brush::Action::Remove => {
         let set_leaf = |this: &mut T, corner_inside_surface| {
           debug!("leaf {:?} is {:?}", bounds, *this);
-          match brush::T::intersect(brush, bounds) {
-            brush::Intersection::Outside => {},
-            brush::Intersection::Inside => {
+          match of_field(brush, bounds) {
+            T::Volume(false) => {},
+            T::Volume(true) => {
               *this = T::Volume(false);
               debug!("leaf {:?} set to {:?}", bounds, *this);
             },
-            brush::Intersection::Crosses(vertex, normal) => {
+            T::Surface(surface) => {
               let size = bounds.size();
               let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
               let low = low.mul_s(size);
               // The brush is negative space, so the normal should point into it, not out of it.
-              let normal = -normal;
+              let normal = -surface.normal;
               let corner_inside_surface = corner_inside_surface && !voxel::field::T::contains(brush, &low);
               let voxel =
                 SurfaceStruct {
-                  surface_vertex: vertex,
+                  surface_vertex: surface.surface_vertex,
                   normal: normal,
                   corner_inside_surface: corner_inside_surface,
                 };
@@ -227,6 +227,7 @@ pub struct Vertex {
 }
 
 impl Vertex {
+  #[allow(dead_code)]
   pub fn of_world_vertex_in(vertex: &Point3<f32>, voxel: &voxel::Bounds) -> Vertex {
     assert!(voxel.contains(vertex), "{:?} does not contain {:?}", voxel, vertex);
 

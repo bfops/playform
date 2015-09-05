@@ -111,7 +111,7 @@ impl Terrain {
     mut block_changed: F,
   ) where
     F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
-    Brush: voxel::brush::T,
+    Brush: ::voxel::brush::T<Voxel=voxel::T>,
   {
     macro_rules! voxel_range(($d:ident, $scale:expr) => {{
       let low = brush_bounds.min().$d >> $scale;

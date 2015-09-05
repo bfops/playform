@@ -27,22 +27,3 @@ impl ::voxel::field::T for T {
     p.sub_p(&this.center).normalize()
   }
 }
-
-impl voxel::brush::T for T {
-  fn intersect(this: &Self, voxel: &::voxel::Bounds) -> voxel::brush::Intersection {
-    match voxel::of_field(this, voxel) {
-      voxel::T::Volume(true) => {
-        voxel::brush::Intersection::Inside
-      },
-      voxel::T::Volume(false) => {
-        voxel::brush::Intersection::Outside
-      },
-      voxel::T::Surface(surface) => {
-        voxel::brush::Intersection::Crosses (
-          surface.surface_vertex,
-          surface.normal,
-        )
-      },
-    }
-  }
-}
