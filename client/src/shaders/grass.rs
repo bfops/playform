@@ -7,11 +7,10 @@ pub fn grass() -> String {
 
 
   let waves = [
-    Wave { freq:     8.0    , amp: 1.0, func: "sign(dnoise) * pow(abs(dnoise), 0.2)" },
-    Wave { freq:    16.0    , amp: 0.5, func: "sign(dnoise) * pow(abs(dnoise), 0.2)" },
-    Wave { freq:     2.0    , amp: 0.8, func: "sign(dnoise) * pow(abs(dnoise), 0.2)" },
-    Wave { freq: 1.0 /  32.0, amp: 1.0, func: "dnoise" },
-    Wave { freq: 1.0 / 128.0, amp: 1.0, func: "dnoise" },
+    Wave { freq:    32.0  , amp: 1.0, func: "sign(dnoise) * pow(abs(dnoise), 0.2)" },
+    Wave { freq:    16.0  , amp: 0.8, func: "sign(dnoise) * pow(abs(dnoise), 0.2)" },
+    Wave { freq:    4.0   , amp: 0.8, func: "sign(dnoise) * pow(abs(dnoise), 0.2)" },
+    Wave { freq: 1.0 / 4.0, amp: 1.0, func: "dnoise" },
   ];
 
   let mut contents = String::new();
@@ -22,7 +21,6 @@ pub fn grass() -> String {
       float amp = {};
 
       float dnoise = cnoise(freq * world_position);
-      // sharpen
       dnoise = {};
       noise += dnoise * amp;
       total_amp += amp;
