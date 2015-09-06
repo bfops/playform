@@ -23,6 +23,9 @@ use view_update::{ClientToView, apply_client_to_view};
 
 pub const FRAMES_PER_SECOND: u64 = 30;
 
+pub const GL_MAJOR_VERSION: u8 = 3;
+pub const GL_MINOR_VERSION: u8 = 3;
+
 #[allow(missing_docs)]
 pub fn view_thread<Recv, UpdateServer>(
   player_id: EntityId,
@@ -35,9 +38,10 @@ pub fn view_thread<Recv, UpdateServer>(
   let sdl = sdl2::init().unwrap();
   let _event = sdl.event().unwrap();
   let video = sdl.video().unwrap();
+  let gl_attr = video.gl_attr();
 
-  video.gl_attr().set_context_profile(video::GLProfile::Core);
-  video.gl_attr().set_context_version(3, 3);
+  gl_attr.set_context_profile(video::GLProfile::Core);
+  gl_attr.set_context_version(GL_MAJOR_VERSION, GL_MINOR_VERSION);
 
   // Open the window as fullscreen at the current resolution.
   let mut window =
@@ -50,6 +54,9 @@ pub fn view_thread<Recv, UpdateServer>(
   let window = window.opengl();
 
   let mut window = window.build().unwrap();
+
+  assert_eq!(gl_attr.context_profile(), video::GLProfile::Core);
+  assert_eq!(gl_attr.context_version(), (GL_MAJOR_VERSION, GL_MINOR_VERSION));
 
   let mut event_pump = sdl.event_pump().unwrap();
 
