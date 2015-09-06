@@ -1,6 +1,8 @@
 /// Creator of the earth.
 
 use cgmath::{Aabb3, Point, Vector, Point3, Vector3};
+use rand;
+use rand::distributions::IndependentSample;
 use std::ops::DerefMut;
 use stopwatch;
 
@@ -19,10 +21,9 @@ pub enum LoadReason {
   ForClient(ClientId),
 }
 
-#[derive(Debug)]
 pub enum ServerToGaia {
   Load(BlockPosition, LODIndex, LoadReason),
-  AddTree(voxel::mosaic::tree::T),
+  AddTree(Point3<f32>),
   RemoveSphere(voxel::mosaic::solid::T<voxel::field::sphere::T>),
 }
 
@@ -75,12 +76,45 @@ pub fn update_gaia(
         }
       });
     },
-    ServerToGaia::AddTree(tree) => {
+    ServerToGaia::AddTree(bottom) => {
+      let mut trunk_radius;
+      let mut trunk_height;
+      let mut leaf_radius;
+
+      {
+        let mut rng = server.rng.lock().unwrap();
+        let rng = rng.deref_mut();
+
+        trunk_radius =
+          rand::distributions::normal::Normal::new(2.0, 0.5)
+          .ind_sample(rng);
+        trunk_radius =
+          f64::max(1.0, f64::min(3.0, trunk_radius));
+
+        trunk_height =
+          rand::distributions::normal::Normal::new(8.0 * trunk_radius, 2.0 * trunk_radius)
+          .ind_sample(rng);
+        trunk_height =
+          f64::max(4.0 * trunk_radius, f64::min(12.0 * trunk_radius, trunk_height));
+
+        leaf_radius =
+          rand::distributions::normal::Normal::new(4.0 * trunk_radius, trunk_radius)
+          .ind_sample(rng);
+        leaf_radius =
+          f64::max(2.0 * trunk_radius, f64::min(6.0 * trunk_radius, leaf_radius));
+      }
+
+      let trunk_height = trunk_height as f32;
+      let trunk_radius = trunk_radius as f32;
+      let leaf_radius = leaf_radius as f32;
+
+      let tree = voxel::mosaic::tree::new(bottom, trunk_height, trunk_radius, leaf_radius);
+
       let mut terrain_loader = server.terrain_loader.lock().unwrap();
       let id_allocator = &server.id_allocator;
       let center = 
-        tree.bottom.add_v(&Vector3::new(0.0, tree.trunk_height / 2.0, 0.0));
-      let r = tree.trunk_height / 2.0 + tree.leaf_radius + 20.0;
+        bottom.add_v(&Vector3::new(0.0, trunk_height / 2.0, 0.0));
+      let r = trunk_height / 2.0 + leaf_radius + 20.0;
       let brush_bounds =
         Aabb3::new(
           {
@@ -92,7 +126,6 @@ pub fn update_gaia(
             Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
           },
         );
-      debug!("add {:?} with bounds {:?}", tree, brush_bounds);
       terrain_loader.terrain.brush(
         id_allocator,
         &tree,
