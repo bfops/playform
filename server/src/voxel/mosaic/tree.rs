@@ -49,7 +49,7 @@ fn leaf_density(this: &T, p: &Point3<f32>) -> f32 {
 
 impl ::voxel::field::T for T {
   fn density(this: &Self, p: &Point3<f32>) -> f32 {
-    f32::max(trunk_density(this, p), leaf_density(this, p)).abs()
+    f32::max(trunk_density(this, p), leaf_density(this, p))
   }
 
   fn normal(this: &Self, p: &Point3<f32>) -> Vector3<f32> {

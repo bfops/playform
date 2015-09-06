@@ -10,8 +10,8 @@ use common::serialize::Copyable;
 use common::block_position::BlockPosition;
 
 use server::Server;
-use terrain;
 use terrain_loader::TerrainLoader;
+use voxel;
 
 #[derive(Debug, Clone, Copy)]
 pub enum LoadReason {
@@ -22,8 +22,8 @@ pub enum LoadReason {
 #[derive(Debug)]
 pub enum ServerToGaia {
   Load(BlockPosition, LODIndex, LoadReason),
-  AddTree(terrain::voxel::brush::tree::T),
-  RemoveSphere(terrain::voxel::brush::sphere::T),
+  AddTree(voxel::mosaic::tree::T),
+  RemoveSphere(voxel::mosaic::solid::T<voxel::field::sphere::T>),
 }
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
@@ -114,15 +114,15 @@ pub fn update_gaia(
     ServerToGaia::RemoveSphere(sphere) => {
       let mut terrain_loader = server.terrain_loader.lock().unwrap();
       let id_allocator = &server.id_allocator;
-      let r = sphere.radius + 1.0;
+      let r = sphere.field.radius + 1.0;
       let brush_bounds =
         Aabb3::new(
           {
-            let low = sphere.center.add_v(&-Vector3::new(r, r, r));
+            let low = sphere.field.center.add_v(&-Vector3::new(r, r, r));
             Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
           },
           {
-            let high = sphere.center.add_v(&Vector3::new(r, r, r));
+            let high = sphere.field.center.add_v(&Vector3::new(r, r, r));
             Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
           },
         );

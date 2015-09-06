@@ -6,8 +6,6 @@ use stopwatch;
 
 use voxel;
 
-pub mod brush;
-
 // NOTE: When voxel size and storage become an issue, this should be shrunk to
 // be less than pointer-sized. It'll be easier to transfer to the GPU for
 // whatever reasons, but also make it possible to shrink the SVO footprint by
@@ -85,7 +83,7 @@ pub fn of_field<Field>(
       let x = if $x == 0 { low.x } else { high.x };
       let y = if $y == 0 { low.y } else { high.y };
       let z = if $z == 0 { low.z } else { high.z };
-      let corner = voxel::field::T::density(field, &Point3::new(x, y, z));
+      let corner = voxel::mosaic::T::density(field, &Point3::new(x, y, z));
       assert!(corner >= 0.0);
       let corner = 1.0 / (corner + f32::EPSILON);
       total_weight += corner;

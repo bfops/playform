@@ -178,7 +178,7 @@ pub fn apply_client_update<UpdateGaia>(
         let mut bottom = low.add_v(&high.to_vec()).div_s(2.0);
         bottom.y = low.y;
         let brush =
-          terrain::voxel::brush::tree::T {
+          voxel::mosaic::tree::T {
             bottom: bottom,
             trunk_height: trunk_height as f32,
             trunk_radius: trunk_radius as f32,
@@ -195,9 +195,11 @@ pub fn apply_client_update<UpdateGaia>(
         let center = bounds.center();
         let r = 8.0;
         let brush =
-          terrain::voxel::brush::sphere::T {
-            center: center,
-            radius: r,
+          voxel::mosaic::solid::T {
+            field: voxel::field::sphere::T {
+              center: center,
+              radius: r,
+            },
             material: voxel::Material::Empty,
           };
         update_gaia(ServerToGaia::RemoveSphere(brush));
