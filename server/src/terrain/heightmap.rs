@@ -44,22 +44,12 @@ fn signed_density(this: &T, p: &Point3<f32>) -> f32 {
 }
 
 impl voxel::field::T for T {
-  fn density_at(this: &Self, p: &Point3<f32>) -> f32 {
+  fn density(this: &Self, p: &Point3<f32>) -> f32 {
     signed_density(this, p).abs()
   }
 
-  fn material_at(this: &Self, p: &Point3<f32>) -> Option<voxel::Material> {
-    Some(
-      if signed_density(this, p) >= 0.0 {
-        voxel::Material::Terrain
-      } else {
-        voxel::Material::Empty
-      }
-    )
-  }
-
   // TODO: Should delta be part of the struct instead of the trait?
-  fn normal_at(this: &Self, delta: f32, p: &Point3<f32>) -> Vector3<f32> {
+  fn normal(this: &Self, delta: f32, p: &Point3<f32>) -> Vector3<f32> {
     // Use density differential in each dimension as an approximation of the normal.
 
     macro_rules! differential(($d:ident) => {{
@@ -80,5 +70,17 @@ impl voxel::field::T for T {
     // Negate because we're leaving the volume when density is decreasing.
     let v = -v;
     v.normalize()
+  }
+}
+
+impl voxel::mosaic::T for T {
+  fn material(this: &Self, p: &Point3<f32>) -> Option<voxel::Material> {
+    Some(
+      if signed_density(this, p) >= 0.0 {
+        voxel::Material::Terrain
+      } else {
+        voxel::Material::Empty
+      }
+    )
   }
 }

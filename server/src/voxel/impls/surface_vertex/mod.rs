@@ -42,14 +42,14 @@ pub fn of_field<Field>(
   field: &Field,
   voxel: &::voxel::Bounds,
 ) -> T<Option<::voxel::Material>> where
-  Field: voxel::field::T,
+  Field: voxel::mosaic::T,
 {
   stopwatch::time("voxel.surface_vertex.of_field", || {
     let (low, high) = voxel.corners();
     macro_rules! material_at(($x:expr, $y:expr, $z:expr) => {{
       let p = Point3::new($x.x, $y.y, $z.z);
       debug!("Finding material at {:?}", p);
-      voxel::field::T::material_at(field, &p)
+      voxel::mosaic::T::material(field, &p)
     }});
 
     // TODO: Re=evaluating the density function is costly. Do it only once for each corner.
@@ -85,7 +85,7 @@ pub fn of_field<Field>(
       let x = if $x == 0 { low.x } else { high.x };
       let y = if $y == 0 { low.y } else { high.y };
       let z = if $z == 0 { low.z } else { high.z };
-      let corner = voxel::field::T::density_at(field, &Point3::new(x, y, z));
+      let corner = voxel::field::T::density(field, &Point3::new(x, y, z));
       assert!(corner >= 0.0);
       let corner = 1.0 / (corner + f32::EPSILON);
       total_weight += corner;
@@ -114,7 +114,7 @@ pub fn of_field<Field>(
     {
       // Okay, this is silly to have right after we construct the vertex.
       let vertex = vertex.to_world_vertex(voxel);
-      normal = Normal::of_float_normal(&voxel::field::T::normal_at(field, 0.01, &vertex));
+      normal = Normal::of_float_normal(&voxel::field::T::normal(field, 0.01, &vertex));
     }
 
     T::Surface(SurfaceStruct {
@@ -138,7 +138,7 @@ pub fn unwrap<X>(voxel: T<Option<X>>) -> T<X> {
   }
 }
 
-impl<Brush> voxel::brush::T for Brush where Brush: voxel::field::T {
+impl<Brush> voxel::brush::T for Brush where Brush: voxel::mosaic::T {
   type Voxel = T<::voxel::Material>;
 
   fn apply(
@@ -159,7 +159,7 @@ impl<Brush> voxel::brush::T for Brush where Brush: voxel::field::T {
           let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
           let low = low.mul_s(size);
           let corner =
-            match voxel::field::T::material_at(brush, &low) {
+            match voxel::mosaic::T::material(brush, &low) {
               None => corner,
               Some(material) => material,
             };

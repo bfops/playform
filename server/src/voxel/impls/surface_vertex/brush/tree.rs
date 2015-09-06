@@ -48,27 +48,11 @@ fn leaf_density(this: &T, p: &Point3<f32>) -> f32 {
 }
 
 impl ::voxel::field::T for T {
-  fn density_at(this: &Self, p: &Point3<f32>) -> f32 {
+  fn density(this: &Self, p: &Point3<f32>) -> f32 {
     f32::max(trunk_density(this, p), leaf_density(this, p)).abs()
   }
 
-  fn material_at(this: &Self, p: &Point3<f32>) -> Option<::voxel::Material> {
-    let trunk_density = trunk_density(this, p);
-    let leaf_density = leaf_density(this, p);
-    if trunk_density < 0.0 && leaf_density < 0.0 {
-      None
-    } else {
-      Some(
-        if trunk_density >= leaf_density {
-          ::voxel::Material::Bark
-        } else {
-          ::voxel::Material::Leaves
-        }
-      )
-    }
-  }
-
-  fn normal_at(this: &Self, _: f32, p: &Point3<f32>) -> Vector3<f32> {
+  fn normal(this: &Self, _: f32, p: &Point3<f32>) -> Vector3<f32> {
     let trunk_density = trunk_density(this, p);
     let leaf_density = leaf_density(this, p);
     if trunk_density < leaf_density {
@@ -85,6 +69,24 @@ impl ::voxel::field::T for T {
         n.y = 0.0;
         n.normalize()
       }
+    }
+  }
+}
+
+impl ::voxel::mosaic::T for T {
+  fn material(this: &Self, p: &Point3<f32>) -> Option<::voxel::Material> {
+    let trunk_density = trunk_density(this, p);
+    let leaf_density = leaf_density(this, p);
+    if trunk_density < 0.0 && leaf_density < 0.0 {
+      None
+    } else {
+      Some(
+        if trunk_density >= leaf_density {
+          ::voxel::Material::Bark
+        } else {
+          ::voxel::Material::Leaves
+        }
+      )
     }
   }
 }

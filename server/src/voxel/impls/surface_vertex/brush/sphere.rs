@@ -19,19 +19,21 @@ fn signed_density(this: &T, p: &Point3<f32>) -> f32 {
 }
 
 impl ::voxel::field::T for T {
-  fn density_at(this: &Self, p: &Point3<f32>) -> f32 {
+  fn density(this: &Self, p: &Point3<f32>) -> f32 {
     signed_density(this, p).abs()
   }
 
-  fn material_at(this: &Self, p: &Point3<f32>) -> Option<::voxel::Material> {
+  fn normal(this: &Self, _: f32, p: &Point3<f32>) -> Vector3<f32> {
+    p.sub_p(&this.center).normalize()
+  }
+}
+
+impl ::voxel::mosaic::T for T {
+  fn material(this: &Self, p: &Point3<f32>) -> Option<::voxel::Material> {
     if signed_density(this, p) >= 0.0 {
       Some(this.material)
     } else {
       None
     }
-  }
-
-  fn normal_at(this: &Self, _: f32, p: &Point3<f32>) -> Vector3<f32> {
-    p.sub_p(&this.center).normalize()
   }
 }

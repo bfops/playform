@@ -1,6 +1,8 @@
 pub mod brush;
 pub mod field;
+pub mod mosaic;
 pub mod tree;
+
 pub mod impls;
 
 use cgmath::{Point, Point3, Vector, Vector3};
