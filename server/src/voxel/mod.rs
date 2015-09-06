@@ -7,8 +7,10 @@ use cgmath::{Point, Point3, Vector, Vector3};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Material {
-  Empty,
-  Terrain,
+  Empty = 0,
+  Terrain = 1,
+  Bark = 2,
+  Leaves = 3,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

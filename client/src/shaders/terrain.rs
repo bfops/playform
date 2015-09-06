@@ -74,6 +74,14 @@ impl<'a> TerrainShader<'a> {
           {}
         }}
 
+        vec3 bark() {{
+          {}
+        }}
+
+        vec3 leaves() {{
+          {}
+        }}
+
         void main() {{
           vec4 base_color;
 
@@ -84,6 +92,10 @@ impl<'a> TerrainShader<'a> {
               1.5;
             grass_amount = clamp(grass_amount, 0, 1);
             base_color = vec4(mix(dirt(), grass(), grass_amount), 1);
+          }} else if (material == 2) {{
+            base_color = vec4(bark(), 1);
+          }} else if (material == 3) {{
+            base_color = vec4(leaves(), 1);
           }} else {{
             base_color = vec4(0.5, 0, 0.5, 0.5);
           }}
@@ -104,6 +116,8 @@ impl<'a> TerrainShader<'a> {
         ::shaders::noise::cnoise(),
         ::shaders::grass::grass(),
         ::shaders::dirt::dirt(),
+        ::shaders::bark::bark(),
+        ::shaders::leaves::leaves(),
       )),
     );
     TerrainShader {

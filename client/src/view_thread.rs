@@ -43,7 +43,7 @@ pub fn view_thread<Recv, UpdateServer>(
   let mut window =
     video.window(
       "Playform",
-      1600, 900,
+      1200, 1024,
     );
 
   let window = window.position(0, 0);

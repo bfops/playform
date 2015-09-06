@@ -21,14 +21,10 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
   bounds.min.add_v(&bounds.max.to_vec()).mul_s(1.0 / 2.0)
 }
 
-fn brush<UpdateGaia>(
+fn cast(
   server: &Server,
-  update_gaia: &mut UpdateGaia,
   player_id: entity::EntityId,
-  material: voxel::Material,
-) where
-  UpdateGaia: FnMut(ServerToGaia),
-{
+) -> Option<voxel::Bounds> {
   let ray;
   {
     let players = server.players.lock().unwrap();
@@ -36,33 +32,16 @@ fn brush<UpdateGaia>(
     ray = player.forward_ray();
   }
 
-  let bounds: Option<voxel::Bounds>;
-  {
-    let terrain_loader = server.terrain_loader.lock().unwrap();
-    bounds =
-      terrain_loader.terrain.voxels.cast_ray(
-        &ray,
-        &mut |bounds, voxel| {
-          match voxel {
-            &terrain::voxel::T::Volume(voxel::Material::Empty) => None,
-            _ => Some(bounds),
-          }
-        }
-      );
-  }
-
-  bounds.map(|bounds| {
-    debug!("bounds {:?}", bounds);
-    let center = bounds.center();
-    let r = 8.0;
-    let brush =
-      terrain::voxel::brush::sphere::T {
-        center: center,
-        radius: r,
-        material: material,
-      };
-    update_gaia(ServerToGaia::Brush(brush));
-  });
+  let terrain_loader = server.terrain_loader.lock().unwrap();
+  terrain_loader.terrain.voxels.cast_ray(
+    &ray,
+    &mut |bounds, voxel| {
+      match voxel {
+        &terrain::voxel::T::Volume(voxel::Material::Empty) => None,
+        _ => Some(bounds),
+      }
+    }
+  )
 }
 
 #[inline]
@@ -167,10 +146,38 @@ pub fn apply_client_update<UpdateGaia>(
       update_gaia(ServerToGaia::Load(position, lod, LoadReason::ForClient(client_id)));
     },
     ClientToServer::Add(Copyable(player_id)) => {
-      brush(server, update_gaia, player_id, voxel::Material::Terrain);
+      let bounds = cast(server, player_id);
+
+      bounds.map(|bounds| {
+        debug!("bounds {:?}", bounds);
+        let (low, high) = bounds.corners();
+        let mut bottom = low.add_v(&high.to_vec()).div_s(2.0);
+        bottom.y = high.y;
+        let brush =
+          terrain::voxel::brush::tree::T {
+            bottom: bottom,
+            trunk_height: 16.0,
+            trunk_radius: 2.0,
+            leaf_radius: 8.0,
+          };
+        update_gaia(ServerToGaia::AddTree(brush));
+      });
     },
     ClientToServer::Remove(Copyable(player_id)) => {
-      brush(server, update_gaia, player_id, voxel::Material::Empty);
+      let bounds = cast(server, player_id);
+
+      bounds.map(|bounds| {
+        debug!("bounds {:?}", bounds);
+        let center = bounds.center();
+        let r = 8.0;
+        let brush =
+          terrain::voxel::brush::sphere::T {
+            center: center,
+            radius: r,
+            material: voxel::Material::Empty,
+          };
+        update_gaia(ServerToGaia::RemoveSphere(brush));
+      });
     },
   };
 }

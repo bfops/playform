@@ -22,7 +22,8 @@ pub enum LoadReason {
 #[derive(Debug)]
 pub enum ServerToGaia {
   Load(BlockPosition, LODIndex, LoadReason),
-  Brush(terrain::voxel::brush::sphere::T),
+  AddTree(terrain::voxel::brush::tree::T),
+  RemoveSphere(terrain::voxel::brush::sphere::T),
 }
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
@@ -74,25 +75,61 @@ pub fn update_gaia(
         }
       });
     },
-    ServerToGaia::Brush(brush) => {
+    ServerToGaia::AddTree(tree) => {
       let mut terrain_loader = server.terrain_loader.lock().unwrap();
       let id_allocator = &server.id_allocator;
-      let r = brush.radius + 1.0;
+      let center = 
+        tree.bottom.add_v(&Vector3::new(0.0, tree.trunk_height / 2.0, 0.0));
+      let r = tree.trunk_height / 2.0 + tree.leaf_radius + 20.0;
       let brush_bounds =
         Aabb3::new(
           {
-            let low = brush.center.add_v(&-Vector3::new(r, r, r));
+            let low = center.add_v(&-Vector3::new(r, r, r));
             Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
           },
           {
-            let high = brush.center.add_v(&Vector3::new(r, r, r));
+            let high = center.add_v(&Vector3::new(r, r, r));
             Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
           },
         );
-      debug!("remove {:?} with bounds {:?}", brush, brush_bounds);
+      debug!("add {:?} with bounds {:?}", tree, brush_bounds);
       terrain_loader.terrain.brush(
         id_allocator,
-        &brush,
+        &tree,
+        &brush_bounds,
+        |block, position, lod| {
+          let clients = server.clients.lock().unwrap();
+          for client in clients.values() {
+            client.sender.send(Some(
+              ServerToClient::UpdateBlock(TerrainBlockSend {
+                position: Copyable(*position),
+                block: block.clone(),
+                lod: Copyable(lod),
+              })
+            )).unwrap();
+          }
+        },
+      );
+    }
+    ServerToGaia::RemoveSphere(sphere) => {
+      let mut terrain_loader = server.terrain_loader.lock().unwrap();
+      let id_allocator = &server.id_allocator;
+      let r = sphere.radius + 1.0;
+      let brush_bounds =
+        Aabb3::new(
+          {
+            let low = sphere.center.add_v(&-Vector3::new(r, r, r));
+            Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
+          },
+          {
+            let high = sphere.center.add_v(&Vector3::new(r, r, r));
+            Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
+          },
+        );
+      debug!("remove {:?} with bounds {:?}", sphere, brush_bounds);
+      terrain_loader.terrain.brush(
+        id_allocator,
+        &sphere,
         &brush_bounds,
         |block, position, lod| {
           let clients = server.clients.lock().unwrap();
