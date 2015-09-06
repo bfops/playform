@@ -114,7 +114,7 @@ pub fn of_field<Field>(
     {
       // Okay, this is silly to have right after we construct the vertex.
       let vertex = vertex.to_world_vertex(voxel);
-      normal = Normal::of_float_normal(&voxel::field::T::normal(field, 0.01, &vertex));
+      normal = Normal::of_float_normal(&voxel::field::T::normal(field, &vertex));
     }
 
     T::Surface(SurfaceStruct {

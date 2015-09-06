@@ -52,7 +52,7 @@ impl ::voxel::field::T for T {
     f32::max(trunk_density(this, p), leaf_density(this, p)).abs()
   }
 
-  fn normal(this: &Self, _: f32, p: &Point3<f32>) -> Vector3<f32> {
+  fn normal(this: &Self, p: &Point3<f32>) -> Vector3<f32> {
     let trunk_density = trunk_density(this, p);
     let leaf_density = leaf_density(this, p);
     if trunk_density < leaf_density {

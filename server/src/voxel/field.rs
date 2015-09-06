@@ -6,5 +6,5 @@ pub trait T {
   fn density(&Self, p: &Point3<f32>) -> f32;
 
   /// The surface normal at a given point.
-  fn normal(this: &Self, delta: f32, p: &Point3<f32>) -> Vector3<f32>;
+  fn normal(this: &Self, p: &Point3<f32>) -> Vector3<f32>;
 }

@@ -49,8 +49,10 @@ impl voxel::field::T for T {
   }
 
   // TODO: Should delta be part of the struct instead of the trait?
-  fn normal(this: &Self, delta: f32, p: &Point3<f32>) -> Vector3<f32> {
+  fn normal(this: &Self, p: &Point3<f32>) -> Vector3<f32> {
     // Use density differential in each dimension as an approximation of the normal.
+
+    let delta = 0.01;
 
     macro_rules! differential(($d:ident) => {{
       let high: f32 = {

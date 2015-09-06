@@ -23,7 +23,7 @@ impl ::voxel::field::T for T {
     signed_density(this, p).abs()
   }
 
-  fn normal(this: &Self, _: f32, p: &Point3<f32>) -> Vector3<f32> {
+  fn normal(this: &Self, p: &Point3<f32>) -> Vector3<f32> {
     p.sub_p(&this.center).normalize()
   }
 }
