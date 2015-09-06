@@ -17,6 +17,7 @@ Some picture things:
 
 ![screenshot 1](/../screenshots/screenshots/screenshot1.png?raw=true)
 ![screenshot 2](/../screenshots/screenshots/screenshot2.png?raw=true)
+![screenshot 3](/../screenshots/screenshots/screenshot3.png?raw=true)
 
 ## Making it work
 
@@ -48,7 +49,7 @@ If you find `playform` itself won't build on the latest `rustc`, please open an 
   * Move: WASD
   * Jump: Space
   * Look around: Mouse
-  * Sphere placing tool: Left mouse button
+  * Place a tree: Left mouse button
   * Sphere eraser tool: Right mouse button
 
 One mob spawns that will play "tag" with you: tag it and it will chase you until it tags you back. If you get too far away from it, it'll probably get lost and fall through the planet. It's a little needy.
