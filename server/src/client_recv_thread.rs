@@ -176,7 +176,7 @@ pub fn apply_client_update<UpdateGaia>(
 
         let (low, high) = bounds.corners();
         let mut bottom = low.add_v(&high.to_vec()).div_s(2.0);
-        bottom.y = high.y;
+        bottom.y = low.y;
         let brush =
           terrain::voxel::brush::tree::T {
             bottom: bottom,
