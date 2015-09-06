@@ -1,4 +1,5 @@
 use cgmath::{Aabb3, Point3};
+use rand;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::sync::mpsc::Sender;
@@ -37,6 +38,7 @@ pub struct Server {
 
   pub physics: Mutex<Physics>,
   pub terrain_loader: Mutex<TerrainLoader>,
+  pub rng: Mutex<rand::StdRng>,
 
   pub clients: Mutex<HashMap<ClientId, Client>>,
 
@@ -70,6 +72,11 @@ impl Server {
 
       physics: Mutex::new(physics),
       terrain_loader: Mutex::new(TerrainLoader::new()),
+      rng: {
+        let seed = [0];
+        let seed: &[usize] = &seed;
+        Mutex::new(rand::SeedableRng::from_seed(seed))
+      },
 
       clients: Mutex::new(HashMap::new()),
       sun: Mutex::new(Sun::new(SUN_TICK_NS)),

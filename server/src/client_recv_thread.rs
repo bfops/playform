@@ -1,6 +1,10 @@
 use cgmath::{Point, Point3, Vector3, Aabb3};
+use rand;
+use rand::distributions::IndependentSample;
 use std::convert::AsRef;
+use std::f64;
 use std::f32::consts::PI;
+use std::ops::DerefMut;
 use std::sync::mpsc::channel;
 use std::time::Duration;
 use thread_scoped;
@@ -149,16 +153,36 @@ pub fn apply_client_update<UpdateGaia>(
       let bounds = cast(server, player_id);
 
       bounds.map(|bounds| {
-        debug!("bounds {:?}", bounds);
+        let mut rng = server.rng.lock().unwrap();
+        let rng = rng.deref_mut();
+
+        let trunk_radius =
+          rand::distributions::normal::Normal::new(2.0, 0.5)
+          .ind_sample(rng);
+        let trunk_radius =
+          f64::max(1.0, f64::min(3.0, trunk_radius));
+
+        let trunk_height =
+          rand::distributions::normal::Normal::new(8.0 * trunk_radius, 2.0 * trunk_radius)
+          .ind_sample(rng);
+        let trunk_height =
+          f64::max(4.0 * trunk_radius, f64::min(12.0 * trunk_radius, trunk_height));
+
+        let leaf_radius =
+          rand::distributions::normal::Normal::new(4.0 * trunk_radius, trunk_radius)
+          .ind_sample(rng);
+        let leaf_radius =
+          f64::max(2.0 * trunk_radius, f64::min(6.0 * trunk_radius, leaf_radius));
+
         let (low, high) = bounds.corners();
         let mut bottom = low.add_v(&high.to_vec()).div_s(2.0);
         bottom.y = high.y;
         let brush =
           terrain::voxel::brush::tree::T {
             bottom: bottom,
-            trunk_height: 16.0,
-            trunk_radius: 2.0,
-            leaf_radius: 8.0,
+            trunk_height: trunk_height as f32,
+            trunk_radius: trunk_radius as f32,
+            leaf_radius: leaf_radius as f32,
           };
         update_gaia(ServerToGaia::AddTree(brush));
       });
