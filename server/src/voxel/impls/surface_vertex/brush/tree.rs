@@ -36,7 +36,7 @@ fn trunk_density(this: &T, p: &Point3<f32>) -> f32 {
   f32::max(
     this.trunk_radius - dbottom.length(),
     f32::min(
-      this.trunk_height - dtrunk.length(),
+      this.trunk_height / 2.0 - dtrunk.length(),
       this.trunk_radius - dxz.length(),
     ),
   )
