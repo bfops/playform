@@ -69,7 +69,7 @@ impl<Voxel> Branches<Voxel> {
   }
 }
 
-fn brush_overlaps(voxel: &voxel::Bounds, brush: &::voxel::brush::Bounds) -> bool {
+fn brush_overlaps(voxel: &voxel::Bounds, brush: &voxel::brush::Bounds) -> bool {
   if voxel.lg_size >= 0 {
     let min =
       Vector3::new(
@@ -121,16 +121,16 @@ impl<Voxel> TreeBody<Voxel> {
     }
   }
 
-  pub fn brush<Brush>(
+  pub fn brush<Mosaic>(
     &mut self,
     bounds: &voxel::Bounds,
-    brush: &Brush,
-    brush_bounds: &::voxel::brush::Bounds,
+    brush: &voxel::brush::T<Mosaic>,
   ) where
-    Brush: voxel::brush::T<Voxel=Voxel>,
+    Mosaic: voxel::mosaic::T,
+    Voxel: voxel::T,
   {
     debug!("brush considers {:?}", bounds);
-    if !brush_overlaps(bounds, brush_bounds) {
+    if !brush_overlaps(bounds, &brush.bounds) {
       debug!("ignoring {:?}", bounds);
       return
     }
@@ -140,7 +140,7 @@ impl<Voxel> TreeBody<Voxel> {
         match data {
           &mut None => {},
           &mut Some(ref mut voxel) => {
-            voxel::brush::T::apply(voxel, bounds, brush);
+            voxel::T::brush(voxel, bounds, brush);
           },
         }
 
@@ -150,7 +150,7 @@ impl<Voxel> TreeBody<Voxel> {
         macro_rules! recurse(($branch: ident, $update_bounds: expr) => {{
           let mut bounds = bounds;
           $update_bounds(&mut bounds);
-          branches.$branch.brush(&bounds, brush, brush_bounds);
+          branches.$branch.brush(&bounds, brush);
         }});
         recurse!(lll, |_|                     {                            });
         recurse!(llh, |b: &mut voxel::Bounds| {                    b.z += 1});
@@ -465,18 +465,17 @@ impl<Voxel> T<Voxel> {
     }
   }
 
-  pub fn brush<Brush>(
+  pub fn brush<Mosaic>(
     &mut self,
-    brush: &Brush,
-    brush_bounds: &::voxel::brush::Bounds,
+    brush: &voxel::brush::T<Mosaic>,
   ) where
-    Brush: voxel::brush::T<Voxel=Voxel>,
+    Mosaic: voxel::mosaic::T,
+    Voxel: voxel::T,
   {
     macro_rules! recurse(($branch: ident, $x: expr, $y: expr, $z: expr) => {{
       self.contents.$branch.brush(
         &voxel::Bounds::new($x, $y, $z, self.lg_size as i16),
         brush,
-        brush_bounds,
       );
     }});
     recurse!(lll, -1, -1, -1);

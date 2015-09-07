@@ -3,7 +3,8 @@
 
 use cgmath::{Point, Point3, Vector3};
 
-use voxel::*;
+use voxel;
+use voxel::{field, mosaic};
 
 mod pillar {
   use cgmath::{Point, Point3, Vector3, EuclideanVector};
@@ -67,8 +68,8 @@ pub fn new(
     };
 
   let mut union = mosaic::union::new();
-  mosaic::union::push(&mut union, Material::Leaves, leaves);
-  mosaic::union::push(&mut union, Material::Bark, trunk);
+  mosaic::union::push(&mut union, voxel::Material::Leaves, leaves);
+  mosaic::union::push(&mut union, voxel::Material::Bark, trunk);
 
   T {
     union: union,
@@ -86,7 +87,7 @@ impl field::T for T {
 }
 
 impl mosaic::T for T {
-  fn material(this: &Self, p: &Point3<f32>) -> Option<::voxel::Material> {
+  fn material(this: &Self, p: &Point3<f32>) -> Option<voxel::Material> {
     mosaic::T::material(&this.union, p)
   }
 }

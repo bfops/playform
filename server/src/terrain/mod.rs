@@ -102,19 +102,18 @@ impl Terrain {
     mesh.as_ref().unwrap()
   }
 
-  pub fn brush<F, Brush>(
+  pub fn brush<F, Mosaic>(
     &mut self,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
-    brush: &Brush,
-    brush_bounds: &::voxel::brush::Bounds,
+    brush: &::voxel::brush::T<Mosaic>,
     mut block_changed: F,
   ) where
     F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
-    Brush: ::voxel::brush::T<Voxel=voxel::T<::voxel::Material>>,
+    Mosaic: ::voxel::mosaic::T,
   {
     macro_rules! voxel_range(($d:ident, $scale:expr) => {{
-      let low = brush_bounds.min().$d >> $scale;
-      let high = brush_bounds.max().$d >> $scale;
+      let low = brush.bounds.min().$d >> $scale;
+      let high = brush.bounds.max().$d >> $scale;
       range_inclusive(low, high)
     }});
 
@@ -147,11 +146,11 @@ impl Terrain {
       }}}
     }
 
-    self.voxels.brush(brush, brush_bounds);
+    self.voxels.brush(brush);
 
     macro_rules! block_range(($d:ident) => {{
-      let low = brush_bounds.min().$d >> terrain_block::LG_WIDTH;
-      let high = brush_bounds.max().$d >> terrain_block::LG_WIDTH;
+      let low = brush.bounds.min().$d >> terrain_block::LG_WIDTH;
+      let high = brush.bounds.max().$d >> terrain_block::LG_WIDTH;
       range_inclusive(low, high)
     }});
 

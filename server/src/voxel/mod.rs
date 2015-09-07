@@ -79,3 +79,13 @@ impl Bounds {
     true
   }
 }
+
+/// The interface provided by Voxels.
+pub trait T {
+  /// Apply a brush to this voxel.
+  fn brush<Mosaic>(
+    this: &mut Self,
+    bounds: &Bounds,
+    brush: &brush::T<Mosaic>,
+  ) where Mosaic: ::voxel::mosaic::T;
+}

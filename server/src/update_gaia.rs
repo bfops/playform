@@ -116,21 +116,24 @@ pub fn update_gaia(
       let center = 
         bottom.add_v(&Vector3::new(0.0, trunk_height / 2.0, 0.0));
       let r = trunk_height / 2.0 + leaf_radius + 20.0;
-      let brush_bounds =
-        Aabb3::new(
-          {
-            let low = center.add_v(&-Vector3::new(r, r, r));
-            Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
-          },
-          {
-            let high = center.add_v(&Vector3::new(r, r, r));
-            Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
-          },
-        );
+      let brush =
+        voxel::brush::T {
+          bounds:
+            Aabb3::new(
+              {
+                let low = center.add_v(&-Vector3::new(r, r, r));
+                Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
+              },
+              {
+                let high = center.add_v(&Vector3::new(r, r, r));
+                Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
+              },
+            ),
+          mosaic: tree,
+        };
       terrain_loader.terrain.brush(
         id_allocator,
-        &tree,
-        &brush_bounds,
+        &brush,
         |block, position, lod| {
           let clients = server.clients.lock().unwrap();
           for client in clients.values() {
@@ -149,22 +152,25 @@ pub fn update_gaia(
       let mut terrain_loader = server.terrain_loader.lock().unwrap();
       let id_allocator = &server.id_allocator;
       let r = sphere.field.field.radius + 1.0;
-      let brush_bounds =
-        Aabb3::new(
-          {
-            let low = sphere.field.translation.add_v(&-Vector3::new(r, r, r));
-            Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
-          },
-          {
-            let high = sphere.field.translation.add_v(&Vector3::new(r, r, r));
-            Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
-          },
-        );
-      debug!("remove {:?} with bounds {:?}", sphere, brush_bounds);
+      let brush =
+        voxel::brush::T {
+          bounds: 
+            Aabb3::new(
+              {
+                let low = sphere.field.translation.add_v(&-Vector3::new(r, r, r));
+                Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
+              },
+              {
+                let high = sphere.field.translation.add_v(&Vector3::new(r, r, r));
+                Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
+              },
+            ),
+          mosaic: sphere,
+        };
+      debug!("remove {:?}", brush);
       terrain_loader.terrain.brush(
         id_allocator,
-        &sphere,
-        &brush_bounds,
+        &brush,
         |block, position, lod| {
           let clients = server.clients.lock().unwrap();
           for client in clients.values() {

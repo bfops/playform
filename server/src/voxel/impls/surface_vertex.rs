@@ -136,17 +136,16 @@ pub fn unwrap<X>(voxel: T<Option<X>>) -> T<X> {
   }
 }
 
-impl<Brush> voxel::brush::T for Brush where Brush: voxel::mosaic::T {
-  type Voxel = T<::voxel::Material>;
-
-  fn apply(
+impl voxel::T for T<::voxel::Material> {
+  fn brush<Mosaic>(
     this: &mut T<::voxel::Material>,
     bounds: &voxel::Bounds,
-    brush: &Brush,
-  ) {
+    brush: &voxel::brush::T<Mosaic>,
+  ) where Mosaic: voxel::mosaic::T
+  {
     let set_leaf = |this: &mut T<::voxel::Material>, corner| {
       debug!("leaf {:?} is {:?}", bounds, *this);
-      match of_field(brush, bounds) {
+      match of_field(&brush.mosaic, bounds) {
         T::Volume(None) => {}
         T::Volume(Some(material)) => {
           *this = T::Volume(material);
@@ -157,7 +156,7 @@ impl<Brush> voxel::brush::T for Brush where Brush: voxel::mosaic::T {
           let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
           let low = low.mul_s(size);
           let corner =
-            match voxel::mosaic::T::material(brush, &low) {
+            match voxel::mosaic::T::material(&brush.mosaic, &low) {
               None => corner,
               Some(material) => material,
             };
