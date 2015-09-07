@@ -23,8 +23,9 @@ pub enum LoadReason {
 
 pub enum ServerToGaia {
   Load(BlockPosition, LODIndex, LoadReason),
+  // TODO: Make these add/remove of boxed brushes.
   AddTree(Point3<f32>),
-  RemoveSphere(voxel::mosaic::solid::T<voxel::field::sphere::T>),
+  RemoveSphere(voxel::mosaic::solid::T<voxel::field::translation::T<voxel::field::sphere::T>>),
 }
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
@@ -147,15 +148,15 @@ pub fn update_gaia(
     ServerToGaia::RemoveSphere(sphere) => {
       let mut terrain_loader = server.terrain_loader.lock().unwrap();
       let id_allocator = &server.id_allocator;
-      let r = sphere.field.radius + 1.0;
+      let r = sphere.field.field.radius + 1.0;
       let brush_bounds =
         Aabb3::new(
           {
-            let low = sphere.field.center.add_v(&-Vector3::new(r, r, r));
+            let low = sphere.field.translation.add_v(&-Vector3::new(r, r, r));
             Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
           },
           {
-            let high = sphere.field.center.add_v(&Vector3::new(r, r, r));
+            let high = sphere.field.translation.add_v(&Vector3::new(r, r, r));
             Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
           },
         );

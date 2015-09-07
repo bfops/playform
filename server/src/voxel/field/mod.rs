@@ -2,6 +2,7 @@ use cgmath::{Point3, Vector3};
 
 pub mod sphere;
 pub mod intersection;
+pub mod translation;
 
 /// A trait representing a density field.
 pub trait T {

@@ -164,9 +164,11 @@ pub fn apply_client_update<UpdateGaia>(
         let r = 8.0;
         let brush =
           voxel::mosaic::solid::T {
-            field: voxel::field::sphere::T {
-              center: center,
-              radius: r,
+            field: voxel::field::translation::T {
+              translation: center.to_vec(),
+              field: voxel::field::sphere::T {
+                radius: r,
+              },
             },
             material: voxel::Material::Empty,
           };

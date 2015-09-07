@@ -4,7 +4,6 @@ use voxel;
 
 #[derive(Debug, Clone, Copy)]
 pub struct T {
-  pub center: Point3<f32>,
   pub radius: f32,
 }
 
@@ -12,11 +11,10 @@ unsafe impl Send for T {}
 
 impl voxel::field::T for T {
   fn density(this: &Self, p: &Point3<f32>) -> f32 {
-    let d = this.center.sub_p(p);
-    this.radius*this.radius - (d.x*d.x + d.y*d.y + d.z*d.z)
+    this.radius*this.radius - p.to_vec().length2()
   }
 
-  fn normal(this: &Self, p: &Point3<f32>) -> Vector3<f32> {
-    p.sub_p(&this.center).normalize()
+  fn normal(_: &Self, p: &Point3<f32>) -> Vector3<f32> {
+    p.to_vec().normalize()
   }
 }

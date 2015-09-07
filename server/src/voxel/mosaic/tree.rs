@@ -11,19 +11,20 @@ mod pillar {
   use voxel::field;
 
   pub struct T {
-    pub x: f32,
-    pub z: f32,
     pub radius: f32,
   }
 
   impl field::T for T {
     fn density(this: &T, p: &Point3<f32>) -> f32 {
-      let d = Point3::new(this.x, p.y, this.z).sub_p(p);
-      this.radius*this.radius - d.length2()
+      let mut p = p.clone();
+      p.y = 0.0;
+      this.radius*this.radius - p.to_vec().length2()
     }
 
-    fn normal(this: &T, p: &Point3<f32>) -> Vector3<f32> {
-      Point3::new(this.x, p.y, this.z).sub_p(p).normalize()
+    fn normal(_: &T, p: &Point3<f32>) -> Vector3<f32> {
+      let mut p = p.clone();
+      p.y = 0.0;
+      p.to_vec().normalize()
     }
   }
 }
@@ -45,23 +46,25 @@ pub fn new(
   let trunk_center = bottom.add_v(&Vector3::new(0.0, trunk_height / 2.0, 0.0));
 
   let leaves =
-    field::sphere::T {
-      center: leaf_center,
-      radius: leaf_radius,
+    field::translation::T {
+      translation: leaf_center.to_vec(),
+      field: field::sphere::T {
+        radius: leaf_radius,
+      },
     };
 
   let trunk = 
-    field::intersection::new(
-      pillar::T {
-        x: bottom.x,
-        z: bottom.z,
-        radius: trunk_radius,
-      },
-      field::sphere::T {
-        center: trunk_center,
-        radius: trunk_height / 2.0,
-      },
-    );
+    field::translation::T {
+      translation: trunk_center.to_vec(),
+      field: field::intersection::new(
+        pillar::T {
+          radius: trunk_radius,
+        },
+        field::sphere::T {
+          radius: trunk_height / 2.0,
+        },
+      ),
+    };
 
   let mut union = mosaic::union::new();
   mosaic::union::push(&mut union, Material::Leaves, leaves);
