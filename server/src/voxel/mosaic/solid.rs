@@ -11,19 +11,19 @@ pub struct T<Field> {
 unsafe impl<Field> Send for T<Field> where Field: Send {}
 
 impl<Field> voxel::field::T for T<Field> where Field: voxel::field::T {
-  fn density(this: &Self, p: &Point3<f32>) -> f32 {
-    voxel::field::T::density(&this.field, p)
+  fn density(&self, p: &Point3<f32>) -> f32 {
+    voxel::field::T::density(&self.field, p)
   }
 
-  fn normal(this: &Self, p: &Point3<f32>) -> Vector3<f32> {
-    voxel::field::T::normal(&this.field, p)
+  fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
+    voxel::field::T::normal(&self.field, p)
   }
 }
 
 impl<Field> voxel::mosaic::T for T<Field> where Field: voxel::field::T {
-  fn material(this: &Self, p: &Point3<f32>) -> Option<voxel::Material> {
-    if voxel::field::T::density(this, p) >= 0.0 {
-      Some(this.material)
+  fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
+    if voxel::field::T::density(self, p) >= 0.0 {
+      Some(self.material)
     } else {
       None
     }

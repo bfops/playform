@@ -9,13 +9,13 @@ pub struct T<Field> {
 }
 
 impl<Field> field::T for T<Field> where Field: field::T {
-  fn density(this: &Self, p: &Point3<f32>) -> f32 {
-    let p = p.add_v(&-this.translation);
-    field::T::density(&this.field, &p)
+  fn density(&self, p: &Point3<f32>) -> f32 {
+    let p = p.add_v(&-self.translation);
+    field::T::density(&self.field, &p)
   }
 
-  fn normal(this: &Self, p: &Point3<f32>) -> Vector3<f32> {
-    let p = p.add_v(&-this.translation);
-    field::T::normal(&this.field, &p)
+  fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
+    let p = p.add_v(&-self.translation);
+    field::T::normal(&self.field, &p)
   }
 }

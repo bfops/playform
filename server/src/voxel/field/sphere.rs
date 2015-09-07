@@ -10,11 +10,11 @@ pub struct T {
 unsafe impl Send for T {}
 
 impl voxel::field::T for T {
-  fn density(this: &Self, p: &Point3<f32>) -> f32 {
-    this.radius*this.radius - p.to_vec().length2()
+  fn density(&self, p: &Point3<f32>) -> f32 {
+    self.radius*self.radius - p.to_vec().length2()
   }
 
-  fn normal(_: &Self, p: &Point3<f32>) -> Vector3<f32> {
+  fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
     p.to_vec().normalize()
   }
 }

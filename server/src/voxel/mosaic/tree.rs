@@ -16,13 +16,13 @@ mod pillar {
   }
 
   impl field::T for T {
-    fn density(this: &T, p: &Point3<f32>) -> f32 {
+    fn density(&self, p: &Point3<f32>) -> f32 {
       let mut p = p.clone();
       p.y = 0.0;
-      this.radius*this.radius - p.to_vec().length2()
+      self.radius*self.radius - p.to_vec().length2()
     }
 
-    fn normal(_: &T, p: &Point3<f32>) -> Vector3<f32> {
+    fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
       let mut p = p.clone();
       p.y = 0.0;
       p.to_vec().normalize()
@@ -68,8 +68,8 @@ pub fn new(
     };
 
   let mut union = mosaic::union::new();
-  mosaic::union::push(&mut union, voxel::Material::Leaves, leaves);
-  mosaic::union::push(&mut union, voxel::Material::Bark, trunk);
+  union.push(voxel::Material::Leaves, leaves);
+  union.push(voxel::Material::Bark, trunk);
 
   T {
     union: union,
@@ -77,17 +77,17 @@ pub fn new(
 }
 
 impl field::T for T {
-  fn density(this: &Self, p: &Point3<f32>) -> f32 {
-    field::T::density(&this.union, p)
+  fn density(&self, p: &Point3<f32>) -> f32 {
+    field::T::density(&self.union, p)
   }
 
-  fn normal(this: &Self, p: &Point3<f32>) -> Vector3<f32> {
-    field::T::normal(&this.union, p)
+  fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
+    field::T::normal(&self.union, p)
   }
 }
 
 impl mosaic::T for T {
-  fn material(this: &Self, p: &Point3<f32>) -> Option<voxel::Material> {
-    mosaic::T::material(&this.union, p)
+  fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
+    mosaic::T::material(&self.union, p)
   }
 }

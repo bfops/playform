@@ -32,18 +32,18 @@ impl T {
 }
 
 impl voxel::field::T for T {
-  fn density(this: &T, p: &Point3<f32>) -> f32 {
-    let height = this.height.apply(&this.seed, &[p.x as f64, p.z as f64]);
+  fn density(&self, p: &Point3<f32>) -> f32 {
+    let height = self.height.apply(&self.seed, &[p.x as f64, p.z as f64]);
     let height = height as f32;
     let heightmap_density = height - p.y;
   
-    let feature_density = this.features.apply(&this.seed, &[p.x as f64, p.y as f64, p.z as f64]) * 8.0;
+    let feature_density = self.features.apply(&self.seed, &[p.x as f64, p.y as f64, p.z as f64]) * 8.0;
     let feature_density = feature_density as f32;
   
     heightmap_density + feature_density
   }
 
-  fn normal(this: &Self, p: &Point3<f32>) -> Vector3<f32> {
+  fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
     // Use density differential in each dimension as an approximation of the normal.
 
     let delta = 0.01;
@@ -52,12 +52,12 @@ impl voxel::field::T for T {
       let high: f32 = {
         let mut p = *p;
         p.$d += delta;
-        ::voxel::field::T::density(this, &p)
+        ::voxel::field::T::density(self, &p)
       };
       let low: f32 = {
         let mut p = *p;
         p.$d -= delta;
-        ::voxel::field::T::density(this, &p)
+        ::voxel::field::T::density(self, &p)
       };
       high - low
     }});
@@ -70,9 +70,9 @@ impl voxel::field::T for T {
 }
 
 impl voxel::mosaic::T for T {
-  fn material(this: &Self, p: &Point3<f32>) -> Option<voxel::Material> {
+  fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
     Some(
-      if ::voxel::field::T::density(this, p) >= 0.0 {
+      if ::voxel::field::T::density(self, p) >= 0.0 {
         voxel::Material::Terrain
       } else {
         voxel::Material::Empty
