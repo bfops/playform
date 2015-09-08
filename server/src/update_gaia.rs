@@ -1,8 +1,5 @@
 /// Creator of the earth.
 
-use cgmath::{Aabb3, Point, Vector, Point3, Vector3};
-use rand;
-use rand::distributions::IndependentSample;
 use std::ops::DerefMut;
 use stopwatch;
 
@@ -23,9 +20,7 @@ pub enum LoadReason {
 
 pub enum ServerToGaia {
   Load(BlockPosition, LODIndex, LoadReason),
-  // TODO: Make these add/remove of boxed brushes.
-  AddTree(Point3<f32>),
-  RemoveSphere(voxel::mosaic::solid::T<voxel::field::translation::T<voxel::field::sphere::T>>),
+  Brush(voxel::brush::T<Box<voxel::mosaic::T + Send>>),
 }
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
@@ -77,62 +72,10 @@ pub fn update_gaia(
         }
       });
     },
-    ServerToGaia::AddTree(bottom) => {
-      let mut trunk_radius;
-      let mut trunk_height;
-      let mut leaf_radius;
-
-      {
-        let mut rng = server.rng.lock().unwrap();
-        let rng = rng.deref_mut();
-
-        trunk_radius =
-          rand::distributions::normal::Normal::new(2.0, 0.5)
-          .ind_sample(rng);
-        trunk_radius =
-          f64::max(1.0, f64::min(3.0, trunk_radius));
-
-        trunk_height =
-          rand::distributions::normal::Normal::new(8.0 * trunk_radius, 2.0 * trunk_radius)
-          .ind_sample(rng);
-        trunk_height =
-          f64::max(4.0 * trunk_radius, f64::min(12.0 * trunk_radius, trunk_height));
-
-        leaf_radius =
-          rand::distributions::normal::Normal::new(4.0 * trunk_radius, trunk_radius)
-          .ind_sample(rng);
-        leaf_radius =
-          f64::max(2.0 * trunk_radius, f64::min(6.0 * trunk_radius, leaf_radius));
-      }
-
-      let trunk_height = trunk_height as f32;
-      let trunk_radius = trunk_radius as f32;
-      let leaf_radius = leaf_radius as f32;
-
-      let tree = voxel::mosaic::tree::new(bottom, trunk_height, trunk_radius, leaf_radius);
-
+    ServerToGaia::Brush(brush) => {
       let mut terrain_loader = server.terrain_loader.lock().unwrap();
-      let id_allocator = &server.id_allocator;
-      let center = 
-        bottom.add_v(&Vector3::new(0.0, trunk_height / 2.0, 0.0));
-      let r = trunk_height / 2.0 + leaf_radius + 20.0;
-      let brush =
-        voxel::brush::T {
-          bounds:
-            Aabb3::new(
-              {
-                let low = center.add_v(&-Vector3::new(r, r, r));
-                Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
-              },
-              {
-                let high = center.add_v(&Vector3::new(r, r, r));
-                Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
-              },
-            ),
-          mosaic: tree,
-        };
       terrain_loader.terrain.brush(
-        id_allocator,
+        &server.id_allocator,
         &brush,
         |block, position, lod| {
           let clients = server.clients.lock().unwrap();
@@ -147,43 +90,6 @@ pub fn update_gaia(
           }
         },
       );
-    }
-    ServerToGaia::RemoveSphere(sphere) => {
-      let mut terrain_loader = server.terrain_loader.lock().unwrap();
-      let id_allocator = &server.id_allocator;
-      let r = sphere.field.field.radius + 1.0;
-      let brush =
-        voxel::brush::T {
-          bounds: 
-            Aabb3::new(
-              {
-                let low = sphere.field.translation.add_v(&-Vector3::new(r, r, r));
-                Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
-              },
-              {
-                let high = sphere.field.translation.add_v(&Vector3::new(r, r, r));
-                Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
-              },
-            ),
-          mosaic: sphere,
-        };
-      debug!("remove {:?}", brush);
-      terrain_loader.terrain.brush(
-        id_allocator,
-        &brush,
-        |block, position, lod| {
-          let clients = server.clients.lock().unwrap();
-          for client in clients.values() {
-            client.sender.send(Some(
-              ServerToClient::UpdateBlock(TerrainBlockSend {
-                position: Copyable(*position),
-                block: block.clone(),
-                lod: Copyable(lod),
-              })
-            )).unwrap();
-          }
-        },
-      );
-    }
+    },
   };
 }

@@ -15,6 +15,8 @@ mod pillar {
     pub radius: f32,
   }
 
+  unsafe impl Send for T {}
+
   impl field::T for T {
     fn density(&self, p: &Point3<f32>) -> f32 {
       let mut p = p.clone();

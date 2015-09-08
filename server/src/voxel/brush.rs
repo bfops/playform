@@ -7,3 +7,5 @@ pub struct T<Mosaic> {
   pub bounds: Bounds,
   pub mosaic: Mosaic,
 }
+
+unsafe impl<Mosaic> Send for T<Mosaic> {}

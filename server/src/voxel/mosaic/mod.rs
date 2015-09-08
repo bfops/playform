@@ -1,4 +1,5 @@
 use cgmath::{Point3};
+use std::ops::Deref;
 
 use voxel;
 
@@ -15,4 +16,14 @@ pub trait T: voxel::field::T {
 
   /// The material at this point.
   fn material(&self, p: &Point3<f32>) -> Option<voxel::Material>;
+}
+
+impl<X: ?Sized> T for Box<X> where X: T {
+  fn density(&self, p: &Point3<f32>) -> f32 {
+    T::density(self.deref(), p)
+  }
+
+  fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
+    T::material(self.deref(), p)
+  }
 }

@@ -1,6 +1,9 @@
-use cgmath::{Point, Point3, Vector3, Aabb3};
+use cgmath::{Point, Point3, Vector, Vector3, Aabb3};
+use rand;
+use rand::distributions::IndependentSample;
 use std::convert::AsRef;
 use std::f32::consts::PI;
+use std::ops::DerefMut;
 use std::sync::mpsc::channel;
 use std::time::Duration;
 use thread_scoped;
@@ -149,10 +152,57 @@ pub fn apply_client_update<UpdateGaia>(
       let bounds = cast(server, player_id);
 
       bounds.map(|bounds| {
+        let mut rng = server.rng.lock().unwrap();
+        let rng = rng.deref_mut();
+
+        let trunk_radius =
+          rand::distributions::normal::Normal::new(2.0, 0.5)
+          .ind_sample(rng);
+        let trunk_radius =
+          f64::max(1.0, f64::min(3.0, trunk_radius));
+
+        let trunk_height =
+          rand::distributions::normal::Normal::new(8.0 * trunk_radius, 2.0 * trunk_radius)
+          .ind_sample(rng);
+        let trunk_height =
+          f64::max(4.0 * trunk_radius, f64::min(12.0 * trunk_radius, trunk_height));
+
+        let leaf_radius =
+          rand::distributions::normal::Normal::new(4.0 * trunk_radius, trunk_radius)
+          .ind_sample(rng);
+        let leaf_radius =
+          f64::max(2.0 * trunk_radius, f64::min(6.0 * trunk_radius, leaf_radius));
+
         let (low, high) = bounds.corners();
         let mut bottom = low.add_v(&high.to_vec()).div_s(2.0);
         bottom.y = low.y;
-        update_gaia(ServerToGaia::AddTree(bottom));
+
+        let trunk_height = trunk_height as f32;
+        let trunk_radius = trunk_radius as f32;
+        let leaf_radius = leaf_radius as f32;
+
+        let tree = voxel::mosaic::tree::new(bottom, trunk_height, trunk_radius, leaf_radius);
+
+        let center =
+          bottom.add_v(&Vector3::new(0.0, trunk_height / 2.0, 0.0));
+        let r = trunk_height / 2.0 + leaf_radius + 20.0;
+        let brush =
+          voxel::brush::T {
+            bounds:
+              Aabb3::new(
+                {
+                  let low = center.add_v(&-Vector3::new(r, r, r));
+                  Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
+                },
+                {
+                  let high = center.add_v(&Vector3::new(r, r, r));
+                  Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
+                },
+              ),
+            mosaic: Box::new(tree) as Box<voxel::mosaic::T + Send>,
+          };
+
+        update_gaia(ServerToGaia::Brush(brush));
       });
     },
     ClientToServer::Remove(Copyable(player_id)) => {
@@ -162,7 +212,7 @@ pub fn apply_client_update<UpdateGaia>(
         debug!("bounds {:?}", bounds);
         let center = bounds.center();
         let r = 8.0;
-        let brush =
+        let sphere =
           voxel::mosaic::solid::T {
             field: voxel::field::translation::T {
               translation: center.to_vec(),
@@ -172,7 +222,24 @@ pub fn apply_client_update<UpdateGaia>(
             },
             material: voxel::Material::Empty,
           };
-        update_gaia(ServerToGaia::RemoveSphere(brush));
+        let r = sphere.field.field.radius + 1.0;
+        let brush =
+          voxel::brush::T {
+            bounds:
+              Aabb3::new(
+                {
+                  let low = sphere.field.translation.add_v(&-Vector3::new(r, r, r));
+                  Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
+                },
+                {
+                  let high = sphere.field.translation.add_v(&Vector3::new(r, r, r));
+                  Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
+                },
+              ),
+            mosaic: Box::new(sphere) as Box<voxel::mosaic::T + Send>,
+          };
+        let brush: voxel::brush::T<Box<voxel::mosaic::T + Send>> = brush;
+        update_gaia(ServerToGaia::Brush(brush));
       });
     },
   };
