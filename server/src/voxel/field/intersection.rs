@@ -7,7 +7,7 @@ pub struct T ([Box<field::T>; 2]);
 unsafe impl Send for T {}
 
 pub fn new<Field1, Field2>(field1: Field1, field2: Field2) -> T
-  where 
+  where
     Field1: field::T + 'static,
     Field2: field::T + 'static,
 {

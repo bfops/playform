@@ -16,7 +16,7 @@ pub fn new() -> T {
 }
 
 impl T {
-  pub fn push<Field>(&mut self, material: ::voxel::Material, field: Field) 
+  pub fn push<Field>(&mut self, material: ::voxel::Material, field: Field)
     where Field: field::T + 'static,
   {
     self.components.push((Box::new(field), material));
@@ -27,7 +27,7 @@ impl field::T for T {
   fn density(&self, p: &Point3<f32>) -> f32 {
     assert!(self.components.len() > 0);
     self.components.iter().fold(
-      f32::NEG_INFINITY, 
+      f32::NEG_INFINITY,
       |max, &(ref shape, _)| f32::max(max, shape.density(p)),
     )
   }
@@ -36,7 +36,7 @@ impl field::T for T {
     assert!(self.components.len() > 0);
     let (_, normal) =
       self.components.iter().fold(
-        (f32::NEG_INFINITY, Vector3::new(0.0, 0.0, 0.0)), 
+        (f32::NEG_INFINITY, Vector3::new(0.0, 0.0, 0.0)),
         |(max, normal), &(ref shape, _)| {
           let d = shape.density(p);
           if d > max {

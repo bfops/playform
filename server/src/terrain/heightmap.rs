@@ -36,10 +36,10 @@ impl voxel::field::T for T {
     let height = self.height.apply(&self.seed, &[p.x as f64, p.z as f64]);
     let height = height as f32;
     let heightmap_density = height - p.y;
-  
+
     let feature_density = self.features.apply(&self.seed, &[p.x as f64, p.y as f64, p.z as f64]) * 8.0;
     let feature_density = feature_density as f32;
-  
+
     heightmap_density + feature_density
   }
 

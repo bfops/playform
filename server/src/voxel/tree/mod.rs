@@ -115,7 +115,7 @@ fn brush_overlaps(voxel: &voxel::Bounds, brush: &voxel::brush::Bounds) -> bool {
 
 impl<Voxel> TreeBody<Voxel> {
   pub fn leaf(voxel: Option<Voxel>) -> TreeBody<Voxel> {
-    TreeBody::Branch { 
+    TreeBody::Branch {
       data: voxel,
       branches: Box::new(Branches::empty()),
     }

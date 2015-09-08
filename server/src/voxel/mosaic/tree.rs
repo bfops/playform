@@ -40,9 +40,9 @@ unsafe impl Send for T {}
 
 pub fn new(
   // Bottom-center of the trunk
-  bottom: Point3<f32>, 
-  trunk_height: f32, 
-  trunk_radius: f32, 
+  bottom: Point3<f32>,
+  trunk_height: f32,
+  trunk_radius: f32,
   leaf_radius: f32,
 ) -> T {
   let leaf_center = bottom.add_v(&Vector3::new(0.0, trunk_height, 0.0));
@@ -56,7 +56,7 @@ pub fn new(
       },
     };
 
-  let trunk = 
+  let trunk =
     field::translation::T {
       translation: trunk_center.to_vec(),
       field: field::intersection::new(
