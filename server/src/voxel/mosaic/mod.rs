@@ -1,10 +1,11 @@
 use cgmath::{Point3};
-use std::ops::Deref;
+use std::ops::{Deref};
 
 use voxel;
 
 pub mod solid;
 pub mod union;
+pub mod translation;
 pub mod tree;
 
 /// A density field that also defines materials. This does not need to be defined everywhere.

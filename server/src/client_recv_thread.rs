@@ -181,7 +181,11 @@ pub fn apply_client_update<UpdateGaia>(
         let trunk_radius = trunk_radius as f32;
         let leaf_radius = leaf_radius as f32;
 
-        let tree = voxel::mosaic::tree::new(bottom, trunk_height, trunk_radius, leaf_radius);
+        let tree =
+          voxel::mosaic::translation::T {
+            translation: bottom.to_vec(),
+            mosaic: voxel::mosaic::tree::new(trunk_height, trunk_radius, leaf_radius),
+          };
 
         let center =
           bottom.add_v(&Vector3::new(0.0, trunk_height / 2.0, 0.0));

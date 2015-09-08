@@ -39,14 +39,12 @@ pub struct T {
 unsafe impl Send for T {}
 
 pub fn new(
-  // Bottom-center of the trunk
-  bottom: Point3<f32>,
   trunk_height: f32,
   trunk_radius: f32,
   leaf_radius: f32,
 ) -> T {
-  let leaf_center = bottom.add_v(&Vector3::new(0.0, trunk_height, 0.0));
-  let trunk_center = bottom.add_v(&Vector3::new(0.0, trunk_height / 2.0, 0.0));
+  let leaf_center = Point3::new(0.0, trunk_height, 0.0);
+  let trunk_center = Point3::new(0.0, trunk_height / 2.0, 0.0);
 
   let leaves =
     field::translation::T {
