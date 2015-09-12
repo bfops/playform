@@ -1,4 +1,5 @@
 use env_logger;
+use nanomsg;
 use std;
 use std::io::Read;
 use std::convert::AsRef;
@@ -148,6 +149,10 @@ fn main() {
         if line == "quit" {
           println!("Quitting");
           *quit_upon.lock().unwrap() = true;
+
+          // Close all sockets.
+          nanomsg::Socket::terminate();
+
           return stopwatch::clone()
         } else {
           println!("Unrecognized command: {:?}", line);

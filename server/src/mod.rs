@@ -16,6 +16,7 @@ extern crate common;
 extern crate env_logger;
 #[macro_use]
 extern crate log;
+extern crate nanomsg;
 extern crate noise;
 extern crate num;
 extern crate rand;

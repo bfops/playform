@@ -23,6 +23,9 @@ version = "*"
 [dependencies.cgmath]
 git = "https://github.com/bjz/cgmath-rs"
 
+[dependencies.nanomsg]
+git = "https://github.com/thehydroimpulse/nanomsg.rs"
+
 [dependencies.noise]
 git = "https://github.com/bjz/noise-rs"
 
