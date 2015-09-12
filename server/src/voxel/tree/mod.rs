@@ -501,10 +501,29 @@ mod tests {
   #[derive(Debug)]
   struct EraseAll;
 
-  impl voxel::brush::T for EraseAll {
-    type Voxel = i32;
+  impl voxel::field::T for EraseAll {
+    fn density(&self, _: &Point3<f32>) -> f32 {
+      1.0
+    }
 
-    fn apply(this: &mut i32, _: &voxel::Bounds, _: &EraseAll, _: ::voxel::brush::Action) {
+    fn normal(&self, _: &Point3<f32>) -> Vector3<f32> {
+      Vector3::new(0.0, 0.0, 0.0)
+    }
+  }
+
+  impl voxel::mosaic::T for EraseAll {
+    fn material(&self, _: &Point3<f32>) -> Option<voxel::Material> {
+      None
+    }
+  }
+
+  impl voxel::T for i32 {
+    fn brush<Mosaic>(
+      this: &mut Self,
+      _: &voxel::Bounds,
+      _: &voxel::brush::T<Mosaic>,
+    ) where Mosaic: ::voxel::mosaic::T
+    {
       *this = 999;
     }
   }
@@ -593,12 +612,14 @@ mod tests {
     *tree.get_mut_or_create(&voxel::Bounds::new(9, -1, 3, 0)) = TreeBody::leaf(Some(1));
 
     tree.brush(
-      &EraseAll,
-      &voxel::brush::Bounds::new(
-        Point3::new(9, -1, 3),
-        Point3::new(10, 0, 4),
-      ),
-      voxel::brush::Action::Remove,
+      &voxel::brush::T {
+        mosaic: EraseAll,
+        bounds: 
+        voxel::brush::Bounds::new(
+          Point3::new(9, -1, 3),
+          Point3::new(10, 0, 4),
+        ),
+      },
     );
 
     assert_eq!(tree.get(&voxel::Bounds::new(9, -1, 3, 0)), Some(&999));
