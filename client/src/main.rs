@@ -4,6 +4,7 @@ use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
+use stopwatch;
 use thread_scoped;
 
 use common::communicate::{ClientToServer, ServerToClient};
@@ -116,7 +117,7 @@ fn main() {
   let client = &client;
 
   {
-    let _update_thread = {
+    let update_thread = {
       let client = &client;
       let view_thread_send = view_thread_send.clone();
       let server_send_thread_send = server_send_thread_send.clone();
@@ -134,7 +135,9 @@ fn main() {
             &mut |up| { view_thread_send.send(up).unwrap() },
   	        &mut |up| { server_send_thread_send.send(Some(up)).unwrap() },
             &mut |block| { terrain_blocks_send.send(block).unwrap() },
-          )
+          );
+
+          stopwatch::clone()
         })
       }
     };
@@ -154,11 +157,16 @@ fn main() {
         &mut |server_update| {
           server_send_thread_send.send(Some(server_update)).unwrap();
         },
-      )
+      );
+
+      stopwatch::clone().print();
     }
 
     // View thread returned, so we got a quit event.
     *quit.lock().unwrap() = true;
+
+    let stopwatch = update_thread.join();
+    stopwatch.print();
   }
 }
 

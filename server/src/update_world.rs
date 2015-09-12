@@ -28,10 +28,10 @@ pub fn update_world(
       }
 
       let players: Vec<_> = server.players.lock().unwrap().keys().map(|&x| x).collect();
-      for (_, client) in server.clients.lock().unwrap().iter() {
+      for (_, client) in server.clients.lock().unwrap().iter_mut() {
         for &id in players.iter() {
           let bounds = server.physics.lock().unwrap().get_bounds(id).unwrap().clone();
-          client.sender.send(Some(UpdatePlayer(Copyable(id), Copyable(bounds)))).unwrap();
+          client.send(UpdatePlayer(Copyable(id), Copyable(bounds)));
         }
       }
     });
@@ -75,8 +75,8 @@ pub fn update_world(
     });
 
     server.sun.lock().unwrap().update().map(|fraction| {
-      for client in server.clients.lock().unwrap().values() {
-        client.sender.send(Some(UpdateSun(Copyable(fraction)))).unwrap();
+      for (_, client) in server.clients.lock().unwrap().iter_mut() {
+        client.send(UpdateSun(Copyable(fraction)));
       }
     });
   });
@@ -100,10 +100,10 @@ fn translate_mob(
 
   mob.position.add_self_v(delta_p);
 
-  for client in server.clients.lock().unwrap().values() {
-    client.sender.send(
-      Some(UpdateMob(Copyable(mob.entity_id), Copyable(bounds.clone())))
-    ).unwrap();
+  for (_, client) in server.clients.lock().unwrap().iter_mut() {
+    client.send(
+      UpdateMob(Copyable(mob.entity_id), Copyable(bounds.clone()))
+    );
   }
 }
 

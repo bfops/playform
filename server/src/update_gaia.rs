@@ -59,15 +59,15 @@ pub fn update_gaia(
             );
           },
           LoadReason::ForClient(id) => {
-            let clients = server.clients.lock().unwrap();
-            let client = clients.get(&id).unwrap();
-            client.sender.send(Some(
+            let mut clients = server.clients.lock().unwrap();
+            let client = clients.get_mut(&id).unwrap();
+            client.send(
               ServerToClient::UpdateBlock(TerrainBlockSend {
                 position: Copyable(position),
                 block: block.clone(),
                 lod: Copyable(lod),
               })
-            )).unwrap();
+            );
           },
         }
       });
@@ -78,15 +78,15 @@ pub fn update_gaia(
         &server.id_allocator,
         &brush,
         |block, position, lod| {
-          let clients = server.clients.lock().unwrap();
-          for client in clients.values() {
-            client.sender.send(Some(
+          let mut clients = server.clients.lock().unwrap();
+          for (_, client) in clients.iter_mut() {
+            client.send(
               ServerToClient::UpdateBlock(TerrainBlockSend {
                 position: Copyable(*position),
                 block: block.clone(),
                 lod: Copyable(lod),
               })
-            )).unwrap();
+            );
           }
         },
       );

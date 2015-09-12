@@ -4,13 +4,10 @@ use rand::distributions::IndependentSample;
 use std::convert::AsRef;
 use std::f32::consts::PI;
 use std::ops::DerefMut;
-use std::sync::mpsc::channel;
 use std::time::Duration;
-use thread_scoped;
 
 use common::communicate::{ClientToServer, ServerToClient};
 use common::entity;
-use common::serialize;
 use common::serialize::Copyable;
 use common::socket::SendSocket;
 
@@ -59,35 +56,21 @@ pub fn apply_client_update<UpdateGaia>(
     ClientToServer::Init(client_url) => {
       info!("Sending to {}.", client_url);
 
-      let (to_client_send, to_client_recv) = channel();
-      let client_thread = unsafe {
-        thread_scoped::scoped(move || {
-          let mut socket = SendSocket::new(client_url.as_ref(), Some(Duration::from_secs(30)));
-          while let Some(msg) = to_client_recv.recv().unwrap() {
-            // TODO: Don't do this allocation on every packet!
-            let msg = serialize::encode(&msg).unwrap();
-            socket.write(msg.as_ref());
-          }
-        })
-      };
+      let mut client =
+        Client {
+          socket: SendSocket::new(client_url.as_ref(), Some(Duration::from_secs(30))),
+        };
 
       let client_id = server.client_allocator.lock().unwrap().allocate();
-      to_client_send.send(Some(ServerToClient::LeaseId(Copyable(client_id)))).unwrap();
+      client.send(ServerToClient::LeaseId(Copyable(client_id)));
 
-      let client =
-        Client {
-          sender: to_client_send,
-          thread: client_thread,
-        };
       server.clients.lock().unwrap().insert(client_id, client);
     },
     ClientToServer::Ping(Copyable(client_id)) => {
       server.clients.lock().unwrap()
-        .get(&client_id)
+        .get_mut(&client_id)
         .unwrap()
-        .sender
-        .send(Some(ServerToClient::Ping(Copyable(()))))
-        .unwrap();
+        .send(ServerToClient::Ping(Copyable(())));
     },
     ClientToServer::AddPlayer(Copyable(client_id)) => {
       let mut player =
@@ -110,11 +93,11 @@ pub fn apply_client_update<UpdateGaia>(
 
       server.players.lock().unwrap().insert(id, player);
 
-      let clients = server.clients.lock().unwrap();
-      let client = clients.get(&client_id).unwrap();
-      client.sender.send(
-        Some(ServerToClient::PlayerAdded(Copyable(id), Copyable(pos)))
-      ).unwrap();
+      let mut clients = server.clients.lock().unwrap();
+      let client = clients.get_mut(&client_id).unwrap();
+      client.send(
+        ServerToClient::PlayerAdded(Copyable(id), Copyable(pos))
+      );
     },
     ClientToServer::StartJump(Copyable(player_id)) => {
       let mut players = server.players.lock().unwrap();

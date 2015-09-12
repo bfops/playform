@@ -4,6 +4,7 @@ use std::env;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Mutex;
 use std::thread;
+use stopwatch;
 use thread_scoped;
 use time;
 
@@ -74,8 +75,6 @@ fn main() {
   let server = Server::new();
   let server = &server;
 
-  let quit_upon = Mutex::new(false);
-
   // Add a thread that performs several actions repeatedly in a prioritized order:
   // Only if an action fails do we try the next action; otherwise, we restart the chain.
   macro_rules! in_series(
@@ -96,7 +95,7 @@ fn main() {
 
   unsafe {
     let gaia_thread_send = gaia_thread_send.clone();
-    let quit_upon = &quit_upon;
+    let listen_socket = &listen_socket;
     threads.push(thread_scoped::scoped(move || {
       in_series!(
         {
@@ -123,15 +122,11 @@ fn main() {
               update_gaia(server, up)
             })
         },
-        {
-          if *quit_upon.lock().unwrap() {
-            return
-          }
-          false
-        },
       );
     }));
   }
+
+  stopwatch::clone().print();
 }
 
 #[test]
