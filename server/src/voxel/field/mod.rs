@@ -3,6 +3,7 @@ use std::ops::Deref;
 
 pub mod sphere;
 pub mod intersection;
+pub mod rotation;
 pub mod translation;
 
 /// A trait representing a density field.

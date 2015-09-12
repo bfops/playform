@@ -5,7 +5,6 @@ use voxel;
 
 pub mod solid;
 pub mod union;
-pub mod rotation;
 pub mod translation;
 pub mod tree;
 

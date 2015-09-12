@@ -184,7 +184,7 @@ pub fn apply_client_update<UpdateGaia>(
         let tree =
           voxel::mosaic::translation::T {
             translation: bottom.to_vec(),
-            mosaic: voxel::mosaic::tree::new(trunk_height, trunk_radius, leaf_radius),
+            mosaic: voxel::mosaic::tree::new(rng, trunk_height, trunk_radius, leaf_radius),
           };
 
         let center =
