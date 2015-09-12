@@ -1,6 +1,6 @@
 //! One-way socket wrapper data structures.
 
-use nanomsg::{Endpoint, Socket, Protocol};
+use nanomsg::{Endpoint, Socket, Protocol, Error};
 use std::convert::AsRef;
 use std::io::{Read, Write};
 use std::time::Duration;
@@ -69,6 +69,20 @@ impl ReceiveSocket {
     let mut msg = Vec::new();
     self.socket.read_to_end(&mut msg).unwrap();
     msg
+  }
+
+  /// Try to read a message from this socket.
+  pub fn try_read(&mut self) -> Option<Vec<u8>> {
+    let mut msg = Vec::new();
+    let result = self.socket.nb_read_to_end(&mut msg);
+    match result {
+      Ok(_) => Some(msg),
+      Err(Error::TryAgain) => None,
+      _ => {
+        result.unwrap();
+        unreachable!()
+      }
+    }
   }
 
   /// Terminate this connection.

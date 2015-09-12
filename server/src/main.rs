@@ -64,25 +64,17 @@ fn main() {
 
   info!("Listening on {}.", listen_url);
 
-  let (listen_thread_send, listen_thread_recv) = channel();
   let (gaia_thread_send, gaia_thread_recv) = channel();
 
-  let listen_thread_recv = Mutex::new(listen_thread_recv);
   let gaia_thread_recv = Mutex::new(gaia_thread_recv);
 
-  let _listen_thread = unsafe {
-    let listen_thread_send = listen_thread_send.clone();
-    thread_scoped::scoped(move || {
-      let mut socket = ReceiveSocket::new(listen_url.as_ref(), None);
-      loop {
-        let msg = socket.read();
-        listen_thread_send.send(msg).unwrap();
-      }
-    })
-  };
+  let listen_socket = ReceiveSocket::new(listen_url.as_ref(), None);
+  let listen_socket = Mutex::new(listen_socket);
 
   let server = Server::new();
   let server = &server;
+
+  let quit_upon = Mutex::new(false);
 
   // Add a thread that performs several actions repeatedly in a prioritized order:
   // Only if an action fails do we try the next action; otherwise, we restart the chain.
@@ -104,7 +96,7 @@ fn main() {
 
   unsafe {
     let gaia_thread_send = gaia_thread_send.clone();
-    let listen_thread_recv = &listen_thread_recv;
+    let quit_upon = &quit_upon;
     threads.push(thread_scoped::scoped(move || {
       in_series!(
         {
@@ -119,7 +111,7 @@ fn main() {
           }
         },
         {
-          listen_thread_recv.lock().unwrap().try_recv_opt()
+          listen_socket.lock().unwrap().try_read()
             .map_to_bool(|up| {
               let up = binary::decode(up.as_ref()).unwrap();
               apply_client_update(server, &mut |block| { gaia_thread_send.send(block).unwrap() }, up)
@@ -130,6 +122,12 @@ fn main() {
             .map_to_bool(|up| {
               update_gaia(server, up)
             })
+        },
+        {
+          if *quit_upon.lock().unwrap() {
+            return
+          }
+          false
         },
       );
     }));
