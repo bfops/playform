@@ -1,4 +1,6 @@
 use env_logger;
+use std;
+use std::io::Read;
 use std::convert::AsRef;
 use std::env;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
@@ -91,13 +93,22 @@ fn main() {
     };
   );
 
+  let quit_upon = Mutex::new(false);
+
   let mut threads = Vec::new();
 
   unsafe {
     let gaia_thread_send = gaia_thread_send.clone();
+    let quit_upon = &quit_upon;
     let listen_socket = &listen_socket;
     threads.push(thread_scoped::scoped(move || {
       in_series!(
+        {
+          if *quit_upon.lock().unwrap() {
+            return stopwatch::clone()
+          }
+          false
+        },
         {
           if server.update_timer.lock().unwrap().update(time::precise_time_ns()) > 0 {
             update_world(
@@ -124,6 +135,30 @@ fn main() {
         },
       );
     }));
+    threads.push(thread_scoped::scoped(move || {
+      loop {
+        let mut line = String::new();
+        for c in std::io::stdin().chars() {
+          let c = c.unwrap();
+          if c == '\n' {
+            break
+          }
+          line.push(c);
+        }
+        if line == "quit" {
+          println!("Quitting");
+          *quit_upon.lock().unwrap() = true;
+          return stopwatch::clone()
+        } else {
+          println!("Unrecognized command: {:?}", line);
+        }
+      }
+    }));
+  }
+
+  for thread in threads.into_iter() {
+    let stopwatch = thread.join();
+    stopwatch.print();
   }
 
   stopwatch::clone().print();

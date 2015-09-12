@@ -4,6 +4,7 @@
 #![deny(warnings)]
 
 #![feature(iter_cmp)]
+#![feature(io)]
 #![feature(main)]
 #![feature(range_inclusive)]
 #![feature(test)]
