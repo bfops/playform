@@ -1,6 +1,7 @@
 //! One-way socket wrapper data structures.
 
 use nanomsg::{Endpoint, Socket, Protocol, Error};
+use std;
 use std::convert::AsRef;
 use std::io::{Read, Write};
 use std::time::Duration;
@@ -29,8 +30,8 @@ impl SendSocket {
   }
 
   /// Block until we can send this socket a message.
-  pub fn write(&mut self, msg: &[u8]) {
-    self.socket.write(msg).unwrap();
+  pub fn write(&mut self, msg: &[u8]) -> std::io::Result<()> {
+    self.socket.write(msg).map(|_| ())
   }
 
   /// Terminate this connection.

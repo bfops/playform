@@ -29,7 +29,10 @@ pub struct Client {
 impl Client {
   pub fn send(&mut self, msg: ServerToClient) {
     let msg = serialize::encode(&msg).unwrap();
-    self.socket.write(msg.as_ref());
+    match self.socket.write(msg.as_ref()) {
+      Ok(()) => {},
+      Err(err) => warn!("Error sending to client: {:?}", err),
+    }
   }
 }
 

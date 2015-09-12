@@ -76,7 +76,7 @@ fn main() {
       loop {
         let msg: Option<ClientToServer> = server_send_thread_recv.recv().unwrap();
         let msg = serialize::encode(&msg.unwrap()).unwrap();
-        talk_socket.write(msg.as_ref());
+        talk_socket.write(msg.as_ref()).unwrap();
       }
     })
   };
