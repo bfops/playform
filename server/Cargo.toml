@@ -9,6 +9,7 @@ name = "server"
 path = "./src/mod.rs"
 
 [dependencies]
+clippy = "*"
 env_logger= "*"
 log = "*"
 num = "*"

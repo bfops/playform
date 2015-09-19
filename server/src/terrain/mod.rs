@@ -31,7 +31,7 @@ pub struct MipMesh {
 }
 
 impl MipMesh {
-  pub fn get_mut<'a>(&'a mut self, i: usize) -> &'a mut Option<TerrainBlock> {
+  pub fn get_mut(&mut self, i: usize) -> &mut Option<TerrainBlock> {
     for _ in range_inclusive(self.lods.len(), i) {
       self.lods.push(None);
     }
@@ -120,7 +120,7 @@ impl Terrain {
     // Make sure that all the voxels this brush might touch are generated; if they're not generated
     // now, the brush might "expose" them, the mesh extraction phase will generate them, and there
     // may be inconsistencies between the brush-altered voxels and the newly-generated ones.
-    for &lg_size in terrain_block::LG_SAMPLE_SIZE.iter() {
+    for &lg_size in &terrain_block::LG_SAMPLE_SIZE {
       for x in voxel_range!(x, lg_size) {
       for y in voxel_range!(y, lg_size) {
       for z in voxel_range!(z, lg_size) {

@@ -25,7 +25,7 @@ impl T {
 
 impl field::T for T {
   fn density(&self, p: &Point3<f32>) -> f32 {
-    assert!(self.components.len() > 0);
+    assert!(!self.components.is_empty());
     self.components.iter().fold(
       f32::NEG_INFINITY,
       |max, &(ref shape, _)| f32::max(max, shape.density(p)),
@@ -33,7 +33,7 @@ impl field::T for T {
   }
 
   fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
-    assert!(self.components.len() > 0);
+    assert!(!self.components.is_empty());
     let (_, normal) =
       self.components.iter().fold(
         (f32::NEG_INFINITY, Vector3::new(0.0, 0.0, 0.0)),
@@ -52,7 +52,7 @@ impl field::T for T {
 
 impl ::voxel::mosaic::T for T {
   fn material(&self, p: &Point3<f32>) -> Option<::voxel::Material> {
-    assert!(self.components.len() > 0);
+    assert!(!self.components.is_empty());
     let (_, material) =
       self.components.iter().fold(
         (f32::NEG_INFINITY, None),

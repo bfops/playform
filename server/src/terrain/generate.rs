@@ -260,7 +260,7 @@ pub fn generate_block(
       );
     }}}
 
-    for poly in polys.iter() {
+    for poly in &polys {
       block.vertex_coordinates.push(tri(coords[poly[0]], coords[poly[1]], coords[poly[2]]));
       block.normals.push(tri(normals[poly[0]], normals[poly[1]], normals[poly[2]]));
 

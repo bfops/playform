@@ -146,7 +146,7 @@ impl TerrainLoader {
         LOD::LodIndex(_) => {
           stopwatch::time("terrain_loader.load.unload", || {
             let mut physics = physics.lock().unwrap();
-            for id in block.ids.iter() {
+            for id in &block.ids {
               physics.remove_terrain(*id);
             }
           });
@@ -156,7 +156,7 @@ impl TerrainLoader {
 
     stopwatch::time("terrain_loader.load.physics", || {
       let mut physics = physics.lock().unwrap();
-      for &(ref id, ref bounds) in block.bounds.iter() {
+      for &(ref id, ref bounds) in &block.bounds {
         physics.insert_terrain(*id, bounds.clone());
       }
     });
@@ -191,16 +191,13 @@ impl TerrainLoader {
                 // Unloaded before the load request completed.
               },
               Some(block) => {
-                match block.lods.get(loaded_lod.0 as usize) {
-                  Some(&Some(ref block)) => {
-                    let mut physics = physics.lock().unwrap();
-                    for id in block.ids.iter() {
-                      physics.remove_terrain(*id);
-                    }
-                  },
-                  _ => {
-                    // Unloaded before the load request completed.
-                  },
+                if let Some(&Some(ref block)) = block.lods.get(loaded_lod.0 as usize) {
+                  let mut physics = physics.lock().unwrap();
+                  for id in &block.ids {
+                    physics.remove_terrain(*id);
+                  }
+                } else {
+                  // Unloaded before the load request completed.
                 }
               },
             }

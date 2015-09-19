@@ -5,10 +5,13 @@
 
 #![feature(convert)]
 #![feature(main)]
+#![feature(plugin)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(range_inclusive)]
 #![feature(ptr_as_ref)]
+
+#![plugin(clippy)]
 
 extern crate cgmath;
 extern crate common;

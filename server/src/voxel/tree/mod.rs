@@ -366,9 +366,9 @@ impl<Voxel> T<Voxel> {
     branch.unwrap()
   }
 
-  fn get_mut_or_create_step<'a>(
-    branch: &'a mut TreeBody<Voxel>,
-  ) -> &'a mut Branches<Voxel> {
+  fn get_mut_or_create_step(
+    branch: &mut TreeBody<Voxel>,
+  ) -> &mut Branches<Voxel> {
     // "Step down" the tree.
     match *branch {
       // Branches: we can go straight to the branching logic.

@@ -1,15 +1,21 @@
 //! This crate contains server-only components of Playform.
 
+#![allow(let_and_return)]
+#![allow(match_ref_pats)]
+#![allow(type_complexity)]
 #![deny(missing_docs)]
 #![deny(warnings)]
 
 #![feature(iter_cmp)]
 #![feature(io)]
 #![feature(main)]
+#![feature(plugin)]
 #![feature(range_inclusive)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(vec_push_all)]
+
+#![plugin(clippy)]
 
 extern crate cgmath;
 extern crate common;

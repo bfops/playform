@@ -49,7 +49,7 @@ pub fn load_terrain_block<UpdateView>(
         // The block removal code is duplicated elsewhere.
 
         let &(ref prev_block, prev_lod) = entry.get();
-        for &id in prev_block.ids.iter() {
+        for &id in &prev_block.ids {
           update_view(ClientToView::RemoveTerrain(id));
         }
         update_view(ClientToView::RemoveBlockData(block.position.0, prev_lod));

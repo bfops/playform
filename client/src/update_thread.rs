@@ -78,7 +78,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
                   .remove(&block_position)
                   // If it wasn't loaded, don't unload anything.
                   .map(|(block, prev_lod)| {
-                    for id in block.ids.iter() {
+                    for id in &block.ids {
                       update_view(ClientToView::RemoveTerrain(*id));
                     }
 

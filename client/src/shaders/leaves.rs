@@ -11,7 +11,7 @@ pub fn leaves() -> String {
   ];
 
   let mut contents = String::new();
-  for wave in waves.iter() {
+  for wave in &waves {
     contents.push_str(format!(r#"
     {{
       float freq = {};

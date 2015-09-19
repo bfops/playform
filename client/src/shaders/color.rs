@@ -22,7 +22,7 @@ impl<'a> ColorShader<'a> {
 
         void main() {
           frag_color = color;
-        }".to_string()),
+        }".to_owned()),
       (gl::VERTEX_SHADER, "
         #version 330 core
 
@@ -36,7 +36,7 @@ impl<'a> ColorShader<'a> {
         void main() {
           gl_Position = projection_matrix * vec4(position, 1.0);
           color = in_color;
-        }".to_string()),
+        }".to_owned()),
     );
     ColorShader {
       shader: Shader::new(gl, components.into_iter()),

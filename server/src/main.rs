@@ -27,7 +27,6 @@ trait TryRecv<T> {
 }
 
 impl<T> TryRecv<T> for Receiver<T> where T: Send {
-  #[inline(always)]
   fn try_recv_opt(&self) -> Option<T> {
     match self.try_recv() {
       Ok(msg) => Some(msg),
@@ -44,7 +43,6 @@ trait MapToBool<T> {
 }
 
 impl<T> MapToBool<T> for Option<T> {
-  #[inline(always)]
   fn map_to_bool<F: FnOnce(T)>(self, f: F) -> bool {
     match self {
       None => false,

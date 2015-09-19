@@ -17,7 +17,6 @@ use update_thread::update_thread;
 use view_thread::view_thread;
 
 // TODO: This is duplicated in the server. Fix that.
-#[inline(always)]
 fn try_recv<T>(recv: &Receiver<T>) -> Option<T>
   where T: Send,
 {

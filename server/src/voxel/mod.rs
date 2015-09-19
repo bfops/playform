@@ -42,7 +42,6 @@ impl Bounds {
   }
 
   /// The width of this voxel.
-  #[inline(always)]
   pub fn size(&self) -> f32 {
     if self.lg_size >= 0 {
       (1 << self.lg_size) as f32
@@ -51,6 +50,7 @@ impl Bounds {
     }
   }
 
+  #[allow(dead_code)]
   pub fn low_corner(&self) -> Point3<f32> {
     let size = self.size();
     Point3::new(self.x as f32, self.y as f32, self.z as f32).mul_s(size)
@@ -68,6 +68,7 @@ impl Bounds {
     Point3::new(self.x as f32, self.y as f32, self.z as f32).add_v(&half).mul_s(size)
   }
 
+  #[allow(dead_code)]
   pub fn contains(&self, p: &Point3<f32>) -> bool {
     let (low, high) = self.corners();
     p.x >= low.x &&

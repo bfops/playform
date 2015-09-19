@@ -44,7 +44,7 @@ impl<'a> TerrainShader<'a> {
           material = texelFetch(materials, face_id).r;
 
           gl_Position = projection_matrix * vec4(world_position, 1.0);
-        }".to_string()),
+        }".to_owned()),
       (gl::FRAGMENT_SHADER, format!("
         #version 330 core
 

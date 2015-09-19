@@ -35,6 +35,7 @@ pub struct SurfaceStruct<Material> {
   pub corner: Material,
 }
 
+#[allow(eq_op)]
 // TODO: Should this be moved into the general voxel interface?
 pub fn of_field<Field>(
   field: &Field,
@@ -68,7 +69,7 @@ pub fn of_field<Field>(
       check_corner!(high,  low, high);
       check_corner!(high, high,  low);
       check_corner!(high, high, high);
-      return true
+      true
     };
     let is_homogenous = is_homogenous();
     debug!("is_homogenous: {:?}", is_homogenous);
@@ -191,25 +192,6 @@ pub struct Vertex {
 }
 
 impl Vertex {
-  #[allow(dead_code)]
-  pub fn of_world_vertex_in(vertex: &Point3<f32>, voxel: &voxel::Bounds) -> Vertex {
-    assert!(voxel.contains(vertex), "{:?} does not contain {:?}", voxel, vertex);
-
-    let local = vertex.sub_p(&voxel.low_corner());
-    let local = local.mul_s(256.0);
-    let local =
-      Vector3::new(
-        local.x as u32 >> voxel.lg_size,
-        local.y as u32 >> voxel.lg_size,
-        local.z as u32 >> voxel.lg_size,
-      );
-    Vertex {
-      x: Fracu8::of(min(0, max(255, local.x as u8))),
-      y: Fracu8::of(min(0, max(255, local.y as u8))),
-      z: Fracu8::of(min(0, max(255, local.z as u8))),
-    }
-  }
-
   pub fn to_world_vertex(&self, parent: &voxel::Bounds) -> Point3<f32> {
     // Relative position of the vertex.
     let local =

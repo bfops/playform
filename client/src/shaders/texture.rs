@@ -27,7 +27,7 @@ impl<'a> TextureShader<'a> {
         void main() {
           tex_position = texture_position;
           gl_Position = projection_matrix * vec4(position, 1.0);
-        }".to_string()),
+        }".to_owned()),
       (gl::FRAGMENT_SHADER, "
         #version 330 core
 
@@ -39,7 +39,7 @@ impl<'a> TextureShader<'a> {
 
         void main() {
           frag_color = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
-        }".to_string()),
+        }".to_owned()),
     );
     TextureShader {
       shader: Shader::new(gl, components.into_iter()),

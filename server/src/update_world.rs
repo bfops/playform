@@ -29,7 +29,7 @@ pub fn update_world(
 
       let players: Vec<_> = server.players.lock().unwrap().keys().map(|&x| x).collect();
       for (_, client) in server.clients.lock().unwrap().iter_mut() {
-        for &id in players.iter() {
+        for &id in &players {
           let bounds = server.physics.lock().unwrap().get_bounds(id).unwrap().clone();
           client.send(UpdatePlayer(Copyable(id), Copyable(bounds)));
         }

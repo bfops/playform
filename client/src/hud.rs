@@ -29,7 +29,7 @@ pub fn make_hud<'a, 'b:'a>(view: &'a mut View<'b>) {
 
   let mut y = 0.99;
 
-  for line in instructions.iter() {
+  for line in &instructions {
     let tex = view.fontloader.sans.render(
       &view.gl,
       line,
