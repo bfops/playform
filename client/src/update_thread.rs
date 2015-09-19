@@ -1,5 +1,6 @@
 use std::sync::Mutex;
 use std::thread;
+use stopwatch;
 use time;
 
 use common::block_position::BlockPosition;
@@ -43,19 +44,22 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
       );
     } else {
       if surroundings_timer.update(time::precise_time_ns()) > 0 {
-        let position = *client.player_position.lock().unwrap();
-        let position = BlockPosition::from_world_position(&position);
-        let mut cap = 0 .. 1 << 16;
-        client.surroundings_loader.lock().unwrap().update(
-          position,
-          || { cap.next().is_some() },
-          |lod_change| {
+        stopwatch::time("update_surroundings", || {
+          let position = *client.player_position.lock().unwrap();
+          let position = BlockPosition::from_world_position(&position);
+          let mut loaded_blocks = client.loaded_blocks.lock().unwrap();
+          let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
+          let updates =
+            surroundings_loader
+            .updates(position)
+            .take(1 << 16)
+          ;
+          for lod_change in updates {
             match lod_change {
               LODChange::Load(block_position, distance) => {
                 let lod = lod_index(distance);
                 let loaded_lod =
-                  client.loaded_blocks
-                  .lock().unwrap()
+                  loaded_blocks
                   .get(&block_position)
                   .map(|&(_, lod)| lod);
                 if loaded_lod != Some(lod) {
@@ -73,21 +77,19 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
               LODChange::Unload(block_position) => {
                 // The block removal code is duplicated elsewhere.
 
-                client.loaded_blocks
-                  .lock().unwrap()
+                loaded_blocks
                   .remove(&block_position)
                   // If it wasn't loaded, don't unload anything.
                   .map(|(block, prev_lod)| {
                     for id in &block.ids {
                       update_view(ClientToView::RemoveTerrain(*id));
                     }
-
                     update_view(ClientToView::RemoveBlockData(block_position, prev_lod));
                   });
               },
             };
-          },
-        );
+          }
+        });
       } else if let Some(block) = recv_block() {
         trace!("Got block: {:?} at {:?}", block.position, block.lod);
         load_terrain_block(

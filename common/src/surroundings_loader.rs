@@ -69,15 +69,7 @@ impl SurroundingsLoader {
   }
 
   /// Update the center point around which we load, and load some more blocks.
-  pub fn update<While, LODChangeFunc>(
-    &mut self,
-    position: BlockPosition,
-    mut cond: While,
-    mut lod_change: LODChangeFunc,
-  ) where
-    While: FnMut() -> bool,
-    LODChangeFunc: FnMut(LODChange),
-  {
+  pub fn updates(&mut self, position: BlockPosition) -> Updates {
     let position_changed = Some(position) != self.last_position;
     if position_changed {
       self.to_load = Some(SurroundingsIter::new(position, self.max_load_distance));
@@ -95,29 +87,37 @@ impl SurroundingsLoader {
       self.last_position = Some(position);
     }
 
-    while cond() {
-      if let Some(block_position) = self.to_recheck.pop_front() {
-        let distance = radius_between(&position, &block_position);
-        if distance > self.max_load_distance {
-          lod_change(LODChange::Unload(block_position));
-        } else {
-          lod_change(LODChange::Load(block_position, distance));
-        }
-      } else {
-        let block_position;
-        let distance;
-        match self.to_load.as_mut().unwrap().next() {
-          None => break,
-          Some((p, d)) => {
-            block_position = p;
-            distance = d;
-          },
-        };
-
-        lod_change(LODChange::Load(block_position, distance));
-      }
+    Updates {
+      loader: self,
+      position: position,
     }
   }
 }
 
 unsafe impl Send for SurroundingsLoader {}
+
+/// Iterator for the updates from a SurroundingsLoader.
+pub struct Updates<'a> {
+  loader: &'a mut SurroundingsLoader,
+  position: BlockPosition,
+}
+
+impl<'a> Iterator for Updates<'a> {
+  type Item = LODChange;
+
+  fn next(&mut self) -> Option<LODChange> {
+    if let Some(block_position) = self.loader.to_recheck.pop_front() {
+      let distance = radius_between(&self.position, &block_position);
+      if distance > self.loader.max_load_distance {
+        Some(LODChange::Unload(block_position))
+      } else {
+        Some(LODChange::Load(block_position, distance))
+      }
+    } else {
+      self.loader.to_load.as_mut().unwrap().next()
+        .map(|(block_position, distance)| {
+          LODChange::Load(block_position, distance)
+        })
+    }
+  }
+}

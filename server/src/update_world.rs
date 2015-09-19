@@ -41,17 +41,14 @@ pub fn update_world(
         let block_position = BlockPosition::from_world_position(&mob.position);
 
         let owner_id = mob.owner_id;
-        mob.surroundings_loader.update(
-          block_position,
-          || { true },
-          |lod_change|
-            load_placeholders(
-              owner_id,
-              server,
-              &mut request_block,
-              lod_change,
-            )
-        );
+        for lod_change in mob.surroundings_loader.updates(block_position) {
+          load_placeholders(
+            owner_id,
+            server,
+            &mut request_block,
+            lod_change,
+          )
+        }
 
         {
           let behavior = mob.behavior;

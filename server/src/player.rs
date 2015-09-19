@@ -147,44 +147,37 @@ impl Player {
 
     stopwatch::time("update.player.surroundings", || {
       let owner = self.surroundings_owner;
-      self.surroundings_loader.update(
-        block_position,
-        || { true },
-        |lod_change| {
-          match lod_change {
-            LODChange::Load(pos, _) => {
-              server.terrain_loader.lock().unwrap().load(
-                &server.id_allocator,
-                &server.physics,
-                &pos,
-                LOD::LodIndex(LODIndex(0)),
-                owner,
-                request_block,
-              );
-            },
-            LODChange::Unload(pos) => {
-              server.terrain_loader.lock().unwrap().unload(
-                &server.physics,
-                &pos,
-                owner,
-              );
-            },
-          }
-        },
-      );
+      for lod_change in self.surroundings_loader.updates(block_position) {
+        match lod_change {
+          LODChange::Load(pos, _) => {
+            server.terrain_loader.lock().unwrap().load(
+              &server.id_allocator,
+              &server.physics,
+              &pos,
+              LOD::LodIndex(LODIndex(0)),
+              owner,
+              request_block,
+            );
+          },
+          LODChange::Unload(pos) => {
+            server.terrain_loader.lock().unwrap().unload(
+              &server.physics,
+              &pos,
+              owner,
+            );
+          },
+        }
+      }
 
       let owner = self.solid_owner;
-      self.solid_boundary.update(
-        block_position,
-        || { true },
-        |lod_change|
-          load_placeholders(
-            owner,
-            server,
-            request_block,
-            lod_change,
-          )
-      );
+      for lod_change in self.solid_boundary.updates(block_position) {
+        load_placeholders(
+          owner,
+          server,
+          request_block,
+          lod_change,
+        )
+      }
     });
 
     if self.is_jumping {
