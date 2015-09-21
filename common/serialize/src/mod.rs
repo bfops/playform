@@ -90,7 +90,7 @@ pub fn of_bytes<'a, T>(bytes: &mut MemStream<'a>) -> Result<T, EOF> where T: Cop
 }
 
 /// [De]serialization functions based around flattening via Copy.
-pub trait Flatten {
+pub trait Flatten: Sized {
   /// Emit a value into a Vec of bytes.
   fn emit(v: &Self, dest: &mut Vec<u8>) -> Result<(), ()>;
   /// Parse a value out of a stream of bytes.
