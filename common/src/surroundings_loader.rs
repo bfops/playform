@@ -6,6 +6,7 @@ use block_position::BlockPosition;
 use cube_shell::cube_diff;
 use std::cmp::max;
 use std::collections::VecDeque;
+use stopwatch;
 use surroundings_iter::SurroundingsIter;
 
 /// Find the minimum cube shell radius it would take from one point to intersect the other.
@@ -72,19 +73,21 @@ impl SurroundingsLoader {
   pub fn updates(&mut self, position: BlockPosition) -> Updates {
     let position_changed = Some(position) != self.last_position;
     if position_changed {
-      self.to_load = Some(SurroundingsIter::new(position, self.max_load_distance));
-      self.last_position.map(|last_position| {
-        for &distance in self.lod_thresholds.iter() {
+      stopwatch::time("surroundings_loader::extend", || {
+        self.to_load = Some(SurroundingsIter::new(position, self.max_load_distance));
+        self.last_position.map(|last_position| {
+          for &distance in self.lod_thresholds.iter() {
+            self.to_recheck.extend(
+              cube_diff(&last_position, &position, distance).into_iter()
+            );
+          }
           self.to_recheck.extend(
-            cube_diff(&last_position, &position, distance).into_iter()
+            cube_diff(&last_position, &position, self.max_load_distance).into_iter()
           );
-        }
-        self.to_recheck.extend(
-          cube_diff(&last_position, &position, self.max_load_distance).into_iter()
-        );
-      });
+        });
 
-      self.last_position = Some(position);
+        self.last_position = Some(position);
+      })
     }
 
     Updates {
@@ -106,18 +109,20 @@ impl<'a> Iterator for Updates<'a> {
   type Item = LODChange;
 
   fn next(&mut self) -> Option<LODChange> {
-    if let Some(block_position) = self.loader.to_recheck.pop_front() {
-      let distance = radius_between(&self.position, &block_position);
-      if distance > self.loader.max_load_distance {
-        Some(LODChange::Unload(block_position))
+    stopwatch::time("surroundings_loader::next", || {
+      if let Some(block_position) = self.loader.to_recheck.pop_front() {
+        let distance = radius_between(&self.position, &block_position);
+        if distance > self.loader.max_load_distance {
+          Some(LODChange::Unload(block_position))
+        } else {
+          Some(LODChange::Load(block_position, distance))
+        }
       } else {
-        Some(LODChange::Load(block_position, distance))
+        self.loader.to_load.as_mut().unwrap().next()
+          .map(|(block_position, distance)| {
+            LODChange::Load(block_position, distance)
+          })
       }
-    } else {
-      self.loader.to_load.as_mut().unwrap().next()
-        .map(|(block_position, distance)| {
-          LODChange::Load(block_position, distance)
-        })
-    }
+    })
   }
 }

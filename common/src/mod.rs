@@ -13,6 +13,7 @@ extern crate cgmath;
 extern crate log;
 extern crate nanomsg;
 extern crate num;
+extern crate stopwatch;
 extern crate test;
 extern crate time;
 

@@ -139,9 +139,11 @@ pub fn view_thread<Recv, UpdateServer>(
 
     let renders = render_timer.update(time::precise_time_ns());
     if renders > 0 {
-      render(&mut view);
-      // swap buffers
-      window.gl_swap_window();
+      stopwatch::time("render", || {
+        render(&mut view);
+        // swap buffers
+        window.gl_swap_window();
+      })
     }
 
     thread::yield_now();

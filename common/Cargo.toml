@@ -25,3 +25,6 @@ git = "https://github.com/thehydroimpulse/nanomsg.rs"
 
 [dependencies.serialize]
 path = "./serialize"
+
+[dependencies.stopwatch]
+git = "https://github.com/bfops/stopwatch-rs"

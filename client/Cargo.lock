@@ -171,6 +171,7 @@ dependencies = [
  "nanomsg 0.4.0 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
  "num 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
+ "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
  "time 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

@@ -57,35 +57,39 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
           for lod_change in updates {
             match lod_change {
               LODChange::Load(block_position, distance) => {
-                let lod = lod_index(distance);
-                let loaded_lod =
-                  loaded_blocks
-                  .get(&block_position)
-                  .map(|&(_, lod)| lod);
-                if loaded_lod != Some(lod) {
-                  update_server(
-                    ClientToServer::RequestBlock(
-                      Copyable(client.id),
-                      Copyable(block_position),
-                      Copyable(lod),
-                    )
-                  );
-                } else {
-                  trace!("Not re-loading {:?} at {:?}", block_position, lod);
-                }
+                stopwatch::time("update_thread::load_block", || {
+                  let lod = lod_index(distance);
+                  let loaded_lod =
+                    loaded_blocks
+                    .get(&block_position)
+                    .map(|&(_, lod)| lod);
+                  if loaded_lod != Some(lod) {
+                    update_server(
+                      ClientToServer::RequestBlock(
+                        Copyable(client.id),
+                        Copyable(block_position),
+                        Copyable(lod),
+                      )
+                    );
+                  } else {
+                    trace!("Not re-loading {:?} at {:?}", block_position, lod);
+                  }
+                })
               },
               LODChange::Unload(block_position) => {
-                // The block removal code is duplicated elsewhere.
+                stopwatch::time("update_thread::unload", || {
+                  // The block removal code is duplicated elsewhere.
 
-                loaded_blocks
-                  .remove(&block_position)
-                  // If it wasn't loaded, don't unload anything.
-                  .map(|(block, prev_lod)| {
-                    for id in &block.ids {
-                      update_view(ClientToView::RemoveTerrain(*id));
-                    }
-                    update_view(ClientToView::RemoveBlockData(block_position, prev_lod));
-                  });
+                  loaded_blocks
+                    .remove(&block_position)
+                    // If it wasn't loaded, don't unload anything.
+                    .map(|(block, prev_lod)| {
+                      for id in &block.ids {
+                        update_view(ClientToView::RemoveTerrain(*id));
+                      }
+                      update_view(ClientToView::RemoveBlockData(block_position, prev_lod));
+                    });
+                })
               },
             };
           }
