@@ -1,11 +1,9 @@
 use std::sync::Mutex;
-use std::thread;
 use stopwatch;
 use time;
 
 use common::block_position::BlockPosition;
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
-use common::interval_timer::IntervalTimer;
 use common::serialize::Copyable;
 use common::surroundings_loader::LODChange;
 
@@ -29,22 +27,28 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
   UpdateServer: FnMut(ClientToServer),
   QueueBlock: FnMut(TerrainBlockSend),
 {
-  let mut surroundings_timer = IntervalTimer::new(1_000_000, time::precise_time_ns());
-
   'update_loop: loop {
     if *quit.lock().unwrap() == true {
-      break 'update_loop;
-    } else if let Some(up) = recv_server() {
-      apply_server_update(
-        client,
-        update_view,
-        update_server,
-        queue_block,
-        up,
-      );
+      break 'update_loop
     } else {
-      if surroundings_timer.update(time::precise_time_ns()) > 0 {
+      stopwatch::time("update_iteration", || {
+        let start = time::precise_time_ns();
+        while let Some(up) = recv_server() {
+          apply_server_update(
+            client,
+            update_view,
+            update_server,
+            queue_block,
+            up,
+          );
+
+          if time::precise_time_ns() - start >= 1_000_000 {
+            break
+          }
+        }
+
         stopwatch::time("update_surroundings", || {
+          let start = time::precise_time_ns();
           let position = *client.player_position.lock().unwrap();
           let position = BlockPosition::from_world_position(&position);
           let mut loaded_blocks = client.loaded_blocks.lock().unwrap();
@@ -52,7 +56,6 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
           let updates =
             surroundings_loader
             .updates(position)
-            .take(1 << 7)
           ;
           for lod_change in updates {
             match lod_change {
@@ -92,18 +95,27 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
                 })
               },
             };
+
+            if time::precise_time_ns() - start >= 1_000_000 {
+              break
+            }
           }
         });
-      } else if let Some(block) = recv_block() {
-        trace!("Got block: {:?} at {:?}", block.position, block.lod);
-        load_terrain_block(
-          client,
-          update_view,
-          block,
-        );
-      } else {
-        thread::yield_now();
-      }
+
+        let start = time::precise_time_ns();
+        while let Some(block) = recv_block() {
+          trace!("Got block: {:?} at {:?}", block.position, block.lod);
+          load_terrain_block(
+            client,
+            update_view,
+            block,
+          );
+
+          if time::precise_time_ns() - start >= 1_000_000 {
+            break
+          }
+        }
+      })
     }
   }
 }
