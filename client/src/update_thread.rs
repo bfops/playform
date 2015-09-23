@@ -57,7 +57,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
           for lod_change in updates {
             match lod_change {
               LODChange::Load(block_position, distance) => {
-                stopwatch::time("update_thread::load_block", || {
+                stopwatch::time("update_thread.load_block", || {
                   let lod = lod_index(distance);
                   let loaded_lod =
                     loaded_blocks
@@ -77,7 +77,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
                 })
               },
               LODChange::Unload(block_position) => {
-                stopwatch::time("update_thread::unload", || {
+                stopwatch::time("update_thread.unload", || {
                   // The block removal code is duplicated elsewhere.
 
                   loaded_blocks

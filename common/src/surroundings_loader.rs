@@ -73,7 +73,7 @@ impl SurroundingsLoader {
   pub fn updates(&mut self, position: BlockPosition) -> Updates {
     let position_changed = Some(position) != self.last_position;
     if position_changed {
-      stopwatch::time("surroundings_loader::extend", || {
+      stopwatch::time("surroundings_loader.extend", || {
         self.to_load = Some(SurroundingsIter::new(position, self.max_load_distance));
         self.last_position.map(|last_position| {
           for &distance in self.lod_thresholds.iter() {
@@ -109,7 +109,7 @@ impl<'a> Iterator for Updates<'a> {
   type Item = LODChange;
 
   fn next(&mut self) -> Option<LODChange> {
-    stopwatch::time("surroundings_loader::next", || {
+    stopwatch::time("surroundings_loader.next", || {
       if let Some(block_position) = self.loader.to_recheck.pop_front() {
         let distance = radius_between(&self.position, &block_position);
         if distance > self.loader.max_load_distance {

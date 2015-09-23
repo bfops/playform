@@ -128,7 +128,11 @@ fn main() {
             client,
             &mut || {
               try_recv(server_recv_thread_recv)
-                .map(|msg| serialize::decode(msg.as_ref()).unwrap())
+                .map(|msg| {
+                  stopwatch::time("decode", || {
+                    serialize::decode(msg.as_ref()).unwrap()
+                  })
+                })
             },
             &mut || { try_recv(terrain_blocks_recv) },
             &mut |up| { view_thread_send.send(up).unwrap() },

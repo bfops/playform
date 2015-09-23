@@ -1,6 +1,7 @@
 //! Define the updates passed from the client to the view.
 
 use cgmath::Point3;
+use stopwatch;
 
 use common::block_position::BlockPosition;
 use common::color::Color3;
@@ -72,14 +73,16 @@ pub fn apply_client_to_view(up: ClientToView, view: &mut View) {
       view.gl.set_background_color(color.r, color.g, color.b, 1.0);
     },
     ClientToView::AddBlock(_, block, _) => {
-      view.terrain_buffers.push(
-        &mut view.gl,
+      stopwatch::time("add_block", || {
+        view.terrain_buffers.push(
+          &mut view.gl,
 
-        block.vertex_coordinates.as_ref(),
-        block.normals.as_ref(),
-        block.ids.as_ref(),
-        block.materials.as_ref(),
-      );
+          block.vertex_coordinates.as_ref(),
+          block.normals.as_ref(),
+          block.ids.as_ref(),
+          block.materials.as_ref(),
+        );
+      })
     },
     ClientToView::RemoveTerrain(id) => {
       view.terrain_buffers.swap_remove(&mut view.gl, id);

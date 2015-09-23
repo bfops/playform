@@ -1,6 +1,7 @@
 use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
 use std::f32;
 use std::f32::consts::PI;
+use stopwatch;
 
 use common::color::{Color3, Color4};
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
@@ -30,70 +31,72 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
   UpdateServer: FnMut(ClientToServer),
   QueueBlock: FnMut(TerrainBlockSend),
 {
-  match update {
-    ServerToClient::LeaseId(_) => {
-      warn!("Client ID has already been leased.");
-    },
-    ServerToClient::Ping(Copyable(())) => {
-      update_server(ClientToServer::Ping(Copyable(client.id)));
-    },
-    ServerToClient::PlayerAdded(Copyable(id), _) => {
-      warn!("Unexpected PlayerAdded event: {:?}.", id);
-    },
-    ServerToClient::UpdatePlayer(Copyable(player_id), Copyable(bounds)) => {
-      let mesh = to_triangles(&bounds, &Color4::of_rgba(0.0, 0.0, 1.0, 1.0));
-      update_view(ClientToView::UpdatePlayer(player_id, mesh));
+  stopwatch::time("apply_server_update", move || {
+    match update {
+      ServerToClient::LeaseId(_) => {
+        warn!("Client ID has already been leased.");
+      },
+      ServerToClient::Ping(Copyable(())) => {
+        update_server(ClientToServer::Ping(Copyable(client.id)));
+      },
+      ServerToClient::PlayerAdded(Copyable(id), _) => {
+        warn!("Unexpected PlayerAdded event: {:?}.", id);
+      },
+      ServerToClient::UpdatePlayer(Copyable(player_id), Copyable(bounds)) => {
+        let mesh = to_triangles(&bounds, &Color4::of_rgba(0.0, 0.0, 1.0, 1.0));
+        update_view(ClientToView::UpdatePlayer(player_id, mesh));
 
-      // We "lock" the client to client.player_id, so for updates to that player only,
-      // there is more client-specific logic.
-      if player_id != client.player_id {
-        return
-      }
-
-      let position = center(&bounds);
-
-      *client.player_position.lock().unwrap() = position;
-      update_view(ClientToView::MoveCamera(position));
-    },
-    ServerToClient::UpdateMob(Copyable(id), Copyable(bounds)) => {
-      let mesh = to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0));
-      update_view(ClientToView::UpdateMob(id, mesh));
-    },
-    ServerToClient::UpdateSun(Copyable(fraction)) => {
-      // Convert to radians.
-      let angle = fraction * 2.0 * PI;
-      let (s, c) = angle.sin_cos();
-
-      let sun_color =
-        Color3::of_rgb(
-          c.abs(),
-          (s + 1.0) / 2.0,
-          (s * 0.75 + 0.25).abs(),
-        );
-
-      update_view(ClientToView::SetSun(
-        light::Sun {
-          direction: Vector3::new(c, s, 0.0),
-          intensity: sun_color,
+        // We "lock" the client to client.player_id, so for updates to that player only,
+        // there is more client-specific logic.
+        if player_id != client.player_id {
+          return
         }
-      ));
 
-      let ambient_light = f32::max(0.4, s / 2.0);
+        let position = center(&bounds);
 
-      update_view(ClientToView::SetAmbientLight(
-        Color3::of_rgb(
-          sun_color.r * ambient_light,
-          sun_color.g * ambient_light,
-          sun_color.b * ambient_light,
-        ),
-      ));
+        *client.player_position.lock().unwrap() = position;
+        update_view(ClientToView::MoveCamera(position));
+      },
+      ServerToClient::UpdateMob(Copyable(id), Copyable(bounds)) => {
+        let mesh = to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0));
+        update_view(ClientToView::UpdateMob(id, mesh));
+      },
+      ServerToClient::UpdateSun(Copyable(fraction)) => {
+        // Convert to radians.
+        let angle = fraction * 2.0 * PI;
+        let (s, c) = angle.sin_cos();
 
-      update_view(ClientToView::SetClearColor(sun_color));
-    },
-    ServerToClient::UpdateBlock(block) => {
-      queue_block(block);
-    },
-  }
+        let sun_color =
+          Color3::of_rgb(
+            c.abs(),
+            (s + 1.0) / 2.0,
+            (s * 0.75 + 0.25).abs(),
+          );
+
+        update_view(ClientToView::SetSun(
+          light::Sun {
+            direction: Vector3::new(c, s, 0.0),
+            intensity: sun_color,
+          }
+        ));
+
+        let ambient_light = f32::max(0.4, s / 2.0);
+
+        update_view(ClientToView::SetAmbientLight(
+          Color3::of_rgb(
+            sun_color.r * ambient_light,
+            sun_color.g * ambient_light,
+            sun_color.b * ambient_light,
+          ),
+        ));
+
+        update_view(ClientToView::SetClearColor(sun_color));
+      },
+      ServerToClient::UpdateBlock(block) => {
+        queue_block(block);
+      },
+    }
+  })
 }
 
 fn to_triangles(

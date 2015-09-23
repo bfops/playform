@@ -23,8 +23,8 @@ git = "https://github.com/bjz/cgmath-rs"
 [dependencies.nanomsg]
 git = "https://github.com/thehydroimpulse/nanomsg.rs"
 
-[dependencies.serialize]
-path = "./serialize"
-
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
+
+[dependencies.serialize]
+path = "./serialize"

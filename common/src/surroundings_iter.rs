@@ -42,7 +42,7 @@ impl Iterator for SurroundingsIter {
     let distance = self.next_distance;
     self.to_load_buffer.pop_front().map(|x| {
       if self.to_load_buffer.is_empty() {
-        debug!("Done loading surroundings at distance {}", self.next_distance);
+        info!("Done loading surroundings at distance {}", self.next_distance);
         if self.next_distance < self.max_distance {
           self.next_distance += 1;
           self.to_load_buffer.extend(
