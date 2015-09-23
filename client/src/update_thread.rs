@@ -29,7 +29,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
   UpdateServer: FnMut(ClientToServer),
   QueueBlock: FnMut(TerrainBlockSend),
 {
-  let mut surroundings_timer = IntervalTimer::new(500_000_000, time::precise_time_ns());
+  let mut surroundings_timer = IntervalTimer::new(1_000_000, time::precise_time_ns());
 
   'update_loop: loop {
     if *quit.lock().unwrap() == true {
@@ -52,7 +52,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
           let updates =
             surroundings_loader
             .updates(position)
-            .take(1 << 16)
+            .take(1 << 7)
           ;
           for lod_change in updates {
             match lod_change {
