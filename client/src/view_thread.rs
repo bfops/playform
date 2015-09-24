@@ -25,6 +25,11 @@ pub const FRAMES_PER_SECOND: u64 = 30;
 pub const GL_MAJOR_VERSION: u8 = 3;
 pub const GL_MINOR_VERSION: u8 = 3;
 
+enum ViewIteration {
+  Quit,
+  Continue,
+}
+
 #[allow(missing_docs)]
 pub fn view_thread<Recv, UpdateServer>(
   player_id: EntityId,
@@ -95,64 +100,74 @@ pub fn view_thread<Recv, UpdateServer>(
 
   let mut last_update = time::precise_time_ns();
 
-  'game_loop:loop {
-    let now = time::precise_time_ns();
-    if now - last_update >= render_interval {
-      warn!("{:?}ms since last view update", (now - last_update) / 1000000);
-    }
-    last_update = now;
+  loop {
+    let view_iteration =
+      stopwatch::time("view_iteration", || {
+        let now = time::precise_time_ns();
+        if now - last_update >= render_interval {
+          warn!("{:?}ms since last view update", (now - last_update) / 1000000);
+        }
+        last_update = now;
 
-    for event in event_pump.poll_iter() {
-      match event {
-        Event::Quit{..} => {
-          break 'game_loop;
-        }
-        Event::AppTerminating{..} => {
-          break 'game_loop;
-        }
-        Event::Window{win_event_id: event_id, ..} => {
-          // Manage has_focus so that we don't capture the cursor when the
-          // window is in the background
-          match event_id {
-            sdl2::event::WindowEventId::FocusGained => {
-              has_focus = true;
-              sdl.mouse().show_cursor(false);
+        for event in event_pump.poll_iter() {
+          match event {
+            Event::Quit{..} => {
+              return ViewIteration::Quit
             }
-            sdl2::event::WindowEventId::FocusLost => {
-              has_focus = false;
-              sdl.mouse().show_cursor(true);
+            Event::AppTerminating{..} => {
+              return ViewIteration::Quit
             }
-            _ => {}
+            Event::Window{win_event_id: event_id, ..} => {
+              // Manage has_focus so that we don't capture the cursor when the
+              // window is in the background
+              match event_id {
+                sdl2::event::WindowEventId::FocusGained => {
+                  has_focus = true;
+                  sdl.mouse().show_cursor(false);
+                }
+                sdl2::event::WindowEventId::FocusLost => {
+                  has_focus = false;
+                  sdl.mouse().show_cursor(true);
+                }
+                _ => {}
+              }
+            }
+            event => {
+              if has_focus {
+                process_event(
+                  &sdl,
+                  player_id,
+                  update_server,
+                  &mut view,
+                  &mut window,
+                  event,
+                );
+              }
+            },
           }
         }
-        event => {
-          if has_focus {
-            process_event(
-              &sdl,
-              player_id,
-              update_server,
-              &mut view,
-              &mut window,
-              event,
-            );
+
+        stopwatch::time("apply_view_updates", || {
+          while let Some(update) = recv() {
+            apply_client_to_view(update, &mut view);
           }
-        },
-      }
-    }
+        });
 
-    stopwatch::time("apply_view_updates", || {
-      while let Some(update) = recv() {
-        apply_client_to_view(update, &mut view);
-      }
-    });
+        let renders = render_timer.update(time::precise_time_ns());
+        if renders > 0 {
+          stopwatch::time("render", || {
+            render(&mut view);
+            // swap buffers
+            window.gl_swap_window();
+          });
+        }
 
-    let renders = render_timer.update(time::precise_time_ns());
-    if renders > 0 {
-      stopwatch::time("render", || {
-        render(&mut view);
-        // swap buffers
-        window.gl_swap_window();
+        ViewIteration::Continue
       });
+
+    match view_iteration {
+      ViewIteration::Quit => break,
+      ViewIteration::Continue => {},
     }
   }
 

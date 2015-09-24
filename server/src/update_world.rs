@@ -21,8 +21,8 @@ pub fn update_world(
 ) {
   let mut request_block = |block| { request_block.send(block).unwrap() };
 
-  stopwatch::time("update", || {
-    stopwatch::time("update.player", || {
+  stopwatch::time("update_world", || {
+    stopwatch::time("update_world.player", || {
       for (_, player) in server.players.lock().unwrap().iter_mut() {
         player.update(server, &mut request_block);
       }
@@ -36,7 +36,7 @@ pub fn update_world(
       }
     });
 
-    stopwatch::time("update.mobs", || {
+    stopwatch::time("update_world.mobs", || {
       for (_, mob) in server.mobs.lock().unwrap().iter_mut() {
         let block_position = BlockPosition::from_world_position(&mob.position);
 
