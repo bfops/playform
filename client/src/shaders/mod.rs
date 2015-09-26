@@ -10,6 +10,7 @@ mod bark;
 mod dirt;
 mod grass;
 mod leaves;
+mod stone;
 
 use camera;
 use cgmath;

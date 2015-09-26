@@ -82,6 +82,10 @@ impl<'a> TerrainShader<'a> {
           {}
         }}
 
+        vec3 stone() {{
+          {}
+        }}
+
         void main() {{
           vec4 base_color;
 
@@ -96,6 +100,8 @@ impl<'a> TerrainShader<'a> {
             base_color = vec4(bark(), 1);
           }} else if (material == 3) {{
             base_color = vec4(leaves(), 1);
+          }} else if (material == 4) {{
+            base_color = vec4(stone(), 1);
           }} else {{
             base_color = vec4(0.5, 0, 0.5, 0.5);
           }}
@@ -118,6 +124,7 @@ impl<'a> TerrainShader<'a> {
         ::shaders::dirt::dirt(),
         ::shaders::bark::bark(),
         ::shaders::leaves::leaves(),
+        ::shaders::stone::stone(),
       )),
     );
     TerrainShader {

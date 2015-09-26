@@ -8,11 +8,13 @@ pub mod impls;
 use cgmath::{Point, Point3, Vector, Vector3};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[allow(unused)]
 pub enum Material {
   Empty = 0,
   Terrain = 1,
   Bark = 2,
   Leaves = 3,
+  Stone = 4,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
