@@ -9,7 +9,7 @@ use common::block_position::BlockPosition;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::{LOD, LODIndex, OwnerId};
-use common::surroundings_loader::{SurroundingsLoader, LODChange};
+use common::surroundings_loader::{SurroundingsLoader, LoadType};
 
 use physics::Physics;
 use server::Server;
@@ -147,9 +147,9 @@ impl Player {
 
     stopwatch::time("update.player.surroundings", || {
       let owner = self.surroundings_owner;
-      for lod_change in self.surroundings_loader.updates(block_position) {
-        match lod_change {
-          LODChange::Load(pos, _) => {
+      for (pos, load_type) in self.surroundings_loader.updates(block_position) {
+        match load_type {
+          LoadType::Load | LoadType::Update => {
             server.terrain_loader.lock().unwrap().load(
               &server.id_allocator,
               &server.physics,
@@ -159,7 +159,7 @@ impl Player {
               request_block,
             );
           },
-          LODChange::Unload(pos) => {
+          LoadType::Unload => {
             server.terrain_loader.lock().unwrap().unload(
               &server.physics,
               &pos,
@@ -170,12 +170,13 @@ impl Player {
       }
 
       let owner = self.solid_owner;
-      for lod_change in self.solid_boundary.updates(block_position) {
+      for (block_position, load_type) in self.solid_boundary.updates(block_position) {
         load_placeholders(
           owner,
           server,
           request_block,
-          lod_change,
+          &block_position,
+          load_type,
         )
       }
     });

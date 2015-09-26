@@ -2,39 +2,22 @@
 //! loaded state (e.g. to keep player surroundings loaded, or to keep unloaded blocks
 //! solid near the player).
 
+use block_position;
 use block_position::BlockPosition;
 use cube_shell::cube_diff;
-use std::cmp::max;
 use std::collections::VecDeque;
 use stopwatch;
 use surroundings_iter::SurroundingsIter;
 
-/// Find the minimum cube shell radius it would take from one point to intersect the other.
-pub fn radius_between(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
-  let dx = (p1.as_pnt().x - p2.as_pnt().x).abs();
-  let dy = (p1.as_pnt().y - p2.as_pnt().y).abs();
-  let dz = (p1.as_pnt().z - p2.as_pnt().z).abs();
-  max(max(dx, dy), dz)
-}
-
+#[allow(missing_docs)]
 /// The type of message emitted by `SurroundingsLoader`. This stream of messages maintains
 /// an owner's desired surroundings.
-pub enum LODChange {
-  /// Acquire/update an owner's handle on a given location. The distance is also passed.
-  Load(BlockPosition, i32),
-  /// Release an owner's handle on a given location.
-  Unload(BlockPosition),
+pub enum LoadType {
+  Load,
+  Unload,
+  /// Load only if already loaded
+  Update,
 }
-
-/// Given a previous location and current location, determine which blocks should
-/// be checked for LOD changes.
-pub trait GetLODChanges:
-  FnMut(&BlockPosition, &BlockPosition) -> Vec<BlockPosition> {}
-
-impl<F> GetLODChanges for F
-  where F: FnMut(&BlockPosition, &BlockPosition) -> Vec<BlockPosition> {}
-
-// TODO: Should this use a trait instead of boxed closures?
 
 /// Iteratively load BlockPositions in cube-shaped layers around the some point.
 /// That point can be updated with calls to `update`.
@@ -106,21 +89,21 @@ pub struct Updates<'a> {
 }
 
 impl<'a> Iterator for Updates<'a> {
-  type Item = LODChange;
+  type Item = (BlockPosition, LoadType);
 
-  fn next(&mut self) -> Option<LODChange> {
+  fn next(&mut self) -> Option<Self::Item> {
     stopwatch::time("surroundings_loader.next", || {
       if let Some(block_position) = self.loader.to_recheck.pop_front() {
-        let distance = radius_between(&self.position, &block_position);
+        let distance = block_position::distance(&self.position, &block_position);
         if distance > self.loader.max_load_distance {
-          Some(LODChange::Unload(block_position))
+          Some((block_position, LoadType::Unload))
         } else {
-          Some(LODChange::Load(block_position, distance))
+          Some((block_position, LoadType::Update))
         }
       } else {
         self.loader.to_load.as_mut().unwrap().next()
-          .map(|(block_position, distance)| {
-            LODChange::Load(block_position, distance)
+          .map(|block_position| {
+            (block_position, LoadType::Load)
           })
       }
     })

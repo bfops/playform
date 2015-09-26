@@ -2,10 +2,11 @@ use std::sync::Mutex;
 use stopwatch;
 use time;
 
+use common::block_position;
 use common::block_position::BlockPosition;
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
 use common::serialize::Copyable;
-use common::surroundings_loader::LODChange;
+use common::surroundings_loader::LoadType;
 
 use client::Client;
 use load_terrain::{load_terrain_block, lod_index};
@@ -59,9 +60,10 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
             surroundings_loader
             .updates(position)
           ;
-          for lod_change in updates {
-            match lod_change {
-              LODChange::Load(block_position, distance) => {
+          for (block_position, load_type) in updates {
+            let distance = block_position::distance(&position, &block_position);
+            match load_type {
+              LoadType::Load => {
                 stopwatch::time("update_thread.load_block", || {
                   let lod = lod_index(distance);
                   let loaded_lod =
@@ -81,7 +83,27 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
                   }
                 })
               },
-              LODChange::Unload(block_position) => {
+              LoadType::Update => {
+                stopwatch::time("update_thread.update_block", || {
+                  let new_lod = lod_index(distance);
+                  let lod_change =
+                    loaded_blocks
+                    .get(&block_position)
+                    .map(|&(_, lod)| new_lod < lod);
+                  if lod_change == Some(true) {
+                    update_server(
+                      ClientToServer::RequestBlock(
+                        Copyable(client.id),
+                        Copyable(block_position),
+                        Copyable(new_lod),
+                      )
+                    );
+                  } else {
+                    trace!("Not updating {:?} at {:?}", block_position, new_lod);
+                  }
+                })
+              },
+              LoadType::Unload => {
                 stopwatch::time("update_thread.unload", || {
                   // The block removal code is duplicated elsewhere.
 

@@ -35,11 +35,10 @@ impl SurroundingsIter {
 }
 
 impl Iterator for SurroundingsIter {
-  type Item = (BlockPosition, i32);
+  type Item = BlockPosition;
 
   #[inline]
-  fn next(&mut self) -> Option<(BlockPosition, i32)> {
-    let distance = self.next_distance;
+  fn next(&mut self) -> Option<Self::Item> {
     self.to_load_buffer.pop_front().map(|x| {
       if self.to_load_buffer.is_empty() {
         info!("Done loading surroundings at distance {}", self.next_distance);
@@ -52,7 +51,7 @@ impl Iterator for SurroundingsIter {
           info!("Done loading surroundings");
         }
       }
-      (x, distance)
+      x
     })
   }
 }

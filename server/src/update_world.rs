@@ -7,7 +7,7 @@ use common::block_position::BlockPosition;
 use common::communicate::ServerToClient::*;
 use common::lod::{LOD, OwnerId};
 use common::serialize::Copyable;
-use common::surroundings_loader::LODChange;
+use common::surroundings_loader::LoadType;
 
 use mob;
 use server::Server;
@@ -41,12 +41,13 @@ pub fn update_world(
         let block_position = BlockPosition::from_world_position(&mob.position);
 
         let owner_id = mob.owner_id;
-        for lod_change in mob.surroundings_loader.updates(block_position) {
+        for (position, load_type) in mob.surroundings_loader.updates(block_position) {
           load_placeholders(
             owner_id,
             server,
             &mut request_block,
-            lod_change,
+            &position,
+            load_type,
           )
         }
 
@@ -109,12 +110,13 @@ pub fn load_placeholders<RequestBlock>(
   owner: OwnerId,
   server: &Server,
   request_block: &mut RequestBlock,
-  lod_change: LODChange,
+  pos: &BlockPosition,
+  load_type: LoadType,
 ) where
   RequestBlock: FnMut(ServerToGaia),
 {
-  match lod_change {
-    LODChange::Load(pos, _) => {
+  match load_type {
+    LoadType::Load | LoadType::Update => {
       server.terrain_loader.lock().unwrap().load(
         &server.id_allocator,
         &server.physics,
@@ -124,7 +126,7 @@ pub fn load_placeholders<RequestBlock>(
         request_block,
       );
     },
-    LODChange::Unload(pos) => {
+    LoadType::Unload => {
       server.terrain_loader.lock().unwrap().unload(
         &server.physics,
         &pos,
