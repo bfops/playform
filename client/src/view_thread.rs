@@ -1,6 +1,6 @@
 //! This module defines the main function for the view/render/event thread.
 
-use cgmath::Vector2;
+use cgmath::{Vector2};
 use gl;
 use sdl2;
 use sdl2::event::Event;
@@ -31,12 +31,14 @@ enum ViewIteration {
 }
 
 #[allow(missing_docs)]
-pub fn view_thread<Recv, UpdateServer>(
+pub fn view_thread<Recv0, Recv1, UpdateServer>(
   player_id: EntityId,
-  recv: &mut Recv,
+  recv0: &mut Recv0,
+  recv1: &mut Recv1,
   update_server: &mut UpdateServer,
 ) where
-  Recv: FnMut() -> Option<ClientToView>,
+  Recv0: FnMut() -> Option<ClientToView>,
+  Recv1: FnMut() -> Option<ClientToView>,
   UpdateServer: FnMut(ClientToServer),
 {
   let sdl = sdl2::init().unwrap();
@@ -147,9 +149,25 @@ pub fn view_thread<Recv, UpdateServer>(
           }
         }
 
-        stopwatch::time("apply_view_updates", || {
-          while let Some(update) = recv() {
+        stopwatch::time("apply_view_updates0", || {
+          let start = time::precise_time_ns();
+          while let Some(update) = recv0() {
             apply_client_to_view(update, &mut view);
+
+            if time::precise_time_ns() - start >= 1_000_000 {
+              break
+            }
+          }
+        });
+
+        stopwatch::time("apply_view_updates1", || {
+          let start = time::precise_time_ns();
+          while let Some(update) = recv1() {
+            apply_client_to_view(update, &mut view);
+
+            if time::precise_time_ns() - start >= 1_000_000 {
+              break
+            }
           }
         });
 

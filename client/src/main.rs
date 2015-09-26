@@ -43,14 +43,17 @@ fn main() {
   let (server_send_thread_send, server_send_thread_recv) = channel();
   let (server_recv_thread_send, mut server_recv_thread_recv) = channel();
   let (terrain_blocks_send, mut terrain_blocks_recv) = channel();
-  let (view_thread_send, mut view_thread_recv) = channel();
+  let (view_thread_send0, mut view_thread_recv0) = channel();
+  let (view_thread_send1, mut view_thread_recv1) = channel();
 
   let server_recv_thread_send = &server_recv_thread_send;
   let server_recv_thread_recv = &mut server_recv_thread_recv;
   let terrain_blocks_send = &terrain_blocks_send;
   let terrain_blocks_recv = &mut terrain_blocks_recv;
-  let view_thread_send = &view_thread_send;
-  let view_thread_recv = &mut view_thread_recv;
+  let view_thread_send0 = &view_thread_send0;
+  let view_thread_recv0 = &mut view_thread_recv0;
+  let view_thread_send1 = &view_thread_send1;
+  let view_thread_recv1 = &mut view_thread_recv1;
 
   let quit = Mutex::new(false);
   let quit = &quit;
@@ -118,7 +121,8 @@ fn main() {
   {
     let update_thread = {
       let client = &client;
-      let view_thread_send = view_thread_send.clone();
+      let view_thread_send0 = view_thread_send0.clone();
+      let view_thread_send1 = view_thread_send1.clone();
       let server_send_thread_send = server_send_thread_send.clone();
       let terrain_blocks_send = terrain_blocks_send.clone();
       unsafe {
@@ -135,7 +139,8 @@ fn main() {
                 })
             },
             &mut || { try_recv(terrain_blocks_recv) },
-            &mut |up| { view_thread_send.send(up).unwrap() },
+            &mut |up| { view_thread_send0.send(up).unwrap() },
+            &mut |up| { view_thread_send1.send(up).unwrap() },
   	        &mut |up| { server_send_thread_send.send(Some(up)).unwrap() },
             &mut |block| { terrain_blocks_send.send(block).unwrap() },
           );
@@ -150,7 +155,15 @@ fn main() {
       view_thread(
         client.player_id,
         &mut || {
-          match view_thread_recv.try_recv() {
+          match view_thread_recv0.try_recv() {
+            Ok(msg) => Some(msg),
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) =>
+              panic!("view_thread_send should not be closed."),
+          }
+        },
+        &mut || {
+          match view_thread_recv1.try_recv() {
             Ok(msg) => Some(msg),
             Err(TryRecvError::Empty) => None,
             Err(TryRecvError::Disconnected) =>

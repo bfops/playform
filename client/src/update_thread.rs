@@ -12,18 +12,20 @@ use load_terrain::{load_terrain_block, lod_index};
 use server_update::apply_server_update;
 use view_update::ClientToView;
 
-pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock>(
+pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServer, QueueBlock>(
   quit: &Mutex<bool>,
   client: &Client,
   recv_server: &mut RecvServer,
   recv_block: &mut RecvBlock,
-  update_view: &mut UpdateView,
+  update_view0: &mut UpdateView0,
+  update_view1: &mut UpdateView1,
   update_server: &mut UpdateServer,
   queue_block: &mut QueueBlock,
 ) where
   RecvServer: FnMut() -> Option<ServerToClient>,
   RecvBlock: FnMut() -> Option<TerrainBlockSend>,
-  UpdateView: FnMut(ClientToView),
+  UpdateView0: FnMut(ClientToView),
+  UpdateView1: FnMut(ClientToView),
   UpdateServer: FnMut(ClientToServer),
   QueueBlock: FnMut(TerrainBlockSend),
 {
@@ -36,7 +38,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
         while let Some(up) = recv_server() {
           apply_server_update(
             client,
-            update_view,
+            update_view0,
             update_server,
             queue_block,
             up,
@@ -88,9 +90,9 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
                     // If it wasn't loaded, don't unload anything.
                     .map(|(block, prev_lod)| {
                       for id in &block.ids {
-                        update_view(ClientToView::RemoveTerrain(*id));
+                        update_view1(ClientToView::RemoveTerrain(*id));
                       }
-                      update_view(ClientToView::RemoveBlockData(block_position, prev_lod));
+                      update_view1(ClientToView::RemoveBlockData(block_position, prev_lod));
                     });
                 })
               },
@@ -107,7 +109,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView, UpdateServer, QueueBlock
           trace!("Got block: {:?} at {:?}", block.position, block.lod);
           load_terrain_block(
             client,
-            update_view,
+            update_view1,
             block,
           );
 
