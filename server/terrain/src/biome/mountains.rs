@@ -22,8 +22,8 @@ pub fn new(seed: Seed) -> T {
     height:
       Brownian2::new(perlin2, 5)
       .frequency(1.0 / 4.0)
-      .persistence(2.0)
-      .lacunarity(1.0 / 2.0)
+      .persistence(4.0)
+      .lacunarity(1.0 / 4.0)
     ,
     features:
       Brownian3::new(perlin3, 2)
@@ -42,6 +42,7 @@ impl voxel_base::field::T for T {
 
     let feature_density = self.features.apply(&self.seed, &[p.x as f64, p.y as f64, p.z as f64]) * 8.0;
     let feature_density = feature_density as f32;
+    let feature_density = feature_density * 2.0;
 
     heightmap_density + feature_density
   }
