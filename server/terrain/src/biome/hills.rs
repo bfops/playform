@@ -1,34 +1,36 @@
+//! Grass, hilly biome
+
 use cgmath::{Point3, Vector3, EuclideanVector};
 use noise::{Seed, Brownian2, Brownian3, perlin2, perlin3};
 
 use voxel;
 use voxel_base;
 
+#[allow(missing_docs)]
 pub struct T {
-  pub height: Brownian2<f64, fn (&Seed, &[f64; 2]) -> f64>,
-  pub features: Brownian3<f64, fn (&Seed, &[f64; 3]) -> f64>,
-  pub seed: Seed,
+  height: Brownian2<f64, fn (&Seed, &[f64; 2]) -> f64>,
+  features: Brownian3<f64, fn (&Seed, &[f64; 3]) -> f64>,
+  seed: Seed,
 }
 
-impl T {
-  pub fn new(seed: Seed) -> T {
-    let perlin2: fn(&Seed, &[f64; 2]) -> f64 = perlin2;
-    let perlin3: fn(&Seed, &[f64; 3]) -> f64 = perlin3;
-    T {
-      seed: seed,
-      height:
-        Brownian2::new(perlin2, 5)
-        .frequency(1.0 / 4.0)
-        .persistence(2.0)
-        .lacunarity(1.0 / 2.0)
-      ,
-      features:
-        Brownian3::new(perlin3, 2)
-        .frequency(1.0 / 32.0)
-        .persistence(8.0)
-        .lacunarity(1.0 / 4.0)
-      ,
-    }
+#[allow(missing_docs)]
+pub fn new(seed: Seed) -> T {
+  let perlin2: fn(&Seed, &[f64; 2]) -> f64 = perlin2;
+  let perlin3: fn(&Seed, &[f64; 3]) -> f64 = perlin3;
+  T {
+    seed: seed,
+    height:
+      Brownian2::new(perlin2, 5)
+      .frequency(1.0 / 4.0)
+      .persistence(2.0)
+      .lacunarity(1.0 / 2.0)
+    ,
+    features:
+      Brownian3::new(perlin3, 2)
+      .frequency(1.0 / 32.0)
+      .persistence(8.0)
+      .lacunarity(1.0 / 4.0)
+    ,
   }
 }
 

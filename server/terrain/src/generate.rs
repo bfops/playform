@@ -11,7 +11,6 @@ use common::lod::LODIndex;
 use common::terrain_block;
 use common::terrain_block::{TerrainBlock, tri};
 
-use heightmap;
 use voxel;
 use voxel_base;
 
@@ -77,13 +76,15 @@ fn make_bounds(
 
 /// Generate a `TerrainBlock` based on a given position in a `voxel::tree::T`.
 /// Any necessary voxels will be generated.
-pub fn generate_block(
+pub fn generate_block<Mosaic>(
   id_allocator: &Mutex<IdAllocator<EntityId>>,
-  heightmap: &heightmap::T,
+  mosaic: &Mosaic,
   voxels: &mut voxel::tree::T,
   position: &BlockPosition,
   lod_index: LODIndex,
-) -> TerrainBlock {
+) -> TerrainBlock
+  where Mosaic: voxel_base::mosaic::T<Material=voxel::Material>,
+{
   stopwatch::time("update.generate_block", || {
     let mut block = TerrainBlock::empty();
 
@@ -99,7 +100,7 @@ pub fn generate_block(
       let r;
       match branch {
         &mut voxel::tree::Empty => {
-          r = voxel::unwrap(voxel::of_field(heightmap, bounds));
+          r = voxel::unwrap(voxel::of_field(mosaic, bounds));
           *branch =
             voxel::tree::Branch {
               data: Some(r),
@@ -109,7 +110,7 @@ pub fn generate_block(
         &mut voxel::tree::Branch { ref mut data, branches: _ }  => {
           match data {
             &mut None => {
-              r = voxel::unwrap(voxel::of_field(heightmap, bounds));
+              r = voxel::unwrap(voxel::of_field(mosaic, bounds));
               *data = Some(r);
             },
             &mut Some(ref data) => {

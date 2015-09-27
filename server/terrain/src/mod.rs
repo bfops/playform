@@ -27,7 +27,7 @@ extern crate time;
 extern crate voxel as voxel_base;
 
 mod generate;
-mod heightmap;
+pub mod biome;
 
 pub mod tree;
 
@@ -115,7 +115,7 @@ impl MipMeshMap {
 /// This struct contains and lazily generates the world's terrain.
 #[allow(missing_docs)]
 pub struct Terrain {
-  pub heightmap: heightmap::T,
+  pub mosaic: biome::hills::T,
   // all the blocks that have ever been created.
   pub all_blocks: MipMeshMap,
   pub voxels: voxel::tree::T,
@@ -125,7 +125,7 @@ impl Terrain {
   #[allow(missing_docs)]
   pub fn new(terrain_seed: Seed) -> Terrain {
     Terrain {
-      heightmap: heightmap::T::new(terrain_seed),
+      mosaic: biome::hills::new(terrain_seed),
       all_blocks: MipMeshMap::new(),
       voxels: voxel::tree::T::new(),
     }
@@ -146,7 +146,7 @@ impl Terrain {
       *mesh = Some(
         generate::generate_block(
           id_allocator,
-          &self.heightmap,
+          &self.mosaic,
           &mut self.voxels,
           position,
           lod_index,
@@ -185,14 +185,14 @@ impl Terrain {
           &mut voxel::tree::Empty => {
             *voxel =
               voxel::tree::TreeBody::leaf(
-                Some(voxel::unwrap(voxel::of_field(&self.heightmap, &bounds)))
+                Some(voxel::unwrap(voxel::of_field(&self.mosaic, &bounds)))
               );
           },
           &mut voxel::tree::Branch { ref mut data, branches: _ } => {
             match data {
               &mut None => {
                 *data =
-                  Some(voxel::unwrap(voxel::of_field(&self.heightmap, &bounds)));
+                  Some(voxel::unwrap(voxel::of_field(&self.mosaic, &bounds)));
               },
               &mut Some(_) => {},
             }
@@ -223,7 +223,7 @@ impl Terrain {
             *mesh =
               generate::generate_block(
                 id_allocator,
-                &self.heightmap,
+                &self.mosaic,
                 &mut self.voxels,
                 &position,
                 lod_index,
