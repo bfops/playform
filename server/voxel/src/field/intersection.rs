@@ -1,11 +1,15 @@
+//! A field defined by the intersection of a pair of fields.
+
 use cgmath::{Point3, Vector3};
 
-use voxel::field;
+use field;
 
+#[allow(missing_docs)]
 pub struct T ([Box<field::T>; 2]);
 
 unsafe impl Send for T {}
 
+#[allow(missing_docs)]
 pub fn new<Field1, Field2>(field1: Field1, field2: Field2) -> T
   where
     Field1: field::T + 'static,

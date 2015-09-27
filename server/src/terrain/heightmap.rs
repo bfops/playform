@@ -1,6 +1,7 @@
 use cgmath::{Point3, Vector3, EuclideanVector};
 use noise::{Seed, Brownian2, Brownian3, perlin2, perlin3};
 
+use terrain;
 use voxel;
 
 pub struct T {
@@ -70,12 +71,14 @@ impl voxel::field::T for T {
 }
 
 impl voxel::mosaic::T for T {
-  fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
+  type Material = terrain::voxel::Material;
+
+  fn material(&self, p: &Point3<f32>) -> Option<terrain::voxel::Material> {
     Some(
       if ::voxel::field::T::density(self, p) >= 0.0 {
-        voxel::Material::Terrain
+        terrain::voxel::Material::Terrain
       } else {
-        voxel::Material::Empty
+        terrain::voxel::Material::Empty
       }
     )
   }

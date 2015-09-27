@@ -1,14 +1,17 @@
+//! A field defined by rotating another field.
+
 use cgmath::{Point3, Vector3, Rotation, Basis3};
 
-use voxel::field;
+use field;
 
 #[derive(Clone)]
-pub struct T<Mosaic> {
+#[allow(missing_docs)]
+pub struct T<Field> {
   pub rotation: Basis3<f32>,
-  pub field: Mosaic,
+  pub field: Field,
 }
 
-impl<Mosaic> field::T for T<Mosaic> where Mosaic: field::T {
+impl<Field> field::T for T<Field> where Field: field::T {
   fn density(&self, p: &Point3<f32>) -> f32 {
     let p = self.rotation.invert().rotate_point(p);
     field::T::density(&self.field, &p)

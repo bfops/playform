@@ -4,6 +4,7 @@
 use cgmath::{Point, Point3, Vector, Vector3, EuclideanVector, Rotation};
 use rand;
 
+use terrain;
 use voxel;
 use voxel::{field, mosaic};
 
@@ -34,7 +35,7 @@ mod pillar {
 }
 
 pub struct T {
-  union: mosaic::union::T,
+  union: voxel::mosaic::union::T<terrain::voxel::Material>,
 }
 
 unsafe impl Send for T {}
@@ -85,7 +86,7 @@ pub fn new<Rng>(
       ),
     };
 
-  union.push(voxel::Material::Bark, trunk);
+  union.push(terrain::voxel::Material::Bark, trunk);
 
   let leaf_count = {
     let leaf_radius = leaf_radius / 3.0;
@@ -97,7 +98,7 @@ pub fn new<Rng>(
     let half_length = branch.length() / 2.0;
 
     union.push(
-      voxel::Material::Bark,
+      terrain::voxel::Material::Bark,
       field::translation::T {
         translation: trunk_top.to_vec(),
         field: field::rotation::T {
@@ -118,7 +119,7 @@ pub fn new<Rng>(
     );
 
     union.push(
-      voxel::Material::Leaves,
+      terrain::voxel::Material::Leaves,
       field::translation::T {
         translation: branch_end.to_vec(),
         field: field::sphere::T {
@@ -144,7 +145,9 @@ impl field::T for T {
 }
 
 impl mosaic::T for T {
-  fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
+  type Material = terrain::voxel::Material;
+
+  fn material(&self, p: &Point3<f32>) -> Option<terrain::voxel::Material> {
     mosaic::T::material(&self.union, p)
   }
 }

@@ -1,6 +1,8 @@
 mod generate;
 mod heightmap;
 
+pub mod tree;
+
 pub use noise::Seed;
 
 use cgmath::Aabb;
@@ -18,11 +20,19 @@ use common::terrain_block::TerrainBlock;
 pub mod voxel {
   pub use ::voxel::impls::surface_vertex::*;
 
+  #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+  pub enum Material {
+    Empty = 0,
+    Terrain = 1,
+    Bark = 2,
+    Leaves = 3,
+  }
+
   pub mod tree {
     pub use ::voxel::tree::TreeBody::*;
-    pub type T = ::voxel::tree::T<super::T<::voxel::Material>>;
-    pub type TreeBody = ::voxel::tree::TreeBody<super::T<::voxel::Material>>;
-    pub type Branches = ::voxel::tree::Branches<super::T<::voxel::Material>>;
+    pub type T = ::voxel::tree::T<super::T<super::Material>>;
+    pub type TreeBody = ::voxel::tree::TreeBody<super::T<super::Material>>;
+    pub type Branches = ::voxel::tree::Branches<super::T<super::Material>>;
   }
 }
 
@@ -109,7 +119,7 @@ impl Terrain {
     mut block_changed: F,
   ) where
     F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
-    Mosaic: ::voxel::mosaic::T,
+    Mosaic: ::voxel::mosaic::T<Material=voxel::Material>,
   {
     macro_rules! voxel_range(($d:ident, $scale:expr) => {{
       let low = brush.bounds.min().$d >> $scale;
@@ -124,7 +134,7 @@ impl Terrain {
       for x in voxel_range!(x, lg_size) {
       for y in voxel_range!(y, lg_size) {
       for z in voxel_range!(z, lg_size) {
-        let bounds = ::voxel::Bounds::new(x, y, z, lg_size);
+        let bounds = ::voxel::bounds::new(x, y, z, lg_size);
         let voxel = self.voxels.get_mut_or_create(&bounds);
         match voxel {
           &mut voxel::tree::Empty => {

@@ -6,7 +6,6 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-#![feature(iter_cmp)]
 #![feature(io)]
 #![feature(main)]
 #![feature(plugin)]
@@ -30,6 +29,7 @@ extern crate stopwatch;
 extern crate test;
 extern crate thread_scoped;
 extern crate time;
+extern crate voxel;
 
 mod client_recv_thread;
 mod in_progress_terrain;
@@ -45,4 +45,3 @@ mod terrain;
 mod terrain_loader;
 mod update_gaia;
 mod update_world;
-mod voxel;

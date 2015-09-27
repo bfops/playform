@@ -25,7 +25,7 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
 fn cast(
   server: &Server,
   player_id: entity::EntityId,
-) -> Option<voxel::Bounds> {
+) -> Option<voxel::bounds::T> {
   let ray;
   {
     let players = server.players.lock().unwrap();
@@ -38,7 +38,7 @@ fn cast(
     &ray,
     &mut |bounds, voxel| {
       match voxel {
-        &terrain::voxel::T::Volume(voxel::Material::Empty) => None,
+        &terrain::voxel::T::Volume(terrain::voxel::Material::Empty) => None,
         _ => Some(bounds),
       }
     }
@@ -168,7 +168,7 @@ pub fn apply_client_update<UpdateGaia>(
           let tree =
             voxel::mosaic::translation::T {
               translation: bottom.to_vec(),
-              mosaic: voxel::mosaic::tree::new(rng, trunk_height, trunk_radius, leaf_radius),
+              mosaic: terrain::tree::new(rng, trunk_height, trunk_radius, leaf_radius),
             };
 
           let center =
@@ -187,7 +187,7 @@ pub fn apply_client_update<UpdateGaia>(
                     Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
                   },
                 ),
-              mosaic: Box::new(tree) as Box<voxel::mosaic::T + Send>,
+              mosaic: Box::new(tree) as Box<voxel::mosaic::T<Material=terrain::voxel::Material> + Send>,
             };
 
           update_gaia(ServerToGaia::Brush(brush));
@@ -208,7 +208,7 @@ pub fn apply_client_update<UpdateGaia>(
                   radius: r,
                 },
               },
-              material: voxel::Material::Empty,
+              material: terrain::voxel::Material::Empty,
             };
           let r = sphere.field.field.radius + 1.0;
           let brush =
@@ -224,9 +224,9 @@ pub fn apply_client_update<UpdateGaia>(
                     Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
                   },
                 ),
-              mosaic: Box::new(sphere) as Box<voxel::mosaic::T + Send>,
+              mosaic: Box::new(sphere) as Box<voxel::mosaic::T<Material=terrain::voxel::Material> + Send>,
             };
-          let brush: voxel::brush::T<Box<voxel::mosaic::T + Send>> = brush;
+          let brush: voxel::brush::T<Box<voxel::mosaic::T<Material=terrain::voxel::Material> + Send>> = brush;
           update_gaia(ServerToGaia::Brush(brush));
         });
       },

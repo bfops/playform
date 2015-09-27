@@ -91,10 +91,10 @@ pub fn generate_block(
     let lg_size = terrain_block::LG_SAMPLE_SIZE[lod_index.0 as usize] as i16;
 
     let bounds_at = |v: &Point3<i32>| {
-      voxel::Bounds::new(v.x, v.y, v.z, lg_size)
+      voxel::bounds::new(v.x, v.y, v.z, lg_size)
     };
 
-    let mut get_voxel = |bounds: &voxel::Bounds| {
+    let mut get_voxel = |bounds: &voxel::bounds::T| {
       let branch = voxels.get_mut_or_create(bounds);
       let r;
       match branch {
@@ -166,7 +166,7 @@ pub fn generate_block(
         }
         debug!("edge from {:?} to {:?}", voxel_position, neighbor_position);
         debug!("neighbor is {:?}", neighbor_material);
-        let empty = voxel::Material::Empty;
+        let empty = terrain::voxel::Material::Empty;
         if (voxel.corner == empty) == (neighbor_material == empty) {
           // This edge doesn't cross the surface, and doesn't generate polys.
 
@@ -224,7 +224,7 @@ pub fn generate_block(
         coords.push(v_center);
         normals.push(n_center);
 
-        if voxel.corner == voxel::Material::Empty {
+        if voxel.corner == terrain::voxel::Material::Empty {
           // The polys are visible from negative infinity.
           polys.push([i1, i2, i_center]);
           polys.push([i2, i3, i_center]);

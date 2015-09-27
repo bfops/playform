@@ -9,6 +9,7 @@ use common::serialize::Copyable;
 use common::block_position::BlockPosition;
 
 use server::Server;
+use terrain;
 use terrain_loader::TerrainLoader;
 use voxel;
 
@@ -20,7 +21,7 @@ pub enum LoadReason {
 
 pub enum ServerToGaia {
   Load(BlockPosition, LODIndex, LoadReason),
-  Brush(voxel::brush::T<Box<voxel::mosaic::T + Send>>),
+  Brush(voxel::brush::T<Box<voxel::mosaic::T<Material=terrain::voxel::Material> + Send>>),
 }
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.

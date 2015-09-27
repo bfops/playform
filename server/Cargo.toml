@@ -21,6 +21,10 @@ time = "*"
 path = "../common"
 version = "*"
 
+[dependencies.voxel]
+path = "./voxel"
+version = "*"
+
 [dependencies.cgmath]
 git = "https://github.com/bjz/cgmath-rs"
 

@@ -1,10 +1,15 @@
+//! A voxel implementation where each voxel stores a single mesh vertex and normal.
+
 use cgmath::{Point, Point3, Vector, EuclideanVector, Vector3};
 use std::cmp::{min, max};
 use std::f32;
 use std::ops::Neg;
 use stopwatch;
 
-use voxel;
+use bounds;
+use brush;
+use field;
+use mosaic;
 
 // NOTE: When voxel size and storage become an issue, this should be shrunk to
 // be less than pointer-sized. It'll be easier to transfer to the GPU for
@@ -13,10 +18,11 @@ use voxel;
 // low-order bits can be used to figure out which one it is, since pointers
 // have three low-order bits set to zero).
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[allow(missing_docs)]
 pub enum T<Material> {
-  // The entire voxel is a single material.
+  /// The entire voxel is a single material.
   Volume(Material),
-  // The voxel crosses the surface of the volume.
+  /// The voxel crosses the surface of the volume.
   Surface(SurfaceStruct<Material>),
 }
 
@@ -25,6 +31,7 @@ pub enum T<Material> {
 // lowest-coordinate corner is inside the volume.
 // Since we keep track of an "arbitrarily" large world of voxels, we don't
 // leave out any corners.
+#[allow(missing_docs)]
 pub struct SurfaceStruct<Material> {
   /// The position of a free-floating vertex on the surface.
   pub surface_vertex: Vertex,
@@ -36,19 +43,21 @@ pub struct SurfaceStruct<Material> {
 }
 
 #[allow(eq_op)]
+/// Create a voxel by sampling a field.
 // TODO: Should this be moved into the general voxel interface?
-pub fn of_field<Field>(
-  field: &Field,
-  voxel: &::voxel::Bounds,
-) -> T<Option<::voxel::Material>> where
-  Field: voxel::mosaic::T,
+pub fn of_field<Material, Mosaic>(
+  field: &Mosaic,
+  voxel: &bounds::T,
+) -> T<Option<Mosaic::Material>> where
+  Material: Eq + Clone,
+  Mosaic: mosaic::T<Material = Material>,
 {
   stopwatch::time("voxel.surface_vertex.of_field", || {
     let (low, high) = voxel.corners();
     macro_rules! material_at(($x:expr, $y:expr, $z:expr) => {{
       let p = Point3::new($x.x, $y.y, $z.z);
       debug!("Finding material at {:?}", p);
-      voxel::mosaic::T::material(field, &p)
+      mosaic::T::material(field, &p)
     }});
 
     // TODO: Re=evaluating the density function is costly. Do it only once for each corner.
@@ -57,7 +66,6 @@ pub fn of_field<Field>(
     let is_homogenous = || {
       macro_rules! check_corner(($x:expr, $y:expr, $z:expr) => {{
         let material = material_at!($x, $y, $z);
-        debug!("material is {:?}", material);
         if material != corner {
           return false
         }
@@ -75,7 +83,7 @@ pub fn of_field<Field>(
     debug!("is_homogenous: {:?}", is_homogenous);
 
     if is_homogenous {
-      return T::Volume(corner)
+      return T::Volume(corner.clone())
     }
 
     let corner_coords = [0.0, 256.0];
@@ -84,7 +92,7 @@ pub fn of_field<Field>(
       let x = if $x == 0 { low.x } else { high.x };
       let y = if $y == 0 { low.y } else { high.y };
       let z = if $z == 0 { low.z } else { high.z };
-      let corner = voxel::mosaic::T::density(field, &Point3::new(x, y, z));
+      let corner = mosaic::T::density(field, &Point3::new(x, y, z));
       assert!(corner >= 0.0);
       let corner = 1.0 / (corner + f32::EPSILON);
       total_weight += corner;
@@ -113,17 +121,18 @@ pub fn of_field<Field>(
     {
       // Okay, this is silly to have right after we construct the vertex.
       let vertex = vertex.to_world_vertex(voxel);
-      normal = Normal::of_float_normal(&voxel::field::T::normal(field, &vertex));
+      normal = Normal::of_float_normal(&field::T::normal(field, &vertex));
     }
 
     T::Surface(SurfaceStruct {
       surface_vertex: vertex,
       normal: normal,
-      corner: corner,
+      corner: corner.clone(),
     })
   })
 }
 
+#[allow(missing_docs)]
 pub fn unwrap<X>(voxel: T<Option<X>>) -> T<X> {
   match voxel {
     T::Volume(x) => T::Volume(x.unwrap()),
@@ -137,27 +146,27 @@ pub fn unwrap<X>(voxel: T<Option<X>>) -> T<X> {
   }
 }
 
-impl voxel::T for T<::voxel::Material> {
+impl<Material> ::T for T<Material> where Material: Eq + Clone {
+  type Material = Material;
+
   fn brush<Mosaic>(
-    this: &mut T<::voxel::Material>,
-    bounds: &voxel::Bounds,
-    brush: &voxel::brush::T<Mosaic>,
-  ) where Mosaic: voxel::mosaic::T
+    this: &mut T<Material>,
+    bounds: &bounds::T,
+    brush: &brush::T<Mosaic>,
+  ) where Mosaic: mosaic::T<Material = Material>
   {
-    let set_leaf = |this: &mut T<::voxel::Material>, corner| {
-      debug!("leaf {:?} is {:?}", bounds, *this);
+    let set_leaf = |this: &mut T<Material>, corner| {
       match of_field(&brush.mosaic, bounds) {
         T::Volume(None) => {}
         T::Volume(Some(material)) => {
           *this = T::Volume(material);
-          debug!("leaf {:?} set to {:?}", bounds, *this);
         },
         T::Surface(surface) => {
           let size = bounds.size();
           let low = Point3::new(bounds.x as f32, bounds.y as f32, bounds.z as f32);
           let low = low.mul_s(size);
           let corner =
-            match voxel::mosaic::T::material(&brush.mosaic, &low) {
+            match mosaic::T::material(&brush.mosaic, &low) {
               None => corner,
               Some(material) => material,
             };
@@ -168,23 +177,24 @@ impl voxel::T for T<::voxel::Material> {
               corner: corner,
             };
           *this = T::Surface(voxel);
-          debug!("leaf {:?} set to {:?}", bounds, *this);
         },
       }
     };
 
-    match this {
-      &mut T::Volume(material) => {
-        set_leaf(this, material);
+    match this.clone() {
+      T::Volume(ref material) => {
+        set_leaf(this, material.clone());
       },
-      &mut T::Surface(voxel) => {
-        set_leaf(this, voxel.corner);
+      T::Surface(ref voxel) => {
+        set_leaf(this, voxel.corner.clone());
       },
     }
   }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[allow(missing_docs)]
+/// Vertex expressed using a fraction between voxel bounds.
 pub struct Vertex {
   pub x: Fracu8,
   pub y: Fracu8,
@@ -192,7 +202,8 @@ pub struct Vertex {
 }
 
 impl Vertex {
-  pub fn to_world_vertex(&self, parent: &voxel::Bounds) -> Point3<f32> {
+  /// Given a voxel, convert this vertex to a world position.
+  pub fn to_world_vertex(&self, parent: &bounds::T) -> Point3<f32> {
     // Relative position of the vertex.
     let local =
       Vector3::new(
@@ -208,6 +219,8 @@ impl Vertex {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[allow(missing_docs)]
+/// A compressed normal format.
 pub struct Normal {
   pub x: Fraci8,
   pub y: Fraci8,
@@ -215,6 +228,7 @@ pub struct Normal {
 }
 
 impl Normal {
+  /// Turn a normalized floating-point normal into a packed format.
   pub fn of_float_normal(normal: &Vector3<f32>) -> Normal {
     // Okay, so we scale the normal by 127, and use 127 to represent 1.0.
     // Then we store it in a `Fraci8`, which scales by 128 and represents a
@@ -230,6 +244,7 @@ impl Normal {
     }
   }
 
+  /// Convert from a packed format to a normalized floating-point normal.
   pub fn to_float_normal(&self) -> Vector3<f32> {
     Vector3::new(self.x.to_f32(), self.y.to_f32(), self.z.to_f32()).normalize()
   }
@@ -250,11 +265,12 @@ impl Neg for Normal {
 /// Express a `[0,1)` fraction using a `u8`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Fracu8 {
-  // The denominator is 1 << 8.
+  /// The numerator of a fraction over 1 << 8.
   pub numerator: u8,
 }
 
 impl Fracu8 {
+  #[allow(missing_docs)]
   pub fn of(numerator: u8) -> Fracu8 {
     Fracu8 {
       numerator: numerator,
@@ -265,17 +281,19 @@ impl Fracu8 {
 /// Express a `[-1,1)` fraction using a `i8`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Fraci8 {
-  // The denominator is 1 << 8.
+  /// The numerator of a fraction over 1 << 8.
   pub numerator: i8,
 }
 
 impl Fraci8 {
+  #[allow(missing_docs)]
   pub fn of(numerator: i8) -> Fraci8 {
     Fraci8 {
       numerator: numerator,
     }
   }
 
+  #[allow(missing_docs)]
   pub fn to_f32(&self) -> f32 {
     self.numerator as f32 / 128.0
   }

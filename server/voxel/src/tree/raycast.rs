@@ -1,8 +1,8 @@
 use cgmath::{Point, Vector, Ray3};
 use std::cmp::Ordering;
 
-use voxel;
-use voxel::tree::{TreeBody, Branches};
+use bounds;
+use tree::{TreeBody, Branches};
 
 // Time-of-intersection. Implements `Ord` for sanity reasons;
 // let's hope the floating-points are all valid.
@@ -61,8 +61,8 @@ pub fn cast_ray_branches<'a, Voxel, MakeBounds, Act, R>(
   act: &mut Act,
 ) -> Result<R, Exit>
   where
-    MakeBounds: FnMut([usize; 3]) -> voxel::Bounds,
-    Act: FnMut(voxel::Bounds, &'a Voxel) -> Option<R>,
+    MakeBounds: FnMut([usize; 3]) -> bounds::T,
+    Act: FnMut(bounds::T, &'a Voxel) -> Option<R>,
 {
   loop {
     let child = &this.as_array()[coords[0]][coords[1]][coords[2]];
@@ -93,12 +93,12 @@ pub fn cast_ray_branches<'a, Voxel, MakeBounds, Act, R>(
 pub fn cast_ray<'a, Voxel, Act, R>(
   this: &'a TreeBody<Voxel>,
   ray: &Ray3<f32>,
-  bounds: voxel::Bounds,
+  bounds: bounds::T,
   entry: Option<Entry>,
   act: &mut Act,
 ) -> Result<R, Exit>
   where
-    Act: FnMut(voxel::Bounds, &'a Voxel) -> Option<R>
+    Act: FnMut(bounds::T, &'a Voxel) -> Option<R>
 {
   match this {
     &TreeBody::Empty => {
