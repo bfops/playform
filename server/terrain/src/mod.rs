@@ -57,6 +57,7 @@ pub mod voxel {
     Terrain = 1,
     Bark = 2,
     Leaves = 3,
+    Stone = 4,
   }
 
   #[allow(missing_docs)]
