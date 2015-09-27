@@ -1,29 +1,35 @@
+//! A mosaic implementation defined by the union of other mosaics.
+
 use cgmath::{Point3, Vector3};
 use std::f32;
 
-use voxel::field;
+use field;
+use mosaic;
 
-pub struct T {
-  pub components: Vec<(Box<field::T>, ::voxel::Material)>,
+#[allow(missing_docs)]
+pub struct T<Material> {
+  components: Vec<(Box<field::T>, Material)>,
 }
 
-unsafe impl Send for T {}
+unsafe impl<Material> Send for T<Material> {}
 
-pub fn new() -> T {
+#[allow(missing_docs)]
+pub fn new<Material>() -> T<Material> {
   T {
     components: Vec::new(),
   }
 }
 
-impl T {
-  pub fn push<Field>(&mut self, material: ::voxel::Material, field: Field)
+impl<Material> T<Material> {
+  /// Add a component.
+  pub fn push<Field>(&mut self, material: Material, field: Field)
     where Field: field::T + 'static,
   {
     self.components.push((Box::new(field), material));
   }
 }
 
-impl field::T for T {
+impl<Material> field::T for T<Material> {
   fn density(&self, p: &Point3<f32>) -> f32 {
     assert!(!self.components.is_empty());
     self.components.iter().fold(
@@ -50,16 +56,18 @@ impl field::T for T {
   }
 }
 
-impl ::voxel::mosaic::T for T {
-  fn material(&self, p: &Point3<f32>) -> Option<::voxel::Material> {
+impl<Material> mosaic::T for T<Material> where Material: Eq + Clone {
+  type Material = Material;
+
+  fn material(&self, p: &Point3<f32>) -> Option<Material> {
     assert!(!self.components.is_empty());
     let (_, material) =
       self.components.iter().fold(
         (f32::NEG_INFINITY, None),
-        |(max, max_material), &(ref shape, material)| {
+        |(max, max_material), &(ref shape, ref material)| {
           let d = shape.density(p);
           if d > max && d >= 0.0 {
-            (d, Some(material))
+            (d, Some(material.clone()))
           } else {
             (max, max_material)
           }

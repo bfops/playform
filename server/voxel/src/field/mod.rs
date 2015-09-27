@@ -1,3 +1,5 @@
+//! A density field defining a density and normal everywhere.
+
 use cgmath::{Point3, Vector3};
 use std::ops::Deref;
 
@@ -6,7 +8,7 @@ pub mod intersection;
 pub mod rotation;
 pub mod translation;
 
-/// A trait representing a density field.
+#[allow(missing_docs)]
 pub trait T {
   /// The density of the material at this point.
   fn density(&self, p: &Point3<f32>) -> f32;

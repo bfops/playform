@@ -5,11 +5,9 @@ pub fn stone() -> String {
   }
 
   let waves = [
-    Wave { freq:  64.0  / 1000.0, amp: 1.0 },
-    Wave { freq: 128.0  / 1000.0, amp: 0.6 },
-    Wave { freq: 256.0  / 1000.0, amp: 0.4 },
-    Wave { freq: 1024.0 / 1000.0, amp: 0.4 },
     Wave { freq: 2048.0 / 1000.0, amp: 0.4 },
+    Wave { freq: 8192.0 / 1000.0, amp: 0.6 },
+    Wave { freq: 65536.0 / 1000.0, amp: 1.0 },
   ];
 
   let mut contents = String::new();

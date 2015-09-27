@@ -1,42 +1,33 @@
 [package]
 
-name = "playform-server"
+name = "terrain"
 version = "0.0.0"
 authors = []
 
-[[bin]]
-name = "server"
+[lib]
+name = "terrain"
 path = "./src/mod.rs"
 
 [dependencies]
 clippy = "*"
-env_logger= "*"
 log = "*"
-num = "*"
 rand = "*"
-thread-scoped = "*"
 time = "*"
 
 [dependencies.playform-common]
-path = "../common"
+path = "../../common"
 version = "*"
 
 [dependencies.voxel]
-path = "./voxel"
-version = "*"
-
-[dependencies.terrain]
-path = "./terrain"
+path = "../voxel"
 version = "*"
 
 [dependencies.cgmath]
 git = "https://github.com/bjz/cgmath-rs"
-
-[dependencies.nanomsg]
-git = "https://github.com/thehydroimpulse/nanomsg.rs"
 
 [dependencies.noise]
 git = "https://github.com/bjz/noise-rs"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
+

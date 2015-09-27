@@ -1,0 +1,19 @@
+[package]
+
+name = "voxel"
+version = "0.0.0"
+authors = []
+
+[lib]
+name = "voxel"
+path = "./src/mod.rs"
+
+[dependencies]
+clippy = "*"
+log = "*"
+
+[dependencies.cgmath]
+git = "https://github.com/bjz/cgmath-rs"
+
+[dependencies.stopwatch]
+git = "https://github.com/bfops/stopwatch-rs"

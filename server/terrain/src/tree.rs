@@ -1,16 +1,18 @@
-/// A tree is comprised of a cylindrical trunk, a spherical bunch of leaves, and a spherical
-/// rounding to the bottom of the trunk.
+//! A tree is comprised of a cylindrical trunk, a spherical bunch of leaves, and a spherical
+//! rounding to the bottom of the trunk.
 
 use cgmath::{Point, Point3, Vector, Vector3, EuclideanVector, Rotation};
 use rand;
 
 use voxel;
-use voxel::{field, mosaic};
+use voxel_base;
+use voxel_base::field;
+use voxel_base::mosaic;
 
 mod pillar {
   use cgmath::{Point, Point3, Vector3, EuclideanVector};
 
-  use voxel::field;
+  use voxel_base::field;
 
   pub struct T {
     pub radius: f32,
@@ -33,8 +35,9 @@ mod pillar {
   }
 }
 
+#[allow(missing_docs)]
 pub struct T {
-  union: mosaic::union::T,
+  union: voxel_base::mosaic::union::T<voxel::Material>,
 }
 
 unsafe impl Send for T {}
@@ -58,6 +61,7 @@ fn inside_sphere<Rng>(
   }
 }
 
+#[allow(missing_docs)]
 pub fn new<Rng>(
   rng: &mut Rng,
   trunk_height: f32,
@@ -144,6 +148,8 @@ impl field::T for T {
 }
 
 impl mosaic::T for T {
+  type Material = voxel::Material;
+
   fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
     mosaic::T::material(&self.union, p)
   }

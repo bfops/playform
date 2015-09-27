@@ -12,8 +12,10 @@ dependencies = [
  "playform-common 0.0.0",
  "rand 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
+ "terrain 0.0.0",
  "thread-scoped 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)",
+ "voxel 0.0.0",
 ]
 
 [[package]]
@@ -185,6 +187,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "terrain"
+version = "0.0.0"
+dependencies = [
+ "cgmath 0.2.0 (git+https://github.com/bjz/cgmath-rs)",
+ "clippy 0.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "noise 0.1.5 (git+https://github.com/bjz/noise-rs)",
+ "playform-common 0.0.0",
+ "rand 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
+ "time 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)",
+ "voxel 0.0.0",
+]
+
+[[package]]
 name = "thread-scoped"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -203,6 +220,16 @@ dependencies = [
 name = "unicode-normalization"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "voxel"
+version = "0.0.0"
+dependencies = [
+ "cgmath 0.2.0 (git+https://github.com/bjz/cgmath-rs)",
+ "clippy 0.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
+]
 
 [[package]]
 name = "winapi"

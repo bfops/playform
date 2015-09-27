@@ -1,8 +1,11 @@
+//! A field defined by a translation of another field.
+
 use cgmath::{Point, Point3, Vector3};
 
-use voxel::field;
+use field;
 
 #[derive(Debug, Clone, Copy)]
+#[allow(missing_docs)]
 pub struct T<Field> {
   pub translation: Vector3<f32>,
   pub field: Field,

@@ -149,21 +149,16 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
           }
         }
 
-        stopwatch::time("apply_view_updates0", || {
+        stopwatch::time("apply_view_updates", || {
           let start = time::precise_time_ns();
-          while let Some(update) = recv0() {
-            apply_client_to_view(update, &mut view);
-
-            if time::precise_time_ns() - start >= 1_000_000 {
+          loop {
+            if let Some(update) = recv0() {
+              apply_client_to_view(update, &mut view);
+            } else if let Some(update) = recv1() {
+              apply_client_to_view(update, &mut view);
+            } else {
               break
             }
-          }
-        });
-
-        stopwatch::time("apply_view_updates1", || {
-          let start = time::precise_time_ns();
-          while let Some(update) = recv1() {
-            apply_client_to_view(update, &mut view);
 
             if time::precise_time_ns() - start >= 1_000_000 {
               break
