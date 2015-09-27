@@ -116,7 +116,7 @@ impl MipMeshMap {
 /// This struct contains and lazily generates the world's terrain.
 #[allow(missing_docs)]
 pub struct Terrain {
-  pub mosaic: biome::mountains::T,
+  pub mosaic: biome::hills::T,
   // all the blocks that have ever been created.
   pub all_blocks: MipMeshMap,
   pub voxels: voxel::tree::T,
@@ -126,7 +126,7 @@ impl Terrain {
   #[allow(missing_docs)]
   pub fn new(terrain_seed: Seed) -> Terrain {
     Terrain {
-      mosaic: biome::mountains::new(terrain_seed),
+      mosaic: biome::hills::new(terrain_seed),
       all_blocks: MipMeshMap::new(),
       voxels: voxel::tree::T::new(),
     }
