@@ -17,10 +17,8 @@
 extern crate cgmath;
 #[macro_use]
 extern crate log;
-extern crate num;
 extern crate stopwatch;
 extern crate test;
-extern crate time;
 
 pub mod bounds;
 pub mod brush;

@@ -11,8 +11,6 @@ path = "./src/mod.rs"
 [dependencies]
 clippy = "*"
 log = "*"
-num = "*"
-time = "*"
 
 [dependencies.cgmath]
 git = "https://github.com/bjz/cgmath-rs"
