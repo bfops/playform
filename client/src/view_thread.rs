@@ -153,9 +153,9 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
           let start = time::precise_time_ns();
           loop {
             if let Some(update) = recv0() {
-              apply_client_to_view(update, &mut view);
+              apply_client_to_view(&mut view, update);
             } else if let Some(update) = recv1() {
-              apply_client_to_view(update, &mut view);
+              apply_client_to_view(&mut view, update);
             } else {
               break
             }

@@ -40,6 +40,8 @@ pub fn load_terrain_block<UpdateView>(
     return;
   }
 
+  let mut updates = Vec::new();
+
   match client.loaded_blocks.lock().unwrap().entry(block.position.0) {
     Vacant(entry) => {
       entry.insert((block.block.clone(), block.lod.0));
@@ -50,17 +52,19 @@ pub fn load_terrain_block<UpdateView>(
 
         let &(ref prev_block, prev_lod) = entry.get();
         for &id in &prev_block.ids {
-          update_view(ClientToView::RemoveTerrain(id));
+          updates.push(ClientToView::RemoveTerrain(id));
         }
-        update_view(ClientToView::RemoveBlockData(block.position.0, prev_lod));
+        updates.push(ClientToView::RemoveBlockData(block.position.0, prev_lod));
       }
       entry.insert((block.block.clone(), block.lod.0));
     },
   };
 
   if !block.block.ids.is_empty() {
-    update_view(ClientToView::AddBlock(block.position.0, block.block, block.lod.0));
+    updates.push(ClientToView::AddBlock(block.position.0, block.block, block.lod.0));
   }
+
+  update_view(ClientToView::Atomic(updates));
 }
 
 pub fn lod_index(distance: i32) -> LODIndex {

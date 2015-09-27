@@ -39,12 +39,14 @@ pub enum ClientToView {
   RemoveTerrain(EntityId),
   /// Remove block-specific data.
   RemoveBlockData(BlockPosition, LODIndex),
+  /// Treat a series of updates as an atomic operation.
+  Atomic(Vec<ClientToView>),
 }
 
 unsafe impl Send for ClientToView {}
 
 #[allow(missing_docs)]
-pub fn apply_client_to_view(up: ClientToView, view: &mut View) {
+pub fn apply_client_to_view(view: &mut View, up: ClientToView) {
   match up {
     ClientToView::MoveCamera(position) => {
       view.camera.translate_to(position);
@@ -88,6 +90,11 @@ pub fn apply_client_to_view(up: ClientToView, view: &mut View) {
       view.terrain_buffers.swap_remove(&mut view.gl, id);
     },
     ClientToView::RemoveBlockData(_, _) => {
+    },
+    ClientToView::Atomic(updates) => {
+      for up in updates.into_iter() {
+        apply_client_to_view(view, up);
+      }
     },
   };
 }
