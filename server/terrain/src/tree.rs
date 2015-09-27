@@ -1,17 +1,18 @@
-/// A tree is comprised of a cylindrical trunk, a spherical bunch of leaves, and a spherical
-/// rounding to the bottom of the trunk.
+//! A tree is comprised of a cylindrical trunk, a spherical bunch of leaves, and a spherical
+//! rounding to the bottom of the trunk.
 
 use cgmath::{Point, Point3, Vector, Vector3, EuclideanVector, Rotation};
 use rand;
 
-use terrain;
 use voxel;
-use voxel::{field, mosaic};
+use voxel_base;
+use voxel_base::field;
+use voxel_base::mosaic;
 
 mod pillar {
   use cgmath::{Point, Point3, Vector3, EuclideanVector};
 
-  use voxel::field;
+  use voxel_base::field;
 
   pub struct T {
     pub radius: f32,
@@ -34,8 +35,9 @@ mod pillar {
   }
 }
 
+#[allow(missing_docs)]
 pub struct T {
-  union: voxel::mosaic::union::T<terrain::voxel::Material>,
+  union: voxel_base::mosaic::union::T<voxel::Material>,
 }
 
 unsafe impl Send for T {}
@@ -59,6 +61,7 @@ fn inside_sphere<Rng>(
   }
 }
 
+#[allow(missing_docs)]
 pub fn new<Rng>(
   rng: &mut Rng,
   trunk_height: f32,
@@ -86,7 +89,7 @@ pub fn new<Rng>(
       ),
     };
 
-  union.push(terrain::voxel::Material::Bark, trunk);
+  union.push(voxel::Material::Bark, trunk);
 
   let leaf_count = {
     let leaf_radius = leaf_radius / 3.0;
@@ -98,7 +101,7 @@ pub fn new<Rng>(
     let half_length = branch.length() / 2.0;
 
     union.push(
-      terrain::voxel::Material::Bark,
+      voxel::Material::Bark,
       field::translation::T {
         translation: trunk_top.to_vec(),
         field: field::rotation::T {
@@ -119,7 +122,7 @@ pub fn new<Rng>(
     );
 
     union.push(
-      terrain::voxel::Material::Leaves,
+      voxel::Material::Leaves,
       field::translation::T {
         translation: branch_end.to_vec(),
         field: field::sphere::T {
@@ -145,9 +148,9 @@ impl field::T for T {
 }
 
 impl mosaic::T for T {
-  type Material = terrain::voxel::Material;
+  type Material = voxel::Material;
 
-  fn material(&self, p: &Point3<f32>) -> Option<terrain::voxel::Material> {
+  fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
     mosaic::T::material(&self.union, p)
   }
 }

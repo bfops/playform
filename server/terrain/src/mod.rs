@@ -1,3 +1,31 @@
+//! This crate contains the terrain data structures and generation.
+
+#![allow(let_and_return)]
+#![allow(match_ref_pats)]
+#![allow(type_complexity)]
+#![deny(missing_docs)]
+#![deny(warnings)]
+
+#![feature(main)]
+#![feature(plugin)]
+#![feature(range_inclusive)]
+#![feature(test)]
+#![feature(unboxed_closures)]
+#![feature(vec_push_all)]
+
+#![plugin(clippy)]
+
+extern crate cgmath;
+extern crate common;
+#[macro_use]
+extern crate log;
+extern crate noise;
+extern crate rand;
+extern crate stopwatch;
+extern crate test;
+extern crate time;
+extern crate voxel as voxel_base;
+
 mod generate;
 mod heightmap;
 
@@ -17,10 +45,13 @@ use common::lod::LODIndex;
 use common::terrain_block;
 use common::terrain_block::TerrainBlock;
 
+/// Voxel implementation for terrain
 pub mod voxel {
-  pub use ::voxel::impls::surface_vertex::*;
+  pub use voxel_base::impls::surface_vertex::*;
 
   #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+  #[allow(missing_docs)]
+  /// Terrain materials
   pub enum Material {
     Empty = 0,
     Terrain = 1,
@@ -28,19 +59,25 @@ pub mod voxel {
     Leaves = 3,
   }
 
+  #[allow(missing_docs)]
   pub mod tree {
-    pub use ::voxel::tree::TreeBody::*;
-    pub type T = ::voxel::tree::T<super::T<super::Material>>;
-    pub type TreeBody = ::voxel::tree::TreeBody<super::T<super::Material>>;
-    pub type Branches = ::voxel::tree::Branches<super::T<super::Material>>;
+    use voxel_base;
+
+    pub use voxel_base::tree::TreeBody::*;
+    pub type T = voxel_base::tree::T<super::T<super::Material>>;
+    pub type TreeBody = voxel_base::tree::TreeBody<super::T<super::Material>>;
+    pub type Branches = voxel_base::tree::Branches<super::T<super::Material>>;
   }
 }
 
+/// Terrain mesh at multiple LODs.
 pub struct MipMesh {
+  #[allow(missing_docs)]
   pub lods: Vec<Option<TerrainBlock>>,
 }
 
 impl MipMesh {
+  #[allow(missing_docs)]
   pub fn get_mut(&mut self, i: usize) -> &mut Option<TerrainBlock> {
     for _ in range_inclusive(self.lods.len(), i) {
       self.lods.push(None);
@@ -49,17 +86,21 @@ impl MipMesh {
   }
 }
 
+/// Map block positions to the block mesh at various LODs.
 pub struct MipMeshMap(pub HashMap<BlockPosition, MipMesh>);
 
 impl MipMeshMap {
+  #[allow(missing_docs)]
   pub fn new() -> MipMeshMap {
     MipMeshMap(HashMap::new())
   }
 
+  #[allow(missing_docs)]
   pub fn get<'a>(&'a mut self, position: &BlockPosition) -> Option<&'a MipMesh> {
     self.0.get(position)
   }
 
+  #[allow(missing_docs)]
   pub fn get_mut<'a>(&'a mut self, position: &BlockPosition) -> &'a mut MipMesh {
     self.0
       .entry(*position)
@@ -72,6 +113,7 @@ impl MipMeshMap {
 }
 
 /// This struct contains and lazily generates the world's terrain.
+#[allow(missing_docs)]
 pub struct Terrain {
   pub heightmap: heightmap::T,
   // all the blocks that have ever been created.
@@ -80,6 +122,7 @@ pub struct Terrain {
 }
 
 impl Terrain {
+  #[allow(missing_docs)]
   pub fn new(terrain_seed: Seed) -> Terrain {
     Terrain {
       heightmap: heightmap::T::new(terrain_seed),
@@ -88,6 +131,7 @@ impl Terrain {
     }
   }
 
+  /// Load the block of terrain at a given position.
   // TODO: Allow this to be performed in such a way that self is only briefly locked.
   pub fn load<'a>(
     &'a mut self,
@@ -112,14 +156,15 @@ impl Terrain {
     mesh.as_ref().unwrap()
   }
 
+  /// Apply a voxel brush to the terrain.
   pub fn brush<F, Mosaic>(
     &mut self,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
-    brush: &::voxel::brush::T<Mosaic>,
+    brush: &voxel_base::brush::T<Mosaic>,
     mut block_changed: F,
   ) where
     F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
-    Mosaic: ::voxel::mosaic::T<Material=voxel::Material>,
+    Mosaic: voxel_base::mosaic::T<Material=voxel::Material>,
   {
     macro_rules! voxel_range(($d:ident, $scale:expr) => {{
       let low = brush.bounds.min().$d >> $scale;
@@ -134,7 +179,7 @@ impl Terrain {
       for x in voxel_range!(x, lg_size) {
       for y in voxel_range!(y, lg_size) {
       for z in voxel_range!(z, lg_size) {
-        let bounds = ::voxel::bounds::new(x, y, z, lg_size);
+        let bounds = voxel_base::bounds::new(x, y, z, lg_size);
         let voxel = self.voxels.get_mut_or_create(&bounds);
         match voxel {
           &mut voxel::tree::Empty => {

@@ -1,8 +1,8 @@
 use cgmath::{Point3, Vector3, EuclideanVector};
 use noise::{Seed, Brownian2, Brownian3, perlin2, perlin3};
 
-use terrain;
 use voxel;
+use voxel_base;
 
 pub struct T {
   pub height: Brownian2<f64, fn (&Seed, &[f64; 2]) -> f64>,
@@ -32,7 +32,7 @@ impl T {
   }
 }
 
-impl voxel::field::T for T {
+impl voxel_base::field::T for T {
   fn density(&self, p: &Point3<f32>) -> f32 {
     let height = self.height.apply(&self.seed, &[p.x as f64, p.z as f64]);
     let height = height as f32;
@@ -53,12 +53,12 @@ impl voxel::field::T for T {
       let high: f32 = {
         let mut p = *p;
         p.$d += delta;
-        ::voxel::field::T::density(self, &p)
+        voxel_base::field::T::density(self, &p)
       };
       let low: f32 = {
         let mut p = *p;
         p.$d -= delta;
-        ::voxel::field::T::density(self, &p)
+        voxel_base::field::T::density(self, &p)
       };
       high - low
     }});
@@ -70,15 +70,15 @@ impl voxel::field::T for T {
   }
 }
 
-impl voxel::mosaic::T for T {
-  type Material = terrain::voxel::Material;
+impl voxel_base::mosaic::T for T {
+  type Material = voxel::Material;
 
-  fn material(&self, p: &Point3<f32>) -> Option<terrain::voxel::Material> {
+  fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
     Some(
-      if ::voxel::field::T::density(self, p) >= 0.0 {
-        terrain::voxel::Material::Terrain
+      if voxel_base::field::T::density(self, p) >= 0.0 {
+        voxel::Material::Terrain
       } else {
-        terrain::voxel::Material::Empty
+        voxel::Material::Empty
       }
     )
   }

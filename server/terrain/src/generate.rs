@@ -11,9 +11,9 @@ use common::lod::LODIndex;
 use common::terrain_block;
 use common::terrain_block::{TerrainBlock, tri};
 
-use terrain::heightmap;
-use terrain;
+use heightmap;
 use voxel;
+use voxel_base;
 
 #[inline]
 fn partial_min<I, It>(mut it: It) -> Option<I>
@@ -75,12 +75,12 @@ fn make_bounds(
   )
 }
 
-/// Generate a `TerrainBlock` based on a given position in a `terrain::voxel::tree::T`.
+/// Generate a `TerrainBlock` based on a given position in a `voxel::tree::T`.
 /// Any necessary voxels will be generated.
 pub fn generate_block(
   id_allocator: &Mutex<IdAllocator<EntityId>>,
   heightmap: &heightmap::T,
-  voxels: &mut terrain::voxel::tree::T,
+  voxels: &mut voxel::tree::T,
   position: &BlockPosition,
   lod_index: LODIndex,
 ) -> TerrainBlock {
@@ -91,25 +91,25 @@ pub fn generate_block(
     let lg_size = terrain_block::LG_SAMPLE_SIZE[lod_index.0 as usize] as i16;
 
     let bounds_at = |v: &Point3<i32>| {
-      voxel::bounds::new(v.x, v.y, v.z, lg_size)
+      voxel_base::bounds::new(v.x, v.y, v.z, lg_size)
     };
 
-    let mut get_voxel = |bounds: &voxel::bounds::T| {
+    let mut get_voxel = |bounds: &voxel_base::bounds::T| {
       let branch = voxels.get_mut_or_create(bounds);
       let r;
       match branch {
-        &mut terrain::voxel::tree::Empty => {
-          r = terrain::voxel::unwrap(terrain::voxel::of_field(heightmap, bounds));
+        &mut voxel::tree::Empty => {
+          r = voxel::unwrap(voxel::of_field(heightmap, bounds));
           *branch =
-            terrain::voxel::tree::Branch {
+            voxel::tree::Branch {
               data: Some(r),
-              branches: Box::new(terrain::voxel::tree::Branches::empty()),
+              branches: Box::new(voxel::tree::Branches::empty()),
             };
         },
-        &mut terrain::voxel::tree::Branch { ref mut data, branches: _ }  => {
+        &mut voxel::tree::Branch { ref mut data, branches: _ }  => {
           match data {
             &mut None => {
-              r = terrain::voxel::unwrap(terrain::voxel::of_field(heightmap, bounds));
+              r = voxel::unwrap(voxel::of_field(heightmap, bounds));
               *data = Some(r);
             },
             &mut Some(ref data) => {
@@ -142,7 +142,7 @@ pub fn generate_block(
       let voxel;
       let bounds = bounds_at(&voxel_position);
       match get_voxel(&bounds) {
-        terrain::voxel::T::Surface(v) => voxel = v,
+        voxel::T::Surface(v) => voxel = v,
         _ => continue,
       }
 
@@ -161,12 +161,12 @@ pub fn generate_block(
         let neighbor_position = voxel_position.add_v(&d_neighbor);
         let neighbor_material;
         match get_voxel(&bounds_at(&neighbor_position)) {
-          terrain::voxel::T::Surface(v) => neighbor_material = v.corner,
-          terrain::voxel::T::Volume(material) => neighbor_material = material,
+          voxel::T::Surface(v) => neighbor_material = v.corner,
+          voxel::T::Volume(material) => neighbor_material = material,
         }
         debug!("edge from {:?} to {:?}", voxel_position, neighbor_position);
         debug!("neighbor is {:?}", neighbor_material);
-        let empty = terrain::voxel::Material::Empty;
+        let empty = voxel::Material::Empty;
         if (voxel.corner == empty) == (neighbor_material == empty) {
           // This edge doesn't cross the surface, and doesn't generate polys.
 
@@ -187,7 +187,7 @@ pub fn generate_block(
               hash_map::Entry::Vacant(entry) => {
                 let bounds = bounds_at(position);
                 match get_voxel(&bounds) {
-                  terrain::voxel::T::Surface(voxel) => {
+                  voxel::T::Surface(voxel) => {
                     let i = coords.len();
                     let vertex = voxel.surface_vertex.to_world_vertex(&bounds);
                     let normal = voxel.normal.to_float_normal();
@@ -224,7 +224,7 @@ pub fn generate_block(
         coords.push(v_center);
         normals.push(n_center);
 
-        if voxel.corner == terrain::voxel::Material::Empty {
+        if voxel.corner == voxel::Material::Empty {
           // The polys are visible from negative infinity.
           polys.push([i1, i2, i_center]);
           polys.push([i2, i3, i_center]);
