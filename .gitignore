@@ -21,3 +21,4 @@
 /.rust/
 
 common/Cargo.lock
+out.txt
