@@ -6,7 +6,7 @@ authors = []
 
 [lib]
 name = "terrain"
-path = "./src/mod.rs"
+path = "mod.rs"
 
 [dependencies]
 clippy = "*"

@@ -10,7 +10,7 @@ authors = [
 
 [lib]
 name = "common"
-path = "src/mod.rs"
+path = "mod.rs"
 
 [dependencies]
 log = "*"
