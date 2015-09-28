@@ -22,7 +22,7 @@ path = "../common"
 version = "*"
 
 [dependencies.voxel]
-path = "./voxel"
+path = "../voxel"
 version = "*"
 
 [dependencies.terrain]
