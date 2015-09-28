@@ -9,10 +9,11 @@ use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::terrain_block::Triangle;
 
-use shaders::terrain::TerrainShader;
 use yaglw::gl_context::GLContext;
 use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
+
+use shaders;
 
 const VERTICES_PER_TRIANGLE: u32 = 3;
 
@@ -75,7 +76,7 @@ impl<'a> TerrainBuffers<'a> {
     &self,
     gl: &mut GLContext,
     texture_unit_alloc: &mut IdAllocator<TextureUnit>,
-    shader: &mut TerrainShader,
+    shader: &mut shaders::terrain::T,
   ) {
     shader.shader.use_shader(gl);
     let mut bind = |name, id| {

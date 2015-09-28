@@ -2,9 +2,11 @@
 
 use cgmath;
 use cgmath::Vector2;
+use std;
 use std::f32::consts::PI;
 use yaglw::gl_context::GLContext;
-use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, DrawMode, VertexAttribData};
+use yaglw::framebuffer::Framebuffer;
+use yaglw::vertex_buffer::{ArrayHandle, GLArray, GLBuffer, GLType, DrawMode, VertexAttribData};
 use yaglw::texture::{Texture2D, TextureUnit};
 
 use common::id_allocator::IdAllocator;
@@ -15,18 +17,21 @@ use gl;
 use gl::types::*;
 use mob_buffers::MobBuffers;
 use player_buffers::PlayerBuffers;
-use shaders::Shaders;
+use shaders;
 use terrain_buffers::TerrainBuffers;
 use vertex::{ColoredVertex, TextureVertex};
 
 const VERTICES_PER_TRIANGLE: usize = 3;
 
+pub const WINDOW_WIDTH: u32 = 1200;
+pub const WINDOW_HEIGHT: u32 = 1024;
+
 /// The state associated with perceiving the world state.
-pub struct View<'a> {
+pub struct T<'a> {
   /// Current OpengL context.
   pub gl: GLContext,
   #[allow(missing_docs)]
-  pub shaders: Shaders<'a>,
+  pub shaders: shaders::T<'a>,
 
   #[allow(missing_docs)]
   pub terrain_buffers: TerrainBuffers<'a>,
@@ -46,109 +51,167 @@ pub struct View<'a> {
   #[allow(missing_docs)]
   pub fontloader: FontLoader,
 
+  pub empty_vao: ArrayHandle<'a>,
+
+  pub deferred_fbo: Framebuffer<'a>,
+  pub normal_texture: Texture2D<'a>,
+  pub normal_unit: TextureUnit,
+  pub depth_texture: Texture2D<'a>,
+  pub depth_unit: TextureUnit,
+  pub position_texture: Texture2D<'a>,
+  pub position_unit: TextureUnit,
+  pub material_texture: Texture2D<'a>,
+  pub material_unit: TextureUnit,
+
   #[allow(missing_docs)]
   pub camera: Camera,
 }
 
-impl<'a> View<'a> {
-  #[allow(missing_docs)]
-  pub fn new(mut gl: GLContext, window_size: Vector2<i32>) -> View<'a> {
-    let mut texture_unit_alloc = IdAllocator::new();
+#[allow(missing_docs)]
+pub fn new<'a>(mut gl: GLContext, window_size: Vector2<i32>) -> T<'a> {
+  let mut texture_unit_alloc = IdAllocator::new();
 
-    let mut shaders = Shaders::new(&mut gl, window_size);
+  let normal_texture = Texture2D::new(&gl);
+  let normal_unit = texture_unit_alloc.allocate();
+  let depth_texture = Texture2D::new(&gl);
+  let depth_unit = texture_unit_alloc.allocate();
+  let position_texture = Texture2D::new(&gl);
+  let position_unit = texture_unit_alloc.allocate();
+  let material_texture = Texture2D::new(&gl);
+  let material_unit = texture_unit_alloc.allocate();
 
-    let terrain_buffers = TerrainBuffers::new(&mut gl);
-    terrain_buffers.bind_glsl_uniforms(
-      &mut gl,
-      &mut texture_unit_alloc,
-      &mut shaders.terrain_shader,
-    );
+  unsafe {
+    let tex = |texture: &Texture2D, unit: &TextureUnit, format: GLenum| {
+      gl::ActiveTexture(unit.gl_id());
+      gl::BindTexture(gl::TEXTURE_2D, texture.handle.gl_id);
+      gl::TexImage2D(gl::TEXTURE_2D, 0, format as i32, WINDOW_WIDTH as i32, WINDOW_HEIGHT as i32, 0, gl::RGB, gl::FLOAT, std::ptr::null());
 
-    let mob_buffers = MobBuffers::new(&mut gl, &shaders.mob_shader);
-    let player_buffers = PlayerBuffers::new(&mut gl, &shaders.mob_shader);
-
-    let buffer = GLBuffer::new(&mut gl, 16 * VERTICES_PER_TRIANGLE);
-    let hud_triangles = {
-      GLArray::new(
-        &mut gl,
-        &shaders.hud_color_shader.shader,
-        &[
-          VertexAttribData { name: "position", size: 3, unit: GLType::Float },
-          VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },
-        ],
-        DrawMode::Triangles,
-        buffer,
-      )
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
     };
 
-    let buffer = GLBuffer::new(&mut gl, 8 * VERTICES_PER_TRIANGLE);
-    let text_triangles =
-      GLArray::new(
-        &mut gl,
-        &shaders.hud_texture_shader.shader,
-        &[
-          VertexAttribData { name: "position", size: 3, unit: GLType::Float },
-          VertexAttribData { name: "texture_position", size: 2, unit: GLType::Float },
-        ],
-        DrawMode::Triangles,
-        buffer,
-      );
+    tex(&normal_texture, &normal_unit, gl::RGB32F);
+    tex(&depth_texture, &depth_unit, gl::R32F);
+    tex(&position_texture, &position_unit, gl::RGB32F);
+    tex(&material_texture, &material_unit, gl::R32UI);
+  }
 
-    let text_textures = Vec::new();
+  let mut shaders = shaders::new(&mut gl, window_size, &position_unit, &depth_unit, &normal_unit, &material_unit);
 
-    let misc_texture_unit = texture_unit_alloc.allocate();
+  let terrain_buffers = TerrainBuffers::new(&mut gl);
+  terrain_buffers.bind_glsl_uniforms(
+    &mut gl,
+    &mut texture_unit_alloc,
+    &mut shaders.terrain,
+  );
 
-    unsafe {
-      gl::FrontFace(gl::CCW);
-      gl::CullFace(gl::BACK);
-      gl::Enable(gl::CULL_FACE);
+  let mob_buffers = MobBuffers::new(&mut gl, &shaders.mob);
+  let player_buffers = PlayerBuffers::new(&mut gl, &shaders.mob);
 
-      gl::Enable(gl::BLEND);
-      gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+  let buffer = GLBuffer::new(&mut gl, 16 * VERTICES_PER_TRIANGLE);
+  let hud_triangles = {
+    GLArray::new(
+      &mut gl,
+      &shaders.hud_color.shader,
+      &[
+        VertexAttribData { name: "position", size: 3, unit: GLType::Float },
+        VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },
+      ],
+      DrawMode::Triangles,
+      buffer,
+    )
+  };
 
-      gl::Enable(gl::LINE_SMOOTH);
-      gl::LineWidth(2.5);
+  let buffer = GLBuffer::new(&mut gl, 8 * VERTICES_PER_TRIANGLE);
+  let text_triangles =
+    GLArray::new(
+      &mut gl,
+      &shaders.hud_texture.shader,
+      &[
+        VertexAttribData { name: "position", size: 3, unit: GLType::Float },
+        VertexAttribData { name: "texture_position", size: 2, unit: GLType::Float },
+      ],
+      DrawMode::Triangles,
+      buffer,
+    );
 
-      gl::Enable(gl::DEPTH_TEST);
-      gl::DepthFunc(gl::LESS);
-      gl::ClearDepth(1.0);
-    }
+  let text_textures = Vec::new();
 
-    unsafe {
-      gl::ActiveTexture(misc_texture_unit.gl_id());
-    }
+  let misc_texture_unit = texture_unit_alloc.allocate();
 
-    let texture_in =
-      shaders.hud_texture_shader.shader.get_uniform_location("texture_in");
-    shaders.hud_texture_shader.shader.use_shader(&mut gl);
-    unsafe {
-      gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
-    }
+  unsafe {
+    gl::FrontFace(gl::CCW);
+    gl::CullFace(gl::BACK);
+    gl::Enable(gl::CULL_FACE);
 
-    View {
-      gl: gl,
-      shaders: shaders,
+    gl::Enable(gl::BLEND);
+    gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
 
-      terrain_buffers: terrain_buffers,
-      mob_buffers: mob_buffers,
-      player_buffers: player_buffers,
-      hud_triangles: hud_triangles,
-      text_triangles: text_triangles,
+    gl::Enable(gl::LINE_SMOOTH);
+    gl::LineWidth(2.5);
 
-      misc_texture_unit: misc_texture_unit,
-      text_textures: text_textures,
-      fontloader: FontLoader::new(),
+    gl::Enable(gl::DEPTH_TEST);
+    gl::DepthFunc(gl::LESS);
+    gl::ClearDepth(1.0);
+  }
 
-      camera: {
-        let fovy = cgmath::rad(3.14 / 3.0);
-        let aspect = window_size.x as f32 / window_size.y as f32;
-        let mut camera = Camera::unit();
-        // Initialize the projection matrix.
-        camera.fov = cgmath::perspective(fovy, aspect, 0.1, 2048.0);
-        // TODO: This should use player rotation from the server.
-        camera.rotate_lateral(PI / 2.0);
-        camera
-      },
-    }
+  let texture_in =
+    shaders.hud_texture.shader.get_uniform_location("texture_in");
+  shaders.hud_texture.shader.use_shader(&mut gl);
+  unsafe {
+    gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
+  }
+
+  let mut deferred_fbo = Framebuffer::new(&gl);
+  deferred_fbo.bind(&mut gl);
+  deferred_fbo.attach_2d(&gl, gl::COLOR_ATTACHMENT0, &normal_texture);
+  deferred_fbo.attach_2d(&gl, gl::COLOR_ATTACHMENT1, &position_texture);
+  deferred_fbo.attach_2d(&gl, gl::COLOR_ATTACHMENT2, &material_texture);
+  deferred_fbo.attach_2d(&gl, gl::DEPTH_ATTACHMENT, &depth_texture);
+
+  let empty_vao = ArrayHandle::new(&gl);
+
+  unsafe {
+    gl::ActiveTexture(misc_texture_unit.gl_id());
+  }
+
+  T {
+    gl: gl,
+    shaders: shaders,
+
+    terrain_buffers: terrain_buffers,
+    mob_buffers: mob_buffers,
+    player_buffers: player_buffers,
+    hud_triangles: hud_triangles,
+    text_triangles: text_triangles,
+
+    misc_texture_unit: misc_texture_unit,
+    text_textures: text_textures,
+    fontloader: FontLoader::new(),
+
+    empty_vao: empty_vao,
+
+    deferred_fbo: deferred_fbo,
+    depth_unit: depth_unit,
+    depth_texture: depth_texture,
+    normal_unit: normal_unit,
+    normal_texture: normal_texture,
+    position_unit: position_unit,
+    position_texture: position_texture,
+    material_unit: material_unit,
+    material_texture: material_texture,
+
+    camera: {
+      let fovy = cgmath::rad(3.14 / 3.0);
+      let aspect = window_size.x as f32 / window_size.y as f32;
+      let mut camera = Camera::unit();
+      // Initialize the projection matrix.
+      camera.fov = cgmath::perspective(fovy, aspect, 0.1, 2048.0);
+      // TODO: This should use player rotation from the server.
+      camera.rotate_lateral(PI / 2.0);
+      camera
+    },
   }
 }

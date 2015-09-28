@@ -14,14 +14,14 @@ use common::entity::EntityId;
 use common::communicate::ClientToServer::*;
 use common::serialize::Copyable;
 
-use view::View;
+use view;
 
 #[allow(missing_docs)]
 pub fn process_event<UpdateServer>(
   sdl: &sdl2::Sdl,
   player_id: EntityId,
   update_server: &mut UpdateServer,
-  view: &mut View,
+  view: &mut view::T,
   window: &mut video::Window,
   event: Event,
 ) where UpdateServer: FnMut(ClientToServer)
@@ -54,7 +54,7 @@ pub fn process_event<UpdateServer>(
 fn key_press<UpdateServer>(
   player_id: EntityId,
   update_server: &mut UpdateServer,
-  view: &mut View,
+  view: &mut view::T,
   key: Keycode,
 ) where UpdateServer: FnMut(ClientToServer)
 {
@@ -152,7 +152,7 @@ fn mouse_move<UpdateServer>(
   sdl: &sdl2::Sdl,
   player_id: EntityId,
   update_server: &mut UpdateServer,
-  view: &mut View,
+  view: &mut view::T,
   window: &mut video::Window,
   x: i32, y: i32,
 ) where UpdateServer: FnMut(ClientToServer)

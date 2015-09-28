@@ -9,7 +9,7 @@ use yaglw::gl_context::GLContext;
 use common::entity::EntityId;
 
 use vertex::ColoredVertex;
-use shaders::color::ColorShader;
+use shaders;
 
 pub const VERTICES_PER_MOB: usize = 36;
 
@@ -25,7 +25,7 @@ impl<'a> MobBuffers<'a> {
   #[allow(missing_docs)]
   pub fn new<'b:'a>(
     gl: &'a mut GLContext,
-    shader: &ColorShader<'b>,
+    shader: &shaders::color::T<'b>,
   ) -> MobBuffers<'b> {
     let buffer = GLBuffer::new(gl, 32 * VERTICES_PER_MOB);
     MobBuffers {

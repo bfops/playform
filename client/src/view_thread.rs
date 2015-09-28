@@ -17,7 +17,7 @@ use common::interval_timer::IntervalTimer;
 use hud::make_hud;
 use process_event::process_event;
 use render::render;
-use view::View;
+use view;
 use view_update::{ClientToView, apply_client_to_view};
 
 pub const FRAMES_PER_SECOND: u64 = 30;
@@ -53,7 +53,8 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   let mut window =
     video.window(
       "Playform",
-      1200, 1024,
+      view::WINDOW_WIDTH, 
+      view::WINDOW_HEIGHT,
     );
 
   let window = window.position(0, 0);
@@ -84,7 +85,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
     Vector2::new(w as i32, h as i32)
   };
 
-  let mut view = View::new(gl, window_size);
+  let mut view = view::new(gl, window_size);
 
   make_hud(&mut view);
 
