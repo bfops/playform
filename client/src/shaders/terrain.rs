@@ -52,13 +52,11 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
       flat in int vs_material;
 
       layout (location = 0) out vec3 normal;
-      layout (location = 1) out float depth;
-      layout (location = 2) out vec3 world_position;
-      layout (location = 3) out int material;
+      layout (location = 1) out vec3 world_position;
+      layout (location = 2) out int material;
 
       void main() {{
         normal = vs_normal;
-        depth = gl_FragCoord.z / gl_FragCoord.w;
         world_position = vs_world_position;
         material = vs_material;
       }}",

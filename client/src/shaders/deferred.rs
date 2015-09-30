@@ -84,7 +84,7 @@ pub fn new<'a, 'b:'a>(
       void main() {{
         vec4 base_color;
 
-        vec2 tex_coord = vec2(0.5, 0.5);
+        vec2 tex_coord = gl_FragCoord.xy / vec2(WINDOW_WIDTH, WINDOW_HEIGHT);
         vec3 world_position = texture(positions, tex_coord).rgb;
         vec3 normal = texture(normals, tex_coord).rgb;
         float depth = texture(depths, tex_coord).r;
@@ -120,7 +120,6 @@ pub fn new<'a, 'b:'a>(
 
         frag_color = fog_component + material_component;
         frag_color = frag_color - frag_color + vec4(normal, 1);
-        frag_color = frag_color - frag_color + vec4(1,1,1,1);
       }}",
       view::WINDOW_WIDTH,
       view::WINDOW_HEIGHT,
