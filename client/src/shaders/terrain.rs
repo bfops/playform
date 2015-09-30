@@ -51,7 +51,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
       in vec3 vs_normal;
       flat in int vs_material;
 
-      // WHY DOES THIS HAVE TO BE A VEC4?
+      // This has to be a vec4 for.. reasons..
       layout (location = 0) out vec4 normal;
       layout (location = 1) out vec4 world_position;
       layout (location = 2) out int material;

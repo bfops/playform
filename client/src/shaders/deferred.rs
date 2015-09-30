@@ -111,6 +111,7 @@ pub fn new<'a, 'b:'a>(
         brightness = clamp(brightness, 0, 1);
         vec3 lighting = brightness * sun.intensity + ambient_light;
 
+        depth = depth - depth;
         float fog_factor = depth / 768;
         float fog_density = 1 - exp(-fog_factor);
         vec3 fog_color = sun.intensity;
@@ -119,7 +120,6 @@ pub fn new<'a, 'b:'a>(
           vec4(clamp(lighting, 0, 1), 1) * base_color * vec4(1, 1, 1, 1 - fog_density);
 
         frag_color = fog_component + material_component;
-        frag_color = frag_color - frag_color + vec4(normal, 1);
       }}",
       view::WINDOW_WIDTH,
       view::WINDOW_HEIGHT,
