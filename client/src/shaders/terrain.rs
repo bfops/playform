@@ -53,12 +53,12 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
 
       layout (location = 0) out vec3 normal;
       layout (location = 1) out vec3 world_position;
-      layout (location = 2) out int material;
+      layout (location = 2) out float material;
 
       void main() {{
         normal = vs_normal;
         world_position = vs_world_position;
-        material = vs_material;
+        material = float(vs_material);
       }}",
     )),
   );

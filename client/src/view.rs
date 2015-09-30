@@ -94,7 +94,7 @@ pub fn new<'a>(mut gl: GLContext, window_size: Vector2<i32>) -> T<'a> {
 
     tex(&normal_texture, &normal_unit, gl::RGB32F, gl::RGB, gl::FLOAT);
     tex(&position_texture, &position_unit, gl::RGB32F, gl::RGB, gl::FLOAT);
-    tex(&material_texture, &material_unit, gl::R32I, gl::RED_INTEGER, gl::INT);
+    tex(&material_texture, &material_unit, gl::R32F, gl::RED, gl::FLOAT);
     tex(&depth_texture, &depth_unit, gl::DEPTH_COMPONENT32F, gl::DEPTH_COMPONENT, gl::FLOAT);
   }
 

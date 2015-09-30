@@ -51,7 +51,7 @@ pub fn new<'a, 'b:'a>(
       uniform sampler2D positions;
       uniform sampler2D depths;
       uniform sampler2D normals;
-      uniform isampler2D materials;
+      uniform sampler2D materials;
 
       layout (location = 0) out vec4 frag_color;
 
@@ -88,7 +88,7 @@ pub fn new<'a, 'b:'a>(
         vec3 world_position = texture(positions, tex_coord).rgb;
         vec3 normal = texture(normals, tex_coord).rgb;
         float depth = texture(depths, tex_coord).r;
-        int material = texture(materials, tex_coord).r;
+        int material = int(texture(materials, tex_coord).r);
 
         if (material == 1) {{
           float grass_amount =
