@@ -15,6 +15,11 @@ pub fn render(
 fn to_fbo(rndr: &mut view::T) {
   rndr.deferred_fbo.bind(&mut rndr.gl);
 
+  unsafe {
+    // Alpha blending messes up our writing of non-color data to color channels.
+    gl::Disable(gl::BLEND);
+  }
+
   &mut rndr.gl.clear_buffer();
 
   set_camera(&mut rndr.shaders.terrain.shader, &mut rndr.gl, &rndr.camera);
@@ -27,6 +32,8 @@ fn to_fbo(rndr: &mut view::T) {
 fn from_fbo(rndr: &mut view::T) {
   unsafe {
     gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, 0);
+
+    gl::Enable(gl::BLEND);
   }
 
   &mut rndr.gl.clear_buffer();
