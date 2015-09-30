@@ -81,10 +81,10 @@ pub fn new<'a>(mut gl: GLContext, window_size: Vector2<i32>) -> T<'a> {
   let material_unit = texture_unit_alloc.allocate();
 
   unsafe {
-    let tex = |texture: &Texture2D, unit: &TextureUnit, format: GLenum| {
+    let tex = |texture: &Texture2D, unit: &TextureUnit, internal_format: GLenum, format: GLenum, typ: GLenum| {
       gl::ActiveTexture(unit.gl_id());
       gl::BindTexture(gl::TEXTURE_2D, texture.handle.gl_id);
-      gl::TexImage2D(gl::TEXTURE_2D, 0, format as i32, WINDOW_WIDTH as i32, WINDOW_HEIGHT as i32, 0, gl::RGB, gl::FLOAT, std::ptr::null());
+      gl::TexImage2D(gl::TEXTURE_2D, 0, internal_format as i32, WINDOW_WIDTH as i32, WINDOW_HEIGHT as i32, 0, format, typ, std::ptr::null());
 
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
@@ -92,10 +92,10 @@ pub fn new<'a>(mut gl: GLContext, window_size: Vector2<i32>) -> T<'a> {
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
     };
 
-    tex(&normal_texture, &normal_unit, gl::RGB32F);
-    tex(&depth_texture, &depth_unit, gl::DEPTH_COMPONENT32F);
-    tex(&position_texture, &position_unit, gl::RGB32F);
-    tex(&material_texture, &material_unit, gl::R32UI);
+    tex(&normal_texture, &normal_unit, gl::RGB32F, gl::RGB, gl::FLOAT);
+    tex(&position_texture, &position_unit, gl::RGB32F, gl::RGB, gl::FLOAT);
+    tex(&material_texture, &material_unit, gl::R32I, gl::RED_INTEGER, gl::INT);
+    tex(&depth_texture, &depth_unit, gl::DEPTH_COMPONENT32F, gl::DEPTH_COMPONENT, gl::FLOAT);
   }
 
   let mut shaders = shaders::new(&mut gl, window_size, &position_unit, &depth_unit, &normal_unit, &material_unit);
@@ -149,8 +149,8 @@ pub fn new<'a>(mut gl: GLContext, window_size: Vector2<i32>) -> T<'a> {
     gl::Enable(gl::BLEND);
     gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
 
-    gl::Enable(gl::LINE_SMOOTH);
-    gl::LineWidth(2.5);
+//    gl::Enable(gl::LINE_SMOOTH);
+//    gl::LineWidth(2.5);
 
     gl::Enable(gl::DEPTH_TEST);
     gl::DepthFunc(gl::LESS);
@@ -164,6 +164,13 @@ pub fn new<'a>(mut gl: GLContext, window_size: Vector2<i32>) -> T<'a> {
     gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
   }
 
+  match gl.get_error() {
+    gl::NO_ERROR => {},
+    err => {
+      panic!("OpenGL error 0x{:x} in setup", err);
+    },
+  }
+
   let mut deferred_fbo = Framebuffer::new(&gl);
   deferred_fbo.bind(&mut gl);
   deferred_fbo.attach_2d(&gl, gl::COLOR_ATTACHMENT0, &normal_texture);
@@ -171,10 +178,21 @@ pub fn new<'a>(mut gl: GLContext, window_size: Vector2<i32>) -> T<'a> {
   deferred_fbo.attach_2d(&gl, gl::COLOR_ATTACHMENT2, &material_texture);
   deferred_fbo.attach_2d(&gl, gl::DEPTH_ATTACHMENT, &depth_texture);
 
+  unsafe {
+    gl::DrawBuffers(3, std::mem::transmute(&[gl::COLOR_ATTACHMENT0, gl::COLOR_ATTACHMENT1, gl::COLOR_ATTACHMENT2]));
+  }
+
   let empty_vao = ArrayHandle::new(&gl);
 
   unsafe {
     gl::ActiveTexture(misc_texture_unit.gl_id());
+  }
+
+  match gl.get_error() {
+    gl::NO_ERROR => {},
+    err => {
+      panic!("OpenGL error 0x{:x} in setup", err);
+    },
   }
 
   T {

@@ -51,13 +51,14 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
       in vec3 vs_normal;
       flat in int vs_material;
 
-      layout (location = 0) out vec3 normal;
-      layout (location = 1) out vec3 world_position;
+      // WHY DOES THIS HAVE TO BE A VEC4?
+      layout (location = 0) out vec4 normal;
+      layout (location = 1) out vec4 world_position;
       layout (location = 2) out int material;
 
       void main() {{
-        normal = vs_normal;
-        world_position = vs_world_position;
+        normal = vec4(vs_normal, 1);
+        world_position = vec4(vs_world_position, 1);
         material = vs_material;
       }}",
     )),
