@@ -87,7 +87,8 @@ pub fn new<'a, 'b:'a>(
         vec2 tex_coord = gl_FragCoord.xy / vec2(WINDOW_WIDTH, WINDOW_HEIGHT);
         vec3 world_position = texture(positions, tex_coord).rgb;
         vec3 normal = texture(normals, tex_coord).rgb;
-        float depth = texture(depths, tex_coord).r;
+        gl_FragDepth = texture(depths, tex_coord).r;
+        float depth = 0;
         int material = int(texture(materials, tex_coord).r);
 
         if (material == 1) {{
@@ -111,7 +112,6 @@ pub fn new<'a, 'b:'a>(
         brightness = clamp(brightness, 0, 1);
         vec3 lighting = brightness * sun.intensity + ambient_light;
 
-        depth = depth - depth;
         float fog_factor = depth / 768;
         float fog_density = 1 - exp(-fog_factor);
         vec3 fog_color = sun.intensity;
