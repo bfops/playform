@@ -28,6 +28,7 @@ Make sure you have:
   * `SDL2`
   * `SDL2_ttf`
   * `libnanomsg`
+  * OpenGL 3.3+
 
 At any point, `--release` can be appended onto `cargo build` or `cargo run` for a slower
 build, but a much more optimized binary.
@@ -43,6 +44,10 @@ both default to running locally (`ipc:///tmp/client.ipc` for the client URL).
 your `rustc`, and then point your `~/.cargo/config` at them.
 
 If you find `playform` itself won't build on the latest `rustc`, please open an issue or file a PR!
+
+## Performance
+
+I mostly work on non-performance stuff because it's more fun, so Playform runs passably on my pretty good computer. If it's too slow for you, try tweaking `max_load_distance` in `client/src/client.rs`. 
 
 ## How to play
 
