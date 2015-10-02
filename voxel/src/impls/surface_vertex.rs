@@ -88,6 +88,7 @@ pub fn of_field<Material, Mosaic>(
 
     let corner_coords = [0.0, 256.0];
     let mut total_weight = 0.0;
+
     macro_rules! weighted(($x:expr, $y:expr, $z:expr) => {{
       let x = if $x == 0 { low.x } else { high.x };
       let y = if $y == 0 { low.y } else { high.y };
@@ -99,16 +100,18 @@ pub fn of_field<Material, Mosaic>(
       Vector3::new(corner_coords[$x], corner_coords[$y], corner_coords[$z]).mul_s(corner)
     }});
 
-    let vertex =
-      weighted!(0, 0, 0) +
-      weighted!(0, 0, 1) +
-      weighted!(0, 1, 0) +
-      weighted!(0, 1, 1) +
-      weighted!(1, 0, 0) +
-      weighted!(1, 0, 1) +
-      weighted!(1, 1, 0) +
-      weighted!(1, 1, 1) +
-      Vector3::new(0.0, 0.0, 0.0);
+    let vertex = 
+      Vector3::new(0.0, 0.0, 0.0)
+      .add_v(&weighted!(0, 0, 0))
+      .add_v(&weighted!(0, 0, 1))
+      .add_v(&weighted!(0, 1, 0))
+      .add_v(&weighted!(0, 1, 1))
+      .add_v(&weighted!(1, 0, 0))
+      .add_v(&weighted!(1, 0, 1))
+      .add_v(&weighted!(1, 1, 0))
+      .add_v(&weighted!(1, 1, 1))
+    ;
+
     let vertex = Point3::from_vec(&vertex.div_s(total_weight));
     let vertex =
       Vertex {

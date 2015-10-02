@@ -98,7 +98,8 @@ impl Player {
             if Physics::reinsert(&mut physics.misc_octree, self.entity_id, bounds, new_bounds).is_some() {
               collided = true;
             } else {
-              self.position.add_self_v(&(v + Vector3::new(0.0, step_height, 0.0)));
+              self.position.add_self_v(&v);
+              self.position.add_self_v(&Vector3::new(0.0, step_height, 0.0));
             }
             break;
           },
@@ -128,7 +129,7 @@ impl Player {
         self.jump_fuel = MAX_JUMP_FUEL;
       }
 
-      self.speed = self.speed - v;
+      self.speed.add_self_v(&-v);
     } else {
       if v.y < 0.0 {
         self.jump_fuel = 0;
@@ -206,9 +207,10 @@ impl Player {
     let walk_v =
         Matrix3::from_axis_angle(&y_axis, cgmath::rad(self.lateral_rotation))
         .mul_v(&self.walk_accel);
-    self.speed = self.speed + walk_v + self.accel;
+    self.speed.add_self_v(&walk_v);
+    self.speed.add_self_v(&self.accel);
     // friction
-    self.speed = self.speed * Vector3::new(0.7, 0.99, 0.7 as f32);
+    self.speed.mul_self_v(&Vector3::new(0.7, 0.99, 0.7 as f32));
   }
 
   /// Changes the player's acceleration by the given `da`.

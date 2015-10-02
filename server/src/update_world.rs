@@ -56,7 +56,7 @@ pub fn update_world(
           (behavior)(server, mob);
         }
 
-        mob.speed = mob.speed - Vector3::new(0.0, 0.1, 0.0 as f32);
+        mob.speed = mob.speed.add_v(&-Vector3::new(0.0, 0.1, 0.0 as f32));
 
         // TODO: This logic is dumb (isolating along components shouldn't be a thing). Change it.
         let delta_p = mob.speed;

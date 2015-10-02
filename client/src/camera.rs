@@ -47,7 +47,7 @@ impl Camera {
 
   #[allow(missing_docs)]
   pub fn projection_matrix(&self) -> Matrix4<GLfloat> {
-    self.fov * self.rotation * self.translation
+    self.fov.mul_m(&self.rotation).mul_m(&self.translation)
   }
 
   #[allow(missing_docs)]
@@ -66,7 +66,7 @@ impl Camera {
         mat.z.x, mat.z.y, mat.z.z, 0.0,
         0.0,     0.0,     0.0,     1.0,
       );
-    self.rotation = self.rotation * mat;
+    self.rotation.mul_self_m(&mat);
   }
 
   /// Rotate the camera around the y axis, by `r` radians. Positive is counterclockwise.

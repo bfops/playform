@@ -2,15 +2,15 @@
 name = "playform-client"
 version = "0.0.0"
 dependencies = [
- "cgmath 0.2.0 (git+https://github.com/bjz/cgmath-rs)",
- "clippy 0.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cgmath 0.3.1 (git+https://github.com/bjz/cgmath-rs)",
+ "clippy 0.0.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "gl 0.0.12 (git+https://github.com/bjz/gl-rs)",
+ "gl 0.1.0 (git+https://github.com/bjz/gl-rs)",
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "playform-common 0.0.0",
- "sdl2 0.8.0 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "sdl2 0.9.1 (git+https://github.com/AngryLawyer/rust-sdl2)",
  "sdl2-sys 0.6.2 (git+https://github.com/AngryLawyer/rust-sdl2)",
  "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
  "thread-scoped 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -23,22 +23,17 @@ name = "advapi32-sys"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "winapi 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "aho-corasick"
-version = "0.3.0"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "memchr 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "memchr 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "bitflags"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "bitflags"
@@ -47,17 +42,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "cgmath"
-version = "0.2.0"
-source = "git+https://github.com/bjz/cgmath-rs#aebe5fd9bfb2daa468754a19a1eac02aa8f959e8"
+version = "0.3.1"
+source = "git+https://github.com/bjz/cgmath-rs#a5df1649344295b539be831de903bdd6fa868e31"
 dependencies = [
  "num 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "clippy"
-version = "0.0.15"
+version = "0.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "unicode-normalization 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -74,27 +69,27 @@ dependencies = [
 
 [[package]]
 name = "gl"
-version = "0.0.12"
-source = "git+https://github.com/bjz/gl-rs#574306583d0865ac704de6c2e32434b1a1535c9d"
+version = "0.1.0"
+source = "git+https://github.com/bjz/gl-rs#36d93dc93d56c24f66ad71d02c4ccc635e3d50c1"
 dependencies = [
- "gl_common 0.0.4 (git+https://github.com/bjz/gl-rs)",
- "gl_generator 0.0.27 (git+https://github.com/bjz/gl-rs)",
+ "gl_common 0.1.0 (git+https://github.com/bjz/gl-rs)",
+ "gl_generator 0.1.0 (git+https://github.com/bjz/gl-rs)",
  "khronos_api 0.0.8 (git+https://github.com/bjz/gl-rs)",
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "gl_common"
-version = "0.0.4"
-source = "git+https://github.com/bjz/gl-rs#574306583d0865ac704de6c2e32434b1a1535c9d"
+version = "0.1.0"
+source = "git+https://github.com/bjz/gl-rs#36d93dc93d56c24f66ad71d02c4ccc635e3d50c1"
 dependencies = [
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "gl_generator"
-version = "0.0.27"
-source = "git+https://github.com/bjz/gl-rs#574306583d0865ac704de6c2e32434b1a1535c9d"
+version = "0.1.0"
+source = "git+https://github.com/bjz/gl-rs#36d93dc93d56c24f66ad71d02c4ccc635e3d50c1"
 dependencies = [
  "khronos_api 0.0.8 (git+https://github.com/bjz/gl-rs)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -106,14 +101,14 @@ name = "kernel32-sys"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "winapi 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "khronos_api"
 version = "0.0.8"
-source = "git+https://github.com/bjz/gl-rs#574306583d0865ac704de6c2e32434b1a1535c9d"
+source = "git+https://github.com/bjz/gl-rs#36d93dc93d56c24f66ad71d02c4ccc635e3d50c1"
 
 [[package]]
 name = "libc"
@@ -130,7 +125,7 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -158,7 +153,7 @@ name = "num"
 version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "rand 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -166,7 +161,7 @@ dependencies = [
 name = "playform-common"
 version = "0.0.0"
 dependencies = [
- "cgmath 0.2.0 (git+https://github.com/bjz/cgmath-rs)",
+ "cgmath 0.3.1 (git+https://github.com/bjz/cgmath-rs)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.4.0 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
  "num 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -177,12 +172,12 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.3.10"
+version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "advapi32-sys 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "winapi 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -190,14 +185,14 @@ name = "regex"
 version = "0.1.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "aho-corasick 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "memchr 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex-syntax 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "aho-corasick 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "memchr 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex-syntax 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "regex-syntax"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -207,20 +202,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "sdl2"
-version = "0.8.0"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#1c55d25eeb2e8c4eec294e98eda564ebc725190a"
+version = "0.9.1"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#5c32081266ad4493d89b47b0b907fc3a28259dbd"
 dependencies = [
- "bitflags 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitflags 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "sdl2-sys 0.6.2 (git+https://github.com/AngryLawyer/rust-sdl2)",
 ]
 
 [[package]]
 name = "sdl2-sys"
 version = "0.6.2"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#1c55d25eeb2e8c4eec294e98eda564ebc725190a"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#5c32081266ad4493d89b47b0b907fc3a28259dbd"
 dependencies = [
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -254,7 +249,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "kernel32-sys 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "winapi 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -264,7 +259,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "winapi"
-version = "0.2.2"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -283,9 +278,9 @@ dependencies = [
 [[package]]
 name = "yaglw"
 version = "0.0.0"
-source = "git+https://github.com/bfops/yaglw#544e7cf36a27d6fd6da32af671e6a0673bcdd105"
+source = "git+https://github.com/bfops/yaglw#ceb0bf4c31567992228ec525d5c1c2e2e268dd00"
 dependencies = [
- "gl 0.0.12 (git+https://github.com/bjz/gl-rs)",
+ "gl 0.1.0 (git+https://github.com/bjz/gl-rs)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
