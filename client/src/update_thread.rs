@@ -13,6 +13,8 @@ use load_terrain::{load_terrain_block, lod_index};
 use server_update::apply_server_update;
 use view_update::ClientToView;
 
+const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 5;
+
 pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServer, QueueBlock>(
   quit: &Mutex<bool>,
   client: &client::T,
@@ -56,11 +58,24 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
           let position = BlockPosition::from_world_position(&position);
           let mut loaded_blocks = client.loaded_blocks.lock().unwrap();
           let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
-          let updates =
+          let mut updates =
             surroundings_loader
             .updates(position)
           ;
-          for (block_position, load_type) in updates {
+          loop {
+            if *client.outstanding_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
+              break;
+            }
+
+            let block_position;
+            let load_type;
+            match updates.next() {
+              None => break,
+              Some((b, l)) => {
+                block_position = b;
+                load_type = l;
+              },
+            }
             let distance = block_position::distance(&position, &block_position);
             match load_type {
               LoadType::Load => {
@@ -78,6 +93,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
                         Copyable(lod),
                       )
                     );
+                    *client.outstanding_terrain_requests.lock().unwrap() += 1;
                   } else {
                     trace!("Not re-loading {:?} at {:?}", block_position, lod);
                   }
@@ -98,6 +114,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
                         Copyable(new_lod),
                       )
                     );
+                    *client.outstanding_terrain_requests.lock().unwrap() += 1;
                   } else {
                     trace!("Not updating {:?} at {:?}", block_position, new_lod);
                   }

@@ -32,6 +32,8 @@ pub struct T {
   pub surroundings_loader: Mutex<SurroundingsLoader>,
   /// A record of all the blocks that have been loaded.
   pub loaded_blocks: Mutex<HashMap<BlockPosition, (TerrainBlock, LODIndex)>>,
+  /// The number of terrain requests that are outstanding,
+  pub outstanding_terrain_requests: Mutex<u32>,
 }
 
 #[allow(missing_docs)]
@@ -61,6 +63,7 @@ pub fn new(client_id: ClientId, player_id: EntityId, position: Point3<f32>) -> T
     max_load_distance: load_distance,
     surroundings_loader: Mutex::new(surroundings_loader),
     loaded_blocks: Mutex::new(HashMap::new()),
+    outstanding_terrain_requests: Mutex::new(0),
   }
 }
 

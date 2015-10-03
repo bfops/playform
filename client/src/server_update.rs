@@ -93,6 +93,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
         update_view(ClientToView::SetClearColor(sun_color));
       },
       ServerToClient::UpdateBlock(block) => {
+        *client.outstanding_terrain_requests.lock().unwrap() -= 1;
         queue_block(block);
       },
     }
