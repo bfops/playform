@@ -19,7 +19,7 @@ use terrain_buffers;
 pub const LOD_THRESHOLDS: [i32; 3] = [2, 16, 32];
 
 /// The main client state.
-pub struct Client {
+pub struct T {
   #[allow(missing_docs)]
   pub id: ClientId,
   #[allow(missing_docs)]
@@ -34,39 +34,37 @@ pub struct Client {
   pub loaded_blocks: Mutex<HashMap<BlockPosition, (TerrainBlock, LODIndex)>>,
 }
 
-impl Client {
-  #[allow(missing_docs)]
-  pub fn new(client_id: ClientId, player_id: EntityId, position: Point3<f32>) -> Client {
-    let mut load_distance = load_distance(terrain_buffers::POLYGON_BUDGET as i32);
+#[allow(missing_docs)]
+pub fn new(client_id: ClientId, player_id: EntityId, position: Point3<f32>) -> T {
+  let mut load_distance = load_distance(terrain_buffers::POLYGON_BUDGET as i32);
 
-    // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-    let max_load_distance = 80;
-    if load_distance > max_load_distance {
-      info!("load_distance {} capped at {}", load_distance, max_load_distance);
-      load_distance = max_load_distance;
-    } else {
-      info!("load_distance {}", load_distance);
-    }
+  // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
+  let max_load_distance = 80;
+  if load_distance > max_load_distance {
+    info!("load_distance {} capped at {}", load_distance, max_load_distance);
+    load_distance = max_load_distance;
+  } else {
+    info!("load_distance {}", load_distance);
+  }
 
-    let surroundings_loader = {
-      SurroundingsLoader::new(
-        max_load_distance,
-        LOD_THRESHOLDS.iter().map(|&x| x).collect(),
-      )
-    };
+  let surroundings_loader = {
+    SurroundingsLoader::new(
+      max_load_distance,
+      LOD_THRESHOLDS.iter().map(|&x| x).collect(),
+    )
+  };
 
-    Client {
-      id: client_id,
-      player_id: player_id,
-      player_position: Mutex::new(position),
-      max_load_distance: load_distance,
-      surroundings_loader: Mutex::new(surroundings_loader),
-      loaded_blocks: Mutex::new(HashMap::new()),
-    }
+  T {
+    id: client_id,
+    player_id: player_id,
+    player_position: Mutex::new(position),
+    max_load_distance: load_distance,
+    surroundings_loader: Mutex::new(surroundings_loader),
+    loaded_blocks: Mutex::new(HashMap::new()),
   }
 }
 
-unsafe impl Sync for Client {}
+unsafe impl Sync for T {}
 
 fn load_distance(mut polygon_budget: i32) -> i32 {
   // TODO: This should try to account for VRAM not used on a per-poly basis.

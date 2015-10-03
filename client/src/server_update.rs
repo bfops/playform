@@ -7,7 +7,7 @@ use common::color::{Color3, Color4};
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
 use common::serialize::Copyable;
 
-use client::Client;
+use client;
 use light;
 use vertex::ColoredVertex;
 use view_update::ClientToView;
@@ -21,7 +21,7 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
 }
 
 pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
-  client: &Client,
+  client: &client::T,
   update_view: &mut UpdateView,
   update_server: &mut UpdateServer,
   queue_block: &mut QueueBlock,

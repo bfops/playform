@@ -6,11 +6,11 @@ use common::block_position::BlockPosition;
 use common::communicate::TerrainBlockSend;
 use common::lod::LODIndex;
 
-use client::{Client, LOD_THRESHOLDS};
+use client;
 use view_update::ClientToView;
 
 pub fn load_terrain_block<UpdateView>(
-  client: &Client,
+  client: &client::T,
   update_view: &mut UpdateView,
   block: TerrainBlockSend,
 ) where
@@ -71,8 +71,8 @@ pub fn lod_index(distance: i32) -> LODIndex {
   assert!(distance >= 0);
   let mut lod = 0;
   while
-    lod < LOD_THRESHOLDS.len()
-    && LOD_THRESHOLDS[lod] < distance
+    lod < client::LOD_THRESHOLDS.len()
+    && client::LOD_THRESHOLDS[lod] < distance
   {
     lod += 1;
   }

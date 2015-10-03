@@ -8,14 +8,14 @@ use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
 use common::serialize::Copyable;
 use common::surroundings_loader::LoadType;
 
-use client::Client;
+use client;
 use load_terrain::{load_terrain_block, lod_index};
 use server_update::apply_server_update;
 use view_update::ClientToView;
 
 pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServer, QueueBlock>(
   quit: &Mutex<bool>,
-  client: &Client,
+  client: &client::T,
   recv_server: &mut RecvServer,
   recv_block: &mut RecvBlock,
   update_view0: &mut UpdateView0,
