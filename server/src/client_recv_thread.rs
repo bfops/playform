@@ -16,7 +16,8 @@ use player::Player;
 use server::{Client, Server};
 use terrain;
 use voxel;
-use update_gaia::{ServerToGaia, LoadReason};
+use update_gaia;
+use update_gaia::LoadReason;
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
   bounds.min.add_v(&bounds.max.to_vec()).mul_s(1.0 / 2.0)
@@ -49,7 +50,7 @@ pub fn apply_client_update<UpdateGaia>(
   update_gaia: &mut UpdateGaia,
   update: ClientToServer,
 ) where
-  UpdateGaia: FnMut(ServerToGaia),
+  UpdateGaia: FnMut(update_gaia::Message),
 {
   stopwatch::time("apply_client_update", move || {
     match update {
@@ -129,7 +130,7 @@ pub fn apply_client_update<UpdateGaia>(
         player.rotate_vertical(v.y);
       },
       ClientToServer::RequestBlock(Copyable(client_id), Copyable(position), Copyable(lod)) => {
-        update_gaia(ServerToGaia::Load(position, lod, LoadReason::ForClient(client_id)));
+        update_gaia(update_gaia::Message::Load(position, lod, LoadReason::ForClient(client_id)));
       },
       ClientToServer::Add(Copyable(player_id)) => {
         let bounds = cast(server, player_id);
@@ -189,7 +190,7 @@ pub fn apply_client_update<UpdateGaia>(
               mosaic: Box::new(tree) as Box<voxel::mosaic::T<Material=terrain::voxel::Material> + Send>,
             };
 
-          update_gaia(ServerToGaia::Brush(brush));
+          update_gaia(update_gaia::Message::Brush(brush));
         });
       },
       ClientToServer::Remove(Copyable(player_id)) => {
@@ -226,7 +227,7 @@ pub fn apply_client_update<UpdateGaia>(
               mosaic: Box::new(sphere) as Box<voxel::mosaic::T<Material=terrain::voxel::Material> + Send>,
             };
           let brush: voxel::brush::T<Box<voxel::mosaic::T<Material=terrain::voxel::Material> + Send>> = brush;
-          update_gaia(ServerToGaia::Brush(brush));
+          update_gaia(update_gaia::Message::Brush(brush));
         });
       },
     };

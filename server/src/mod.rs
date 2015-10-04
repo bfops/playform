@@ -6,7 +6,7 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-#![feature(io)]
+#![feature(box_syntax)]
 #![feature(main)]
 #![feature(plugin)]
 #![feature(test)]

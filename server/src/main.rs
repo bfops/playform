@@ -1,58 +1,23 @@
 use env_logger;
 use nanomsg;
 use std;
-use std::io::Read;
 use std::convert::AsRef;
 use std::env;
-use std::sync::mpsc::{channel, Receiver, TryRecvError};
+use std::sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use std::sync::Mutex;
-use std::thread;
 use stopwatch;
 use thread_scoped;
 use time;
 
+use common::closure_series;
 use common::serialize as binary;
 use common::socket::ReceiveSocket;
 
 use client_recv_thread::apply_client_update;
 use server::Server;
+use update_gaia;
 use update_gaia::update_gaia;
 use update_world::update_world;
-
-// TODO: This is duplicated in the client. Fix that.
-#[allow(missing_docs)]
-trait TryRecv<T> {
-  #[allow(missing_docs)]
-  fn try_recv_opt(&self) -> Option<T>;
-}
-
-impl<T> TryRecv<T> for Receiver<T> where T: Send {
-  fn try_recv_opt(&self) -> Option<T> {
-    match self.try_recv() {
-      Ok(msg) => Some(msg),
-      Err(TryRecvError::Empty) => None,
-      e => Some(e.unwrap()),
-    }
-  }
-}
-
-#[allow(missing_docs)]
-trait MapToBool<T> {
-  #[allow(missing_docs)]
-  fn map_to_bool<F: FnOnce(T)>(self, f: F) -> bool;
-}
-
-impl<T> MapToBool<T> for Option<T> {
-  fn map_to_bool<F: FnOnce(T)>(self, f: F) -> bool {
-    match self {
-      None => false,
-      Some(t) => {
-        f(t);
-        true
-      },
-    }
-  }
-}
 
 #[main]
 fn main() {
@@ -66,9 +31,9 @@ fn main() {
 
   info!("Listening on {}.", listen_url);
 
-  let (gaia_thread_send, gaia_thread_recv) = channel();
+  let (gaia_send, gaia_recv) = channel();
 
-  let gaia_thread_recv = Mutex::new(gaia_thread_recv);
+  let gaia_recv = Mutex::new(gaia_recv);
 
   let listen_socket = ReceiveSocket::new(listen_url.as_ref(), None);
   let listen_socket = Mutex::new(listen_socket);
@@ -76,122 +41,54 @@ fn main() {
   let server = Server::new();
   let server = &server;
 
-  // Add a thread that performs several actions repeatedly in a prioritized order:
-  // Only if an action fails do we try the next action; otherwise, we restart the chain.
-  macro_rules! in_series(
-    ( $($action: expr,)* ) => {
-      loop {
-        $(
-          if $action {
-            continue
-          }
-        )*
-
-        thread::yield_now();
-      }
-    };
-  );
-
-  let quit_upon = Mutex::new(false);
+  let quit_signal = Mutex::new(false);
 
   let mut threads = Vec::new();
 
   unsafe {
-    let gaia_thread_send = gaia_thread_send.clone();
-    let quit_upon = &quit_upon;
+    let server = &server;
+    let gaia_send = gaia_send.clone();
+    let gaia_recv = &gaia_recv;
+    let quit_signal = &quit_signal;
     let listen_socket = &listen_socket;
     threads.push(thread_scoped::scoped(move || {
-      in_series!(
-        {
-          if *quit_upon.lock().unwrap() {
-            return stopwatch::clone()
-          }
-          false
-        },
-        {
-          if server.update_timer.lock().unwrap().update(time::precise_time_ns()) > 0 {
-            update_world(
-              server,
-              &gaia_thread_send,
-            );
-            true
-          } else {
-            false
-          }
-        },
-        {
-          listen_socket.lock().unwrap().try_read()
-            .map_to_bool(|up| {
-              let up = binary::decode(up.as_ref()).unwrap();
-              apply_client_update(server, &mut |block| { gaia_thread_send.send(block).unwrap() }, up)
-            })
-        },
-        {
-          gaia_thread_recv.lock().unwrap().try_recv_opt()
-            .map_to_bool(|up| {
-              update_gaia(server, up)
-            })
-        },
-      );
+      closure_series::new(vec!(
+        quit_upon(&quit_signal),
+        consider_world_update(&server, gaia_send.clone()),
+        network_listen(&listen_socket, server, gaia_send.clone()),
+        consider_gaia_update(&server, &gaia_recv),
+      ))
+      .until_quit();
+
+      stopwatch::clone()
     }));
   }
   unsafe {
-    let gaia_thread_send = gaia_thread_send.clone();
-    let quit_upon = &quit_upon;
+    let server = &server;
+    let gaia_send = gaia_send.clone();
+    let quit_signal = &quit_signal;
     let listen_socket = &listen_socket;
     threads.push(thread_scoped::scoped(move || {
-      in_series!(
-        {
-          if *quit_upon.lock().unwrap() {
-            return stopwatch::clone()
-          }
-          false
-        },
-        {
-          if server.update_timer.lock().unwrap().update(time::precise_time_ns()) > 0 {
-            update_world(
-              server,
-              &gaia_thread_send,
-            );
-            true
-          } else {
-            false
-          }
-        },
-        {
-          listen_socket.lock().unwrap().try_read()
-            .map_to_bool(|up| {
-              let up = binary::decode(up.as_ref()).unwrap();
-              apply_client_update(server, &mut |block| { gaia_thread_send.send(block).unwrap() }, up)
-            })
-        },
-      );
+      closure_series::new(vec!(
+        quit_upon(&quit_signal),
+        consider_world_update(&server, gaia_send.clone()),
+        network_listen(&listen_socket, server, gaia_send.clone()),
+      ))
+      .until_quit();
+
+      stopwatch::clone()
     }));
   }
+
   unsafe {
-    let quit_upon = &quit_upon;
+    let quit_signal = &quit_signal;
     threads.push(thread_scoped::scoped(move || {
-      loop {
-        let mut line = String::new();
-        for c in std::io::stdin().chars() {
-          let c = c.unwrap();
-          if c == '\n' {
-            break
-          }
-          line.push(c);
-        }
-        if line == "quit" {
-          println!("Quitting");
-          *quit_upon.lock().unwrap() = true;
+      closure_series::new(vec!(
+        wait_for_quit(quit_signal),
+      ))
+      .until_quit();
 
-          // Close all sockets.
-          nanomsg::Socket::terminate();
-
-          return stopwatch::clone()
-        } else {
-          println!("Unrecognized command: {:?}", line);
-        }
-      }
+      stopwatch::clone()
     }));
   }
 
@@ -201,4 +98,89 @@ fn main() {
   }
 
   stopwatch::clone().print();
+}
+
+fn quit_upon(signal: &Mutex<bool>) -> closure_series::Closure {
+  box move || {
+    if *signal.lock().unwrap() {
+      closure_series::Quit
+    } else {
+      closure_series::Continue
+    }
+  }
+}
+
+fn consider_world_update(
+  server: &Server, 
+  to_gaia: Sender<update_gaia::Message>,
+) -> closure_series::Closure {
+  box move || {
+    if server.update_timer.lock().unwrap().update(time::precise_time_ns()) > 0 {
+      update_world(
+        server,
+        &to_gaia,
+      );
+      closure_series::Restart
+    } else {
+      closure_series::Continue
+    }
+  }
+}
+
+fn network_listen<'a>(
+  socket: &'a Mutex<ReceiveSocket>, 
+  server: &'a Server, 
+  to_gaia: Sender<update_gaia::Message>,
+) -> closure_series::Closure<'a> {
+  box move || {
+    match socket.lock().unwrap().try_read() {
+      None => closure_series::Continue,
+      Some(up) => {
+        let up = binary::decode(up.as_ref()).unwrap();
+        apply_client_update(server, &mut |block| { to_gaia.send(block).unwrap() }, up);
+        closure_series::Restart
+      },
+    }
+  }
+}
+
+fn consider_gaia_update<'a>(
+  server: &'a Server, 
+  to_gaia: &'a Mutex<Receiver<update_gaia::Message>>,
+) -> closure_series::Closure<'a> {
+  box move || {
+    match to_gaia.lock().unwrap().try_recv() {
+      Ok(up) => {
+        update_gaia(server, up);
+        closure_series::Restart
+      },
+      Err(TryRecvError::Empty) => closure_series::Continue,
+      err => {
+        err.unwrap();
+        unreachable!();
+      },
+    }
+  }
+}
+
+fn wait_for_quit(
+  quit_signal: &Mutex<bool>,
+) -> closure_series::Closure {
+  box move || {
+    let mut line = String::new();
+    std::io::stdin().read_line(&mut line).unwrap();
+
+    if line == "quit\n" {
+      println!("Quitting");
+      *quit_signal.lock().unwrap() = true;
+
+      // Close all sockets.
+      nanomsg::Socket::terminate();
+
+      closure_series::Quit
+    } else {
+      println!("Unrecognized command: {:?}", line);
+      closure_series::Continue
+    }
+  }
 }

@@ -13,7 +13,7 @@ use common::surroundings_loader::{SurroundingsLoader, LoadType};
 
 use physics::Physics;
 use server::Server;
-use update_gaia::ServerToGaia;
+use update_gaia;
 use update_world::load_placeholders;
 
 const MAX_JUMP_FUEL: u32 = 4;
@@ -142,7 +142,7 @@ impl Player {
     server: &Server,
     request_block: &mut RequestBlock,
   ) where
-    RequestBlock: FnMut(ServerToGaia),
+    RequestBlock: FnMut(update_gaia::Message),
   {
     let block_position = BlockPosition::from_world_position(&self.position);
 

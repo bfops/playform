@@ -11,13 +11,13 @@ use common::surroundings_loader::LoadType;
 
 use mob;
 use server::Server;
-use update_gaia::ServerToGaia;
+use update_gaia;
 
 // TODO: Consider removing the IntervalTimer.
 
 pub fn update_world(
   server: &Server,
-  request_block: &Sender<ServerToGaia>,
+  request_block: &Sender<update_gaia::Message>,
 ) {
   let mut request_block = |block| { request_block.send(block).unwrap() };
 
@@ -113,7 +113,7 @@ pub fn load_placeholders<RequestBlock>(
   pos: &BlockPosition,
   load_type: LoadType,
 ) where
-  RequestBlock: FnMut(ServerToGaia),
+  RequestBlock: FnMut(update_gaia::Message),
 {
   match load_type {
     LoadType::Load | LoadType::Update => {

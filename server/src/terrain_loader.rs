@@ -10,7 +10,8 @@ use common::terrain_block::TerrainBlock;
 use in_progress_terrain::InProgressTerrain;
 use physics::Physics;
 use terrain::{Terrain, Seed};
-use update_gaia::{ServerToGaia, LoadReason};
+use update_gaia;
+use update_gaia::LoadReason;
 
 // TODO: Consider factoring this logic such that what to load is separated from how it's loaded.
 
@@ -42,7 +43,7 @@ impl TerrainLoader {
     new_lod: LOD,
     owner: OwnerId,
     load_block: &mut LoadBlock,
-  ) where LoadBlock: FnMut(ServerToGaia)
+  ) where LoadBlock: FnMut(update_gaia::Message)
   {
     let prev_lod;
     let max_lod_changed: bool;
@@ -91,7 +92,7 @@ impl TerrainLoader {
         let mut generate_block = || {
           debug!("{:?} requested from gaia", block_position);
           load_block(
-            ServerToGaia::Load(*block_position, new_lod, LoadReason::Local(owner))
+            update_gaia::Message::Load(*block_position, new_lod, LoadReason::Local(owner))
           );
         };
         match self.terrain.all_blocks.lock().unwrap().get(block_position) {

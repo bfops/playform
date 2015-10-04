@@ -21,6 +21,7 @@ extern crate time;
 extern crate serialize as _serialize;
 
 pub mod block_position;
+pub mod closure_series;
 pub mod color;
 pub mod communicate;
 pub mod cube_shell;

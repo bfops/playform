@@ -19,7 +19,7 @@ pub enum LoadReason {
   ForClient(ClientId),
 }
 
-pub enum ServerToGaia {
+pub enum Message {
   Load(BlockPosition, LODIndex, LoadReason),
   Brush(voxel::brush::T<Box<voxel::mosaic::T<Material=terrain::voxel::Material> + Send>>),
 }
@@ -27,11 +27,11 @@ pub enum ServerToGaia {
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
 pub fn update_gaia(
   server: &Server,
-  update: ServerToGaia,
+  update: Message,
 ) {
   stopwatch::time("update_gaia", move || {
     match update {
-      ServerToGaia::Load(position, lod, load_reason) => {
+      Message::Load(position, lod, load_reason) => {
         stopwatch::time("terrain.load", || {
           // TODO: Just lock `terrain` for the check and then the move;
           // don't lock for the whole time where we're generating the block.
@@ -75,7 +75,7 @@ pub fn update_gaia(
           )
         });
       },
-      ServerToGaia::Brush(brush) => {
+      Message::Brush(brush) => {
         server.terrain_loader.terrain.brush(
           &server.id_allocator,
           &brush,
