@@ -6,10 +6,10 @@ use cgmath::Vector2;
 use common::color::Color4;
 
 use vertex::{ColoredVertex, TextureVertex};
-use view::View;
+use view;
 
 /// Add HUD data into `view`.
-pub fn make_hud<'a, 'b:'a>(view: &'a mut View<'b>) {
+pub fn make_hud<'a, 'b:'a>(view: &'a mut view::T<'b>) {
   let cursor_color = Color4::of_rgba(0.0, 0.0, 0.0, 0.75);
 
   let triangles: Vec<_> =

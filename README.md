@@ -56,6 +56,7 @@ I mostly work on non-performance stuff because it's more fun, so Playform runs p
   * Look around: Mouse
   * Place a tree: Left mouse button
   * Sphere eraser tool: Right mouse button
+  * Toggle HUD: H
 
 One mob spawns that will play "tag" with you: tag it and it will chase you until it tags you back. If you get too far away from it, it'll probably get lost and fall through the planet. It's a little needy.
 

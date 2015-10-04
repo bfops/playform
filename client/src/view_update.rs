@@ -14,7 +14,7 @@ use light::{set_sun, set_ambient_light};
 use mob_buffers::VERTICES_PER_MOB;
 use player_buffers::VERTICES_PER_PLAYER;
 use vertex::ColoredVertex;
-use view::View;
+use view;
 
 /// Messages from the client to the view.
 pub enum ClientToView {
@@ -46,7 +46,7 @@ pub enum ClientToView {
 unsafe impl Send for ClientToView {}
 
 #[allow(missing_docs)]
-pub fn apply_client_to_view(view: &mut View, up: ClientToView) {
+pub fn apply_client_to_view(view: &mut view::T, up: ClientToView) {
   match up {
     ClientToView::MoveCamera(position) => {
       view.camera.translate_to(position);

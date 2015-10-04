@@ -22,7 +22,7 @@ use vertex::{ColoredVertex, TextureVertex};
 const VERTICES_PER_TRIANGLE: usize = 3;
 
 /// The state associated with perceiving the world state.
-pub struct View<'a> {
+pub struct T<'a> {
   /// Current OpengL context.
   pub gl: GLContext,
   #[allow(missing_docs)]
@@ -48,11 +48,14 @@ pub struct View<'a> {
 
   #[allow(missing_docs)]
   pub camera: Camera,
+
+  #[allow(missing_docs)]
+  pub show_hud: bool,
 }
 
-impl<'a> View<'a> {
+impl<'a> T<'a> {
   #[allow(missing_docs)]
-  pub fn new(mut gl: GLContext, window_size: Vector2<i32>) -> View<'a> {
+  pub fn new(mut gl: GLContext, window_size: Vector2<i32>) -> T<'a> {
     let mut texture_unit_alloc = IdAllocator::new();
 
     let mut shaders = Shaders::new(&mut gl, window_size);
@@ -125,7 +128,7 @@ impl<'a> View<'a> {
       gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
     }
 
-    View {
+    T {
       gl: gl,
       shaders: shaders,
 
@@ -149,6 +152,8 @@ impl<'a> View<'a> {
         camera.rotate_lateral(PI / 2.0);
         camera
       },
+
+      show_hud: true,
     }
   }
 }
