@@ -18,6 +18,9 @@ use terrain_buffers;
 /// The distances at which LOD switches.
 pub const LOD_THRESHOLDS: [i32; 3] = [2, 16, 32];
 
+// TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
+const MAX_LOAD_DISTANCE: i32 = 80;
+
 /// The main client state.
 pub struct T {
   #[allow(missing_docs)]
@@ -40,18 +43,16 @@ pub struct T {
 pub fn new(client_id: ClientId, player_id: EntityId, position: Point3<f32>) -> T {
   let mut load_distance = load_distance(terrain_buffers::POLYGON_BUDGET as i32);
 
-  // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-  let max_load_distance = 80;
-  if load_distance > max_load_distance {
-    info!("load_distance {} capped at {}", load_distance, max_load_distance);
-    load_distance = max_load_distance;
+  if load_distance > MAX_LOAD_DISTANCE {
+    info!("load_distance {} capped at {}", load_distance, MAX_LOAD_DISTANCE);
+    load_distance = MAX_LOAD_DISTANCE;
   } else {
     info!("load_distance {}", load_distance);
   }
 
   let surroundings_loader = {
     SurroundingsLoader::new(
-      max_load_distance,
+      load_distance,
       LOD_THRESHOLDS.iter().map(|&x| x).collect(),
     )
   };
