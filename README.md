@@ -24,12 +24,12 @@ Some picture things:
 
 Make sure you have:
 
-  * The **nightly build** of the Rust compiler and package manager, `cargo`.
-  * `libpng`
-  * `SDL2`
-  * `SDL2_ttf`
-  * `libnanomsg`
+  * The **2015-10-01 nightly build** of the Rust compiler and cargo.
   * OpenGL 3.3+
+  * libpng
+  * SDL2
+  * SDL2_ttf
+  * libnanomsg
 
 At any point, `--release` can be appended onto `cargo build` or `cargo run` for a slower
 build, but a much more optimized binary.
