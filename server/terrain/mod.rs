@@ -118,8 +118,8 @@ impl MipMeshMap {
 pub struct Terrain {
   pub mosaic: biome::hills::T,
   // all the blocks that have ever been created.
-  pub all_blocks: MipMeshMap,
-  pub voxels: voxel::tree::T,
+  pub all_blocks: Mutex<MipMeshMap>,
+  pub voxels: Mutex<voxel::tree::T>,
 }
 
 impl Terrain {
@@ -127,39 +127,46 @@ impl Terrain {
   pub fn new(terrain_seed: Seed) -> Terrain {
     Terrain {
       mosaic: biome::hills::new(terrain_seed),
-      all_blocks: MipMeshMap::new(),
-      voxels: voxel::tree::T::new(),
+      all_blocks: Mutex::new(MipMeshMap::new()),
+      voxels: Mutex::new(voxel::tree::T::new()),
     }
   }
 
   /// Load the block of terrain at a given position.
   // TODO: Allow this to be performed in such a way that self is only briefly locked.
-  pub fn load<'a>(
-    &'a mut self,
+  pub fn load<F>(
+    &self,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
     position: &BlockPosition,
     lod_index: LODIndex,
-  ) -> &'a TerrainBlock
+    f: F
+  ) where F: FnOnce(&TerrainBlock)
   {
-    let mip_mesh = self.all_blocks.get_mut(position);
+    let mut all_blocks = self.all_blocks.lock().unwrap();
+    let mip_mesh = all_blocks.get_mut(position);
     let mesh = mip_mesh.get_mut(lod_index.0 as usize);
-    if mesh.is_none() {
-      *mesh = Some(
-        generate::generate_block(
-          id_allocator,
-          &self.mosaic,
-          &mut self.voxels,
-          position,
-          lod_index,
-        )
-      );
+    match mesh {
+      &mut None => {
+        let new_mesh =
+          generate::generate_block(
+            id_allocator,
+            &self.mosaic,
+            &mut *self.voxels.lock().unwrap(),
+            position,
+            lod_index,
+          );
+        f(&new_mesh);
+        *mesh = Some(new_mesh);
+      },
+      &mut Some(ref mesh) => {
+        f(mesh)
+      },
     }
-    mesh.as_ref().unwrap()
   }
 
   /// Apply a voxel brush to the terrain.
   pub fn brush<F, Mosaic>(
-    &mut self,
+    &self,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
     brush: &voxel_base::brush::T<Mosaic>,
     mut block_changed: F,
@@ -173,36 +180,39 @@ impl Terrain {
       range_inclusive(low, high)
     }});
 
-    // Make sure that all the voxels this brush might touch are generated; if they're not generated
-    // now, the brush might "expose" them, the mesh extraction phase will generate them, and there
-    // may be inconsistencies between the brush-altered voxels and the newly-generated ones.
-    for &lg_size in &terrain_block::LG_SAMPLE_SIZE {
-      for x in voxel_range!(x, lg_size) {
-      for y in voxel_range!(y, lg_size) {
-      for z in voxel_range!(z, lg_size) {
-        let bounds = voxel_base::bounds::new(x, y, z, lg_size);
-        let voxel = self.voxels.get_mut_or_create(&bounds);
-        match voxel {
-          &mut voxel::tree::Empty => {
-            *voxel =
-              voxel::tree::TreeBody::leaf(
-                Some(voxel::unwrap(voxel::of_field(&self.mosaic, &bounds)))
-              );
-          },
-          &mut voxel::tree::Branch { ref mut data, branches: _ } => {
-            match data {
-              &mut None => {
-                *data =
-                  Some(voxel::unwrap(voxel::of_field(&self.mosaic, &bounds)));
-              },
-              &mut Some(_) => {},
-            }
-          },
-        }
-      }}}
-    }
+    {
+      let mut voxels = self.voxels.lock().unwrap();
+      // Make sure that all the voxels this brush might touch are generated; if they're not generated
+      // now, the brush might "expose" them, the mesh extraction phase will generate them, and there
+      // may be inconsistencies between the brush-altered voxels and the newly-generated ones.
+      for &lg_size in &terrain_block::LG_SAMPLE_SIZE {
+        for x in voxel_range!(x, lg_size) {
+        for y in voxel_range!(y, lg_size) {
+        for z in voxel_range!(z, lg_size) {
+          let bounds = voxel_base::bounds::new(x, y, z, lg_size);
+          let voxel = voxels.get_mut_or_create(&bounds);
+          match voxel {
+            &mut voxel::tree::Empty => {
+              *voxel =
+                voxel::tree::TreeBody::leaf(
+                  Some(voxel::unwrap(voxel::of_field(&self.mosaic, &bounds)))
+                );
+            },
+            &mut voxel::tree::Branch { ref mut data, branches: _ } => {
+              match data {
+                &mut None => {
+                  *data =
+                    Some(voxel::unwrap(voxel::of_field(&self.mosaic, &bounds)));
+                },
+                &mut Some(_) => {},
+              }
+            },
+          }
+        }}}
+      }
 
-    self.voxels.brush(brush);
+      voxels.brush(brush);
+    }
 
     macro_rules! block_range(($d:ident) => {{
       let low = brush.bounds.min().$d >> terrain_block::LG_WIDTH;
@@ -214,7 +224,8 @@ impl Terrain {
     for y in block_range!(y) {
     for z in block_range!(z) {
       let position = BlockPosition::new(x, y, z);
-      let mip_mesh = self.all_blocks.get_mut(&position);
+      let mut all_blocks = self.all_blocks.lock().unwrap();
+      let mip_mesh = all_blocks.get_mut(&position);
 
       for (i, mesh) in mip_mesh.lods.iter_mut().enumerate() {
         match mesh {
@@ -225,7 +236,7 @@ impl Terrain {
               generate::generate_block(
                 id_allocator,
                 &self.mosaic,
-                &mut self.voxels,
+                &mut *self.voxels.lock().unwrap(),
                 &position,
                 lod_index,
               )

@@ -33,8 +33,7 @@ fn cast(
     ray = player.forward_ray();
   }
 
-  let terrain_loader = server.terrain_loader.lock().unwrap();
-  terrain_loader.terrain.voxels.cast_ray(
+  server.terrain_loader.terrain.voxels.lock().unwrap().cast_ray(
     &ray,
     &mut |bounds, voxel| {
       match voxel {

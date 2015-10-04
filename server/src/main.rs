@@ -134,6 +134,42 @@ fn main() {
         },
       );
     }));
+  }
+  unsafe {
+    let gaia_thread_send = gaia_thread_send.clone();
+    let quit_upon = &quit_upon;
+    let listen_socket = &listen_socket;
+    threads.push(thread_scoped::scoped(move || {
+      in_series!(
+        {
+          if *quit_upon.lock().unwrap() {
+            return stopwatch::clone()
+          }
+          false
+        },
+        {
+          if server.update_timer.lock().unwrap().update(time::precise_time_ns()) > 0 {
+            update_world(
+              server,
+              &gaia_thread_send,
+            );
+            true
+          } else {
+            false
+          }
+        },
+        {
+          listen_socket.lock().unwrap().try_read()
+            .map_to_bool(|up| {
+              let up = binary::decode(up.as_ref()).unwrap();
+              apply_client_update(server, &mut |block| { gaia_thread_send.send(block).unwrap() }, up)
+            })
+        },
+      );
+    }));
+  }
+  unsafe {
+    let quit_upon = &quit_upon;
     threads.push(thread_scoped::scoped(move || {
       loop {
         let mut line = String::new();

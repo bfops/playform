@@ -117,7 +117,7 @@ pub fn load_placeholders<RequestBlock>(
 {
   match load_type {
     LoadType::Load | LoadType::Update => {
-      server.terrain_loader.lock().unwrap().load(
+      server.terrain_loader.load(
         &server.id_allocator,
         &server.physics,
         &pos,
@@ -127,7 +127,7 @@ pub fn load_placeholders<RequestBlock>(
       );
     },
     LoadType::Unload => {
-      server.terrain_loader.lock().unwrap().unload(
+      server.terrain_loader.unload(
         &server.physics,
         &pos,
         owner,

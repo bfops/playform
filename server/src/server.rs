@@ -46,7 +46,7 @@ pub struct Server {
   pub client_allocator: Mutex<IdAllocator<ClientId>>,
 
   pub physics: Mutex<Physics>,
-  pub terrain_loader: Mutex<TerrainLoader>,
+  pub terrain_loader: TerrainLoader,
   pub rng: Mutex<rand::StdRng>,
 
   pub clients: Mutex<HashMap<ClientId, Client>>,
@@ -80,7 +80,7 @@ impl Server {
       client_allocator: Mutex::new(IdAllocator::new()),
 
       physics: Mutex::new(physics),
-      terrain_loader: Mutex::new(TerrainLoader::new()),
+      terrain_loader: TerrainLoader::new(),
       rng: {
         let seed = [0];
         let seed: &[usize] = &seed;

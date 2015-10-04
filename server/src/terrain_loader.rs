@@ -19,23 +19,23 @@ use update_gaia::{ServerToGaia, LoadReason};
 /// The maximum LOD requested is the one that is actually loaded.
 pub struct TerrainLoader {
   pub terrain: Terrain,
-  pub in_progress_terrain: InProgressTerrain,
-  pub lod_map: LODMap,
+  pub in_progress_terrain: Mutex<InProgressTerrain>,
+  pub lod_map: Mutex<LODMap>,
 }
 
 impl TerrainLoader {
   pub fn new() -> TerrainLoader {
     TerrainLoader {
       terrain: Terrain::new(Seed::new(0)),
-      in_progress_terrain: InProgressTerrain::new(),
-      lod_map: LODMap::new(),
+      in_progress_terrain: Mutex::new(InProgressTerrain::new()),
+      lod_map: Mutex::new(LODMap::new()),
     }
   }
 
   // TODO: Avoid the double-lookup when unload and load the same index.
 
   pub fn load<LoadBlock>(
-    &mut self,
+    &self,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
     physics: &Mutex<Physics>,
     block_position: &BlockPosition,
@@ -46,7 +46,9 @@ impl TerrainLoader {
   {
     let prev_lod;
     let max_lod_changed: bool;
-    match self.lod_map.get(block_position, owner) {
+    let mut lod_map = self.lod_map.lock().unwrap();
+    let mut in_progress_terrain = self.in_progress_terrain.lock().unwrap();
+    match lod_map.get(block_position, owner) {
       Some((Some(prev), lods)) => {
         prev_lod = Some(prev);
         if new_lod == prev {
@@ -71,19 +73,19 @@ impl TerrainLoader {
 
     if !max_lod_changed {
       // Maximum LOD is unchanged.
-      let (_, change) = self.lod_map.insert(*block_position, new_lod, owner);
+      let (_, change) = lod_map.insert(*block_position, new_lod, owner);
       assert!(change.is_none());
       return;
     }
 
     match new_lod {
       LOD::Placeholder => {
-        let (_, change) = self.lod_map.insert(*block_position, new_lod, owner);
+        let (_, change) = lod_map.insert(*block_position, new_lod, owner);
         let change = change.unwrap();
         assert!(change.loaded == None);
         assert!(prev_lod == None);
         assert!(change.desired == Some(LOD::Placeholder));
-        self.in_progress_terrain.insert(id_allocator, physics, block_position);
+        in_progress_terrain.insert(id_allocator, physics, block_position);
       },
       LOD::LodIndex(new_lod) => {
         let mut generate_block = || {
@@ -92,7 +94,7 @@ impl TerrainLoader {
             ServerToGaia::Load(*block_position, new_lod, LoadReason::Local(owner))
           );
         };
-        match self.terrain.all_blocks.get(block_position) {
+        match self.terrain.all_blocks.lock().unwrap().get(block_position) {
           None => {
             generate_block();
           },
@@ -108,8 +110,8 @@ impl TerrainLoader {
                   new_lod,
                   owner,
                   physics,
-                  &mut self.lod_map,
-                  &mut self.in_progress_terrain,
+                  &mut *lod_map,
+                  &mut *in_progress_terrain,
                 );
               },
             }
@@ -163,13 +165,13 @@ impl TerrainLoader {
   }
 
   pub fn unload(
-    &mut self,
+    &self,
     physics: &Mutex<Physics>,
     block_position: &BlockPosition,
     owner: OwnerId,
   ) {
     let (_, mlod_change) =
-      self.lod_map.remove(*block_position, owner);
+      self.lod_map.lock().unwrap().remove(*block_position, owner);
 
     let lod_change;
     match mlod_change {
@@ -182,11 +184,11 @@ impl TerrainLoader {
     lod_change.loaded.map(|loaded_lod| {
       match loaded_lod {
         LOD::Placeholder => {
-          self.in_progress_terrain.remove(physics, block_position);
+          self.in_progress_terrain.lock().unwrap().remove(physics, block_position);
         }
         LOD::LodIndex(loaded_lod) => {
           stopwatch::time("terrain_loader.unload", || {
-            match self.terrain.all_blocks.get(block_position) {
+            match self.terrain.all_blocks.lock().unwrap().get(block_position) {
               None => {
                 // Unloaded before the load request completed.
               },

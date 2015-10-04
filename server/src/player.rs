@@ -151,7 +151,7 @@ impl Player {
       for (pos, load_type) in self.surroundings_loader.updates(block_position) {
         match load_type {
           LoadType::Load | LoadType::Update => {
-            server.terrain_loader.lock().unwrap().load(
+            server.terrain_loader.load(
               &server.id_allocator,
               &server.physics,
               &pos,
@@ -161,7 +161,7 @@ impl Player {
             );
           },
           LoadType::Unload => {
-            server.terrain_loader.lock().unwrap().unload(
+            server.terrain_loader.unload(
               &server.physics,
               &pos,
               owner,
