@@ -48,7 +48,7 @@ If you find `playform` itself won't build on the latest `rustc`, please open an 
 
 ## Performance
 
-I mostly work on non-performance stuff because it's more fun, so Playform runs passably on my pretty good computer. If it's too slow for you, try tweaking `max_load_distance` in `client/src/client.rs`. 
+I mostly work on non-performance stuff because it's more fun, so Playform runs passably on my pretty good computer. If it's too slow for you, try tweaking `MAX_LOAD_DISTANCE` in `client/src/client.rs`. 
 
 ## How to play
 
