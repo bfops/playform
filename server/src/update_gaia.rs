@@ -3,6 +3,7 @@
 use std::ops::DerefMut;
 use stopwatch;
 
+use common::communicate;
 use common::communicate::{ClientId, ServerToClient, TerrainBlockSend};
 use common::lod::{LODIndex, OwnerId};
 use common::serialize::Copyable;
@@ -64,11 +65,14 @@ pub fn update_gaia(
               let mut clients = server.clients.lock().unwrap();
               let client = clients.get_mut(&id).unwrap();
               client.send(
-                ServerToClient::UpdateBlock(TerrainBlockSend {
-                  position: Copyable(position),
-                  block: block.clone(),
-                  lod: Copyable(lod),
-                })
+                ServerToClient::Block(
+                  TerrainBlockSend {
+                    position: Copyable(position),
+                    block: block.clone(),
+                    lod: Copyable(lod),
+                  },
+                  communicate::BlockReason::Requested(Copyable(())),
+                )
               );
             },
           }
@@ -83,11 +87,14 @@ pub fn update_gaia(
             let mut clients = server.clients.lock().unwrap();
             for (_, client) in clients.iter_mut() {
               client.send(
-                ServerToClient::UpdateBlock(TerrainBlockSend {
-                  position: Copyable(*position),
-                  block: block.clone(),
-                  lod: Copyable(lod),
-                })
+                ServerToClient::Block(
+                  TerrainBlockSend {
+                    position: Copyable(*position),
+                    block: block.clone(),
+                    lod: Copyable(lod),
+                  },
+                  communicate::BlockReason::Updated(Copyable(())),
+                )
               );
             }
           },

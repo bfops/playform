@@ -4,6 +4,7 @@ use std::f32::consts::PI;
 use stopwatch;
 
 use common::color::{Color3, Color4};
+use common::communicate;
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
 use common::serialize::Copyable;
 
@@ -92,8 +93,13 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
 
         update_view(ClientToView::SetClearColor(sun_color));
       },
-      ServerToClient::UpdateBlock(block) => {
-        *client.outstanding_terrain_requests.lock().unwrap() -= 1;
+      ServerToClient::Block(block, reason) => {
+        match reason {
+          communicate::BlockReason::Updated(Copyable(())) => {},
+          communicate::BlockReason::Requested(Copyable(())) => {
+            *client.outstanding_terrain_requests.lock().unwrap() -= 1;
+          },
+        }
         queue_block(block);
       },
     }

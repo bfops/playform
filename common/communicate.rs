@@ -82,6 +82,22 @@ flatten_enum_impl!(
   (Remove, Copyable(9), Copyable(9), x),
 );
 
+/// Why a block is being sent to a client.
+#[derive(Debug, Clone)]
+pub enum BlockReason {
+  /// The client asked for it.
+  Requested(Copyable<()>),
+  /// The block has been updated.
+  Updated(Copyable<()>),
+}
+
+flatten_enum_impl!(
+  BlockReason,
+  Copyable<u8>,
+  (Requested, Copyable(0), Copyable(0), x),
+  (Updated, Copyable(1), Copyable(1), x),
+);
+
 #[derive(Debug, Clone)]
 /// Messages the server sends to the client.
 pub enum ServerToClient {
@@ -102,7 +118,7 @@ pub enum ServerToClient {
   UpdateSun(Copyable<f32>),
 
   /// Provide a block of terrain to a client.
-  UpdateBlock(TerrainBlockSend),
+  Block(TerrainBlockSend, BlockReason),
 }
 
 flatten_enum_impl!(
@@ -114,5 +130,5 @@ flatten_enum_impl!(
   (UpdatePlayer, Copyable(3), Copyable(3), x, y),
   (UpdateMob, Copyable(4), Copyable(4), x, y),
   (UpdateSun, Copyable(5), Copyable(5), x),
-  (UpdateBlock, Copyable(6), Copyable(6), x),
+  (Block, Copyable(6), Copyable(6), x, y),
 );
