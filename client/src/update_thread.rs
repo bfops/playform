@@ -13,7 +13,7 @@ use load_terrain::{load_terrain_block, lod_index};
 use server_update::apply_server_update;
 use view_update::ClientToView;
 
-const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 5;
+const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 8;
 
 pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServer, QueueBlock>(
   quit: &Mutex<bool>,
