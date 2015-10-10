@@ -24,7 +24,7 @@ Some picture things:
 
 Make sure you have:
 
-  * The **2015-10-01 nightly build** of the Rust compiler and cargo.
+  * The **2015-10-09 nightly build** of the Rust compiler and cargo.
   * OpenGL 3.3+
   * libpng
   * SDL2
