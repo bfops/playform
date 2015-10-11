@@ -21,6 +21,9 @@ version = "*"
 [dependencies.voxel-data]
 git = "https://github.com/bfops/rust-voxel-data"
 
+[dependencies.isosurface-extraction]
+git = "https://github.com/bfops/rust-isosurface-extraction"
+
 [dependencies.cgmath]
 git = "https://github.com/bjz/cgmath-rs"
 

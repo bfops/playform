@@ -3,6 +3,7 @@
 #![allow(let_and_return)]
 #![allow(match_ref_pats)]
 #![allow(type_complexity)]
+
 #![deny(missing_docs)]
 #![deny(warnings)]
 
@@ -11,12 +12,12 @@
 #![feature(range_inclusive)]
 #![feature(test)]
 #![feature(unboxed_closures)]
-#![feature(vec_push_all)]
 
 #![plugin(clippy)]
 
 extern crate cgmath;
 extern crate common;
+extern crate isosurface_extraction;
 #[macro_use]
 extern crate log;
 extern crate noise;

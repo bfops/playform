@@ -3,6 +3,7 @@
 #![allow(let_and_return)]
 #![allow(match_ref_pats)]
 #![allow(type_complexity)]
+
 #![deny(missing_docs)]
 #![deny(warnings)]
 
