@@ -147,9 +147,7 @@ impl field::T for T {
   }
 }
 
-impl mosaic::T for T {
-  type Material = voxel::Material;
-
+impl mosaic::T<voxel::Material> for T {
   fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
     mosaic::T::material(&self.union, p)
   }

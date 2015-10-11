@@ -83,7 +83,7 @@ pub fn generate_block<Mosaic>(
   position: &BlockPosition,
   lod_index: LODIndex,
 ) -> TerrainBlock
-  where Mosaic: voxel_data::mosaic::T<Material=voxel::Material>,
+  where Mosaic: voxel_data::mosaic::T<voxel::Material>,
 {
   stopwatch::time("update.generate_block", || {
     let mut block = TerrainBlock::empty();

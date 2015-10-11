@@ -73,9 +73,7 @@ impl voxel_data::field::T for T {
   }
 }
 
-impl voxel_data::mosaic::T for T {
-  type Material = voxel::Material;
-
+impl voxel_data::mosaic::T<voxel::Material> for T {
   fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
     Some(
       if voxel_data::field::T::density(self, p) >= 0.0 {
