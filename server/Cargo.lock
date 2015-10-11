@@ -15,7 +15,7 @@ dependencies = [
  "terrain 0.0.0",
  "thread-scoped 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)",
- "voxel 0.0.0",
+ "voxel-data 0.0.0 (git+https://github.com/bfops/rust-voxel-data)",
 ]
 
 [[package]]
@@ -198,7 +198,7 @@ dependencies = [
  "rand 0.3.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
  "time 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)",
- "voxel 0.0.0",
+ "voxel-data 0.0.0 (git+https://github.com/bfops/rust-voxel-data)",
 ]
 
 [[package]]
@@ -222,13 +222,13 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "voxel"
+name = "voxel-data"
 version = "0.0.0"
+source = "git+https://github.com/bfops/rust-voxel-data#d6cfae1d064baea80bf70c1a4679ae07235efa74"
 dependencies = [
  "cgmath 0.3.1 (git+https://github.com/bjz/cgmath-rs)",
  "clippy 0.0.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
 ]
 
 [[package]]

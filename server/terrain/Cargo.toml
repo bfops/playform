@@ -18,9 +18,8 @@ time = "*"
 path = "../../common"
 version = "*"
 
-[dependencies.voxel]
-path = "../../voxel"
-version = "*"
+[dependencies.voxel-data]
+git = "https://github.com/bfops/rust-voxel-data"
 
 [dependencies.cgmath]
 git = "https://github.com/bjz/cgmath-rs"

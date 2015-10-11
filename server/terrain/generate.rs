@@ -12,7 +12,7 @@ use common::terrain_block;
 use common::terrain_block::{TerrainBlock, tri};
 
 use voxel;
-use voxel_base;
+use voxel_data;
 
 #[inline]
 fn partial_min<I, It>(mut it: It) -> Option<I>
@@ -83,7 +83,7 @@ pub fn generate_block<Mosaic>(
   position: &BlockPosition,
   lod_index: LODIndex,
 ) -> TerrainBlock
-  where Mosaic: voxel_base::mosaic::T<Material=voxel::Material>,
+  where Mosaic: voxel_data::mosaic::T<Material=voxel::Material>,
 {
   stopwatch::time("update.generate_block", || {
     let mut block = TerrainBlock::empty();
@@ -92,10 +92,10 @@ pub fn generate_block<Mosaic>(
     let lg_size = terrain_block::LG_SAMPLE_SIZE[lod_index.0 as usize] as i16;
 
     let bounds_at = |v: &Point3<i32>| {
-      voxel_base::bounds::new(v.x, v.y, v.z, lg_size)
+      voxel_data::bounds::new(v.x, v.y, v.z, lg_size)
     };
 
-    let mut get_voxel = |bounds: &voxel_base::bounds::T| {
+    let mut get_voxel = |bounds: &voxel_data::bounds::T| {
       let branch = voxels.get_mut_or_create(bounds);
       let r;
       match branch {

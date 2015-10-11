@@ -15,7 +15,7 @@ use common::socket::SendSocket;
 use player::Player;
 use server::{Client, Server};
 use terrain;
-use voxel;
+use voxel_data;
 use update_gaia;
 use update_gaia::LoadReason;
 
@@ -26,7 +26,7 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
 fn cast(
   server: &Server,
   player_id: entity::EntityId,
-) -> Option<voxel::bounds::T> {
+) -> Option<voxel_data::bounds::T> {
   let ray;
   {
     let players = server.players.lock().unwrap();
@@ -166,7 +166,7 @@ pub fn apply_client_update<UpdateGaia>(
           let leaf_radius = leaf_radius as f32;
 
           let tree =
-            voxel::mosaic::translation::T {
+            voxel_data::mosaic::translation::T {
               translation: bottom.to_vec(),
               mosaic: terrain::tree::new(rng, trunk_height, trunk_radius, leaf_radius),
             };
@@ -175,7 +175,7 @@ pub fn apply_client_update<UpdateGaia>(
             bottom.add_v(&Vector3::new(0.0, trunk_height / 2.0, 0.0));
           let r = trunk_height / 2.0 + leaf_radius + 20.0;
           let brush =
-            voxel::brush::T {
+            voxel_data::brush::T {
               bounds:
                 Aabb3::new(
                   {
@@ -187,7 +187,7 @@ pub fn apply_client_update<UpdateGaia>(
                     Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
                   },
                 ),
-              mosaic: Box::new(tree) as Box<voxel::mosaic::T<Material=terrain::voxel::Material> + Send>,
+              mosaic: Box::new(tree) as Box<voxel_data::mosaic::T<Material=terrain::voxel::Material> + Send>,
             };
 
           update_gaia(update_gaia::Message::Brush(brush));
@@ -201,10 +201,10 @@ pub fn apply_client_update<UpdateGaia>(
           let center = bounds.center();
           let r = 8.0;
           let sphere =
-            voxel::mosaic::solid::T {
-              field: voxel::field::translation::T {
+            voxel_data::mosaic::solid::T {
+              field: voxel_data::field::translation::T {
                 translation: center.to_vec(),
-                field: voxel::field::sphere::T {
+                field: voxel_data::field::sphere::T {
                   radius: r,
                 },
               },
@@ -212,7 +212,7 @@ pub fn apply_client_update<UpdateGaia>(
             };
           let r = sphere.field.field.radius + 1.0;
           let brush =
-            voxel::brush::T {
+            voxel_data::brush::T {
               bounds:
                 Aabb3::new(
                   {
@@ -224,9 +224,9 @@ pub fn apply_client_update<UpdateGaia>(
                     Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
                   },
                 ),
-              mosaic: Box::new(sphere) as Box<voxel::mosaic::T<Material=terrain::voxel::Material> + Send>,
+              mosaic: Box::new(sphere) as Box<voxel_data::mosaic::T<Material=terrain::voxel::Material> + Send>,
             };
-          let brush: voxel::brush::T<Box<voxel::mosaic::T<Material=terrain::voxel::Material> + Send>> = brush;
+          let brush: voxel_data::brush::T<Box<voxel_data::mosaic::T<Material=terrain::voxel::Material> + Send>> = brush;
           update_gaia(update_gaia::Message::Brush(brush));
         });
       },

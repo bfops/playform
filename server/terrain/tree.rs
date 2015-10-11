@@ -5,14 +5,14 @@ use cgmath::{Point, Point3, Vector, Vector3, EuclideanVector, Rotation};
 use rand;
 
 use voxel;
-use voxel_base;
-use voxel_base::field;
-use voxel_base::mosaic;
+use voxel_data;
+use voxel_data::field;
+use voxel_data::mosaic;
 
 mod pillar {
   use cgmath::{Point, Point3, Vector3, EuclideanVector};
 
-  use voxel_base::field;
+  use voxel_data::field;
 
   pub struct T {
     pub radius: f32,
@@ -37,7 +37,7 @@ mod pillar {
 
 #[allow(missing_docs)]
 pub struct T {
-  union: voxel_base::mosaic::union::T<voxel::Material>,
+  union: voxel_data::mosaic::union::T<voxel::Material>,
 }
 
 unsafe impl Send for T {}

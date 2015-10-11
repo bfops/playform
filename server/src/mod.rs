@@ -28,7 +28,7 @@ extern crate terrain;
 extern crate test;
 extern crate thread_scoped;
 extern crate time;
-extern crate voxel;
+extern crate voxel_data;
 
 mod client_recv_thread;
 mod in_progress_terrain;

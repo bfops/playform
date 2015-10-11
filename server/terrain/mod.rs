@@ -24,7 +24,7 @@ extern crate rand;
 extern crate stopwatch;
 extern crate test;
 extern crate time;
-extern crate voxel as voxel_base;
+extern crate voxel_data;
 
 mod generate;
 pub mod biome;
@@ -47,7 +47,7 @@ use common::terrain_block::TerrainBlock;
 
 /// Voxel implementation for terrain
 pub mod voxel {
-  pub use voxel_base::impls::surface_vertex::*;
+  pub use voxel_data::impls::surface_vertex::*;
 
   #[derive(Debug, Copy, Clone, PartialEq, Eq)]
   #[allow(missing_docs)]
@@ -62,12 +62,12 @@ pub mod voxel {
 
   #[allow(missing_docs)]
   pub mod tree {
-    use voxel_base;
+    use voxel_data;
 
-    pub use voxel_base::tree::TreeBody::*;
-    pub type T = voxel_base::tree::T<super::T<super::Material>>;
-    pub type TreeBody = voxel_base::tree::TreeBody<super::T<super::Material>>;
-    pub type Branches = voxel_base::tree::Branches<super::T<super::Material>>;
+    pub use voxel_data::tree::TreeBody::*;
+    pub type T = voxel_data::tree::T<super::T<super::Material>>;
+    pub type TreeBody = voxel_data::tree::TreeBody<super::T<super::Material>>;
+    pub type Branches = voxel_data::tree::Branches<super::T<super::Material>>;
   }
 }
 
@@ -168,11 +168,11 @@ impl Terrain {
   pub fn brush<F, Mosaic>(
     &self,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
-    brush: &voxel_base::brush::T<Mosaic>,
+    brush: &voxel_data::brush::T<Mosaic>,
     mut block_changed: F,
   ) where
     F: FnMut(&TerrainBlock, &BlockPosition, LODIndex),
-    Mosaic: voxel_base::mosaic::T<Material=voxel::Material>,
+    Mosaic: voxel_data::mosaic::T<Material=voxel::Material>,
   {
     macro_rules! voxel_range(($d:ident, $scale:expr) => {{
       let low = brush.bounds.min().$d >> $scale;
@@ -189,7 +189,7 @@ impl Terrain {
         for x in voxel_range!(x, lg_size) {
         for y in voxel_range!(y, lg_size) {
         for z in voxel_range!(z, lg_size) {
-          let bounds = voxel_base::bounds::new(x, y, z, lg_size);
+          let bounds = voxel_data::bounds::new(x, y, z, lg_size);
           let voxel = voxels.get_mut_or_create(&bounds);
           match voxel {
             &mut voxel::tree::Empty => {
