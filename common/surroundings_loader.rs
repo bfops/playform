@@ -7,7 +7,43 @@ use block_position::BlockPosition;
 use cube_shell::cube_diff;
 use std::collections::VecDeque;
 use stopwatch;
-use surroundings_iter::SurroundingsIter;
+
+mod surroundings_iter {
+  use cgmath::{Point3};
+  use std;
+
+  use cube_shell::cube_shell;
+
+  struct CubeShellClosure {
+    center: Point3<i32>,
+  }
+
+  impl FnOnce<(i32,)> for CubeShellClosure {
+    type Output = std::vec::IntoIter<Point3<i32>>;
+    extern "rust-call" fn call_once(self, radius: (i32,)) -> Self::Output {
+      cube_shell(&self.center, radius.0).into_iter()
+    }
+  }
+
+  impl FnMut<(i32,)> for CubeShellClosure {
+    extern "rust-call" fn call_mut(&mut self, radius: (i32,)) -> Self::Output {
+      cube_shell(&self.center, radius.0).into_iter()
+    }
+  }
+
+  pub type T = 
+    std::iter::FlatMap<
+      std::ops::Range<i32>, 
+      std::vec::IntoIter<Point3<i32>>,
+      CubeShellClosure,
+    >;
+
+  pub fn new(center: &Point3<i32>, max_distance: i32) -> T {
+    (0 .. max_distance).flat_map(CubeShellClosure {
+      center: center.clone(),
+    })
+  }
+}
 
 #[allow(missing_docs)]
 /// The type of message emitted by `SurroundingsLoader`. This stream of messages maintains
@@ -26,7 +62,7 @@ pub struct SurroundingsLoader {
   last_position: Option<BlockPosition>,
 
   max_load_distance: i32,
-  to_load: Option<SurroundingsIter>,
+  to_load: Option<surroundings_iter::T>,
 
   to_recheck: VecDeque<BlockPosition>,
   // The distances to the switches between LODs.
@@ -57,7 +93,7 @@ impl SurroundingsLoader {
     let position_changed = Some(position) != self.last_position;
     if position_changed {
       stopwatch::time("surroundings_loader.extend", || {
-        self.to_load = Some(SurroundingsIter::new(position, self.max_load_distance));
+        self.to_load = Some(surroundings_iter::new(position.as_pnt(), self.max_load_distance));
         self.last_position.map(|last_position| {
           for &distance in self.lod_thresholds.iter() {
             self.to_recheck.extend(
@@ -103,6 +139,7 @@ impl<'a> Iterator for Updates<'a> {
       } else {
         self.loader.to_load.as_mut().unwrap().next()
           .map(|block_position| {
+            let block_position = BlockPosition::of_pnt(&block_position);
             (block_position, LoadType::Load)
           })
       }

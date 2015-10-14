@@ -16,7 +16,6 @@ pub struct SurroundingsIter {
   center: BlockPosition,
   next_distance: i32,
   max_distance: i32,
-  to_load_buffer: VecDeque<BlockPosition>,
 }
 
 impl SurroundingsIter {

@@ -3,10 +3,12 @@
 
 //! Data structures and functions shared between server and client.
 
+#![feature(box_syntax)]
+#![feature(core)]
+#![feature(iter_cmp)]
+#![feature(range_inclusive)]
 #![feature(test)]
 #![feature(unboxed_closures)]
-#![feature(range_inclusive)]
-#![feature(iter_cmp)]
 
 extern crate cgmath;
 #[macro_use]
@@ -31,7 +33,6 @@ pub mod interval_timer;
 pub mod lod;
 pub mod range_abs;
 pub mod socket;
-pub mod surroundings_iter;
 pub mod surroundings_loader;
 pub mod terrain_block;
 

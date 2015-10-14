@@ -1,5 +1,6 @@
 //! Functions and structures for interacting with cubic shells.
 
+use cgmath::{Point, Point3, Vector3};
 use range_abs::range_abs;
 use std::cmp::{min, max};
 use std::iter::range_inclusive;
@@ -15,7 +16,7 @@ use test::{Bencher, black_box};
 #[inline]
 // TODO: This should return an iterator.
 /// Generate the set of points corresponding to the surface of a cube made of voxels.
-pub fn cube_shell(center: &BlockPosition, radius: i32) -> Vec<BlockPosition> {
+pub fn cube_shell(center: &Point3<i32>, radius: i32) -> Vec<Point3<i32>> {
   let mut shell = Vec::new();
 
   if radius == 0 {
@@ -28,11 +29,7 @@ pub fn cube_shell(center: &BlockPosition, radius: i32) -> Vec<BlockPosition> {
       for dx in $dxs {
         for dy in $dys {
           for dz in $dzs {
-            shell.push(BlockPosition::new(
-              center.as_pnt().x + dx,
-              center.as_pnt().y + dy,
-              center.as_pnt().z + dz,
-            ));
+            shell.push(center.add_v(&Vector3::new(dx, dy, dz)));
           }
         }
       }

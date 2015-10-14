@@ -12,20 +12,22 @@ use terrain_block;
 pub struct BlockPosition(Point3<i32>);
 
 impl BlockPosition {
-  #[inline(always)]
   #[allow(missing_docs)]
   pub fn new(x: i32, y: i32, z: i32) -> BlockPosition {
     BlockPosition(Point3::new(x, y, z))
   }
 
-  #[inline(always)]
+  #[allow(missing_docs)]
+  pub fn of_pnt(p: &Point3<i32>) -> BlockPosition {
+    BlockPosition(p.clone())
+  }
+
   #[allow(missing_docs)]
   pub fn as_pnt<'a>(&'a self) -> &'a Point3<i32> {
     let BlockPosition(ref pnt) = *self;
     pnt
   }
 
-  #[inline(always)]
   #[allow(missing_docs)]
   pub fn as_mut_pnt3<'a>(&'a mut self) -> &'a mut Point3<i32> {
     let BlockPosition(ref mut pnt) = *self;
