@@ -95,7 +95,7 @@ impl SurroundingsLoader {
       stopwatch::time("surroundings_loader.extend", || {
         self.to_load = Some(surroundings_iter::new(position.as_pnt(), self.max_load_distance));
         self.last_position.map(|last_position| {
-          for &distance in self.lod_thresholds.iter() {
+          for &distance in &self.lod_thresholds {
             self.to_recheck.extend(
               cube_diff(&last_position, &position, distance).into_iter()
             );

@@ -21,8 +21,8 @@ pub struct T<'a> {
 }
 
 #[allow(missing_docs)]
-pub fn new<'a>(closures: Vec<Closure<'a>>) -> T<'a> {
-  assert!(closures.len() > 0);
+pub fn new(closures: Vec<Closure>) -> T {
+  assert!(!closures.is_empty());
 
   T {
     closures: closures,
@@ -33,7 +33,7 @@ impl<'a> T<'a> {
   /// Keep running this closure series until a quit signal is received.
   pub fn until_quit(&mut self) {
     loop {
-      for closure in self.closures.iter_mut() {
+      for closure in &mut self.closures {
         match closure() {
           Return::Quit => return,
           Return::Restart => break,

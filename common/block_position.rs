@@ -23,13 +23,13 @@ impl BlockPosition {
   }
 
   #[allow(missing_docs)]
-  pub fn as_pnt<'a>(&'a self) -> &'a Point3<i32> {
+  pub fn as_pnt(&self) -> &Point3<i32> {
     let BlockPosition(ref pnt) = *self;
     pnt
   }
 
   #[allow(missing_docs)]
-  pub fn as_mut_pnt3<'a>(&'a mut self) -> &'a mut Point3<i32> {
+  pub fn as_mut_pnt3(&mut self) -> &mut Point3<i32> {
     let BlockPosition(ref mut pnt) = *self;
     pnt
   }

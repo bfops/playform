@@ -6,9 +6,13 @@
 #![feature(box_syntax)]
 #![feature(core)]
 #![feature(iter_cmp)]
+#![feature(plugin)]
 #![feature(range_inclusive)]
 #![feature(test)]
 #![feature(unboxed_closures)]
+
+#![plugin(clippy)]
+#![allow(type_complexity)]
 
 extern crate cgmath;
 #[macro_use]

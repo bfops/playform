@@ -21,14 +21,12 @@ pub enum LOD {
 }
 
 impl PartialOrd for LOD {
-  #[inline(always)]
   fn partial_cmp(&self, other: &LOD) -> Option<Ordering> {
     Some(self.cmp(other))
   }
 }
 
 impl Ord for LOD {
-  #[inline(always)]
   fn cmp(&self, other: &LOD) -> Ordering {
     match (*self, *other) {
       (LOD::Placeholder, LOD::Placeholder) => Ordering::Equal,

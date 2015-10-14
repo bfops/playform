@@ -13,6 +13,7 @@ name = "common"
 path = "mod.rs"
 
 [dependencies]
+clippy = "*"
 log = "*"
 num = "*"
 time = "*"
