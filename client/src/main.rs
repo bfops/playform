@@ -115,9 +115,9 @@ fn main() {
   }
 }
 
-fn connect_client(listen_url: &String, server: &server::T) -> client::T {
+fn connect_client(listen_url: &str, server: &server::T) -> client::T {
   // TODO: Consider using RPCs to solidify the request-response patterns.
-  server.talk.tell(&ClientToServer::Init(listen_url.clone()));
+  server.talk.tell(&ClientToServer::Init(listen_url.to_owned()));
   loop {
     match server.listen.wait() {
       ServerToClient::LeaseId(client_id) => {

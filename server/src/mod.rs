@@ -2,6 +2,7 @@
 
 #![allow(let_and_return)]
 #![allow(match_ref_pats)]
+#![allow(mutex_atomic)]
 #![allow(type_complexity)]
 
 #![deny(missing_docs)]

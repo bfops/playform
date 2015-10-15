@@ -3,7 +3,7 @@ name = "playform-client"
 version = "0.0.0"
 dependencies = [
  "cgmath 0.3.1 (git+https://github.com/bjz/cgmath-rs)",
- "clippy 0.0.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gl 0.1.0 (git+https://github.com/bjz/gl-rs)",
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -52,7 +52,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.0.19"
+version = "0.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "unicode-normalization 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -162,7 +162,7 @@ name = "playform-common"
 version = "0.0.0"
 dependencies = [
  "cgmath 0.3.1 (git+https://github.com/bjz/cgmath-rs)",
- "clippy 0.0.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.4.0 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
  "num 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -204,7 +204,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "sdl2"
 version = "0.9.1"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#5c32081266ad4493d89b47b0b907fc3a28259dbd"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#a24f76256bd70835507f914136eae4711e53bbac"
 dependencies = [
  "bitflags 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -216,7 +216,7 @@ dependencies = [
 [[package]]
 name = "sdl2-sys"
 version = "0.6.2"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#5c32081266ad4493d89b47b0b907fc3a28259dbd"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#a24f76256bd70835507f914136eae4711e53bbac"
 dependencies = [
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",

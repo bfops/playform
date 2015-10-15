@@ -11,6 +11,8 @@
 #![feature(range_inclusive)]
 #![feature(ptr_as_ref)]
 
+#![allow(mutex_atomic)]
+
 #![plugin(clippy)]
 
 extern crate cgmath;

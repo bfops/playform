@@ -58,14 +58,14 @@ pub struct T {
 unsafe impl Send for T {}
 
 pub fn new(
-  server_url: &String,
-  listen_url: &String,
+  server_url: &str,
+  listen_url: &str,
 ) -> T {
   let (send_send, send_recv) = std::sync::mpsc::channel();
   let (recv_send, recv_recv) = std::sync::mpsc::channel();
 
   let _recv_thread ={
-    let listen_url = listen_url.clone();
+    let listen_url = listen_url.to_owned();
     let recv_send = recv_send.clone();
     std::thread::spawn(move || {
       let mut listen_socket =
@@ -81,7 +81,7 @@ pub fn new(
   };
 
   let _send_thread = {
-    let server_url = server_url.clone();
+    let server_url = server_url.to_owned();
     std::thread::spawn(move || {
       let mut talk_socket =
         SendSocket::new(
