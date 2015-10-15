@@ -3,7 +3,7 @@
 ## Introduction
 
 Playform aspires to be an open-world sandbox game written in Rust, taking
-inspiration from [Voxel Farm](http://procworld.blogspot.com/) and Minecraft.
+inspiration from [Voxel Farm](http://procworld.blogspot.com/) and Minecraft. The dev blog is available [here](http://playformdev.blogspot.com/).
 
 It's currently.. well, very much a WIP. As
 [michaelwu's rust-bindgen fork](https://github.com/michaelwu/rust-bindgen/tree/sm-hacks) supports C++
