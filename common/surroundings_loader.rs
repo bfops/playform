@@ -97,11 +97,13 @@ impl SurroundingsLoader {
         self.last_position.map(|last_position| {
           for &distance in &self.lod_thresholds {
             self.to_recheck.extend(
-              cube_diff(&last_position, &position, distance).into_iter()
+              cube_diff(&last_position.as_pnt(), &position.as_pnt(), distance).into_iter()
+              .map(|p| BlockPosition::of_pnt(&p))
             );
           }
           self.to_recheck.extend(
-            cube_diff(&last_position, &position, self.max_load_distance).into_iter()
+            cube_diff(&last_position.as_pnt(), &position.as_pnt(), self.max_load_distance).into_iter()
+              .map(|p| BlockPosition::of_pnt(&p))
           );
         });
 
