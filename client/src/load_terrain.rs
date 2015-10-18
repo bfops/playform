@@ -1,10 +1,10 @@
 use num;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
 
-use common::block_position;
 use common::block_position::BlockPosition;
 use common::communicate::TerrainBlockSend;
 use common::lod::LODIndex;
+use common::surroundings_loader;
 
 use client;
 use view_update::ClientToView;
@@ -17,8 +17,8 @@ pub fn load_terrain_block<UpdateView>(
   UpdateView: FnMut(ClientToView),
 {
   let player_position =
-    BlockPosition::from_world_position(&client.player_position.lock().unwrap().clone());
-  let distance = block_position::distance(&player_position, &block.position.0);
+    BlockPosition::of_world_position(&client.player_position.lock().unwrap().clone());
+  let distance = surroundings_loader::distance_between(player_position.as_pnt(), block.position.0.as_pnt());
 
   if distance > client.max_load_distance {
     debug!(

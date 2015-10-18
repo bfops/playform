@@ -38,10 +38,11 @@ pub fn update_world(
 
     stopwatch::time("update_world.mobs", || {
       for (_, mob) in server.mobs.lock().unwrap().iter_mut() {
-        let block_position = BlockPosition::from_world_position(&mob.position);
+        let block_position = BlockPosition::of_world_position(&mob.position);
 
         let owner_id = mob.owner_id;
-        for (position, load_type) in mob.surroundings_loader.updates(block_position) {
+        for (position, load_type) in mob.surroundings_loader.updates(block_position.as_pnt()) {
+          let position = BlockPosition::of_pnt(&position);
           load_placeholders(
             owner_id,
             server,

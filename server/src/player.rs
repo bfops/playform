@@ -144,11 +144,12 @@ impl Player {
   ) where
     RequestBlock: FnMut(update_gaia::Message),
   {
-    let block_position = BlockPosition::from_world_position(&self.position);
+    let player_position = BlockPosition::of_world_position(&self.position);
 
     stopwatch::time("update.player.surroundings", || {
       let owner = self.surroundings_owner;
-      for (pos, load_type) in self.surroundings_loader.updates(block_position) {
+      for (pos, load_type) in self.surroundings_loader.updates(player_position.as_pnt()) {
+        let pos = BlockPosition::of_pnt(&pos);
         match load_type {
           LoadType::Load | LoadType::Update => {
             server.terrain_loader.load(
@@ -171,7 +172,8 @@ impl Player {
       }
 
       let owner = self.solid_owner;
-      for (block_position, load_type) in self.solid_boundary.updates(block_position) {
+      for (pos, load_type) in self.solid_boundary.updates(player_position.as_pnt()) {
+        let block_position = BlockPosition::of_pnt(&pos);
         load_placeholders(
           owner,
           server,

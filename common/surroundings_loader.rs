@@ -2,11 +2,12 @@
 //! loaded state (e.g. to keep player surroundings loaded, or to keep unloaded blocks
 //! solid near the player).
 
-use block_position;
-use block_position::BlockPosition;
-use cube_shell::cube_diff;
+use cgmath::Point3;
+use std::cmp::max;
 use std::collections::VecDeque;
 use stopwatch;
+
+use cube_shell::cube_diff;
 
 mod surroundings_iter {
   use cgmath::{Point3};
@@ -55,16 +56,16 @@ pub enum LoadType {
   Update,
 }
 
-/// Iteratively load BlockPositions in cube-shaped layers around the some point.
+/// Iteratively load point3 in cube-shaped layers around the some point.
 /// That point can be updated with calls to `update`.
 /// What "load" exactly means depends on the closures provided.
 pub struct SurroundingsLoader {
-  last_position: Option<BlockPosition>,
+  last_position: Option<Point3<i32>>,
 
   max_load_distance: i32,
   to_load: Option<surroundings_iter::T>,
 
-  to_recheck: VecDeque<BlockPosition>,
+  to_recheck: VecDeque<Point3<i32>>,
   // The distances to the switches between LODs.
   lod_thresholds: Vec<i32>,
 }
@@ -89,31 +90,29 @@ impl SurroundingsLoader {
   }
 
   /// Update the center point around which we load, and load some more blocks.
-  pub fn updates(&mut self, position: BlockPosition) -> Updates {
-    let position_changed = Some(position) != self.last_position;
+  pub fn updates(&mut self, position: &Point3<i32>) -> Updates {
+    let position_changed = self.last_position != Some(*position);
     if position_changed {
       stopwatch::time("surroundings_loader.extend", || {
-        self.to_load = Some(surroundings_iter::new(position.as_pnt(), self.max_load_distance));
+        self.to_load = Some(surroundings_iter::new(&position, self.max_load_distance));
         self.last_position.map(|last_position| {
           for &distance in &self.lod_thresholds {
             self.to_recheck.extend(
-              cube_diff(&last_position.as_pnt(), &position.as_pnt(), distance).into_iter()
-              .map(|p| BlockPosition::of_pnt(&p))
+              cube_diff(&last_position, &position, distance).into_iter()
             );
           }
           self.to_recheck.extend(
-            cube_diff(&last_position.as_pnt(), &position.as_pnt(), self.max_load_distance).into_iter()
-              .map(|p| BlockPosition::of_pnt(&p))
+            cube_diff(&last_position, &position, self.max_load_distance).into_iter()
           );
         });
 
-        self.last_position = Some(position);
+        self.last_position = Some(*position);
       })
     }
 
     Updates {
       loader: self,
-      position: position,
+      position: *position,
     }
   }
 }
@@ -123,27 +122,32 @@ unsafe impl Send for SurroundingsLoader {}
 /// Iterator for the updates from a SurroundingsLoader.
 pub struct Updates<'a> {
   loader: &'a mut SurroundingsLoader,
-  position: BlockPosition,
+  position: Point3<i32>,
+}
+
+/// Find the minimum cube shell radius it would take from one point to intersect the other.
+pub fn distance_between(p1: &Point3<i32>, p2: &Point3<i32>) -> i32 {
+  let dx = (p1.x - p2.x).abs();
+  let dy = (p1.y - p2.y).abs();
+  let dz = (p1.z - p2.z).abs();
+  max(max(dx, dy), dz)
 }
 
 impl<'a> Iterator for Updates<'a> {
-  type Item = (BlockPosition, LoadType);
+  type Item = (Point3<i32>, LoadType);
 
   fn next(&mut self) -> Option<Self::Item> {
     stopwatch::time("surroundings_loader.next", || {
-      if let Some(block_position) = self.loader.to_recheck.pop_front() {
-        let distance = block_position::distance(&self.position, &block_position);
+      if let Some(position) = self.loader.to_recheck.pop_front() {
+        let distance = distance_between(&self.position, &position);
         if distance > self.loader.max_load_distance {
-          Some((block_position, LoadType::Unload))
+          Some((position, LoadType::Unload))
         } else {
-          Some((block_position, LoadType::Update))
+          Some((position, LoadType::Update))
         }
       } else {
         self.loader.to_load.as_mut().unwrap().next()
-          .map(|block_position| {
-            let block_position = BlockPosition::of_pnt(&block_position);
-            (block_position, LoadType::Load)
-          })
+          .map(|position| (position, LoadType::Load))
       }
     })
   }

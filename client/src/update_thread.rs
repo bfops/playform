@@ -2,10 +2,10 @@ use std::sync::Mutex;
 use stopwatch;
 use time;
 
-use common::block_position;
 use common::block_position::BlockPosition;
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
 use common::serialize::Copyable;
+use common::surroundings_loader;
 use common::surroundings_loader::LoadType;
 
 use client;
@@ -54,14 +54,11 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
 
         stopwatch::time("update_surroundings", || {
           let start = time::precise_time_ns();
-          let position = *client.player_position.lock().unwrap();
-          let position = BlockPosition::from_world_position(&position);
+          let player_position = *client.player_position.lock().unwrap();
+          let player_position = BlockPosition::of_world_position(&player_position);
           let mut loaded_blocks = client.loaded_blocks.lock().unwrap();
           let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
-          let mut updates =
-            surroundings_loader
-            .updates(position)
-          ;
+          let mut updates = surroundings_loader.updates(player_position.as_pnt()) ;
           loop {
             if *client.outstanding_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
               break;
@@ -72,11 +69,16 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
             match updates.next() {
               None => break,
               Some((b, l)) => {
-                block_position = b;
+                block_position = BlockPosition::of_pnt(&b);
                 load_type = l;
               },
             }
-            let distance = block_position::distance(&position, &block_position);
+
+            let distance =
+              surroundings_loader::distance_between(
+                player_position.as_pnt(),
+                block_position.as_pnt(),
+              );
             match load_type {
               LoadType::Load => {
                 stopwatch::time("update_thread.load_block", || {

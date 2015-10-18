@@ -1,7 +1,6 @@
 //! Position data structure for terrain blocks.
 
 use cgmath::{Point3, Vector3};
-use std::cmp::max;
 use std::ops::Add;
 
 use terrain_block;
@@ -29,13 +28,13 @@ impl BlockPosition {
   }
 
   #[allow(missing_docs)]
-  pub fn as_mut_pnt3(&mut self) -> &mut Point3<i32> {
+  pub fn as_mut_pnt(&mut self) -> &mut Point3<i32> {
     let BlockPosition(ref mut pnt) = *self;
     pnt
   }
 
   #[allow(missing_docs)]
-  pub fn from_world_position(world_position: &Point3<f32>) -> BlockPosition {
+  pub fn of_world_position(world_position: &Point3<f32>) -> BlockPosition {
     macro_rules! convert_coordinate(
       ($x: expr) => ({
         let x = $x.floor() as i32;
@@ -71,17 +70,9 @@ impl Add<Vector3<i32>> for BlockPosition {
   type Output = BlockPosition;
 
   fn add(mut self, rhs: Vector3<i32>) -> Self {
-    self.as_mut_pnt3().x += rhs.x;
-    self.as_mut_pnt3().y += rhs.y;
-    self.as_mut_pnt3().z += rhs.z;
+    self.as_mut_pnt().x += rhs.x;
+    self.as_mut_pnt().y += rhs.y;
+    self.as_mut_pnt().z += rhs.z;
     self
   }
-}
-
-/// Find the minimum cube shell radius it would take from one point to intersect the other.
-pub fn distance(p1: &BlockPosition, p2: &BlockPosition) -> i32 {
-  let dx = (p1.as_pnt().x - p2.as_pnt().x).abs();
-  let dy = (p1.as_pnt().y - p2.as_pnt().y).abs();
-  let dz = (p1.as_pnt().z - p2.as_pnt().z).abs();
-  max(max(dx, dy), dz)
 }
