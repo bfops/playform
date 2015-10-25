@@ -9,11 +9,13 @@ name = "server"
 path = "./src/mod.rs"
 
 [dependencies]
+bincode = "*"
 clippy = "*"
 env_logger= "*"
 log = "*"
 num = "*"
 rand = "*"
+rustc-serialize = "*"
 thread-scoped = "*"
 time = "*"
 

@@ -5,7 +5,6 @@ use stopwatch;
 use common::communicate;
 use common::communicate::{ClientId, ServerToClient, TerrainBlockSend};
 use common::lod::{LODIndex, OwnerId};
-use common::serialize::Copyable;
 use common::block_position::BlockPosition;
 
 use server::Server;
@@ -62,11 +61,11 @@ pub fn update_gaia(
                   client.send(
                     ServerToClient::Block(
                       TerrainBlockSend {
-                        position: Copyable(position),
+                        position: position,
                         block: block.clone(),
-                        lod: Copyable(lod),
+                        lod: lod,
                       },
-                      communicate::BlockReason::Requested(Copyable(())),
+                      communicate::BlockReason::Requested,
                     )
                   );
                 },
@@ -85,11 +84,11 @@ pub fn update_gaia(
               client.send(
                 ServerToClient::Block(
                   TerrainBlockSend {
-                    position: Copyable(*position),
+                    position: *position,
                     block: block.clone(),
-                    lod: Copyable(lod),
+                    lod: lod,
                   },
-                  communicate::BlockReason::Updated(Copyable(())),
+                  communicate::BlockReason::Updated,
                 )
               );
             }

@@ -16,6 +16,7 @@
 
 #![plugin(clippy)]
 
+extern crate bincode;
 extern crate cgmath;
 extern crate common;
 extern crate env_logger;
@@ -25,6 +26,7 @@ extern crate nanomsg;
 extern crate noise;
 extern crate num;
 extern crate rand;
+extern crate rustc_serialize;
 extern crate stopwatch;
 extern crate terrain;
 extern crate test;

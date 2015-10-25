@@ -9,7 +9,6 @@ use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::interval_timer::IntervalTimer;
 use common::lod::OwnerId;
-use common::serialize;
 use common::socket::SendSocket;
 
 use init_mobs::init_mobs;
@@ -28,7 +27,9 @@ pub struct Client {
 
 impl Client {
   pub fn send(&mut self, msg: ServerToClient) {
-    let msg = serialize::encode(&msg).unwrap();
+    use bincode::SizeLimit;
+    use bincode::rustc_serialize::encode;
+    let msg = encode(&msg, SizeLimit::Infinite).unwrap();
     match self.socket.write(msg.as_ref()) {
       Ok(()) => {},
       Err(err) => warn!("Error sending to client: {:?}", err),

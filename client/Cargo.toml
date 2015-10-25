@@ -13,11 +13,13 @@ name = "client"
 path = "src/mod.rs"
 
 [dependencies]
+bincode = "*"
 clippy = "*"
 env_logger= "*"
 libc = "*"
 log = "*"
 num = "*"
+rustc-serialize = "*"
 thread-scoped = "*"
 time = "*"
 

@@ -4,7 +4,6 @@ use time;
 
 use common::block_position::BlockPosition;
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
-use common::serialize::Copyable;
 use common::surroundings_loader;
 use common::surroundings_loader::LoadType;
 
@@ -90,9 +89,9 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
                   if loaded_lod != Some(lod) {
                     update_server(
                       ClientToServer::RequestBlock(
-                        Copyable(client.id),
-                        Copyable(block_position),
-                        Copyable(lod),
+                        client.id,
+                        block_position,
+                        lod,
                       )
                     );
                     *client.outstanding_terrain_requests.lock().unwrap() += 1;
@@ -111,9 +110,9 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
                   if lod_change == Some(true) {
                     update_server(
                       ClientToServer::RequestBlock(
-                        Copyable(client.id),
-                        Copyable(block_position),
-                        Copyable(new_lod),
+                        client.id,
+                        block_position,
+                        new_lod,
                       )
                     );
                     *client.outstanding_terrain_requests.lock().unwrap() += 1;

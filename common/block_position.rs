@@ -5,7 +5,7 @@ use std::ops::Add;
 
 use terrain_block;
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, RustcEncodable, RustcDecodable)]
 /// Position of blocks on an "infinite" regular grid.
 /// The position is implicitly in units of terrain_block::WIDTH.
 pub struct BlockPosition(Point3<i32>);

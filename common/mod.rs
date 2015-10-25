@@ -19,12 +19,10 @@ extern crate cgmath;
 extern crate log;
 extern crate nanomsg;
 extern crate num;
+extern crate rustc_serialize;
 extern crate stopwatch;
 extern crate test;
 extern crate time;
-
-#[macro_use]
-extern crate serialize as _serialize;
 
 pub mod block_position;
 pub mod closure_series;
@@ -39,5 +37,3 @@ pub mod range_abs;
 pub mod socket;
 pub mod surroundings_loader;
 pub mod terrain_block;
-
-pub use _serialize as serialize;

@@ -15,6 +15,7 @@
 
 #![plugin(clippy)]
 
+extern crate bincode;
 extern crate cgmath;
 extern crate common;
 extern crate env_logger;
@@ -26,6 +27,7 @@ extern crate num;
 extern crate sdl2;
 extern crate sdl2_sys;
 extern crate stopwatch;
+extern crate rustc_serialize;
 extern crate test;
 extern crate thread_scoped;
 extern crate time;

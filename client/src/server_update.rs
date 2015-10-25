@@ -6,7 +6,6 @@ use stopwatch;
 use common::color::{Color3, Color4};
 use common::communicate;
 use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
-use common::serialize::Copyable;
 
 use client;
 use light;
@@ -37,13 +36,13 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
       ServerToClient::LeaseId(_) => {
         warn!("Client ID has already been leased.");
       },
-      ServerToClient::Ping(Copyable(())) => {
-        update_server(ClientToServer::Ping(Copyable(client.id)));
+      ServerToClient::Ping => {
+        update_server(ClientToServer::Ping(client.id));
       },
-      ServerToClient::PlayerAdded(Copyable(id), _) => {
+      ServerToClient::PlayerAdded(id, _) => {
         warn!("Unexpected PlayerAdded event: {:?}.", id);
       },
-      ServerToClient::UpdatePlayer(Copyable(player_id), Copyable(bounds)) => {
+      ServerToClient::UpdatePlayer(player_id, bounds) => {
         let mesh = to_triangles(&bounds, &Color4::of_rgba(0.0, 0.0, 1.0, 1.0));
         update_view(ClientToView::UpdatePlayer(player_id, mesh));
 
@@ -58,11 +57,11 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
         *client.player_position.lock().unwrap() = position;
         update_view(ClientToView::MoveCamera(position));
       },
-      ServerToClient::UpdateMob(Copyable(id), Copyable(bounds)) => {
+      ServerToClient::UpdateMob(id, bounds) => {
         let mesh = to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0));
         update_view(ClientToView::UpdateMob(id, mesh));
       },
-      ServerToClient::UpdateSun(Copyable(fraction)) => {
+      ServerToClient::UpdateSun(fraction) => {
         // Convert to radians.
         let angle = fraction * 2.0 * PI;
         let (s, c) = angle.sin_cos();
@@ -95,8 +94,8 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
       },
       ServerToClient::Block(block, reason) => {
         match reason {
-          communicate::BlockReason::Updated(Copyable(())) => {},
-          communicate::BlockReason::Requested(Copyable(())) => {
+          communicate::BlockReason::Updated => {},
+          communicate::BlockReason::Requested => {
             *client.outstanding_terrain_requests.lock().unwrap() -= 1;
           },
         }

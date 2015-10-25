@@ -6,7 +6,7 @@ use std::collections::hash_map::Entry;
 use std::ops::Add;
 use block_position::BlockPosition;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
 /// A strongly-typed index into various LOD-indexed arrays.
 /// 0 is the highest LOD.
 pub struct LODIndex(pub u32);

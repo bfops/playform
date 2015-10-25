@@ -18,7 +18,7 @@ pub fn load_terrain_block<UpdateView>(
 {
   let player_position =
     BlockPosition::of_world_position(&client.player_position.lock().unwrap().clone());
-  let distance = surroundings_loader::distance_between(player_position.as_pnt(), block.position.0.as_pnt());
+  let distance = surroundings_loader::distance_between(player_position.as_pnt(), block.position.as_pnt());
 
   if distance > client.max_load_distance {
     debug!(
@@ -30,7 +30,7 @@ pub fn load_terrain_block<UpdateView>(
   }
 
   let lod = lod_index(distance);
-  if lod != block.lod.0 {
+  if lod != block.lod {
     debug!(
       "Not loading {:?}: given LOD {:?} is not the desired LOD {:?}.",
       block.position,
@@ -42,9 +42,9 @@ pub fn load_terrain_block<UpdateView>(
 
   let mut updates = Vec::new();
 
-  match client.loaded_blocks.lock().unwrap().entry(block.position.0) {
+  match client.loaded_blocks.lock().unwrap().entry(block.position) {
     Vacant(entry) => {
-      entry.insert((block.block.clone(), block.lod.0));
+      entry.insert((block.block.clone(), block.lod));
     },
     Occupied(mut entry) => {
       {
@@ -54,14 +54,14 @@ pub fn load_terrain_block<UpdateView>(
         for &id in &prev_block.ids {
           updates.push(ClientToView::RemoveTerrain(id));
         }
-        updates.push(ClientToView::RemoveBlockData(block.position.0, prev_lod));
+        updates.push(ClientToView::RemoveBlockData(block.position, prev_lod));
       }
-      entry.insert((block.block.clone(), block.lod.0));
+      entry.insert((block.block.clone(), block.lod));
     },
   };
 
   if !block.block.ids.is_empty() {
-    updates.push(ClientToView::AddBlock(block.position.0, block.block, block.lod.0));
+    updates.push(ClientToView::AddBlock(block.position, block.block, block.lod));
   }
 
   update_view(ClientToView::Atomic(updates));

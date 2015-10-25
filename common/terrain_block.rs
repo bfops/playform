@@ -3,8 +3,6 @@
 use cgmath::{Point3, Vector3, Aabb3};
 
 use entity::EntityId;
-use serialize::{Flatten, MemStream, EOF};
-
 // TODO: Move the server-only parts to the server, like BLOCK_WIDTH and sample_info.
 
 /// Number of LODs
@@ -32,7 +30,7 @@ pub const LG_SAMPLE_SIZE: [i16; LOD_COUNT] = [
   LG_WIDTH - LG_EDGE_SAMPLES[3] as i16,
 ];
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
 /// [T; 3], but serializable.
 pub struct Triangle<T> {
   #[allow(missing_docs)]
@@ -52,7 +50,7 @@ pub fn tri<T>(v1: T, v2: T, v3: T) -> Triangle<T> {
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 /// A small continguous chunk of terrain.
 pub struct TerrainBlock {
   // These Vecs must all be ordered the same way; each entry is the next triangle.
@@ -83,5 +81,3 @@ impl TerrainBlock {
     }
   }
 }
-
-flatten_struct_impl!(TerrainBlock, vertex_coordinates, normals, ids, materials, bounds);

@@ -6,7 +6,6 @@ use stopwatch;
 use thread_scoped;
 
 use common::communicate::{ClientToServer, ServerToClient};
-use common::serialize::Copyable;
 
 use client;
 use server;
@@ -122,10 +121,10 @@ fn connect_client(listen_url: &str, server: &server::T) -> client::T {
     match server.listen.wait() {
       ServerToClient::LeaseId(client_id) => {
         server.talk.tell(&ClientToServer::AddPlayer(client_id));
-        let client_id = client_id.0;
+        let client_id = client_id;
         loop {
           match server.listen.wait() {
-            ServerToClient::PlayerAdded(Copyable(player_id), Copyable(position)) => {
+            ServerToClient::PlayerAdded(player_id, position) => {
               return client::new(client_id, player_id, position);
             },
             msg => {

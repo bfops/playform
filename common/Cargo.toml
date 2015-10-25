@@ -16,6 +16,7 @@ path = "mod.rs"
 clippy = "*"
 log = "*"
 num = "*"
+rustc-serialize = "*"
 time = "*"
 
 [dependencies.cgmath]
@@ -26,6 +27,3 @@ git = "https://github.com/thehydroimpulse/nanomsg.rs"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
-
-[dependencies.serialize]
-path = "./serialize"

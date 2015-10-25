@@ -6,7 +6,6 @@ use stopwatch;
 use common::block_position::BlockPosition;
 use common::communicate::ServerToClient::*;
 use common::lod::{LOD, OwnerId};
-use common::serialize::Copyable;
 use common::surroundings_loader::LoadType;
 
 use mob;
@@ -31,7 +30,7 @@ pub fn update_world(
       for (_, client) in server.clients.lock().unwrap().iter_mut() {
         for &id in &players {
           let bounds = server.physics.lock().unwrap().get_bounds(id).unwrap().clone();
-          client.send(UpdatePlayer(Copyable(id), Copyable(bounds)));
+          client.send(UpdatePlayer(id, bounds));
         }
       }
     });
@@ -75,7 +74,7 @@ pub fn update_world(
 
     server.sun.lock().unwrap().update().map(|fraction| {
       for (_, client) in server.clients.lock().unwrap().iter_mut() {
-        client.send(UpdateSun(Copyable(fraction)));
+        client.send(UpdateSun(fraction));
       }
     });
   });
@@ -101,7 +100,7 @@ fn translate_mob(
 
   for (_, client) in server.clients.lock().unwrap().iter_mut() {
     client.send(
-      UpdateMob(Copyable(mob.entity_id), Copyable(bounds.clone()))
+      UpdateMob(mob.entity_id, bounds.clone())
     );
   }
 }

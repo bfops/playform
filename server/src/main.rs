@@ -1,3 +1,4 @@
+use bincode;
 use env_logger;
 use nanomsg;
 use std;
@@ -10,7 +11,6 @@ use thread_scoped;
 use time;
 
 use common::closure_series;
-use common::serialize as binary;
 use common::socket::ReceiveSocket;
 
 use client_recv_thread::apply_client_update;
@@ -136,7 +136,7 @@ fn network_listen<'a>(
     match socket.lock().unwrap().try_read() {
       None => closure_series::Continue,
       Some(up) => {
-        let up = binary::decode(up.as_ref()).unwrap();
+        let up = bincode::rustc_serialize::decode(up.as_ref()).unwrap();
         apply_client_update(server, &mut |block| { to_gaia.send(block).unwrap() }, up);
         closure_series::Restart
       },

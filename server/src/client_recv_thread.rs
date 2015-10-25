@@ -9,7 +9,6 @@ use stopwatch;
 
 use common::communicate::{ClientToServer, ServerToClient};
 use common::entity;
-use common::serialize::Copyable;
 use common::socket::SendSocket;
 
 use player::Player;
@@ -63,17 +62,17 @@ pub fn apply_client_update<UpdateGaia>(
           };
 
         let client_id = server.client_allocator.lock().unwrap().allocate();
-        client.send(ServerToClient::LeaseId(Copyable(client_id)));
+        client.send(ServerToClient::LeaseId(client_id));
 
         server.clients.lock().unwrap().insert(client_id, client);
       },
-      ClientToServer::Ping(Copyable(client_id)) => {
+      ClientToServer::Ping(client_id) => {
         server.clients.lock().unwrap()
           .get_mut(&client_id)
           .unwrap()
-          .send(ServerToClient::Ping(Copyable(())));
+          .send(ServerToClient::Ping);
       },
-      ClientToServer::AddPlayer(Copyable(client_id)) => {
+      ClientToServer::AddPlayer(client_id) => {
         let mut player =
           Player::new(
             server.id_allocator.lock().unwrap().allocate(),
@@ -97,10 +96,10 @@ pub fn apply_client_update<UpdateGaia>(
         let mut clients = server.clients.lock().unwrap();
         let client = clients.get_mut(&client_id).unwrap();
         client.send(
-          ServerToClient::PlayerAdded(Copyable(id), Copyable(pos))
+          ServerToClient::PlayerAdded(id, pos)
         );
       },
-      ClientToServer::StartJump(Copyable(player_id)) => {
+      ClientToServer::StartJump(player_id) => {
         let mut players = server.players.lock().unwrap();
         let player = players.get_mut(&player_id).unwrap();
         if !player.is_jumping {
@@ -109,7 +108,7 @@ pub fn apply_client_update<UpdateGaia>(
           player.accel.y = player.accel.y + 0.3;
         }
       },
-      ClientToServer::StopJump(Copyable(player_id)) => {
+      ClientToServer::StopJump(player_id) => {
         let mut players = server.players.lock().unwrap();
         let player = players.get_mut(&player_id).unwrap();
         if player.is_jumping {
@@ -118,21 +117,21 @@ pub fn apply_client_update<UpdateGaia>(
           player.accel.y = player.accel.y - 0.3;
         }
       },
-      ClientToServer::Walk(Copyable(player_id), Copyable(v)) => {
+      ClientToServer::Walk(player_id, v) => {
         let mut players = server.players.lock().unwrap();
         let mut player = players.get_mut(&player_id).unwrap();
         player.walk(v);
       },
-      ClientToServer::RotatePlayer(Copyable(player_id), Copyable(v)) => {
+      ClientToServer::RotatePlayer(player_id, v) => {
         let mut players = server.players.lock().unwrap();
         let mut player = players.get_mut(&player_id).unwrap();
         player.rotate_lateral(v.x);
         player.rotate_vertical(v.y);
       },
-      ClientToServer::RequestBlock(Copyable(client_id), Copyable(position), Copyable(lod)) => {
+      ClientToServer::RequestBlock(client_id, position, lod) => {
         update_gaia(update_gaia::Message::Load(position, lod, LoadReason::ForClient(client_id)));
       },
-      ClientToServer::Add(Copyable(player_id)) => {
+      ClientToServer::Add(player_id) => {
         let bounds = cast(server, player_id);
 
         bounds.map(|bounds| {
@@ -193,7 +192,7 @@ pub fn apply_client_update<UpdateGaia>(
           update_gaia(update_gaia::Message::Brush(brush));
         });
       },
-      ClientToServer::Remove(Copyable(player_id)) => {
+      ClientToServer::Remove(player_id) => {
         let bounds = cast(server, player_id);
 
         bounds.map(|bounds| {

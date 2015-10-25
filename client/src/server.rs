@@ -6,26 +6,27 @@ pub mod send {
   use std::sync::mpsc::Sender;
 
   use common::communicate::ClientToServer;
-  use common::serialize;
 
   #[derive(Clone)]
   pub struct T (pub Sender<Vec<u8>>);
 
   impl T {
     pub fn tell(&self, msg: &ClientToServer) {
-      let msg = serialize::encode(msg).unwrap();
+      use bincode::rustc_serialize::encode;
+      use bincode::SizeLimit;
+      let msg = encode(msg, SizeLimit::Infinite).unwrap();
       self.0.send(msg).unwrap();
     }
   }
 }
 
 pub mod recv {
+  use bincode;
   use std;
   use std::sync::mpsc::Receiver;
   use std::sync::mpsc::TryRecvError;
 
   use common::communicate::ServerToClient;
-  use common::serialize;
 
   #[derive(Clone)]
   pub struct T (pub std::sync::Arc<Receiver<Vec<u8>>>);
@@ -33,7 +34,7 @@ pub mod recv {
   impl T {
     pub fn try(&self) -> Option<ServerToClient> {
       match self.0.try_recv() {
-        Ok(msg) => Some(serialize::decode(&msg).unwrap()),
+        Ok(msg) => Some(bincode::rustc_serialize::decode(&msg).unwrap()),
         Err(TryRecvError::Empty) => None,
         e => {
           e.unwrap();
@@ -44,7 +45,7 @@ pub mod recv {
 
     pub fn wait(&self) -> ServerToClient {
       let msg = self.0.recv().unwrap();
-      serialize::decode(msg.as_ref()).unwrap()
+      bincode::rustc_serialize::decode(msg.as_ref()).unwrap()
     }
   }
 }

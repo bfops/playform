@@ -3,7 +3,7 @@
 use std::default::Default;
 use std::ops::Add;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 /// Unique ID for a loaded entity.
 pub struct EntityId(u32);
 
