@@ -65,7 +65,7 @@ dependencies = [
 [[package]]
 name = "isosurface-extraction"
 version = "0.0.0"
-source = "git+https://github.com/bfops/rust-isosurface-extraction#d3cf86345ea0445fe02c9aa51216f8dff87a1e13"
+source = "git+https://github.com/bfops/rust-isosurface-extraction#90f43597c07a9347a6f94cd33915a6b89235c8b6"
 dependencies = [
  "cgmath 0.3.1 (git+https://github.com/bjz/cgmath-rs)",
  "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -237,7 +237,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "voxel-data"
 version = "0.0.0"
-source = "git+https://github.com/bfops/rust-voxel-data#cc4ffd1b09472126cd65909c6d13c462d094d57d"
+source = "git+https://github.com/bfops/rust-voxel-data#1aa5b5e9712fe0bd50877de44f14beb854722d69"
 dependencies = [
  "cgmath 0.3.1 (git+https://github.com/bjz/cgmath-rs)",
  "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
