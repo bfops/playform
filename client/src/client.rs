@@ -2,7 +2,7 @@
 
 use cgmath::Point3;
 use std::collections::HashMap;
-use std::iter::range_inclusive;
+use num::iter::range_inclusive;
 use std::sync::Mutex;
 
 use common::block_position::BlockPosition;

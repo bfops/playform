@@ -9,7 +9,6 @@
 
 #![feature(main)]
 #![feature(plugin)]
-#![feature(range_inclusive)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 
@@ -26,6 +25,7 @@ extern crate stopwatch;
 extern crate test;
 extern crate time;
 extern crate voxel_data;
+extern crate num;
 
 mod generate;
 pub mod biome;
@@ -36,7 +36,7 @@ pub use noise::Seed;
 
 use cgmath::Aabb;
 use std::collections::hash_map::HashMap;
-use std::iter::range_inclusive;
+use num::iter::range_inclusive;
 use std::sync::Mutex;
 
 use common::block_position::BlockPosition;

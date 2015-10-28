@@ -7,7 +7,6 @@
 #![feature(core)]
 #![feature(iter_cmp)]
 #![feature(plugin)]
-#![feature(range_inclusive)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 

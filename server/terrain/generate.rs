@@ -1,9 +1,9 @@
 use cgmath::{Aabb3, Point3, Point, Vector3};
 use isosurface_extraction::dual_contouring;
-use std;
 use std::sync::Mutex;
 use stopwatch;
 use voxel_data;
+use num::iter::range_inclusive;
 
 use common::block_position::BlockPosition;
 use common::entity::EntityId;
@@ -179,9 +179,9 @@ pub fn generate_block<Mosaic>(
 
     {
       let mut edges = |direction, low_x, high_x, low_y, high_y, low_z, high_z| {
-        for x in std::iter::range_inclusive(low_x, high_x) {
-        for y in std::iter::range_inclusive(low_y, high_y) {
-        for z in std::iter::range_inclusive(low_z, high_z) {
+        for x in range_inclusive(low_x, high_x) {
+        for y in range_inclusive(low_y, high_y) {
+        for z in range_inclusive(low_z, high_z) {
           let edge = 
             dual_contouring::edge::T {
               low_corner: Point3::new(x, y, z),

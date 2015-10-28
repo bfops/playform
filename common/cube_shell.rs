@@ -3,7 +3,7 @@
 use cgmath::{Point, Point3, Vector3};
 use range_abs::range_abs;
 use std::cmp::{min, max};
-use std::iter::range_inclusive;
+use num::iter::range_inclusive;
 
 #[cfg(test)]
 use std::collections::HashSet;
