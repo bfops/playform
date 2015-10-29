@@ -8,7 +8,6 @@
 #![feature(plugin)]
 #![feature(test)]
 #![feature(unboxed_closures)]
-#![feature(range_inclusive)]
 #![feature(ptr_as_ref)]
 
 #![allow(mutex_atomic)]

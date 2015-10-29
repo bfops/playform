@@ -226,6 +226,7 @@ dependencies = [
  "isosurface-extraction 0.0.0 (git+https://github.com/bfops/rust-isosurface-extraction)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "noise 0.1.5 (git+https://github.com/bjz/noise-rs)",
+ "num 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "playform-common 0.0.0",
  "rand 0.3.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",

@@ -13,6 +13,7 @@ clippy = "*"
 log = "*"
 rand = "*"
 time = "*"
+num = "*"
 
 [dependencies.playform-common]
 path = "../../common"
