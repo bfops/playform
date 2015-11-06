@@ -26,11 +26,11 @@ extern crate voxel_data;
 
 pub mod closure_series;
 pub mod color;
-pub mod communicate;
 pub mod cube_shell;
 pub mod entity_id;
 pub mod id_allocator;
 pub mod interval_timer;
+pub mod protocol;
 pub mod range_abs;
 pub mod socket;
 pub mod surroundings_loader;

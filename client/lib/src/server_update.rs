@@ -5,8 +5,7 @@ use stopwatch;
 use voxel_data;
 
 use common::color::{Color3, Color4};
-use common::communicate;
-use common::communicate::{ClientToServer, ServerToClient};
+use common::protocol;
 use common::voxel;
 
 use client;
@@ -27,24 +26,24 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
   update_view: &mut UpdateView,
   update_server: &mut UpdateServer,
   queue_block: &mut QueueBlock,
-  update: ServerToClient,
+  update: protocol::ServerToClient,
 ) where
   UpdateView: FnMut(ClientToView),
-  UpdateServer: FnMut(ClientToServer),
+  UpdateServer: FnMut(protocol::ClientToServer),
   QueueBlock: FnMut(voxel::T, voxel_data::bounds::T),
 {
   stopwatch::time("apply_server_update", move || {
     match update {
-      ServerToClient::LeaseId(_) => {
+      protocol::ServerToClient::LeaseId(_) => {
         warn!("Client ID has already been leased.");
       },
-      ServerToClient::Ping => {
-        update_server(ClientToServer::Ping(client.id));
+      protocol::ServerToClient::Ping => {
+        update_server(protocol::ClientToServer::Ping(client.id));
       },
-      ServerToClient::PlayerAdded(id, _) => {
+      protocol::ServerToClient::PlayerAdded(id, _) => {
         warn!("Unexpected PlayerAdded event: {:?}.", id);
       },
-      ServerToClient::UpdatePlayer(player_id, bounds) => {
+      protocol::ServerToClient::UpdatePlayer(player_id, bounds) => {
         let mesh = to_triangles(&bounds, &Color4::of_rgba(0.0, 0.0, 1.0, 1.0));
         update_view(ClientToView::UpdatePlayer(player_id, mesh));
 
@@ -59,11 +58,11 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
         *client.player_position.lock().unwrap() = position;
         update_view(ClientToView::MoveCamera(position));
       },
-      ServerToClient::UpdateMob(id, bounds) => {
+      protocol::ServerToClient::UpdateMob(id, bounds) => {
         let mesh = to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0));
         update_view(ClientToView::UpdateMob(id, mesh));
       },
-      ServerToClient::UpdateSun(fraction) => {
+      protocol::ServerToClient::UpdateSun(fraction) => {
         // Convert to radians.
         let angle = fraction * 2.0 * PI;
         let (s, c) = angle.sin_cos();
@@ -94,11 +93,11 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
 
         update_view(ClientToView::SetClearColor(sun_color));
       },
-      ServerToClient::Voxel(block, bounds, reason) => {
+      protocol::ServerToClient::Voxel(block, bounds, reason) => {
         debug!("Receiving a voxel request");
         match reason {
-          communicate::VoxelReason::Updated => {},
-          communicate::VoxelReason::Requested => {
+          protocol::VoxelReason::Updated => {},
+          protocol::VoxelReason::Requested => {
             *client.outstanding_terrain_requests.lock().unwrap() -= 1;
             debug!("Outstanding terrain requests: {}", *client.outstanding_terrain_requests.lock().unwrap());
             if *client.outstanding_terrain_requests.lock().unwrap() == 0 {

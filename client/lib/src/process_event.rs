@@ -9,9 +9,8 @@ use sdl2::video;
 use std::f32::consts::PI;
 use stopwatch;
 
-use common::communicate::ClientToServer;
 use common::entity_id;
-use common::communicate::ClientToServer::*;
+use common::protocol;
 
 use view;
 
@@ -23,7 +22,7 @@ pub fn process_event<UpdateServer>(
   view: &mut view::T,
   window: &mut video::Window,
   event: Event,
-) where UpdateServer: FnMut(ClientToServer)
+) where UpdateServer: FnMut(protocol::ClientToServer)
 {
   match event {
     Event::KeyDown{keycode, repeat, ..} => {
@@ -55,39 +54,39 @@ fn key_press<UpdateServer>(
   update_server: &mut UpdateServer,
   view: &mut view::T,
   key: Keycode,
-) where UpdateServer: FnMut(ClientToServer)
+) where UpdateServer: FnMut(protocol::ClientToServer)
 {
   stopwatch::time("event.key_press", || {
     match key {
       Keycode::A => {
-        update_server(Walk(player_id, Vector3::new(-1.0, 0.0, 0.0)));
+        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(-1.0, 0.0, 0.0)));
       },
       Keycode::D => {
-        update_server(Walk(player_id, Vector3::new(1.0, 0.0, 0.0)));
+        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(1.0, 0.0, 0.0)));
       },
       Keycode::Space => {
-        update_server(StartJump(player_id));
+        update_server(protocol::ClientToServer::StartJump(player_id));
       },
       Keycode::W => {
-        update_server(Walk(player_id, Vector3::new(0.0, 0.0, -1.0)));
+        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(0.0, 0.0, -1.0)));
       },
       Keycode::S => {
-        update_server(Walk(player_id, Vector3::new(0.0, 0.0, 1.0)));
+        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(0.0, 0.0, 1.0)));
       },
       Keycode::Left => {
-        update_server(RotatePlayer(player_id, Vector2::new(PI / 12.0, 0.0)));
+        update_server(protocol::ClientToServer::RotatePlayer(player_id, Vector2::new(PI / 12.0, 0.0)));
         view.camera.rotate_lateral(PI / 12.0);
       },
       Keycode::Right => {
-        update_server(RotatePlayer(player_id, Vector2::new(-PI / 12.0, 0.0)));
+        update_server(protocol::ClientToServer::RotatePlayer(player_id, Vector2::new(-PI / 12.0, 0.0)));
         view.camera.rotate_lateral(-PI / 12.0);
       },
       Keycode::Up => {
-        update_server(RotatePlayer(player_id, Vector2::new(0.0, PI / 12.0)));
+        update_server(protocol::ClientToServer::RotatePlayer(player_id, Vector2::new(0.0, PI / 12.0)));
         view.camera.rotate_vertical(PI / 12.0);
       },
       Keycode::Down => {
-        update_server(RotatePlayer(player_id, Vector2::new(0.0, -PI / 12.0)));
+        update_server(protocol::ClientToServer::RotatePlayer(player_id, Vector2::new(0.0, -PI / 12.0)));
         view.camera.rotate_vertical(-PI / 12.0);
       },
       Keycode::H => {
@@ -102,18 +101,18 @@ fn mouse_press<UpdateServer>(
   player_id: entity_id::T,
   update_server: &mut UpdateServer,
   mouse_btn: Mouse,
-) where UpdateServer: FnMut(ClientToServer)
+) where UpdateServer: FnMut(protocol::ClientToServer)
 {
   stopwatch::time("event.mouse_press", || {
     match mouse_btn {
       Mouse::Left => {
         update_server(
-          ClientToServer::Add(player_id)
+          protocol::ClientToServer::Add(player_id)
         );
       },
       Mouse::Right => {
         update_server(
-          ClientToServer::Remove(player_id)
+          protocol::ClientToServer::Remove(player_id)
         );
       },
       _ => {},
@@ -125,25 +124,25 @@ fn key_release<UpdateServer>(
   player_id: entity_id::T,
   update_server: &mut UpdateServer,
   key: Keycode,
-) where UpdateServer: FnMut(ClientToServer)
+) where UpdateServer: FnMut(protocol::ClientToServer)
 {
   stopwatch::time("event.key_release", || {
     match key {
       // accelerations are negated from those in key_press.
       Keycode::A => {
-        update_server(Walk(player_id, Vector3::new(1.0, 0.0, 0.0)));
+        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(1.0, 0.0, 0.0)));
       },
       Keycode::D => {
-        update_server(Walk(player_id, Vector3::new(-1.0, 0.0, 0.0)));
+        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(-1.0, 0.0, 0.0)));
       },
       Keycode::Space => {
-        update_server(StopJump(player_id));
+        update_server(protocol::ClientToServer::StopJump(player_id));
       },
       Keycode::W => {
-        update_server(Walk(player_id, Vector3::new(0.0, 0.0, 1.0)));
+        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(0.0, 0.0, 1.0)));
       },
       Keycode::S => {
-        update_server(Walk(player_id, Vector3::new(0.0, 0.0, -1.0)));
+        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(0.0, 0.0, -1.0)));
       },
       _ => {}
     }
@@ -157,7 +156,7 @@ fn mouse_move<UpdateServer>(
   view: &mut view::T,
   window: &mut video::Window,
   x: i32, y: i32,
-) where UpdateServer: FnMut(ClientToServer)
+) where UpdateServer: FnMut(protocol::ClientToServer)
 {
   // x and y are measured from the top-left corner.
 
@@ -169,7 +168,7 @@ fn mouse_move<UpdateServer>(
     let to_radians = Vector2::new(-1.0 / 1000.0, 1.0 / 1600.0);
     let r = Vector2::new(d.x as f32 * to_radians.x, d.y as f32 * to_radians.y);
 
-    update_server(RotatePlayer(player_id, r));
+    update_server(protocol::ClientToServer::RotatePlayer(player_id, r));
     view.camera.rotate_lateral(r.x);
     view.camera.rotate_vertical(r.y);
 

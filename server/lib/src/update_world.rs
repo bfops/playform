@@ -4,7 +4,7 @@ use std::sync::mpsc::Sender;
 use stopwatch;
 use voxel_data;
 
-use common::communicate::ServerToClient::*;
+use common::protocol;
 use common::surroundings_loader::LoadType;
 
 use lod;
@@ -30,7 +30,7 @@ pub fn update_world(
       for (_, client) in server.clients.lock().unwrap().iter_mut() {
         for &id in &players {
           let bounds = server.physics.lock().unwrap().get_bounds(id).unwrap().clone();
-          client.send(UpdatePlayer(id, bounds));
+          client.send(protocol::ServerToClient::UpdatePlayer(id, bounds));
         }
       }
     });
@@ -78,7 +78,7 @@ pub fn update_world(
 
     server.sun.lock().unwrap().update().map(|fraction| {
       for (_, client) in server.clients.lock().unwrap().iter_mut() {
-        client.send(UpdateSun(fraction));
+        client.send(protocol::ServerToClient::UpdateSun(fraction));
       }
     });
   });
@@ -104,7 +104,7 @@ fn translate_mob(
 
   for (_, client) in server.clients.lock().unwrap().iter_mut() {
     client.send(
-      UpdateMob(mob.entity_id, bounds.clone())
+      protocol::ServerToClient::UpdateMob(mob.entity_id, bounds.clone())
     );
   }
 }

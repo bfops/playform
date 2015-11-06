@@ -4,8 +4,7 @@ use cgmath::{Aabb3};
 use stopwatch;
 
 use common;
-use common::communicate;
-use common::communicate::{ClientId, ServerToClient};
+use common::protocol;
 use common::voxel;
 
 use lod;
@@ -16,7 +15,7 @@ use voxel_data;
 #[derive(Debug, Clone, Copy)]
 pub enum LoadReason {
   Local(lod::OwnerId),
-  ForClient(ClientId),
+  ForClient(protocol::ClientId),
 }
 
 pub enum Message {
@@ -67,10 +66,10 @@ pub fn update_gaia(
                   let mut clients = server.clients.lock().unwrap();
                   let client = clients.get_mut(&id).unwrap();
                   client.send(
-                    ServerToClient::Voxel(
+                    protocol::ServerToClient::Voxel(
                       block.clone(),
                       position,
-                      communicate::VoxelReason::Requested,
+                      protocol::VoxelReason::Requested,
                     )
                   );
                 },
@@ -86,10 +85,10 @@ pub fn update_gaia(
             let mut clients = server.clients.lock().unwrap();
             for (_, client) in clients.iter_mut() {
               client.send(
-                ServerToClient::Voxel(
+                protocol::ServerToClient::Voxel(
                   block.clone(),
                   *position,
-                  communicate::VoxelReason::Updated,
+                  protocol::VoxelReason::Updated,
                 )
               );
             }

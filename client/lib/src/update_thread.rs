@@ -4,7 +4,7 @@ use stopwatch;
 use time;
 use voxel_data;
 
-use common::communicate::{ClientToServer, ServerToClient};
+use common::protocol;
 use common::surroundings_loader;
 use common::surroundings_loader::LoadType;
 use common::voxel;
@@ -28,11 +28,11 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
   update_server: &mut UpdateServer,
   queue_block: &mut QueueBlock,
 ) where
-  RecvServer: FnMut() -> Option<ServerToClient>,
+  RecvServer: FnMut() -> Option<protocol::ServerToClient>,
   RecvBlock: FnMut() -> Option<(voxel::T, voxel_data::bounds::T)>,
   UpdateView0: FnMut(ClientToView),
   UpdateView1: FnMut(ClientToView),
-  UpdateServer: FnMut(ClientToServer),
+  UpdateServer: FnMut(protocol::ClientToServer),
   QueueBlock: FnMut(voxel::T, voxel_data::bounds::T),
 {
   'update_loop: loop {
@@ -113,7 +113,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
                     debug!("{:?} Sending a block {:?}", player_position, block_position);
                     for voxel in &voxels {
                       update_server(
-                        ClientToServer::RequestVoxel(
+                        protocol::ClientToServer::RequestVoxel(
                           client.id,
                           voxel.clone(),
                         )
@@ -154,7 +154,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
                       );
                     for voxel in &voxels {
                       update_server(
-                        ClientToServer::RequestVoxel(
+                        protocol::ClientToServer::RequestVoxel(
                           client.id,
                           voxel.clone(),
                         )

@@ -7,8 +7,8 @@ use std::ops::DerefMut;
 use std::time::Duration;
 use stopwatch;
 
-use common::communicate::{ClientToServer, ServerToClient};
 use common::entity_id;
+use common::protocol;
 use common::socket::SendSocket;
 use common::voxel;
 
@@ -48,13 +48,13 @@ fn cast(
 pub fn apply_client_update<UpdateGaia>(
   server: &Server,
   update_gaia: &mut UpdateGaia,
-  update: ClientToServer,
+  update: protocol::ClientToServer,
 ) where
   UpdateGaia: FnMut(update_gaia::Message),
 {
   stopwatch::time("apply_client_update", move || {
     match update {
-      ClientToServer::Init(client_url) => {
+      protocol::ClientToServer::Init(client_url) => {
         info!("Sending to {}.", client_url);
 
         let mut client =
@@ -63,17 +63,17 @@ pub fn apply_client_update<UpdateGaia>(
           };
 
         let client_id = server.client_allocator.lock().unwrap().allocate();
-        client.send(ServerToClient::LeaseId(client_id));
+        client.send(protocol::ServerToClient::LeaseId(client_id));
 
         server.clients.lock().unwrap().insert(client_id, client);
       },
-      ClientToServer::Ping(client_id) => {
+      protocol::ClientToServer::Ping(client_id) => {
         server.clients.lock().unwrap()
           .get_mut(&client_id)
           .unwrap()
-          .send(ServerToClient::Ping);
+          .send(protocol::ServerToClient::Ping);
       },
-      ClientToServer::AddPlayer(client_id) => {
+      protocol::ClientToServer::AddPlayer(client_id) => {
         let mut player =
           Player::new(
             server.id_allocator.lock().unwrap().allocate(),
@@ -97,10 +97,10 @@ pub fn apply_client_update<UpdateGaia>(
         let mut clients = server.clients.lock().unwrap();
         let client = clients.get_mut(&client_id).unwrap();
         client.send(
-          ServerToClient::PlayerAdded(id, pos)
+          protocol::ServerToClient::PlayerAdded(id, pos)
         );
       },
-      ClientToServer::StartJump(player_id) => {
+      protocol::ClientToServer::StartJump(player_id) => {
         let mut players = server.players.lock().unwrap();
         let player = players.get_mut(&player_id).unwrap();
         if !player.is_jumping {
@@ -109,7 +109,7 @@ pub fn apply_client_update<UpdateGaia>(
           player.accel.y = player.accel.y + 0.3;
         }
       },
-      ClientToServer::StopJump(player_id) => {
+      protocol::ClientToServer::StopJump(player_id) => {
         let mut players = server.players.lock().unwrap();
         let player = players.get_mut(&player_id).unwrap();
         if player.is_jumping {
@@ -118,21 +118,21 @@ pub fn apply_client_update<UpdateGaia>(
           player.accel.y = player.accel.y - 0.3;
         }
       },
-      ClientToServer::Walk(player_id, v) => {
+      protocol::ClientToServer::Walk(player_id, v) => {
         let mut players = server.players.lock().unwrap();
         let mut player = players.get_mut(&player_id).unwrap();
         player.walk(v);
       },
-      ClientToServer::RotatePlayer(player_id, v) => {
+      protocol::ClientToServer::RotatePlayer(player_id, v) => {
         let mut players = server.players.lock().unwrap();
         let mut player = players.get_mut(&player_id).unwrap();
         player.rotate_lateral(v.x);
         player.rotate_vertical(v.y);
       },
-      ClientToServer::RequestVoxel(client_id, position) => {
+      protocol::ClientToServer::RequestVoxel(client_id, position) => {
         update_gaia(update_gaia::Message::Load(position, LoadReason::ForClient(client_id)));
       },
-      ClientToServer::Add(player_id) => {
+      protocol::ClientToServer::Add(player_id) => {
         let bounds = cast(server, player_id);
 
         bounds.map(|bounds| {
@@ -194,7 +194,7 @@ pub fn apply_client_update<UpdateGaia>(
           update_gaia(update_gaia::Message::Brush(brush));
         });
       },
-      ClientToServer::Remove(player_id) => {
+      protocol::ClientToServer::Remove(player_id) => {
         let bounds = cast(server, player_id);
 
         bounds.map(|bounds| {

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use time;
 
-use common::communicate::{ServerToClient, ClientId};
+use common::protocol;
 use common::entity_id;
 use common::id_allocator;
 use common::interval_timer::IntervalTimer;
@@ -26,7 +26,7 @@ pub struct Client {
 }
 
 impl Client {
-  pub fn send(&mut self, msg: ServerToClient) {
+  pub fn send(&mut self, msg: protocol::ServerToClient) {
     use bincode::SizeLimit;
     use bincode::rustc_serialize::encode;
     let msg = encode(&msg, SizeLimit::Infinite).unwrap();
@@ -44,13 +44,13 @@ pub struct Server {
 
   pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
   pub owner_allocator: Mutex<id_allocator::T<lod::OwnerId>>,
-  pub client_allocator: Mutex<id_allocator::T<ClientId>>,
+  pub client_allocator: Mutex<id_allocator::T<protocol::ClientId>>,
 
   pub physics: Mutex<Physics>,
   pub terrain_loader: terrain_loader::T,
   pub rng: Mutex<rand::StdRng>,
 
-  pub clients: Mutex<HashMap<ClientId, Client>>,
+  pub clients: Mutex<HashMap<protocol::ClientId, Client>>,
 
   pub sun: Mutex<Sun>,
   pub update_timer: Mutex<IntervalTimer>,

@@ -10,9 +10,9 @@ use stopwatch;
 use time;
 use yaglw::gl_context::GLContext;
 
-use common::communicate::ClientToServer;
 use common::entity_id;
 use common::interval_timer::IntervalTimer;
+use common::protocol;
 
 use hud::make_hud;
 use process_event::process_event;
@@ -39,7 +39,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
 ) where
   Recv0: FnMut() -> Option<ClientToView>,
   Recv1: FnMut() -> Option<ClientToView>,
-  UpdateServer: FnMut(ClientToServer),
+  UpdateServer: FnMut(protocol::ClientToServer),
 {
   let sdl = sdl2::init().unwrap();
   let _event = sdl.event().unwrap();

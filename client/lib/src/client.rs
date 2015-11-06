@@ -5,9 +5,9 @@ use std::collections::HashMap;
 use num::iter::range_inclusive;
 use std::sync::Mutex;
 
-use common::communicate::ClientId;
 use common::entity_id;
 use common::id_allocator;
+use common::protocol;
 use common::surroundings_loader::SurroundingsLoader;
 
 use block_position;
@@ -24,7 +24,7 @@ const MAX_LOAD_DISTANCE: i32 = 20;
 /// The main client state.
 pub struct T {
   #[allow(missing_docs)]
-  pub id: ClientId,
+  pub id: protocol::ClientId,
   #[allow(missing_docs)]
   pub player_id: entity_id::T,
   #[allow(missing_docs)]
@@ -42,7 +42,7 @@ pub struct T {
 }
 
 #[allow(missing_docs)]
-pub fn new(client_id: ClientId, player_id: entity_id::T, position: Point3<f32>) -> T {
+pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Point3<f32>) -> T {
   let mut load_distance = load_distance(terrain_buffers::POLYGON_BUDGET as i32);
 
   if load_distance > MAX_LOAD_DISTANCE {
