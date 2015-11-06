@@ -3,6 +3,7 @@
 use isosurface_extraction;
 use voxel_data;
 
+pub use voxel_data::bounds;
 pub use voxel_data::impls::surface_vertex::T::*;
 pub use voxel_data::impls::surface_vertex::of_field;
 pub use voxel_data::impls::surface_vertex::unwrap;

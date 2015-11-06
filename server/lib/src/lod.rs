@@ -4,7 +4,8 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::ops::Add;
-use voxel_data;
+
+use common::voxel;
 
 pub use self::T::*;
 
@@ -36,7 +37,7 @@ impl Ord for T {
 
 /// Data structure to keep track of a position's owners, requested LODs, and current T.
 pub struct Map {
-  loaded: HashMap<voxel_data::bounds::T, BlockLoadState>,
+  loaded: HashMap<voxel::bounds::T, BlockLoadState>,
 }
 
 impl Map {
@@ -50,7 +51,7 @@ impl Map {
   /// Find out what T is up at a `position`.
   pub fn get<'a>(
     &'a self,
-    position: &voxel_data::bounds::T,
+    position: &voxel::bounds::T,
     owner: OwnerId,
   ) -> Option<(Option<T>, &'a Vec<(OwnerId, T)>)> {
     self.loaded.get(position).map(|bls| {
@@ -66,7 +67,7 @@ impl Map {
   /// Returns (owner's previous T, T change if the location's max T changes).
   pub fn insert(
     &mut self,
-    position: voxel_data::bounds::T,
+    position: voxel::bounds::T,
     lod: T,
     owner: OwnerId,
   ) -> (Option<T>, Option<LODChange>) {
@@ -129,7 +130,7 @@ impl Map {
   /// Returns (owner's previous T, T change if the location's T changes).
   pub fn remove(
     &mut self,
-    position: voxel_data::bounds::T,
+    position: voxel::bounds::T,
     owner: OwnerId,
   ) -> (Option<T>, Option<LODChange>) {
     match self.loaded.entry(position) {

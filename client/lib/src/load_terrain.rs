@@ -1,6 +1,5 @@
 use num;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
-use voxel_data;
 
 use common::surroundings_loader;
 use common::voxel;
@@ -15,7 +14,7 @@ pub fn load_terrain_mesh<UpdateView>(
   client: &client::T,
   update_view: &mut UpdateView,
   voxel: voxel::T,
-  bounds: voxel_data::bounds::T,
+  bounds: voxel::bounds::T,
 ) where
   UpdateView: FnMut(ClientToView),
 {
@@ -42,7 +41,7 @@ pub fn load_terrain_mesh<UpdateView>(
   for dz in num::range_inclusive(-1, 1) {
     let block_position =
       block_position::containing_voxel(
-        &voxel_data::bounds::new(
+        &voxel::bounds::new(
           bounds.x + dx,
           bounds.y + dy,
           bounds.z + dz,

@@ -2,7 +2,6 @@ use std::sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use std::sync::Mutex;
 use stopwatch;
 use thread_scoped;
-use voxel_data;
 
 use common::protocol;
 use common::voxel;
@@ -29,7 +28,7 @@ pub fn run(listen_url: &str, server_url: &str) {
   let (view_thread_send0, mut view_thread_recv0) = channel();
   let (view_thread_send1, mut view_thread_recv1) = channel();
 
-  let terrain_blocks_send: &Sender<(voxel::T, voxel_data::bounds::T)> = &terrain_blocks_send;
+  let terrain_blocks_send: &Sender<(voxel::T, voxel::bounds::T)> = &terrain_blocks_send;
   let terrain_blocks_recv = &mut terrain_blocks_recv;
   let view_thread_send0 = &view_thread_send0;
   let view_thread_recv0 = &mut view_thread_recv0;

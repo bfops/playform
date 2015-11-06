@@ -26,7 +26,7 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
 fn cast(
   server: &Server,
   player_id: entity_id::T,
-) -> Option<voxel_data::bounds::T> {
+) -> Option<voxel::bounds::T> {
   let ray;
   {
     let players = server.players.lock().unwrap();

@@ -7,7 +7,6 @@ use std::f32;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use stopwatch;
-use voxel_data;
 
 use common::entity_id;
 use common::id_allocator;
@@ -84,7 +83,7 @@ fn make_bounds(
   )
 }
 
-pub fn voxels_in(bounds: &Aabb3<i32>, lg_size: i16) -> Vec<voxel_data::bounds::T> {
+pub fn voxels_in(bounds: &Aabb3<i32>, lg_size: i16) -> Vec<voxel::bounds::T> {
   let delta = bounds.max().sub_p(bounds.min());
 
   // assert that lg_size samples fit neatly into the bounds.
@@ -103,26 +102,25 @@ pub fn voxels_in(bounds: &Aabb3<i32>, lg_size: i16) -> Vec<voxel_data::bounds::T
     let x = (bounds.min().x >> lg_size) + dx;
     let y = (bounds.min().y >> lg_size) + dy;
     let z = (bounds.min().z >> lg_size) + dz;
-    voxels.push(voxel_data::bounds::new(x, y, z, lg_size));
+    voxels.push(voxel::bounds::new(x, y, z, lg_size));
   }}}
   voxels
 }
 
 mod voxel_storage {
-  use voxel_data;
   use isosurface_extraction::dual_contouring;
 
   use common::voxel;
 
   use super::Partial;
 
-  fn get_voxel<'a>(this: &'a mut Partial, bounds: &voxel_data::bounds::T) -> Option<&'a voxel::T> {
+  fn get_voxel<'a>(this: &'a mut Partial, bounds: &voxel::bounds::T) -> Option<&'a voxel::T> {
     debug!("Getting {:?} from {:?}", bounds, this.position);
     this.voxels.get(bounds)
   }
 
   impl<'a> dual_contouring::voxel_storage::T<voxel::Material> for Partial {
-    fn get_material(&mut self, bounds: &voxel_data::bounds::T) -> Option<voxel::Material> {
+    fn get_material(&mut self, bounds: &voxel::bounds::T) -> Option<voxel::Material> {
       match get_voxel(self, bounds) {
         None => None,
         Some(&voxel::Surface(ref voxel)) => Some(voxel.corner.clone()),
@@ -130,7 +128,7 @@ mod voxel_storage {
       }
     }
 
-    fn get_voxel_data(&mut self, bounds: &voxel_data::bounds::T) -> Option<dual_contouring::voxel_storage::VoxelData> {
+    fn get_voxel_data(&mut self, bounds: &voxel::bounds::T) -> Option<dual_contouring::voxel_storage::VoxelData> {
       match get_voxel(self, bounds) {
         None => None,
         Some(&voxel::Volume(_)) => panic!("Can't extract voxel data from a volume"),
@@ -150,7 +148,7 @@ mod voxel_storage {
 pub struct Partial {
   position: block_position::T,
   lod: lod::T,
-  voxels: HashMap<voxel_data::bounds::T, voxel::T>,
+  voxels: HashMap<voxel::bounds::T, voxel::T>,
 }
 
 impl Partial {
@@ -166,7 +164,7 @@ impl Partial {
     self.lod
   }
 
-  pub fn add(&mut self, voxel: voxel::T, bounds: voxel_data::bounds::T) {
+  pub fn add(&mut self, voxel: voxel::T, bounds: voxel::bounds::T) {
     self.voxels.insert(bounds, voxel);
   }
 

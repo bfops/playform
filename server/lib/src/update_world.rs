@@ -2,10 +2,10 @@ use cgmath::{Point, Point3, Vector, Vector3};
 use std::ops::Neg;
 use std::sync::mpsc::Sender;
 use stopwatch;
-use voxel_data;
 
 use common::protocol;
 use common::surroundings_loader::LoadType;
+use common::voxel;
 
 use lod;
 use mob;
@@ -50,7 +50,7 @@ pub fn update_world(
             owner_id,
             server,
             &mut request_block,
-            &voxel_data::bounds::new(position.x, position.y, position.z, 0),
+            &voxel::bounds::new(position.x, position.y, position.z, 0),
             load_type,
           )
         }
@@ -113,7 +113,7 @@ pub fn load_placeholders<RequestBlock>(
   owner: lod::OwnerId,
   server: &Server,
   request_block: &mut RequestBlock,
-  pos: &voxel_data::bounds::T,
+  pos: &voxel::bounds::T,
   load_type: LoadType,
 ) where
   RequestBlock: FnMut(update_gaia::Message),

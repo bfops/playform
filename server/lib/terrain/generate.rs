@@ -91,7 +91,7 @@ mod voxel_storage {
     pub mosaic: &'a Mosaic,
   }
 
-  fn get_voxel<'a, Mosaic>(this: &mut T<'a, Mosaic>, bounds: &voxel_data::bounds::T) -> voxel::T<voxel::Material> where
+  fn get_voxel<'a, Mosaic>(this: &mut T<'a, Mosaic>, bounds: &voxel::bounds::T) -> voxel::T<voxel::Material> where
     Mosaic: voxel_data::mosaic::T<voxel::Material>
   {
     let branch = this.voxels.get_mut_or_create(bounds);
@@ -123,14 +123,14 @@ mod voxel_storage {
   impl<'a, Mosaic> dual_contouring::voxel_storage::T<voxel::Material> for T<'a, Mosaic> where
     Mosaic: voxel_data::mosaic::T<voxel::Material> + 'a
   {
-    fn get_material(&mut self, bounds: &voxel_data::bounds::T) -> voxel::Material {
+    fn get_material(&mut self, bounds: &voxel::bounds::T) -> voxel::Material {
       match get_voxel(self, bounds) {
         voxel::T::Surface(voxel) => voxel.corner,
         voxel::T::Volume(material) => material,
       }
     }
 
-    fn get_voxel_data(&mut self, bounds: &voxel_data::bounds::T) -> dual_contouring::voxel_storage::VoxelData {
+    fn get_voxel_data(&mut self, bounds: &voxel::bounds::T) -> dual_contouring::voxel_storage::VoxelData {
       match get_voxel(self, bounds) {
         voxel::T::Volume(_) => panic!("Can't extract voxel data from a volume"),
         voxel::T::Surface(voxel) => {

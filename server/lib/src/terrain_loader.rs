@@ -2,10 +2,10 @@ use cgmath::{Aabb3};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use stopwatch;
-use voxel_data;
 
 use common::entity_id;
 use common::id_allocator;
+use common::voxel;
 
 use in_progress_terrain;
 use lod;
@@ -23,7 +23,7 @@ pub struct T {
   pub terrain: terrain::T,
   pub in_progress_terrain: Mutex<in_progress_terrain::T>,
   pub lod_map: Mutex<lod::Map>,
-  pub loaded: Mutex<HashMap<voxel_data::bounds::T, Vec<entity_id::T>>>,
+  pub loaded: Mutex<HashMap<voxel::bounds::T, Vec<entity_id::T>>>,
 }
 
 impl T {
@@ -42,7 +42,7 @@ impl T {
     &self,
     id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
     physics: &Mutex<Physics>,
-    block_position: &voxel_data::bounds::T,
+    block_position: &voxel::bounds::T,
     new_lod: lod::T,
     owner: lod::OwnerId,
     load_block: &mut LoadBlock,
@@ -105,12 +105,12 @@ impl T {
 
   pub fn insert_block(
     block: &LoadedTerrain,
-    position: &voxel_data::bounds::T,
+    position: &voxel::bounds::T,
     owner: lod::OwnerId,
     physics: &Mutex<Physics>,
     lod_map: &mut lod::Map,
     in_progress_terrain: &mut in_progress_terrain::T,
-    loaded: &mut HashMap<voxel_data::bounds::T, Vec<entity_id::T>>,
+    loaded: &mut HashMap<voxel::bounds::T, Vec<entity_id::T>>,
   ) {
     let lod = lod::Full;
     let (_, change) = lod_map.insert(*position, lod, owner);
@@ -150,7 +150,7 @@ impl T {
   pub fn unload(
     &self,
     physics: &Mutex<Physics>,
-    block_position: &voxel_data::bounds::T,
+    block_position: &voxel::bounds::T,
     owner: lod::OwnerId,
   ) {
     let (_, mlod_change) =

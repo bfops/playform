@@ -2,7 +2,6 @@ use cgmath::{Aabb3, Point3};
 use std::sync::Mutex;
 use stopwatch;
 use time;
-use voxel_data;
 
 use common::protocol;
 use common::surroundings_loader;
@@ -29,11 +28,11 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
   queue_block: &mut QueueBlock,
 ) where
   RecvServer: FnMut() -> Option<protocol::ServerToClient>,
-  RecvBlock: FnMut() -> Option<(voxel::T, voxel_data::bounds::T)>,
+  RecvBlock: FnMut() -> Option<(voxel::T, voxel::bounds::T)>,
   UpdateView0: FnMut(ClientToView),
   UpdateView1: FnMut(ClientToView),
   UpdateServer: FnMut(protocol::ClientToServer),
-  QueueBlock: FnMut(voxel::T, voxel_data::bounds::T),
+  QueueBlock: FnMut(voxel::T, voxel::bounds::T),
 {
   'update_loop: loop {
     if *quit.lock().unwrap() == true {

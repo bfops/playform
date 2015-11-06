@@ -2,7 +2,8 @@
 
 use cgmath::{Point3, Vector3};
 use std::ops::Add;
-use voxel_data;
+
+use common::voxel;
 
 use terrain_mesh;
 
@@ -11,7 +12,7 @@ use terrain_mesh;
 /// The position is implicitly in units of terrain_mesh::WIDTH.
 pub struct T(Point3<i32>);
 
-pub fn containing_voxel(bounds: &voxel_data::bounds::T) -> T {
+pub fn containing_voxel(bounds: &voxel::bounds::T) -> T {
   if bounds.lg_size < 0 {
     new(
       bounds.x >> -bounds.lg_size >> terrain_mesh::LG_WIDTH,

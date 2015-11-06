@@ -56,7 +56,7 @@ impl T {
   // TODO: Allow this to be performed in such a way that self is only briefly locked.
   pub fn load<F>(
     &self,
-    bounds: &voxel_data::bounds::T,
+    bounds: &voxel::bounds::T,
     mut f: F
   ) where
     F: FnMut(&voxel::T)
@@ -94,7 +94,7 @@ impl T {
     brush: &voxel_data::brush::T<Mosaic>,
     mut voxel_changed: VoxelChanged,
   ) where
-    VoxelChanged: FnMut(&voxel::T, &voxel_data::bounds::T),
+    VoxelChanged: FnMut(&voxel::T, &voxel::bounds::T),
     Mosaic: voxel_data::mosaic::T<voxel::Material>,
   {
     let mut voxels = self.voxels.lock().unwrap();

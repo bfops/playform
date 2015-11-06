@@ -19,7 +19,7 @@ pub enum LoadReason {
 }
 
 pub enum Message {
-  Load(Vec<voxel_data::bounds::T>, LoadReason),
+  Load(Vec<voxel::bounds::T>, LoadReason),
   Brush(voxel_data::brush::T<Box<voxel_data::mosaic::T<common::voxel::Material> + Send>>),
 }
 

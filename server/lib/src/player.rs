@@ -4,11 +4,11 @@ use std::f32::consts::PI;
 use std::ops::DerefMut;
 use std::sync::Mutex;
 use stopwatch;
-use voxel_data;
 
 use common::entity_id;
 use common::id_allocator;
 use common::surroundings_loader::{SurroundingsLoader, LoadType};
+use common::voxel;
 
 use lod;
 use physics::Physics;
@@ -154,7 +154,7 @@ impl Player {
     stopwatch::time("update.player.surroundings", || {
       let owner = self.surroundings_owner;
       for (pos, load_type) in self.surroundings_loader.updates(&player_position) {
-        let pos = voxel_data::bounds::new(pos.x, pos.y, pos.z, 0);
+        let pos = voxel::bounds::new(pos.x, pos.y, pos.z, 0);
         match load_type {
           LoadType::Load | LoadType::Update => {
             server.terrain_loader.load(
@@ -178,7 +178,7 @@ impl Player {
 
       let owner = self.solid_owner;
       for (pos, load_type) in self.solid_boundary.updates(&player_position) {
-        let block_position = voxel_data::bounds::new(pos.x, pos.y, pos.z, 0);
+        let block_position = voxel::bounds::new(pos.x, pos.y, pos.z, 0);
         load_placeholders(
           owner,
           server,

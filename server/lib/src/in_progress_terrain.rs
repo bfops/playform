@@ -1,16 +1,16 @@
 use cgmath::{Aabb3};
 use std::collections::hash_map::{HashMap, Entry};
 use std::sync::Mutex;
-use voxel_data;
 
 use common::entity_id;
 use common::id_allocator;
+use common::voxel;
 
 use physics::Physics;
 
 // TODO: Rename this to something more memorable.
 pub struct T {
-  pub blocks: HashMap<voxel_data::bounds::T, entity_id::T>,
+  pub blocks: HashMap<voxel::bounds::T, entity_id::T>,
 }
 
 impl T {
@@ -25,7 +25,7 @@ impl T {
     &mut self,
     id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
     physics: &Mutex<Physics>,
-    block_position: &voxel_data::bounds::T,
+    block_position: &voxel::bounds::T,
   ) -> bool {
     match self.blocks.entry(*block_position) {
       Entry::Occupied(_) => {
@@ -47,7 +47,7 @@ impl T {
   pub fn remove(
     &mut self,
     physics: &Mutex<Physics>,
-    block_position: &voxel_data::bounds::T,
+    block_position: &voxel::bounds::T,
   ) -> bool {
     self.blocks.remove(block_position)
       .map(|id| physics.lock().unwrap().remove_misc(id)).is_some()

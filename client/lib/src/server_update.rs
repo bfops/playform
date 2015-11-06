@@ -2,7 +2,6 @@ use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
 use std::f32;
 use std::f32::consts::PI;
 use stopwatch;
-use voxel_data;
 
 use common::color::{Color3, Color4};
 use common::protocol;
@@ -30,7 +29,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
 ) where
   UpdateView: FnMut(ClientToView),
   UpdateServer: FnMut(protocol::ClientToServer),
-  QueueBlock: FnMut(voxel::T, voxel_data::bounds::T),
+  QueueBlock: FnMut(voxel::T, voxel::bounds::T),
 {
   stopwatch::time("apply_server_update", move || {
     match update {
