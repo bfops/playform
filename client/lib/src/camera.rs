@@ -39,9 +39,9 @@ impl Camera {
       lateral_rotation: 0.0,
       vertical_rotation: 0.0,
 
-      translation: Matrix4::one(),
-      rotation: Matrix4::one(),
-      fov: Matrix4::one(),
+      translation: Matrix4::identity(),
+      rotation: Matrix4::identity(),
+      fov: Matrix4::identity(),
     }
   }
 

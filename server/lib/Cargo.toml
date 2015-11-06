@@ -10,6 +10,7 @@ path = "./src/mod.rs"
 
 [dependencies]
 bincode = "*"
+cgmath = "0.3.1"
 clippy = "*"
 log = "*"
 num = "*"
@@ -28,9 +29,6 @@ git = "https://github.com/bfops/rust-voxel-data"
 [dependencies.terrain]
 path = "./terrain"
 version = "*"
-
-[dependencies.cgmath]
-git = "https://github.com/bjz/cgmath-rs"
 
 [dependencies.nanomsg]
 git = "https://github.com/thehydroimpulse/nanomsg.rs"

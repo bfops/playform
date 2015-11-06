@@ -10,7 +10,9 @@ path = "src/mod.rs"
 
 [dependencies]
 bincode = "*"
+cgmath = "0.3.1"
 clippy = "*"
+gl = "0.1.0"
 libc = "*"
 log = "*"
 num = "*"
@@ -21,9 +23,6 @@ time = "*"
 [dependencies.playform-common]
 path = "../../common"
 version = "*"
-
-[dependencies.gl]
-git = "https://github.com/bjz/gl-rs"
 
 [dependencies.sdl2-sys]
 git = "https://github.com/AngryLawyer/rust-sdl2"
@@ -39,9 +38,6 @@ git = "https://github.com/bfops/rust-voxel-data"
 
 [dependencies.isosurface-extraction]
 git = "https://github.com/bfops/rust-isosurface-extraction"
-
-[dependencies.cgmath]
-git = "https://github.com/bjz/cgmath-rs"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
