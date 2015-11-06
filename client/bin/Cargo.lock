@@ -101,17 +101,6 @@ dependencies = [
 [[package]]
 name = "gl"
 version = "0.1.0"
-source = "git+https://github.com/bjz/gl-rs#36d93dc93d56c24f66ad71d02c4ccc635e3d50c1"
-dependencies = [
- "gl_common 0.1.0 (git+https://github.com/bjz/gl-rs)",
- "gl_generator 0.1.0 (git+https://github.com/bjz/gl-rs)",
- "khronos_api 0.0.8 (git+https://github.com/bjz/gl-rs)",
- "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "gl"
-version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gl_common 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -123,27 +112,9 @@ dependencies = [
 [[package]]
 name = "gl_common"
 version = "0.1.0"
-source = "git+https://github.com/bjz/gl-rs#36d93dc93d56c24f66ad71d02c4ccc635e3d50c1"
-dependencies = [
- "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "gl_common"
-version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "gl_generator"
-version = "0.1.0"
-source = "git+https://github.com/bjz/gl-rs#36d93dc93d56c24f66ad71d02c4ccc635e3d50c1"
-dependencies = [
- "khronos_api 0.0.8 (git+https://github.com/bjz/gl-rs)",
- "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "xml-rs 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -175,11 +146,6 @@ dependencies = [
  "winapi 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "khronos_api"
-version = "0.0.8"
-source = "git+https://github.com/bjz/gl-rs#36d93dc93d56c24f66ad71d02c4ccc635e3d50c1"
 
 [[package]]
 name = "khronos_api"
@@ -369,9 +335,9 @@ dependencies = [
 [[package]]
 name = "yaglw"
 version = "0.0.0"
-source = "git+https://github.com/bfops/yaglw#ceb0bf4c31567992228ec525d5c1c2e2e268dd00"
+source = "git+https://github.com/bfops/yaglw#1791ef06aa4b6910ec9e42b059a7de044c4df915"
 dependencies = [
- "gl 0.1.0 (git+https://github.com/bjz/gl-rs)",
+ "gl 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
