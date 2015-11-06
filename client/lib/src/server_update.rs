@@ -93,8 +93,9 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
 
         update_view(ClientToView::SetClearColor(sun_color));
       },
-      protocol::ServerToClient::Voxel(block, bounds, reason) => {
+      protocol::ServerToClient::Voxels(voxels, reason) => {
         debug!("Receiving a voxel request");
+
         match reason {
           protocol::VoxelReason::Updated => {},
           protocol::VoxelReason::Requested => {
@@ -105,7 +106,10 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
             }
           },
         }
-        queue_block(block, bounds);
+
+        for (bounds, voxel) in voxels.into_iter() {
+          queue_block(voxel, bounds);
+        }
       },
     }
   })

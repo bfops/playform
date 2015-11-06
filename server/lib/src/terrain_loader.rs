@@ -95,7 +95,7 @@ impl T {
         let mut generate_block = || {
           debug!("{:?} requested from gaia", block_position);
           load_block(
-            update_gaia::Message::Load(*block_position, LoadReason::Local(owner))
+            update_gaia::Message::Load(vec!(*block_position), LoadReason::Local(owner))
           );
         };
         generate_block();

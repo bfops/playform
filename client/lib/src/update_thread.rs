@@ -16,7 +16,7 @@ use server_update::apply_server_update;
 use terrain_block;
 use view_update::ClientToView;
 
-const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 16;
+const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 8;
 
 pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServer, QueueBlock>(
   quit: &Mutex<bool>,
@@ -94,33 +94,28 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
                     .map(|&(_, lod)| lod);
                   if loaded_lod != Some(lod) {
                     let voxel_size = 1 << terrain_block::LG_SAMPLE_SIZE[lod.0 as usize];
-                    let voxels = 
-                      terrain_block::voxels_in(
-                        &Aabb3::new(
-                          Point3::new(
-                            (block_position.as_pnt().x << terrain_block::LG_WIDTH) - voxel_size,
-                            (block_position.as_pnt().y << terrain_block::LG_WIDTH) - voxel_size,
-                            (block_position.as_pnt().z << terrain_block::LG_WIDTH) - voxel_size,
+                    update_server(
+                      protocol::ClientToServer::RequestVoxels(
+                        client.id,
+                        terrain_block::voxels_in(
+                          &Aabb3::new(
+                            Point3::new(
+                              (block_position.as_pnt().x << terrain_block::LG_WIDTH) - voxel_size,
+                              (block_position.as_pnt().y << terrain_block::LG_WIDTH) - voxel_size,
+                              (block_position.as_pnt().z << terrain_block::LG_WIDTH) - voxel_size,
+                            ),
+                            Point3::new(
+                              ((block_position.as_pnt().x + 1) << terrain_block::LG_WIDTH) + voxel_size,
+                              ((block_position.as_pnt().y + 1) << terrain_block::LG_WIDTH) + voxel_size,
+                              ((block_position.as_pnt().z + 1) << terrain_block::LG_WIDTH) + voxel_size,
+                            ),
                           ),
-                          Point3::new(
-                            ((block_position.as_pnt().x + 1) << terrain_block::LG_WIDTH) + voxel_size,
-                            ((block_position.as_pnt().y + 1) << terrain_block::LG_WIDTH) + voxel_size,
-                            ((block_position.as_pnt().z + 1) << terrain_block::LG_WIDTH) + voxel_size,
-                          ),
+                          terrain_block::LG_SAMPLE_SIZE[lod.0 as usize],
                         ),
-                        terrain_block::LG_SAMPLE_SIZE[lod.0 as usize],
-                      );
+                      )
+                    );
                     debug!("{:?} Sending a block {:?}", player_position, block_position);
-                    for voxel in &voxels {
-                      update_server(
-                        protocol::ClientToServer::RequestVoxel(
-                          client.id,
-                          voxel.clone(),
-                        )
-                      );
-                      debug!("Sending a voxel request");
-                      *client.outstanding_terrain_requests.lock().unwrap() += 1;
-                    }
+                    *client.outstanding_terrain_requests.lock().unwrap() += 1;
                   } else {
                     debug!("Not re-loading {:?} at {:?}", block_position, lod);
                   }
@@ -136,31 +131,26 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
                   if lod_change == Some(true) {
                     debug!("Sending a block");
                     let voxel_size = 1 << terrain_block::LG_SAMPLE_SIZE[new_lod.0 as usize];
-                    let voxels = 
-                      terrain_block::voxels_in(
-                        &Aabb3::new(
-                          Point3::new(
-                            (block_position.as_pnt().x << terrain_block::LG_WIDTH) - voxel_size,
-                            (block_position.as_pnt().y << terrain_block::LG_WIDTH) - voxel_size,
-                            (block_position.as_pnt().z << terrain_block::LG_WIDTH) - voxel_size,
+                    update_server(
+                      protocol::ClientToServer::RequestVoxels(
+                        client.id,
+                        terrain_block::voxels_in(
+                          &Aabb3::new(
+                            Point3::new(
+                              (block_position.as_pnt().x << terrain_block::LG_WIDTH) - voxel_size,
+                              (block_position.as_pnt().y << terrain_block::LG_WIDTH) - voxel_size,
+                              (block_position.as_pnt().z << terrain_block::LG_WIDTH) - voxel_size,
+                            ),
+                            Point3::new(
+                              ((block_position.as_pnt().x + 1) << terrain_block::LG_WIDTH) + voxel_size,
+                              ((block_position.as_pnt().y + 1) << terrain_block::LG_WIDTH) + voxel_size,
+                              ((block_position.as_pnt().z + 1) << terrain_block::LG_WIDTH) + voxel_size,
+                            ),
                           ),
-                          Point3::new(
-                            ((block_position.as_pnt().x + 1) << terrain_block::LG_WIDTH) + voxel_size,
-                            ((block_position.as_pnt().y + 1) << terrain_block::LG_WIDTH) + voxel_size,
-                            ((block_position.as_pnt().z + 1) << terrain_block::LG_WIDTH) + voxel_size,
-                          ),
+                          terrain_block::LG_SAMPLE_SIZE[new_lod.0 as usize],
                         ),
-                        terrain_block::LG_SAMPLE_SIZE[new_lod.0 as usize],
-                      );
-                    for voxel in &voxels {
-                      update_server(
-                        protocol::ClientToServer::RequestVoxel(
-                          client.id,
-                          voxel.clone(),
-                        )
-                      );
-                      debug!("Sending a voxel request");
-                    }
+                      )
+                    );
                     *client.outstanding_terrain_requests.lock().unwrap() += 1;
                   } else {
                     trace!("Not updating {:?} at {:?}", block_position, new_lod);
