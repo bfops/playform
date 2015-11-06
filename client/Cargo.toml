@@ -14,6 +14,7 @@ path = "src/mod.rs"
 
 [dependencies]
 bincode = "*"
+cgmath = "0.3.1"
 clippy = "*"
 env_logger= "*"
 libc = "*"
@@ -38,9 +39,6 @@ git = "https://github.com/AngryLawyer/rust-sdl2"
 
 [dependencies.yaglw]
 git = "https://github.com/bfops/yaglw"
-
-[dependencies.cgmath]
-git = "https://github.com/bjz/cgmath-rs"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"

@@ -186,6 +186,7 @@ pub fn apply_client_update<UpdateGaia>(
                     Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
                   },
                 ),
+              min_lg_size: 0,
               mosaic: Box::new(tree) as Box<voxel_data::mosaic::T<terrain::voxel::Material> + Send>,
             };
 
@@ -223,6 +224,7 @@ pub fn apply_client_update<UpdateGaia>(
                     Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
                   },
                 ),
+              min_lg_size: 0,
               mosaic: Box::new(sphere) as Box<voxel_data::mosaic::T<terrain::voxel::Material> + Send>,
             };
           let brush: voxel_data::brush::T<Box<voxel_data::mosaic::T<terrain::voxel::Material> + Send>> = brush;

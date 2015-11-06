@@ -212,7 +212,11 @@ impl Terrain {
         }}}
       }
 
-      voxels.brush(brush);
+      voxels.brush(
+        brush,
+        &mut |_| None,
+        &mut |_, _| {},
+      );
     }
 
     macro_rules! block_range(($d:ident) => {{

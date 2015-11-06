@@ -123,22 +123,24 @@ mod voxel_storage {
   impl<'a, Mosaic> dual_contouring::voxel_storage::T<voxel::Material> for T<'a, Mosaic> where
     Mosaic: voxel_data::mosaic::T<voxel::Material> + 'a
   {
-    fn get_material(&mut self, bounds: &voxel_data::bounds::T) -> voxel::Material {
+    fn get_material(&mut self, bounds: &voxel_data::bounds::T) -> Option<voxel::Material> {
       match get_voxel(self, bounds) {
-        voxel::T::Surface(voxel) => voxel.corner,
-        voxel::T::Volume(material) => material,
+        voxel::T::Surface(voxel) => Some(voxel.corner),
+        voxel::T::Volume(material) => Some(material),
       }
     }
 
-    fn get_voxel_data(&mut self, bounds: &voxel_data::bounds::T) -> dual_contouring::voxel_storage::VoxelData {
+    fn get_voxel_data(&mut self, bounds: &voxel_data::bounds::T) -> Option<dual_contouring::voxel_storage::VoxelData> {
       match get_voxel(self, bounds) {
         voxel::T::Volume(_) => panic!("Can't extract voxel data from a volume"),
         voxel::T::Surface(voxel) => {
-          dual_contouring::voxel_storage::VoxelData {
-            bounds: bounds.clone(),
-            vertex: voxel.surface_vertex.to_world_vertex(&bounds),
-            normal: voxel.normal.to_float_normal(),
-          }
+          Some(
+            dual_contouring::voxel_storage::VoxelData {
+              bounds: bounds.clone(),
+              vertex: voxel.surface_vertex.to_world_vertex(&bounds),
+              normal: voxel.normal.to_float_normal(),
+            }
+          )
         },
       }
     }
