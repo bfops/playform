@@ -162,12 +162,14 @@ version = "0.0.0"
 dependencies = [
  "cgmath 0.3.1 (git+https://github.com/bjz/cgmath-rs)",
  "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "isosurface-extraction 0.0.0 (git+https://github.com/bfops/rust-isosurface-extraction)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.4.0 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
  "num 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
  "time 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)",
+ "voxel-data 0.0.0 (git+https://github.com/bfops/rust-voxel-data)",
 ]
 
 [[package]]
@@ -257,11 +259,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "voxel-data"
 version = "0.0.0"
-source = "git+https://github.com/bfops/rust-voxel-data#1aa5b5e9712fe0bd50877de44f14beb854722d69"
+source = "git+https://github.com/bfops/rust-voxel-data#77da18a6e0e7c04d7c6b8c5ea9a37d522d4040a6"
 dependencies = [
  "cgmath 0.3.1 (git+https://github.com/bjz/cgmath-rs)",
  "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

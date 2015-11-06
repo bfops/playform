@@ -3,16 +3,16 @@
 use cgmath::Point3;
 use stopwatch;
 
-use common::block_position::BlockPosition;
 use common::color::Color3;
-use common::entity::EntityId;
-use common::lod::LODIndex;
-use common::terrain_block::TerrainBlock;
+use common::entity_id;
 
+use block_position;
 use light;
 use light::{set_sun, set_ambient_light};
+use lod;
 use mob_buffers::VERTICES_PER_MOB;
 use player_buffers::VERTICES_PER_PLAYER;
+use terrain_block;
 use vertex::ColoredVertex;
 use view;
 
@@ -22,9 +22,9 @@ pub enum ClientToView {
   MoveCamera(Point3<f32>),
 
   /// Update a player mesh.
-  UpdatePlayer(EntityId, [ColoredVertex; VERTICES_PER_PLAYER]),
+  UpdatePlayer(entity_id::T, [ColoredVertex; VERTICES_PER_PLAYER]),
   /// Update a mob mesh.
-  UpdateMob(EntityId, [ColoredVertex; VERTICES_PER_MOB]),
+  UpdateMob(entity_id::T, [ColoredVertex; VERTICES_PER_MOB]),
 
   /// Update the sun.
   SetSun(light::Sun),
@@ -34,11 +34,9 @@ pub enum ClientToView {
   SetClearColor(Color3<f32>),
 
   /// Add a terrain block to the view.
-  AddBlock(BlockPosition, TerrainBlock, LODIndex),
+  AddBlock(block_position::T, terrain_block::T, lod::T),
   /// Remove a terrain entity.
-  RemoveTerrain(EntityId),
-  /// Remove block-specific data.
-  RemoveBlockData(BlockPosition, LODIndex),
+  RemoveTerrain(entity_id::T),
   /// Treat a series of updates as an atomic operation.
   Atomic(Vec<ClientToView>),
 }
@@ -88,8 +86,6 @@ pub fn apply_client_to_view(view: &mut view::T, up: ClientToView) {
     },
     ClientToView::RemoveTerrain(id) => {
       view.terrain_buffers.swap_remove(&mut view.gl, id);
-    },
-    ClientToView::RemoveBlockData(_, _) => {
     },
     ClientToView::Atomic(updates) => {
       for up in updates.into_iter() {

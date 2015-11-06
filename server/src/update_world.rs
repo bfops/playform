@@ -1,13 +1,13 @@
-use cgmath::{Point, Vector, Vector3};
+use cgmath::{Point, Point3, Vector, Vector3};
 use std::ops::Neg;
 use std::sync::mpsc::Sender;
 use stopwatch;
+use voxel_data;
 
-use common::block_position::BlockPosition;
 use common::communicate::ServerToClient::*;
-use common::lod::{LOD, OwnerId};
 use common::surroundings_loader::LoadType;
 
+use lod;
 use mob;
 use server::Server;
 use update_gaia;
@@ -37,16 +37,20 @@ pub fn update_world(
 
     stopwatch::time("update_world.mobs", || {
       for (_, mob) in server.mobs.lock().unwrap().iter_mut() {
-        let block_position = BlockPosition::of_world_position(&mob.position);
+        let position = 
+          Point3::new(
+            mob.position.x as i32,
+            mob.position.y as i32,
+            mob.position.z as i32,
+          );
 
         let owner_id = mob.owner_id;
-        for (position, load_type) in mob.surroundings_loader.updates(block_position.as_pnt()) {
-          let position = BlockPosition::of_pnt(&position);
+        for (position, load_type) in mob.surroundings_loader.updates(&position) {
           load_placeholders(
             owner_id,
             server,
             &mut request_block,
-            &position,
+            &voxel_data::bounds::new(position.x, position.y, position.z, 0),
             load_type,
           )
         }
@@ -105,12 +109,11 @@ fn translate_mob(
   }
 }
 
-#[inline]
 pub fn load_placeholders<RequestBlock>(
-  owner: OwnerId,
+  owner: lod::OwnerId,
   server: &Server,
   request_block: &mut RequestBlock,
-  pos: &BlockPosition,
+  pos: &voxel_data::bounds::T,
   load_type: LoadType,
 ) where
   RequestBlock: FnMut(update_gaia::Message),
@@ -121,7 +124,7 @@ pub fn load_placeholders<RequestBlock>(
         &server.id_allocator,
         &server.physics,
         &pos,
-        LOD::Placeholder,
+        lod::Placeholder,
         owner,
         request_block,
       );

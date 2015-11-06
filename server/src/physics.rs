@@ -1,12 +1,12 @@
 use cgmath::{Aabb3, Point, Vector, Vector3};
 use octree::Octree;
-use common::entity::EntityId;
+use common::entity_id;
 use std::collections::HashMap;
 
 pub struct Physics {
-  pub terrain_octree: Octree<EntityId>,
-  pub misc_octree: Octree<EntityId>,
-  pub bounds: HashMap<EntityId, Aabb3<f32>>,
+  pub terrain_octree: Octree<entity_id::T>,
+  pub misc_octree: Octree<entity_id::T>,
+  pub bounds: HashMap<entity_id::T, Aabb3<f32>>,
 }
 
 impl Physics {
@@ -18,17 +18,17 @@ impl Physics {
     }
   }
 
-  pub fn insert_terrain(&mut self, id: EntityId, bounds: Aabb3<f32>) {
+  pub fn insert_terrain(&mut self, id: entity_id::T, bounds: Aabb3<f32>) {
     self.terrain_octree.insert(bounds.clone(), id);
     self.bounds.insert(id, bounds);
   }
 
-  pub fn insert_misc(&mut self, id: EntityId, bounds: Aabb3<f32>) {
+  pub fn insert_misc(&mut self, id: entity_id::T, bounds: Aabb3<f32>) {
     self.misc_octree.insert(bounds.clone(), id);
     self.bounds.insert(id, bounds);
   }
 
-  pub fn remove_terrain(&mut self, id: EntityId) {
+  pub fn remove_terrain(&mut self, id: entity_id::T) {
     match self.bounds.get(&id) {
       None => {},
       Some(bounds) => {
@@ -37,7 +37,7 @@ impl Physics {
     }
   }
 
-  pub fn remove_misc(&mut self, id: EntityId) {
+  pub fn remove_misc(&mut self, id: entity_id::T) {
     match self.bounds.get(&id) {
       None => {},
       Some(bounds) => {
@@ -46,16 +46,16 @@ impl Physics {
     }
   }
 
-  pub fn get_bounds(&self, id: EntityId) -> Option<&Aabb3<f32>> {
+  pub fn get_bounds(&self, id: entity_id::T) -> Option<&Aabb3<f32>> {
     self.bounds.get(&id)
   }
 
   pub fn reinsert(
-    octree: &mut Octree<EntityId>,
-    id: EntityId,
+    octree: &mut Octree<entity_id::T>,
+    id: entity_id::T,
     bounds: &mut Aabb3<f32>,
     new_bounds: Aabb3<f32>,
-  ) -> Option<(Aabb3<f32>, EntityId)> {
+  ) -> Option<(Aabb3<f32>, entity_id::T)> {
     match octree.intersect(&new_bounds, Some(id)) {
       None => {
         octree.reinsert(id, bounds, new_bounds.clone());
@@ -66,7 +66,7 @@ impl Physics {
     }
   }
 
-  pub fn translate_misc(&mut self, id: EntityId, amount: Vector3<f32>) -> Option<(Aabb3<f32>, EntityId)> {
+  pub fn translate_misc(&mut self, id: entity_id::T, amount: Vector3<f32>) -> Option<(Aabb3<f32>, entity_id::T)> {
     let bounds = self.bounds.get_mut(&id).unwrap();
     let new_bounds =
       Aabb3::new(

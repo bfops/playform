@@ -8,8 +8,9 @@ use std::time::Duration;
 use stopwatch;
 
 use common::communicate::{ClientToServer, ServerToClient};
-use common::entity;
+use common::entity_id;
 use common::socket::SendSocket;
+use common::voxel;
 
 use player::Player;
 use server::{Client, Server};
@@ -24,7 +25,7 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
 
 fn cast(
   server: &Server,
-  player_id: entity::EntityId,
+  player_id: entity_id::T,
 ) -> Option<voxel_data::bounds::T> {
   let ray;
   {
@@ -37,7 +38,7 @@ fn cast(
     &ray,
     &mut |bounds, voxel| {
       match voxel {
-        &terrain::voxel::T::Volume(terrain::voxel::Material::Empty) => None,
+        &voxel::Volume(voxel::Material::Empty) => None,
         _ => Some(bounds),
       }
     }
@@ -128,8 +129,8 @@ pub fn apply_client_update<UpdateGaia>(
         player.rotate_lateral(v.x);
         player.rotate_vertical(v.y);
       },
-      ClientToServer::RequestBlock(client_id, position, lod) => {
-        update_gaia(update_gaia::Message::Load(position, lod, LoadReason::ForClient(client_id)));
+      ClientToServer::RequestVoxel(client_id, position) => {
+        update_gaia(update_gaia::Message::Load(position, LoadReason::ForClient(client_id)));
       },
       ClientToServer::Add(player_id) => {
         let bounds = cast(server, player_id);
@@ -186,7 +187,8 @@ pub fn apply_client_update<UpdateGaia>(
                     Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
                   },
                 ),
-              mosaic: Box::new(tree) as Box<voxel_data::mosaic::T<terrain::voxel::Material> + Send>,
+              mosaic: Box::new(tree) as Box<voxel_data::mosaic::T<voxel::Material> + Send>,
+              min_lg_size: 0,
             };
 
           update_gaia(update_gaia::Message::Brush(brush));
@@ -207,7 +209,7 @@ pub fn apply_client_update<UpdateGaia>(
                   radius: r,
                 },
               },
-              material: terrain::voxel::Material::Empty,
+              material: voxel::Material::Empty,
             };
           let r = sphere.field.field.radius + 1.0;
           let brush =
@@ -223,9 +225,10 @@ pub fn apply_client_update<UpdateGaia>(
                     Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
                   },
                 ),
-              mosaic: Box::new(sphere) as Box<voxel_data::mosaic::T<terrain::voxel::Material> + Send>,
+              mosaic: Box::new(sphere) as Box<voxel_data::mosaic::T<voxel::Material> + Send>,
+              min_lg_size: 0,
             };
-          let brush: voxel_data::brush::T<Box<voxel_data::mosaic::T<terrain::voxel::Material> + Send>> = brush;
+          let brush: voxel_data::brush::T<Box<voxel_data::mosaic::T<voxel::Material> + Send>> = brush;
           update_gaia(update_gaia::Message::Brush(brush));
         });
       },

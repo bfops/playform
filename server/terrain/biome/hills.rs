@@ -2,9 +2,9 @@
 
 use cgmath::{Point3, Vector3, EuclideanVector};
 use noise::{Seed, Brownian2, Brownian3, perlin2, perlin3};
-
-use voxel;
 use voxel_data;
+
+use common::voxel;
 
 #[allow(missing_docs)]
 pub struct T {

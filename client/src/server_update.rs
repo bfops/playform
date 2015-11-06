@@ -2,10 +2,12 @@ use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
 use std::f32;
 use std::f32::consts::PI;
 use stopwatch;
+use voxel_data;
 
 use common::color::{Color3, Color4};
 use common::communicate;
-use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
+use common::communicate::{ClientToServer, ServerToClient};
+use common::voxel;
 
 use client;
 use light;
@@ -29,7 +31,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
 ) where
   UpdateView: FnMut(ClientToView),
   UpdateServer: FnMut(ClientToServer),
-  QueueBlock: FnMut(TerrainBlockSend),
+  QueueBlock: FnMut(voxel::T, voxel_data::bounds::T),
 {
   stopwatch::time("apply_server_update", move || {
     match update {
@@ -92,14 +94,19 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
 
         update_view(ClientToView::SetClearColor(sun_color));
       },
-      ServerToClient::Block(block, reason) => {
+      ServerToClient::Voxel(block, bounds, reason) => {
+        debug!("Receiving a voxel request");
         match reason {
-          communicate::BlockReason::Updated => {},
-          communicate::BlockReason::Requested => {
+          communicate::VoxelReason::Updated => {},
+          communicate::VoxelReason::Requested => {
             *client.outstanding_terrain_requests.lock().unwrap() -= 1;
+            debug!("Outstanding terrain requests: {}", *client.outstanding_terrain_requests.lock().unwrap());
+            if *client.outstanding_terrain_requests.lock().unwrap() == 0 {
+              info!("No more outstanding terrain requests");
+            }
           },
         }
-        queue_block(block);
+        queue_block(block, bounds);
       },
     }
   })

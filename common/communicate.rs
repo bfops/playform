@@ -3,13 +3,12 @@
 use cgmath::{Aabb3, Vector2, Vector3, Point3};
 use std::default::Default;
 use std::ops::Add;
+use voxel_data;
 
-use block_position::BlockPosition;
-use entity::EntityId;
-use lod::LODIndex;
-use terrain_block::TerrainBlock;
+use entity_id;
+use voxel;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 /// Unique client ID.
 pub struct ClientId(u32);
 
@@ -29,17 +28,6 @@ impl Add<u32> for ClientId {
 }
 
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
-/// TerrainBlock plus identifying info, e.g. for transmission between server and client.
-pub struct TerrainBlockSend {
-  #[allow(missing_docs)]
-  pub position: BlockPosition,
-  #[allow(missing_docs)]
-  pub block: TerrainBlock,
-  #[allow(missing_docs)]
-  pub lod: LODIndex,
-}
-
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 /// Messages the client sends to the server.
 pub enum ClientToServer {
   /// Notify the server that the client exists, and provide a "return address".
@@ -49,24 +37,24 @@ pub enum ClientToServer {
   /// Ask the server to create a new player.
   AddPlayer(ClientId),
   /// Add a vector the player's acceleration.
-  Walk(EntityId, Vector3<f32>),
+  Walk(entity_id::T, Vector3<f32>),
   /// Rotate the player by some amount.
-  RotatePlayer(EntityId, Vector2<f32>),
+  RotatePlayer(entity_id::T, Vector2<f32>),
   /// [Try to] start a jump for the player.
-  StartJump(EntityId),
+  StartJump(entity_id::T),
   /// [Try to] stop a jump for the player.
-  StopJump(EntityId),
+  StopJump(entity_id::T),
   /// Ask the server to send a block of terrain.
-  RequestBlock(ClientId, BlockPosition, LODIndex),
+  RequestVoxel(ClientId, voxel_data::bounds::T),
   /// Brush-remove where the player's looking.
-  Add(EntityId),
+  Add(entity_id::T),
   /// Brush-add at where the player's looking.
-  Remove(EntityId),
+  Remove(entity_id::T),
 }
 
 /// Why a block is being sent to a client.
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
-pub enum BlockReason {
+pub enum VoxelReason {
   /// The client asked for it.
   Requested,
   /// The block has been updated.
@@ -82,16 +70,16 @@ pub enum ServerToClient {
   Ping,
 
   /// Complete an AddPlayer request.
-  PlayerAdded(EntityId, Point3<f32>),
+  PlayerAdded(entity_id::T, Point3<f32>),
   /// Update a player's position.
-  UpdatePlayer(EntityId, Aabb3<f32>),
+  UpdatePlayer(entity_id::T, Aabb3<f32>),
 
   /// Update the client's view of a mob with a given mesh.
-  UpdateMob(EntityId, Aabb3<f32>),
+  UpdateMob(entity_id::T, Aabb3<f32>),
 
   /// The sun as a [0, 1) portion of its cycle.
   UpdateSun(f32),
 
   /// Provide a block of terrain to a client.
-  Block(TerrainBlockSend, BlockReason),
+  Voxel(voxel::T, voxel_data::bounds::T, VoxelReason),
 }

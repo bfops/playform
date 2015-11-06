@@ -27,3 +27,9 @@ git = "https://github.com/thehydroimpulse/nanomsg.rs"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
+
+[dependencies.voxel-data]
+git = "https://github.com/bfops/rust-voxel-data"
+
+[dependencies.isosurface-extraction]
+git = "https://github.com/bfops/rust-isosurface-extraction"

@@ -7,7 +7,7 @@ use yaglw::gl_context::GLContext;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, DrawMode, VertexAttribData};
 use yaglw::texture::{Texture2D, TextureUnit};
 
-use common::id_allocator::IdAllocator;
+use common::id_allocator;
 
 use camera::Camera;
 use fontloader::FontLoader;
@@ -56,7 +56,7 @@ pub struct T<'a> {
 impl<'a> T<'a> {
   #[allow(missing_docs)]
   pub fn new(mut gl: GLContext, window_size: Vector2<i32>) -> T<'a> {
-    let mut texture_unit_alloc = IdAllocator::new();
+    let mut texture_unit_alloc = id_allocator::new();
 
     let mut shaders = Shaders::new(&mut gl, window_size);
 

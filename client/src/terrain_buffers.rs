@@ -5,11 +5,11 @@ use gl::types::*;
 use cgmath::{Point3, Vector3};
 use std::collections::HashMap;
 
-use common::entity::EntityId;
-use common::id_allocator::IdAllocator;
-use common::terrain_block::Triangle;
+use common::entity_id;
+use common::id_allocator;
 
 use shaders::terrain::TerrainShader;
+use terrain_block::Triangle;
 use yaglw::gl_context::GLContext;
 use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
@@ -26,8 +26,8 @@ pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
 pub struct TerrainBuffers<'a> {
-  id_to_index: HashMap<EntityId, usize>,
-  index_to_id: Vec<EntityId>,
+  id_to_index: HashMap<entity_id::T, usize>,
+  index_to_id: Vec<entity_id::T>,
 
   // TODO: Use yaglw's ArrayHandle.
   empty_array: GLuint,
@@ -74,7 +74,7 @@ impl<'a> TerrainBuffers<'a> {
   pub fn bind_glsl_uniforms(
     &self,
     gl: &mut GLContext,
-    texture_unit_alloc: &mut IdAllocator<TextureUnit>,
+    texture_unit_alloc: &mut id_allocator::T<TextureUnit>,
     shader: &mut TerrainShader,
   ) {
     shader.shader.use_shader(gl);
@@ -101,7 +101,7 @@ impl<'a> TerrainBuffers<'a> {
     gl: &mut GLContext,
     vertices: &[Triangle<Point3<GLfloat>>],
     normals: &[Triangle<Vector3<GLfloat>>],
-    ids: &[EntityId],
+    ids: &[entity_id::T],
     materials: &[GLint],
   ) {
     assert_eq!(vertices.len(), ids.len());
@@ -131,7 +131,7 @@ impl<'a> TerrainBuffers<'a> {
   // TODO: Make this take many ids as a parameter, to reduce `bind`s.
   // Note: `id` must be present in the buffers.
   /// Remove some entity from VRAM.
-  pub fn swap_remove(&mut self, gl: &mut GLContext, id: EntityId) {
+  pub fn swap_remove(&mut self, gl: &mut GLContext, id: entity_id::T) {
     let idx = *self.id_to_index.get(&id).unwrap();
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     self.index_to_id.swap_remove(idx);

@@ -1,11 +1,13 @@
 use env_logger;
 use std::env;
-use std::sync::mpsc::{channel, Receiver, TryRecvError};
+use std::sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use std::sync::Mutex;
 use stopwatch;
 use thread_scoped;
+use voxel_data;
 
 use common::communicate::{ClientToServer, ServerToClient};
+use common::voxel;
 
 use client;
 use server;
@@ -40,7 +42,7 @@ fn main() {
   let (view_thread_send0, mut view_thread_recv0) = channel();
   let (view_thread_send1, mut view_thread_recv1) = channel();
 
-  let terrain_blocks_send = &terrain_blocks_send;
+  let terrain_blocks_send: &Sender<(voxel::T, voxel_data::bounds::T)> = &terrain_blocks_send;
   let terrain_blocks_recv = &mut terrain_blocks_recv;
   let view_thread_send0 = &view_thread_send0;
   let view_thread_recv0 = &mut view_thread_recv0;
@@ -72,7 +74,7 @@ fn main() {
             &mut |up| { view_thread_send0.send(up).unwrap() },
             &mut |up| { view_thread_send1.send(up).unwrap() },
   	        &mut |up| { server.talk.tell(&up) },
-            &mut |block| { terrain_blocks_send.send(block).unwrap() },
+            &mut |voxel, bounds| { terrain_blocks_send.send((voxel, bounds)).unwrap() },
           );
 
           stopwatch::clone()

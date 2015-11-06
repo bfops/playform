@@ -1,6 +1,6 @@
 use cgmath::{Aabb3, Point, Point3, EuclideanVector, Vector, Vector3};
 
-use common::entity::EntityId;
+use common::entity_id;
 use common::surroundings_loader::SurroundingsLoader;
 
 use mob;
@@ -20,7 +20,7 @@ pub fn init_mobs(
     fn to_player(world: &Server, mob: &mob::Mob) -> Option<Vector3<f32>> {
       let mob_posn = center(world.physics.lock().unwrap().get_bounds(mob.entity_id).unwrap());
 
-      let players: Vec<EntityId> = world.players.lock().unwrap().keys().map(|&x| x).collect();
+      let players: Vec<entity_id::T> = world.players.lock().unwrap().keys().map(|&x| x).collect();
       let mut players = players.into_iter();
 
       players.next().map(|id| {
@@ -110,7 +110,7 @@ fn add_mob(
       behavior: behavior,
       entity_id: entity_id,
       owner_id: server.owner_allocator.lock().unwrap().allocate(),
-      surroundings_loader: SurroundingsLoader::new(1, Vec::new()),
+      surroundings_loader: SurroundingsLoader::new(8, Vec::new()),
     };
 
   server.physics.lock().unwrap().insert_misc(entity_id, bounds);

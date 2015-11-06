@@ -5,7 +5,6 @@
 
 #![feature(box_syntax)]
 #![feature(core)]
-#![feature(iter_cmp)]
 #![feature(plugin)]
 #![feature(test)]
 #![feature(unboxed_closures)]
@@ -14,6 +13,7 @@
 #![allow(type_complexity)]
 
 extern crate cgmath;
+extern crate isosurface_extraction;
 #[macro_use]
 extern crate log;
 extern crate nanomsg;
@@ -22,17 +22,16 @@ extern crate rustc_serialize;
 extern crate stopwatch;
 extern crate test;
 extern crate time;
+extern crate voxel_data;
 
-pub mod block_position;
 pub mod closure_series;
 pub mod color;
 pub mod communicate;
 pub mod cube_shell;
-pub mod entity;
+pub mod entity_id;
 pub mod id_allocator;
 pub mod interval_timer;
-pub mod lod;
 pub mod range_abs;
 pub mod socket;
 pub mod surroundings_loader;
-pub mod terrain_block;
+pub mod voxel;

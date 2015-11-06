@@ -11,7 +11,7 @@ use time;
 use yaglw::gl_context::GLContext;
 
 use common::communicate::ClientToServer;
-use common::entity::EntityId;
+use common::entity_id;
 use common::interval_timer::IntervalTimer;
 
 use hud::make_hud;
@@ -32,7 +32,7 @@ enum ViewIteration {
 
 #[allow(missing_docs)]
 pub fn view_thread<Recv0, Recv1, UpdateServer>(
-  player_id: EntityId,
+  player_id: entity_id::T,
   recv0: &mut Recv0,
   recv1: &mut Recv1,
   update_server: &mut UpdateServer,

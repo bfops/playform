@@ -5,18 +5,18 @@ use std::sync::Mutex;
 use time;
 
 use common::communicate::{ServerToClient, ClientId};
-use common::entity::EntityId;
-use common::id_allocator::IdAllocator;
+use common::entity_id;
+use common::id_allocator;
 use common::interval_timer::IntervalTimer;
-use common::lod::OwnerId;
 use common::socket::SendSocket;
 
 use init_mobs::init_mobs;
+use lod;
 use mob;
 use physics::Physics;
 use player::Player;
 use sun::Sun;
-use terrain_loader::TerrainLoader;
+use terrain_loader;
 
 const UPDATES_PER_SECOND: u64 = 30;
 const SUN_TICK_NS: u64 = 1600000;
@@ -39,15 +39,15 @@ impl Client {
 
 // TODO: Audit for s/Mutex/RwLock.
 pub struct Server {
-  pub players: Mutex<HashMap<EntityId, Player>>,
-  pub mobs: Mutex<HashMap<EntityId, mob::Mob>>,
+  pub players: Mutex<HashMap<entity_id::T, Player>>,
+  pub mobs: Mutex<HashMap<entity_id::T, mob::Mob>>,
 
-  pub id_allocator: Mutex<IdAllocator<EntityId>>,
-  pub owner_allocator: Mutex<IdAllocator<OwnerId>>,
-  pub client_allocator: Mutex<IdAllocator<ClientId>>,
+  pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
+  pub owner_allocator: Mutex<id_allocator::T<lod::OwnerId>>,
+  pub client_allocator: Mutex<id_allocator::T<ClientId>>,
 
   pub physics: Mutex<Physics>,
-  pub terrain_loader: TerrainLoader,
+  pub terrain_loader: terrain_loader::T,
   pub rng: Mutex<rand::StdRng>,
 
   pub clients: Mutex<HashMap<ClientId, Client>>,
@@ -69,8 +69,8 @@ impl Server {
         )
       );
 
-    let id_allocator = IdAllocator::new();
-    let owner_allocator = Mutex::new(IdAllocator::new());
+    let id_allocator = id_allocator::new();
+    let owner_allocator = Mutex::new(id_allocator::new());
 
     let server = Server {
       players: Mutex::new(HashMap::new()),
@@ -78,10 +78,10 @@ impl Server {
 
       id_allocator: Mutex::new(id_allocator),
       owner_allocator: owner_allocator,
-      client_allocator: Mutex::new(IdAllocator::new()),
+      client_allocator: Mutex::new(id_allocator::new()),
 
       physics: Mutex::new(physics),
-      terrain_loader: TerrainLoader::new(),
+      terrain_loader: terrain_loader::T::new(),
       rng: {
         let seed = [0];
         let seed: &[usize] = &seed;

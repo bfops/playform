@@ -3,7 +3,7 @@
 name = "playform-client"
 version = "0.0.0"
 authors = [
-  "Ben Foppa <benjamin.foppa@gmail.com>",
+  "Zeke Foppa <benjamin.foppa@gmail.com>",
   "Clark Gaebel <cg.wowus.cg@gmail.com>",
   "Elijah Andrews <elijahcandrews@gmail.com>",
 ]
@@ -38,6 +38,12 @@ git = "https://github.com/AngryLawyer/rust-sdl2"
 
 [dependencies.yaglw]
 git = "https://github.com/bfops/yaglw"
+
+[dependencies.voxel-data]
+git = "https://github.com/bfops/rust-voxel-data"
+
+[dependencies.isosurface-extraction]
+git = "https://github.com/bfops/rust-isosurface-extraction"
 
 [dependencies.cgmath]
 git = "https://github.com/bjz/cgmath-rs"

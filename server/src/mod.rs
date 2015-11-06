@@ -9,6 +9,7 @@
 #![deny(warnings)]
 
 #![feature(box_syntax)]
+#![feature(iter_cmp)]
 #![feature(main)]
 #![feature(plugin)]
 #![feature(test)]
@@ -37,6 +38,7 @@ extern crate voxel_data;
 mod client_recv_thread;
 mod in_progress_terrain;
 mod init_mobs;
+mod lod;
 mod main;
 mod mob;
 mod octree;

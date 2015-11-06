@@ -1,0 +1,12 @@
+[package]
+
+name = "serialize"
+version = "0.0.0"
+authors = []
+
+[lib]
+name = "serialize"
+path = "mod.rs"
+
+[dependencies]
+num = "*"

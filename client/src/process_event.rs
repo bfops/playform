@@ -10,7 +10,7 @@ use std::f32::consts::PI;
 use stopwatch;
 
 use common::communicate::ClientToServer;
-use common::entity::EntityId;
+use common::entity_id;
 use common::communicate::ClientToServer::*;
 
 use view;
@@ -18,7 +18,7 @@ use view;
 #[allow(missing_docs)]
 pub fn process_event<UpdateServer>(
   sdl: &sdl2::Sdl,
-  player_id: EntityId,
+  player_id: entity_id::T,
   update_server: &mut UpdateServer,
   view: &mut view::T,
   window: &mut video::Window,
@@ -51,7 +51,7 @@ pub fn process_event<UpdateServer>(
 }
 
 fn key_press<UpdateServer>(
-  player_id: EntityId,
+  player_id: entity_id::T,
   update_server: &mut UpdateServer,
   view: &mut view::T,
   key: Keycode,
@@ -99,7 +99,7 @@ fn key_press<UpdateServer>(
 }
 
 fn mouse_press<UpdateServer>(
-  player_id: EntityId,
+  player_id: entity_id::T,
   update_server: &mut UpdateServer,
   mouse_btn: Mouse,
 ) where UpdateServer: FnMut(ClientToServer)
@@ -122,7 +122,7 @@ fn mouse_press<UpdateServer>(
 }
 
 fn key_release<UpdateServer>(
-  player_id: EntityId,
+  player_id: entity_id::T,
   update_server: &mut UpdateServer,
   key: Keycode,
 ) where UpdateServer: FnMut(ClientToServer)
@@ -152,7 +152,7 @@ fn key_release<UpdateServer>(
 
 fn mouse_move<UpdateServer>(
   sdl: &sdl2::Sdl,
-  player_id: EntityId,
+  player_id: entity_id::T,
   update_server: &mut UpdateServer,
   view: &mut view::T,
   window: &mut video::Window,

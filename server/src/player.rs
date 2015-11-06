@@ -4,13 +4,13 @@ use std::f32::consts::PI;
 use std::ops::DerefMut;
 use std::sync::Mutex;
 use stopwatch;
+use voxel_data;
 
-use common::block_position::BlockPosition;
-use common::entity::EntityId;
-use common::id_allocator::IdAllocator;
-use common::lod::{LOD, LODIndex, OwnerId};
+use common::entity_id;
+use common::id_allocator;
 use common::surroundings_loader::{SurroundingsLoader, LoadType};
 
+use lod;
 use physics::Physics;
 use server::Server;
 use update_gaia;
@@ -32,7 +32,7 @@ pub struct Player {
   pub jump_fuel: u32,
   // are we currently trying to jump? (e.g. holding the key).
   pub is_jumping: bool,
-  pub entity_id: EntityId,
+  pub entity_id: entity_id::T,
 
   // rotation around the y-axis, in radians
   pub lateral_rotation: f32,
@@ -40,16 +40,16 @@ pub struct Player {
   pub vertical_rotation: f32,
 
   surroundings_loader: SurroundingsLoader,
-  surroundings_owner: OwnerId,
+  surroundings_owner: lod::OwnerId,
   // Nearby blocks should be made solid if they aren't loaded yet.
   solid_boundary: SurroundingsLoader,
-  solid_owner: OwnerId,
+  solid_owner: lod::OwnerId,
 }
 
 impl Player {
   pub fn new(
-    entity_id: EntityId,
-    owner_allocator: &Mutex<IdAllocator<OwnerId>>,
+    entity_id: entity_id::T,
+    owner_allocator: &Mutex<id_allocator::T<lod::OwnerId>>,
   ) -> Player {
     let surroundings_owner = owner_allocator.lock().unwrap().allocate();
     let solid_owner = owner_allocator.lock().unwrap().allocate();
@@ -64,8 +64,8 @@ impl Player {
       lateral_rotation: 0.0,
       vertical_rotation: 0.0,
 
-      surroundings_loader: SurroundingsLoader::new(1, Vec::new()),
-      solid_boundary:  SurroundingsLoader::new(1, Vec::new()),
+      surroundings_loader: SurroundingsLoader::new(8, Vec::new()),
+      solid_boundary:  SurroundingsLoader::new(8, Vec::new()),
       surroundings_owner:  surroundings_owner,
       solid_owner: solid_owner,
     }
@@ -144,19 +144,24 @@ impl Player {
   ) where
     RequestBlock: FnMut(update_gaia::Message),
   {
-    let player_position = BlockPosition::of_world_position(&self.position);
+    let player_position = 
+      Point3::new(
+        self.position.x as i32,
+        self.position.y as i32,
+        self.position.z as i32,
+      );
 
     stopwatch::time("update.player.surroundings", || {
       let owner = self.surroundings_owner;
-      for (pos, load_type) in self.surroundings_loader.updates(player_position.as_pnt()) {
-        let pos = BlockPosition::of_pnt(&pos);
+      for (pos, load_type) in self.surroundings_loader.updates(&player_position) {
+        let pos = voxel_data::bounds::new(pos.x, pos.y, pos.z, 0);
         match load_type {
           LoadType::Load | LoadType::Update => {
             server.terrain_loader.load(
               &server.id_allocator,
               &server.physics,
               &pos,
-              LOD::LodIndex(LODIndex(0)),
+              lod::Full,
               owner,
               request_block,
             );
@@ -172,8 +177,8 @@ impl Player {
       }
 
       let owner = self.solid_owner;
-      for (pos, load_type) in self.solid_boundary.updates(player_position.as_pnt()) {
-        let block_position = BlockPosition::of_pnt(&pos);
+      for (pos, load_type) in self.solid_boundary.updates(&player_position) {
+        let block_position = voxel_data::bounds::new(pos.x, pos.y, pos.z, 0);
         load_placeholders(
           owner,
           server,

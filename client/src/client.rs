@@ -5,42 +5,44 @@ use std::collections::HashMap;
 use num::iter::range_inclusive;
 use std::sync::Mutex;
 
-use common::block_position::BlockPosition;
 use common::communicate::ClientId;
-use common::entity::EntityId;
-use common::lod::LODIndex;
+use common::entity_id;
+use common::id_allocator;
 use common::surroundings_loader::SurroundingsLoader;
-use common::terrain_block;
-use common::terrain_block::TerrainBlock;
 
+use block_position;
+use lod;
+use terrain_block;
 use terrain_buffers;
 
 /// The distances at which LOD switches.
 pub const LOD_THRESHOLDS: [i32; 3] = [2, 16, 32];
 
 // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-const MAX_LOAD_DISTANCE: i32 = 80;
+const MAX_LOAD_DISTANCE: i32 = 20;
 
 /// The main client state.
 pub struct T {
   #[allow(missing_docs)]
   pub id: ClientId,
   #[allow(missing_docs)]
-  pub player_id: EntityId,
+  pub player_id: entity_id::T,
   #[allow(missing_docs)]
   pub player_position: Mutex<Point3<f32>>,
   #[allow(missing_docs)]
   pub max_load_distance: i32,
   #[allow(missing_docs)]
   pub surroundings_loader: Mutex<SurroundingsLoader>,
+  pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
   /// A record of all the blocks that have been loaded.
-  pub loaded_blocks: Mutex<HashMap<BlockPosition, (TerrainBlock, LODIndex)>>,
+  pub loaded_blocks: Mutex<HashMap<block_position::T, (terrain_block::T, lod::T)>>,
+  pub partial_blocks: Mutex<HashMap<block_position::T, terrain_block::Partial>>,
   /// The number of terrain requests that are outstanding,
   pub outstanding_terrain_requests: Mutex<u32>,
 }
 
 #[allow(missing_docs)]
-pub fn new(client_id: ClientId, player_id: EntityId, position: Point3<f32>) -> T {
+pub fn new(client_id: ClientId, player_id: entity_id::T, position: Point3<f32>) -> T {
   let mut load_distance = load_distance(terrain_buffers::POLYGON_BUDGET as i32);
 
   if load_distance > MAX_LOAD_DISTANCE {
@@ -63,6 +65,8 @@ pub fn new(client_id: ClientId, player_id: EntityId, position: Point3<f32>) -> T
     player_position: Mutex::new(position),
     max_load_distance: load_distance,
     surroundings_loader: Mutex::new(surroundings_loader),
+    id_allocator: Mutex::new(id_allocator::new()),
+    partial_blocks: Mutex::new(HashMap::new()),
     loaded_blocks: Mutex::new(HashMap::new()),
     outstanding_terrain_requests: Mutex::new(0),
   }

@@ -3,11 +3,11 @@
 
 use cgmath::{Point, Point3, Vector, Vector3, EuclideanVector, Rotation};
 use rand;
-
-use voxel;
 use voxel_data;
 use voxel_data::field;
 use voxel_data::mosaic;
+
+use common::voxel;
 
 mod pillar {
   use cgmath::{Point, Point3, Vector3, EuclideanVector};
