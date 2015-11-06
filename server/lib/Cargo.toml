@@ -13,6 +13,7 @@ bincode = "*"
 cgmath = "0.3.1"
 clippy = "*"
 log = "*"
+nanomsg = "*"
 num = "*"
 rand = "*"
 rustc-serialize = "*"
@@ -29,9 +30,6 @@ git = "https://github.com/bfops/rust-voxel-data"
 [dependencies.terrain]
 path = "./terrain"
 version = "*"
-
-[dependencies.nanomsg]
-git = "https://github.com/thehydroimpulse/nanomsg.rs"
 
 [dependencies.noise]
 git = "https://github.com/bjz/noise-rs"

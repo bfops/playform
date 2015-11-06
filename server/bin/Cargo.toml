@@ -16,6 +16,8 @@ path = "./mod.rs"
 clippy = "*"
 env_logger= "*"
 log = "*"
+nanomsg = "*"
+thread-scoped = "*"
 time = "*"
 
 [dependencies.server-lib]
