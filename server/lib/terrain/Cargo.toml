@@ -16,7 +16,7 @@ time = "*"
 num = "*"
 
 [dependencies.playform-common]
-path = "../../common"
+path = "../../../common"
 version = "*"
 
 [dependencies.voxel-data]

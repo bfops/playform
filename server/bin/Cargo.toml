@@ -1,0 +1,25 @@
+[package]
+
+name = "server"
+version = "0.0.0"
+authors = [
+  "Zeke Foppa <benjamin.foppa@gmail.com>",
+  "Clark Gaebel <cg.wowus.cg@gmail.com>",
+  "Elijah Andrews <elijahcandrews@gmail.com>",
+]
+
+[[bin]]
+name = "server"
+path = "./mod.rs"
+
+[dependencies]
+clippy = "*"
+env_logger= "*"
+log = "*"
+time = "*"
+
+[dependencies.server-lib]
+path = "../lib"
+
+[dependencies.stopwatch]
+git = "https://github.com/bfops/stopwatch-rs"

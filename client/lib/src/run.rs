@@ -1,5 +1,3 @@
-use env_logger;
-use std::env;
 use std::sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use std::sync::Mutex;
 use stopwatch;
@@ -25,19 +23,8 @@ fn try_recv<T>(recv: &Receiver<T>) -> Option<T>
   }
 }
 
-#[main]
-fn main() {
-  env_logger::init().unwrap();
-
-  let mut args = env::args();
-  args.next().unwrap();
-  let listen_url = args.next().unwrap_or(String::from("ipc:///tmp/client.ipc"));
-  let server_url = args.next().unwrap_or(String::from("ipc:///tmp/server.ipc"));
-  assert!(args.next().is_none());
-
-  info!("Sending to {}.", server_url);
-  info!("Listening on {}.", listen_url);
-
+#[allow(missing_docs)]
+pub fn run(listen_url: &str, server_url: &str) {
   let (terrain_blocks_send, mut terrain_blocks_recv) = channel();
   let (view_thread_send0, mut view_thread_recv0) = channel();
   let (view_thread_send1, mut view_thread_recv1) = channel();

@@ -1,21 +1,16 @@
 [package]
 
-name = "playform-client"
+name = "client-lib"
 version = "0.0.0"
-authors = [
-  "Zeke Foppa <benjamin.foppa@gmail.com>",
-  "Clark Gaebel <cg.wowus.cg@gmail.com>",
-  "Elijah Andrews <elijahcandrews@gmail.com>",
-]
+authors = []
 
-[[bin]]
-name = "client"
+[lib]
+name = "client_lib"
 path = "src/mod.rs"
 
 [dependencies]
 bincode = "*"
 clippy = "*"
-env_logger= "*"
 libc = "*"
 log = "*"
 num = "*"
@@ -24,7 +19,7 @@ thread-scoped = "*"
 time = "*"
 
 [dependencies.playform-common]
-path = "../common"
+path = "../../common"
 version = "*"
 
 [dependencies.gl]
