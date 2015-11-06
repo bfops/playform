@@ -12,7 +12,7 @@ use common::surroundings_loader::SurroundingsLoader;
 
 use block_position;
 use lod;
-use terrain_block;
+use terrain_mesh;
 use terrain_buffers;
 
 /// The distances at which LOD switches.
@@ -35,8 +35,8 @@ pub struct T {
   pub surroundings_loader: Mutex<SurroundingsLoader>,
   pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
   /// A record of all the blocks that have been loaded.
-  pub loaded_blocks: Mutex<HashMap<block_position::T, (terrain_block::T, lod::T)>>,
-  pub partial_blocks: Mutex<HashMap<block_position::T, terrain_block::Partial>>,
+  pub loaded_blocks: Mutex<HashMap<block_position::T, (terrain_mesh::T, lod::T)>>,
+  pub partial_blocks: Mutex<HashMap<block_position::T, terrain_mesh::Partial>>,
   /// The number of terrain requests that are outstanding,
   pub outstanding_terrain_requests: Mutex<u32>,
 }
@@ -80,7 +80,7 @@ fn load_distance(mut polygon_budget: i32) -> i32 {
   let mut load_distance = 0;
   let mut prev_threshold = 0;
   let mut prev_square = 0;
-  for (&threshold, &quality) in LOD_THRESHOLDS.iter().zip(terrain_block::EDGE_SAMPLES.iter()) {
+  for (&threshold, &quality) in LOD_THRESHOLDS.iter().zip(terrain_mesh::EDGE_SAMPLES.iter()) {
     let polygons_per_block = (quality * quality * 4) as i32;
     for i in range_inclusive(prev_threshold, threshold) {
       let i = 2 * i + 1;
@@ -101,7 +101,7 @@ fn load_distance(mut polygon_budget: i32) -> i32 {
   loop {
     let square = width * width;
     // The "to infinity and beyond" quality.
-    let quality = terrain_block::EDGE_SAMPLES[LOD_THRESHOLDS.len()];
+    let quality = terrain_mesh::EDGE_SAMPLES[LOD_THRESHOLDS.len()];
     let polygons_per_block = (quality * quality * 4) as i32;
     let polygons_in_layer = (square - prev_square) * polygons_per_block;
     polygon_budget -= polygons_in_layer;

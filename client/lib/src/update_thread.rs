@@ -11,9 +11,9 @@ use common::voxel;
 
 use block_position;
 use client;
-use load_terrain::{load_terrain_block, lod_index};
+use load_terrain::{load_terrain_mesh, lod_index};
 use server_update::apply_server_update;
-use terrain_block;
+use terrain_mesh;
 use view_update::ClientToView;
 
 const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 8;
@@ -93,24 +93,24 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
                     .get(&block_position)
                     .map(|&(_, lod)| lod);
                   if loaded_lod != Some(lod) {
-                    let voxel_size = 1 << terrain_block::LG_SAMPLE_SIZE[lod.0 as usize];
+                    let voxel_size = 1 << terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
                     update_server(
                       protocol::ClientToServer::RequestVoxels(
                         client.id,
-                        terrain_block::voxels_in(
+                        terrain_mesh::voxels_in(
                           &Aabb3::new(
                             Point3::new(
-                              (block_position.as_pnt().x << terrain_block::LG_WIDTH) - voxel_size,
-                              (block_position.as_pnt().y << terrain_block::LG_WIDTH) - voxel_size,
-                              (block_position.as_pnt().z << terrain_block::LG_WIDTH) - voxel_size,
+                              (block_position.as_pnt().x << terrain_mesh::LG_WIDTH) - voxel_size,
+                              (block_position.as_pnt().y << terrain_mesh::LG_WIDTH) - voxel_size,
+                              (block_position.as_pnt().z << terrain_mesh::LG_WIDTH) - voxel_size,
                             ),
                             Point3::new(
-                              ((block_position.as_pnt().x + 1) << terrain_block::LG_WIDTH) + voxel_size,
-                              ((block_position.as_pnt().y + 1) << terrain_block::LG_WIDTH) + voxel_size,
-                              ((block_position.as_pnt().z + 1) << terrain_block::LG_WIDTH) + voxel_size,
+                              ((block_position.as_pnt().x + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+                              ((block_position.as_pnt().y + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+                              ((block_position.as_pnt().z + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
                             ),
                           ),
-                          terrain_block::LG_SAMPLE_SIZE[lod.0 as usize],
+                          terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize],
                         ),
                       )
                     );
@@ -130,24 +130,24 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
                     .map(|&(_, lod)| new_lod < lod);
                   if lod_change == Some(true) {
                     debug!("Sending a block");
-                    let voxel_size = 1 << terrain_block::LG_SAMPLE_SIZE[new_lod.0 as usize];
+                    let voxel_size = 1 << terrain_mesh::LG_SAMPLE_SIZE[new_lod.0 as usize];
                     update_server(
                       protocol::ClientToServer::RequestVoxels(
                         client.id,
-                        terrain_block::voxels_in(
+                        terrain_mesh::voxels_in(
                           &Aabb3::new(
                             Point3::new(
-                              (block_position.as_pnt().x << terrain_block::LG_WIDTH) - voxel_size,
-                              (block_position.as_pnt().y << terrain_block::LG_WIDTH) - voxel_size,
-                              (block_position.as_pnt().z << terrain_block::LG_WIDTH) - voxel_size,
+                              (block_position.as_pnt().x << terrain_mesh::LG_WIDTH) - voxel_size,
+                              (block_position.as_pnt().y << terrain_mesh::LG_WIDTH) - voxel_size,
+                              (block_position.as_pnt().z << terrain_mesh::LG_WIDTH) - voxel_size,
                             ),
                             Point3::new(
-                              ((block_position.as_pnt().x + 1) << terrain_block::LG_WIDTH) + voxel_size,
-                              ((block_position.as_pnt().y + 1) << terrain_block::LG_WIDTH) + voxel_size,
-                              ((block_position.as_pnt().z + 1) << terrain_block::LG_WIDTH) + voxel_size,
+                              ((block_position.as_pnt().x + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+                              ((block_position.as_pnt().y + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+                              ((block_position.as_pnt().z + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
                             ),
                           ),
-                          terrain_block::LG_SAMPLE_SIZE[new_lod.0 as usize],
+                          terrain_mesh::LG_SAMPLE_SIZE[new_lod.0 as usize],
                         ),
                       )
                     );
@@ -182,7 +182,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
         let start = time::precise_time_ns();
         while let Some((block, bounds)) = recv_block() {
           trace!("Got block: {:?} at {:?}", block, bounds);
-          load_terrain_block(
+          load_terrain_mesh(
             client,
             update_view1,
             block,

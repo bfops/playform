@@ -16,7 +16,6 @@ use common::voxel;
 
 use block_position;
 use lod;
-use terrain_block;
 
 /// Number of LODs
 pub const LOD_COUNT: usize = 4;
@@ -178,7 +177,7 @@ impl Partial {
   {
     // We load a buffer of one voxel around each chunk so we can render seams.
     // TODO: PartialBlock::voxels_to_fetch();
-    let edge_samples = terrain_block::EDGE_SAMPLES[self.lod.0 as usize] as usize + 2;
+    let edge_samples = EDGE_SAMPLES[self.lod.0 as usize] as usize + 2;
     let samples = edge_samples * edge_samples * edge_samples;
     assert!(self.voxels.len() <= samples);
     trace!("len {:?} out of {:?}", self.voxels.len(), samples);
@@ -186,7 +185,7 @@ impl Partial {
       return None
     }
 
-    stopwatch::time("terrain_block::finalize", || {
+    stopwatch::time("terrain_mesh::finalize", || {
       let mut block = empty();
 
       let lg_edge_samples = LG_EDGE_SAMPLES[self.lod.0 as usize];

@@ -8,10 +8,10 @@ use common::voxel;
 use block_position;
 use client;
 use lod;
-use terrain_block;
+use terrain_mesh;
 use view_update::ClientToView;
 
-pub fn load_terrain_block<UpdateView>(
+pub fn load_terrain_mesh<UpdateView>(
   client: &client::T,
   update_view: &mut UpdateView,
   voxel: voxel::T,
@@ -31,9 +31,9 @@ pub fn load_terrain_block<UpdateView>(
     let mut partial_blocks = client.partial_blocks.lock().unwrap();
     let partial_block =
       partial_blocks.entry(block_position)
-      .or_insert_with(|| terrain_block::Partial::new(block_position, lod));
+      .or_insert_with(|| terrain_mesh::Partial::new(block_position, lod));
     if lod != partial_block.lod() {
-      *partial_block = terrain_block::Partial::new(block_position, lod);
+      *partial_block = terrain_mesh::Partial::new(block_position, lod);
     }
   }
 
@@ -62,7 +62,7 @@ pub fn load_terrain_block<UpdateView>(
     }
 
     let lod = lod_index(distance);
-    let lg_size = terrain_block::LG_SAMPLE_SIZE[lod.0 as usize];
+    let lg_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
     if lg_size != bounds.lg_size {
       debug!(
         "Not loading {:?} is not the desired LOD {:?}.",
@@ -76,7 +76,7 @@ pub fn load_terrain_block<UpdateView>(
     {
       let partial_block =
         partial_blocks.entry(block_position)
-        .or_insert_with(|| terrain_block::Partial::new(block_position, lod));
+        .or_insert_with(|| terrain_mesh::Partial::new(block_position, lod));
       if lod != partial_block.lod() {
         continue;
       }
@@ -98,7 +98,7 @@ pub fn load_mesh_block<UpdateView>(
   update_view: &mut UpdateView,
   block_position: &block_position::T,
   lod: lod::T,
-  mesh_block: terrain_block::T,
+  mesh_block: terrain_mesh::T,
 ) where
   UpdateView: FnMut(ClientToView),
 {

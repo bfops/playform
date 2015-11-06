@@ -4,25 +4,25 @@ use cgmath::{Point3, Vector3};
 use std::ops::Add;
 use voxel_data;
 
-use terrain_block;
+use terrain_mesh;
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 /// Position of blocks on an "infinite" regular grid.
-/// The position is implicitly in units of terrain_block::WIDTH.
+/// The position is implicitly in units of terrain_mesh::WIDTH.
 pub struct T(Point3<i32>);
 
 pub fn containing_voxel(bounds: &voxel_data::bounds::T) -> T {
   if bounds.lg_size < 0 {
     new(
-      bounds.x >> -bounds.lg_size >> terrain_block::LG_WIDTH,
-      bounds.y >> -bounds.lg_size >> terrain_block::LG_WIDTH,
-      bounds.z >> -bounds.lg_size >> terrain_block::LG_WIDTH,
+      bounds.x >> -bounds.lg_size >> terrain_mesh::LG_WIDTH,
+      bounds.y >> -bounds.lg_size >> terrain_mesh::LG_WIDTH,
+      bounds.z >> -bounds.lg_size >> terrain_mesh::LG_WIDTH,
     )
   } else {
     new(
-      (bounds.x << bounds.lg_size) >> terrain_block::LG_WIDTH,
-      (bounds.y << bounds.lg_size) >> terrain_block::LG_WIDTH,
-      (bounds.z << bounds.lg_size) >> terrain_block::LG_WIDTH,
+      (bounds.x << bounds.lg_size) >> terrain_mesh::LG_WIDTH,
+      (bounds.y << bounds.lg_size) >> terrain_mesh::LG_WIDTH,
+      (bounds.z << bounds.lg_size) >> terrain_mesh::LG_WIDTH,
     )
   }
 }
@@ -44,9 +44,9 @@ impl T {
   #[allow(dead_code)]
   pub fn to_world_position(&self) -> Point3<f32> {
     Point3::new(
-      (self.as_pnt().x * terrain_block::WIDTH) as f32,
-      (self.as_pnt().y * terrain_block::WIDTH) as f32,
-      (self.as_pnt().z * terrain_block::WIDTH) as f32,
+      (self.as_pnt().x * terrain_mesh::WIDTH) as f32,
+      (self.as_pnt().y * terrain_mesh::WIDTH) as f32,
+      (self.as_pnt().z * terrain_mesh::WIDTH) as f32,
     )
   }
 }
@@ -68,11 +68,11 @@ pub fn of_world_position(world_position: &Point3<f32>) -> T {
       let x = $x.floor() as i32;
       let x =
         if x < 0 {
-          x - (terrain_block::WIDTH - 1)
+          x - (terrain_mesh::WIDTH - 1)
         } else {
           x
         };
-      x / terrain_block::WIDTH
+      x / terrain_mesh::WIDTH
     })
   );
   T(

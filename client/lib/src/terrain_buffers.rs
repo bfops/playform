@@ -9,7 +9,7 @@ use common::entity_id;
 use common::id_allocator;
 
 use shaders::terrain::TerrainShader;
-use terrain_block::Triangle;
+use terrain_mesh::Triangle;
 use yaglw::gl_context::GLContext;
 use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;

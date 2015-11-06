@@ -12,7 +12,7 @@ use light::{set_sun, set_ambient_light};
 use lod;
 use mob_buffers::VERTICES_PER_MOB;
 use player_buffers::VERTICES_PER_PLAYER;
-use terrain_block;
+use terrain_mesh;
 use vertex::ColoredVertex;
 use view;
 
@@ -34,7 +34,7 @@ pub enum ClientToView {
   SetClearColor(Color3<f32>),
 
   /// Add a terrain block to the view.
-  AddBlock(block_position::T, terrain_block::T, lod::T),
+  AddBlock(block_position::T, terrain_mesh::T, lod::T),
   /// Remove a terrain entity.
   RemoveTerrain(entity_id::T),
   /// Treat a series of updates as an atomic operation.
