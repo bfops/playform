@@ -157,36 +157,40 @@ fn test_simple_shell() {
   let center = Point3::new(2, 0, -3);
   let radius = 1;
 
+  fn p_of_a(a: &[i32; 3]) -> Point3<i32> {
+    Point3::new(a[0], a[1], a[2])
+  }
+
   let expected: HashSet<Point3<i32>> = [
-      Point3::new( 0,  0,  1),
-      Point3::new( 0,  0, -1),
-      Point3::new( 0,  1,  0),
-      Point3::new( 0,  1,  1),
-      Point3::new( 0,  1, -1),
-      Point3::new( 0, -1,  0),
-      Point3::new( 0, -1,  1),
-      Point3::new( 0, -1, -1),
-      Point3::new( 1,  0,  0),
-      Point3::new( 1,  0,  1),
-      Point3::new( 1,  0, -1),
-      Point3::new( 1,  1,  0),
-      Point3::new( 1,  1,  1),
-      Point3::new( 1,  1, -1),
-      Point3::new( 1, -1,  0),
-      Point3::new( 1, -1,  1),
-      Point3::new( 1, -1, -1),
-      Point3::new(-1,  0,  0),
-      Point3::new(-1,  0,  1),
-      Point3::new(-1,  0, -1),
-      Point3::new(-1,  1,  0),
-      Point3::new(-1,  1,  1),
-      Point3::new(-1,  1, -1),
-      Point3::new(-1, -1,  0),
-      Point3::new(-1, -1,  1),
-      Point3::new(-1, -1, -1),
+      [  0,  0,  1 ],
+      [  0,  0, -1 ],
+      [  0,  1,  0 ],
+      [  0,  1,  1 ],
+      [  0,  1, -1 ],
+      [  0, -1,  0 ],
+      [  0, -1,  1 ],
+      [  0, -1, -1 ],
+      [  1,  0,  0 ],
+      [  1,  0,  1 ],
+      [  1,  0, -1 ],
+      [  1,  1,  0 ],
+      [  1,  1,  1 ],
+      [  1,  1, -1 ],
+      [  1, -1,  0 ],
+      [  1, -1,  1 ],
+      [  1, -1, -1 ],
+      [ -1,  0,  0 ],
+      [ -1,  0,  1 ],
+      [ -1,  0, -1 ],
+      [ -1,  1,  0 ],
+      [ -1,  1,  1 ],
+      [ -1,  1, -1 ],
+      [ -1, -1,  0 ],
+      [ -1, -1,  1 ],
+      [ -1, -1, -1 ],
     ]
     .iter()
-    .map(|p| p.clone().add_v(&center.to_vec()))
+    .map(|a| p_of_a(a).add_v(&center.to_vec()))
     .collect();
 
   let actual = cube_shell(&center, radius);
@@ -208,38 +212,42 @@ fn test_simple_diff() {
   let to = from.add_v(&Vector3::new(-1, 2, 0));
   let radius = 1;
 
-  let expected: HashSet<Point3<i32>> = [
-      Point3::new( 1,  0,  0),
-      Point3::new( 1,  1,  0),
-      Point3::new( 1, -1,  0),
-      Point3::new( 1,  0,  1),
-      Point3::new( 1,  1,  1),
-      Point3::new( 1, -1,  1),
-      Point3::new( 1,  0, -1),
-      Point3::new( 1,  1, -1),
-      Point3::new( 1, -1, -1),
+  fn p_of_a(a: &[i32; 3]) -> Point3<i32> {
+    Point3::new(a[0], a[1], a[2])
+  }
 
-      Point3::new( 0, -1,  0),
-      Point3::new( 0,  0,  0),
-      Point3::new( 1, -1,  0),
-      Point3::new( 1,  0,  0),
-      Point3::new(-1, -1,  0),
-      Point3::new(-1,  0,  0),
-      Point3::new( 0, -1, -1),
-      Point3::new( 0,  0, -1),
-      Point3::new( 1, -1, -1),
-      Point3::new( 1,  0, -1),
-      Point3::new(-1, -1, -1),
-      Point3::new(-1,  0, -1),
-      Point3::new( 0, -1,  1),
-      Point3::new( 0,  0,  1),
-      Point3::new( 1, -1,  1),
-      Point3::new( 1,  0,  1),
-      Point3::new(-1, -1,  1),
-      Point3::new(-1,  0,  1),
+  let expected: HashSet<Point3<i32>> = [
+      [  1,  0,  0 ],
+      [  1,  1,  0 ],
+      [  1, -1,  0 ],
+      [  1,  0,  1 ],
+      [  1,  1,  1 ],
+      [  1, -1,  1 ],
+      [  1,  0, -1 ],
+      [  1,  1, -1 ],
+      [  1, -1, -1 ],
+
+      [  0, -1,  0 ],
+      [  0,  0,  0 ],
+      [  1, -1,  0 ],
+      [  1,  0,  0 ],
+      [ -1, -1,  0 ],
+      [ -1,  0,  0 ],
+      [  0, -1, -1 ],
+      [  0,  0, -1 ],
+      [  1, -1, -1 ],
+      [  1,  0, -1 ],
+      [ -1, -1, -1 ],
+      [ -1,  0, -1 ],
+      [  0, -1,  1 ],
+      [  0,  0,  1 ],
+      [  1, -1,  1 ],
+      [  1,  0,  1 ],
+      [ -1, -1,  1 ],
+      [ -1,  0,  1 ],
     ]
     .iter()
-    .map(|p| p.clone().add_v(&from.to_vec()))
+    .map(|a| p_of_a(a).add_v(&from.to_vec()))
     .collect();
 
   let actual = cube_diff(&from, &to, radius);
