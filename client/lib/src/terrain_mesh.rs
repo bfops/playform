@@ -103,7 +103,8 @@ pub fn voxels_in(bounds: &Aabb3<i32>, lg_size: i16) -> Vec<voxel::bounds::T> {
   let y_off = bounds.min().y >> lg_size;
   let z_off = bounds.min().z >> lg_size;
 
-  let mut voxels = Vec::with_capacity(x_len + y_len + z_len);
+  let mut voxels =
+    Vec::with_capacity(x_len as usize + y_len as usize + z_len as usize);
 
   for dx in 0 .. x_len {
   for dy in 0 .. y_len {
