@@ -24,7 +24,7 @@ impl voxel_data::field::T for T {
       perlin3(&self.seed, &[(p.x as f64) * f, (p.y as f64) * f, (p.z as f64) * f])
     };
 
-    let d = 
+    let d =
       freq(1.0 / 32.0) -
       f64::max(0.0, freq(1.0 / 16.0));
     d as f32

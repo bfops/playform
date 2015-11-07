@@ -210,24 +210,11 @@ pub fn generate_block<Mosaic>(
         }}}
       };
 
-      edges(
-        dual_contouring::edge::Direction::X,
-        low.x, high.x - 1,
-        low.y, high.y - 1,
-        low.z, high.z - 1,
-      );
-      edges(
-        dual_contouring::edge::Direction::Y,
-        low.x, high.x - 1,
-        low.y, high.y - 1,
-        low.z, high.z - 1,
-      );
-      edges(
-        dual_contouring::edge::Direction::Z,
-        low.x, high.x - 1,
-        low.y, high.y - 1,
-        low.z, high.z - 1,
-      );
+      use dual_coutouring::edge::Direction::*;
+
+      for dir in &[X, Y, Z] {
+        edges(dir, low.x, high.x - 1, low.y, high.y - 1, low.z, high.z - 1);
+      }
     }
 
     block
