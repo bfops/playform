@@ -68,7 +68,6 @@ dependencies = [
  "bincode 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "clippy 0.0.23 (registry+https://github.com/rust-lang/crates.io-index)",
- "fnv 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gl 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "isosurface-extraction 0.0.0 (git+https://github.com/bfops/rust-isosurface-extraction)",
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -101,11 +100,6 @@ dependencies = [
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "fnv"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "gl"
@@ -362,7 +356,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "voxel-data"
 version = "0.0.0"
-source = "git+https://github.com/bfops/rust-voxel-data#cc89210fdff81547be1ffdd426c2a74e41cb87bf"
+source = "git+https://github.com/bfops/rust-voxel-data#96c5bea1ace483f54fe3211fe324356088793b85"
 dependencies = [
  "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "clippy 0.0.23 (registry+https://github.com/rust-lang/crates.io-index)",

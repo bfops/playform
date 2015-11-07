@@ -1,12 +1,10 @@
 //! Data structure for a small block of terrain.
 
 use cgmath::{Point, Point3, Vector3, Aabb, Aabb3};
-use fnv::FnvHasher;
 use isosurface_extraction::dual_contouring;
 use num::iter::range_inclusive;
 use std::f32;
 use std::collections::HashMap;
-use std::collections::hash_state::DefaultState;
 use std::sync::{Arc, Mutex};
 use stopwatch;
 
@@ -160,12 +158,7 @@ mod voxel_storage {
 pub struct Partial {
   position: block_position::T,
   lod: lod::T,
-  voxels: HashMap<voxel::bounds::T, voxel::T, DefaultState<FnvHasher>>,
-}
-
-fn samples(lod: lod::T) -> usize {
-  let edge_samples = EDGE_SAMPLES[lod.0 as usize] as usize + 2;
-  edge_samples * edge_samples * edge_samples
+  voxels: HashMap<voxel::bounds::T, voxel::T>,
 }
 
 impl Partial {
@@ -173,7 +166,7 @@ impl Partial {
     Partial {
       position: position,
       lod: lod,
-      voxels: HashMap::with_capacity_and_hash_state(samples(lod), Default::default()),
+      voxels: HashMap::new(),
     }
   }
 
@@ -192,7 +185,8 @@ impl Partial {
   {
     // We load a buffer of one voxel around each chunk so we can render seams.
     // TODO: PartialBlock::voxels_to_fetch();
-    let samples = samples(self.lod);
+    let edge_samples = EDGE_SAMPLES[self.lod.0 as usize] as usize + 2;
+    let samples = edge_samples * edge_samples * edge_samples;
     assert!(self.voxels.len() <= samples);
     trace!("len {:?} out of {:?}", self.voxels.len(), samples);
     if self.voxels.len() < samples {

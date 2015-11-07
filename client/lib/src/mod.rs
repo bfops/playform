@@ -4,7 +4,7 @@
 #![deny(warnings)]
 
 #![feature(convert)]
-#![feature(hashmap_hasher)]
+//#![feature(hashmap_hasher)]
 #![feature(plugin)]
 #![feature(test)]
 #![feature(unboxed_closures)]
@@ -18,7 +18,6 @@
 extern crate bincode;
 extern crate cgmath;
 extern crate common;
-extern crate fnv;
 extern crate gl;
 extern crate isosurface_extraction;
 #[macro_use]

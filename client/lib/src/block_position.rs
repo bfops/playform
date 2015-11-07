@@ -1,36 +1,29 @@
 //! Position data structure for terrain blocks.
 
 use cgmath::{Point3, Vector3};
-use fnv::FnvHasher;
-use std::collections::hash_state::DefaultState;
+//use fnv::FnvHasher;
+//use std::collections::hash_state::DefaultState;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
-use std::mem;
+//use std::hash::{Hash, Hasher};
+//use std::mem;
 use std::ops::Add;
-use std::slice;
+//use std::slice;
 
 use common::voxel;
 
 use terrain_mesh;
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 /// Position of blocks on an "infinite" regular grid.
 /// The position is implicitly in units of terrain_mesh::WIDTH.
 pub struct T(Point3<i32>);
 
-pub type Map<V> = HashMap<T, V, DefaultState<FnvHasher>>;
+//pub type Map<V> = HashMap<T, V, DefaultState<FnvHasher>>;
+pub type Map<V> = HashMap<T, V>;
 
 pub fn new_map<V>() -> Map<V> {
-  HashMap::with_hash_state(Default::default())
-}
-
-impl Hash for T {
-  fn hash<H: Hasher>(&self, state: &mut H) {
-    unsafe {
-      let p: *const u8 = mem::transmute(self);
-      state.write(slice::from_raw_parts(p, mem::size_of::<T>()));
-    }
-  }
+  //HashMap::with_hash_state(Default::default())
+  HashMap::new()
 }
 
 pub fn containing_voxel(bounds: &voxel::bounds::T) -> T {
