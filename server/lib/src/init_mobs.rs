@@ -1,6 +1,7 @@
 use cgmath::{Aabb3, Point, Point3, EuclideanVector, Vector, Vector3};
 
 use common::entity_id;
+use common::id_allocator;
 use common::surroundings_loader::SurroundingsLoader;
 
 use mob;
@@ -101,7 +102,7 @@ fn add_mob(
   behavior: mob::Behavior,
 ) {
   let bounds = Aabb3::new(low_corner, low_corner.add_v(&Vector3::new(1.0, 2.0, 1.0 as f32)));
-  let entity_id = server.id_allocator.lock().unwrap().allocate();
+  let entity_id = id_allocator::allocate(&server.id_allocator);
 
   let mob =
     mob::Mob {
@@ -109,7 +110,7 @@ fn add_mob(
       speed: Vector3::new(0.0, 0.0, 0.0),
       behavior: behavior,
       entity_id: entity_id,
-      owner_id: server.owner_allocator.lock().unwrap().allocate(),
+      owner_id: id_allocator::allocate(&server.owner_allocator),
       surroundings_loader: SurroundingsLoader::new(8, Vec::new()),
     };
 

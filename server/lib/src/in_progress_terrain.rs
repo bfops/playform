@@ -33,7 +33,7 @@ impl T {
         false
       },
       Entry::Vacant(entry) => {
-        let id = id_allocator.lock().unwrap().allocate();
+        let id = id_allocator::allocate(id_allocator);
         entry.insert(id);
 
         let (low, high) = block_position.corners();

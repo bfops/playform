@@ -182,7 +182,7 @@ pub fn generate_block<Mosaic>(
         for x in range_inclusive(low_x, high_x) {
         for y in range_inclusive(low_y, high_y) {
         for z in range_inclusive(low_z, high_z) {
-          let edge = 
+          let edge =
             dual_contouring::edge::T {
               low_corner: Point3::new(x, y, z),
               direction: direction,
@@ -198,7 +198,7 @@ pub fn generate_block<Mosaic>(
             &mut voxel_storage,
             &edge,
             &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
-              let id = id_allocator.lock().unwrap().allocate();
+              let id = id_allocator::allocate(id_allocator);
 
               block.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
               block.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));

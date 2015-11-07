@@ -51,8 +51,8 @@ impl Player {
     entity_id: entity_id::T,
     owner_allocator: &Mutex<id_allocator::T<lod::OwnerId>>,
   ) -> Player {
-    let surroundings_owner = owner_allocator.lock().unwrap().allocate();
-    let solid_owner = owner_allocator.lock().unwrap().allocate();
+    let surroundings_owner = id_allocator::allocate(owner_allocator);
+    let solid_owner = id_allocator::allocate(owner_allocator);
     Player {
       position: Point3::new(0.0, 0.0, 0.0),
       speed: Vector3::new(0.0, 0.0, 0.0),
@@ -144,7 +144,7 @@ impl Player {
   ) where
     RequestBlock: FnMut(update_gaia::Message),
   {
-    let player_position = 
+    let player_position =
       Point3::new(
         self.position.x as i32,
         self.position.y as i32,

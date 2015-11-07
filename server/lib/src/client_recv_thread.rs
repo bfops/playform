@@ -8,6 +8,7 @@ use std::time::Duration;
 use stopwatch;
 
 use common::entity_id;
+use common::id_allocator;
 use common::protocol;
 use common::socket::SendSocket;
 use common::voxel;
@@ -62,7 +63,7 @@ pub fn apply_client_update<UpdateGaia>(
             socket: SendSocket::new(client_url.as_ref(), Some(Duration::from_secs(30))),
           };
 
-        let client_id = server.client_allocator.lock().unwrap().allocate();
+        let client_id = id_allocator::allocate(&server.client_allocator);
         client.send(protocol::ServerToClient::LeaseId(client_id));
 
         server.clients.lock().unwrap().insert(client_id, client);
@@ -76,7 +77,7 @@ pub fn apply_client_update<UpdateGaia>(
       protocol::ClientToServer::AddPlayer(client_id) => {
         let mut player =
           Player::new(
-            server.id_allocator.lock().unwrap().allocate(),
+            id_allocator::allocate(&server.id_allocator),
             &server.owner_allocator,
           );
 
