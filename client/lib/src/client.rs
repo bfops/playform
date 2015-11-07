@@ -15,7 +15,7 @@ use terrain_mesh;
 use terrain_buffers;
 
 /// The distances at which LOD switches.
-pub const LOD_THRESHOLDS: [i32; 3] = [2, 16, 32];
+pub const LOD_THRESHOLDS: [i32; terrain_mesh::LOD_COUNT-1] = [2, 16, 32];
 
 // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
 const MAX_LOAD_DISTANCE: i32 = 20;
