@@ -198,7 +198,7 @@ fn test_shell_no_dups() {
   let center = Point3::new(2, 0, -3);
   let radius = 2;
   let expected = cube_shell(&center, radius);
-  let actual: HashSet<Point3<i32>> = expected.iter().map(|&x| x).collect();
+  let actual: HashSet<Point3<i32>> = expected.iter().cloned().collect();
   assert_eq!(expected.len(), actual.len());
 }
 
@@ -253,7 +253,7 @@ fn test_diff_no_dups() {
   let radius = 2;
 
   let expected = cube_diff(&from, &to, radius);
-  let actual: HashSet<Point3<i32>> = expected.iter().map(|&x| x).collect();
+  let actual: HashSet<Point3<i32>> = expected.iter().cloned().collect();
   assert_eq!(expected.len(), actual.len());
 }
 

@@ -3,7 +3,7 @@ name = "playform"
 version = "0.0.0"
 dependencies = [
  "client-lib 0.0.0",
- "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -67,7 +67,7 @@ version = "0.0.0"
 dependencies = [
  "bincode 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "gl 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "isosurface-extraction 0.0.0 (git+https://github.com/bfops/rust-isosurface-extraction)",
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -86,7 +86,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.0.21"
+version = "0.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "unicode-normalization 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -136,7 +136,7 @@ version = "0.0.0"
 source = "git+https://github.com/bfops/rust-isosurface-extraction#6f39967e4f3221d404bd72d2e39e7a0c3683d5ba"
 dependencies = [
  "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "voxel-data 0.0.0 (git+https://github.com/bfops/rust-voxel-data)",
 ]
@@ -216,7 +216,7 @@ name = "playform-common"
 version = "0.0.0"
 dependencies = [
  "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "isosurface-extraction 0.0.0 (git+https://github.com/bfops/rust-isosurface-extraction)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -292,7 +292,7 @@ version = "0.0.0"
 dependencies = [
  "bincode 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "noise 0.1.5 (git+https://github.com/bjz/noise-rs)",
@@ -321,7 +321,7 @@ name = "terrain"
 version = "0.0.0"
 dependencies = [
  "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "isosurface-extraction 0.0.0 (git+https://github.com/bfops/rust-isosurface-extraction)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "noise 0.1.5 (git+https://github.com/bjz/noise-rs)",
@@ -359,7 +359,7 @@ version = "0.0.0"
 source = "git+https://github.com/bfops/rust-voxel-data#542ed2af8885dfa459ccc5dc9338580c22eaad82"
 dependencies = [
  "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

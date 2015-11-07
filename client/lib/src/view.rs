@@ -143,7 +143,7 @@ impl<'a> T<'a> {
       fontloader: FontLoader::new(),
 
       camera: {
-        let fovy = cgmath::rad(3.14 / 3.0);
+        let fovy = cgmath::rad(PI / 3.0);
         let aspect = window_size.x as f32 / window_size.y as f32;
         let mut camera = Camera::unit();
         // Initialize the projection matrix.

@@ -26,7 +26,7 @@ pub fn update_world(
         player.update(server, &mut request_block);
       }
 
-      let players: Vec<_> = server.players.lock().unwrap().keys().map(|&x| x).collect();
+      let players: Vec<_> = server.players.lock().unwrap().keys().cloned().collect();
       for (_, client) in server.clients.lock().unwrap().iter_mut() {
         for &id in &players {
           let bounds = server.physics.lock().unwrap().get_bounds(id).unwrap().clone();
@@ -37,7 +37,7 @@ pub fn update_world(
 
     stopwatch::time("update_world.mobs", || {
       for (_, mob) in server.mobs.lock().unwrap().iter_mut() {
-        let position = 
+        let position =
           Point3::new(
             mob.position.x as i32,
             mob.position.y as i32,

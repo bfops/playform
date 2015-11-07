@@ -55,7 +55,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
   let surroundings_loader = {
     SurroundingsLoader::new(
       load_distance,
-      LOD_THRESHOLDS.iter().map(|&x| x).collect(),
+      LOD_THRESHOLDS.iter().cloned().collect(),
     )
   };
 
