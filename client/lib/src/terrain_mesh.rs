@@ -95,13 +95,22 @@ pub fn voxels_in(bounds: &Aabb3<i32>, lg_size: i16) -> Vec<voxel::bounds::T> {
   assert!(bounds.max().y & mod_size == 0);
   assert!(bounds.max().z & mod_size == 0);
 
-  let mut voxels = Vec::new();
-  for dx in 0 .. delta.x >> lg_size {
-  for dy in 0 .. delta.y >> lg_size {
-  for dz in 0 .. delta.z >> lg_size {
-    let x = (bounds.min().x >> lg_size) + dx;
-    let y = (bounds.min().y >> lg_size) + dy;
-    let z = (bounds.min().z >> lg_size) + dz;
+  let x_len = delta.x >> lg_size;
+  let y_len = delta.y >> lg_size;
+  let z_len = delta.z >> lg_size;
+
+  let x_off = bounds.min().x >> lg_size;
+  let y_off = bounds.min().y >> lg_size;
+  let z_off = bounds.min().z >> lg_size;
+
+  let mut voxels = Vec::with_capacity(x_len + y_len + z_len);
+
+  for dx in 0 .. x_len {
+  for dy in 0 .. y_len {
+  for dz in 0 .. z_len {
+    let x = x_off + dx;
+    let y = y_off + dy;
+    let z = z_off + dz;
     voxels.push(voxel::bounds::new(x, y, z, lg_size));
   }}}
   voxels
@@ -213,7 +222,7 @@ impl Partial {
           for y in range_inclusive(low_y, high_y) {
           for z in range_inclusive(low_z, high_z) {
             trace!("edge: {:?} {:?}", direction, Point3::new(x, y, z));
-            let edge = 
+            let edge =
               dual_contouring::edge::T {
                 low_corner: Point3::new(x, y, z),
                 direction: direction,
