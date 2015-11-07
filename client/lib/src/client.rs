@@ -1,7 +1,6 @@
 //! Main Playform client state code.
 
 use cgmath::Point3;
-use std::collections::HashMap;
 use num::iter::range_inclusive;
 use std::sync::Mutex;
 
@@ -35,8 +34,8 @@ pub struct T {
   pub surroundings_loader: Mutex<SurroundingsLoader>,
   pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
   /// A record of all the blocks that have been loaded.
-  pub loaded_blocks: Mutex<HashMap<block_position::T, (terrain_mesh::T, lod::T)>>,
-  pub partial_blocks: Mutex<HashMap<block_position::T, terrain_mesh::Partial>>,
+  pub loaded_blocks: Mutex<block_position::Map<(terrain_mesh::T, lod::T)>>,
+  pub partial_blocks: Mutex<block_position::Map<terrain_mesh::Partial>>,
   /// The number of terrain requests that are outstanding,
   pub outstanding_terrain_requests: Mutex<u32>,
 }
@@ -66,8 +65,8 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     max_load_distance: load_distance,
     surroundings_loader: Mutex::new(surroundings_loader),
     id_allocator: Mutex::new(id_allocator::new()),
-    partial_blocks: Mutex::new(HashMap::new()),
-    loaded_blocks: Mutex::new(HashMap::new()),
+    partial_blocks: Mutex::new(block_position::new_map()),
+    loaded_blocks: Mutex::new(block_position::new_map()),
     outstanding_terrain_requests: Mutex::new(0),
   }
 }
