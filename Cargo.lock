@@ -362,7 +362,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "voxel-data"
 version = "0.0.0"
-source = "git+https://github.com/bfops/rust-voxel-data#5a719b67793b5d9d2c70a1f8e7c1254789aefee4"
+source = "git+https://github.com/bfops/rust-voxel-data#cc89210fdff81547be1ffdd426c2a74e41cb87bf"
 dependencies = [
  "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "clippy 0.0.23 (registry+https://github.com/rust-lang/crates.io-index)",
