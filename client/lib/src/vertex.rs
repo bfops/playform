@@ -59,7 +59,7 @@ impl TextureVertex {
   pub fn square(min: Vector2<f32>, max: Vector2<f32>) -> [TextureVertex; 6] {
     let vtx = |x, y, tx, ty| {
         TextureVertex {
-          world_position:  Vector3::new(x, y, 0.0),
+          world_position:   Vector3::new(x, y, 0.0),
           texture_position: Vector2::new(tx, ty),
         }
       };

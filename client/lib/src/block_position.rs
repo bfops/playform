@@ -64,23 +64,22 @@ pub fn of_pnt(p: &Point3<i32>) -> T {
 
 #[allow(missing_docs)]
 pub fn of_world_position(world_position: &Point3<f32>) -> T {
-  macro_rules! convert_coordinate(
-    ($x: expr) => ({
-      let x = $x.floor() as i32;
-      let x =
-        if x < 0 {
-          x - (terrain_mesh::WIDTH - 1)
-        } else {
-          x
-        };
-      x / terrain_mesh::WIDTH
-    })
-  );
+  fn convert_coordinate(x: f32) -> i32 {
+    let x = x.floor() as i32;
+    let x =
+      if x < 0 {
+        x - (terrain_mesh::WIDTH - 1)
+      } else {
+        x
+      };
+    x >> terrain_mesh::LG_WIDTH
+  }
+
   T(
     Point3::new(
-      convert_coordinate!(world_position.x),
-      convert_coordinate!(world_position.y),
-      convert_coordinate!(world_position.z),
+      convert_coordinate(world_position.x),
+      convert_coordinate(world_position.y),
+      convert_coordinate(world_position.z),
     )
   )
 }
