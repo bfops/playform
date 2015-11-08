@@ -16,7 +16,7 @@ use server_update::apply_server_update;
 use terrain_mesh;
 use view_update::ClientToView;
 
-const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 4;
+const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
 
 pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, UpdateServer, EnqueueBlockUpdates>(
   quit: &Mutex<bool>,
@@ -203,7 +203,6 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
   UpdateView: FnMut(ClientToView),
 {
   let start = time::precise_time_ns();
-  let mut i = 0;
   while let Some((voxel_updates, reason)) = recv_voxel_updates() {
     let mut update_blocks = block_position::with_lod::set::new();
     for (bounds, voxel) in voxel_updates {
@@ -236,13 +235,9 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
       },
     }
 
-    if i >= 10 {
-      i -= 10;
-      if time::precise_time_ns() - start >= 1_000_000 {
-        break
-      }
+    if time::precise_time_ns() - start >= 1_000_000 {
+      break
     }
-    i += 1;
   }
 }
 

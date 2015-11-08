@@ -33,61 +33,7 @@ pub fn update_gaia(
     match update {
       Message::Load(voxel_bounds, load_reason) => {
         stopwatch::time("terrain.load", || {
-          // TODO: Just lock `terrain` for the check and then the move;
-          // don't lock for the whole time where we're generating the block.
-          let mut lod_map = server.terrain_loader.lod_map.lock().unwrap();
-          let mut in_progress_terrain = server.terrain_loader.in_progress_terrain.lock().unwrap();
-          match load_reason {
-            LoadReason::Local(owner) => {
-              for voxel_bounds in voxel_bounds.into_iter() {
-                server.terrain_loader.terrain.load(
-                  &voxel_bounds,
-                  |block| {
-                    let bounds =
-                      match block {
-                        &voxel::Volume(voxel::Material::Empty) => Vec::new(),
-                        _ => {
-                          let (low, high) = voxel_bounds.corners();
-                          let id = id_allocator::allocate(&server.id_allocator);
-                          vec!((id, Aabb3::new(low, high)))
-                        },
-                      };
-                    // TODO: Check that this block isn't stale, i.e. should still be loaded.
-                    // Maybe this should just ping the original thread, same as we ping the client.
-                    terrain_loader::T::insert_block(
-                      &terrain_loader::LoadedTerrain { bounds: bounds },
-                      &voxel_bounds,
-                      owner,
-                      &server.physics,
-                      &mut *lod_map,
-                      &mut *in_progress_terrain,
-                      &mut *server.terrain_loader.loaded.lock().unwrap(),
-                    );
-                  }
-                );
-              }
-            },
-            LoadReason::ForClient(id) => {
-              let mut voxels = Vec::new();
-              for voxel_bounds in voxel_bounds.into_iter() {
-                server.terrain_loader.terrain.load(
-                  &voxel_bounds,
-                  |voxel| {
-                    voxels.push((voxel_bounds, voxel.clone()));
-                  },
-                );
-              }
-
-              let mut clients = server.clients.lock().unwrap();
-              let client = clients.get_mut(&id).unwrap();
-              client.send(
-                protocol::ServerToClient::Voxels(
-                  voxels,
-                  protocol::VoxelReason::Requested,
-                )
-              );
-            },
-          }
+          load(server, voxel_bounds, load_reason);
         });
       },
       Message::Brush(brush) => {
@@ -112,4 +58,67 @@ pub fn update_gaia(
       },
     };
   })
+}
+
+#[inline(never)]
+fn load(
+  server: &Server,
+  voxel_bounds: Vec<voxel::bounds::T>,
+  load_reason: LoadReason,
+) {
+  // TODO: Just lock `terrain` for the check and then the move;
+  // don't lock for the whole time where we're generating the block.
+  let mut lod_map = server.terrain_loader.lod_map.lock().unwrap();
+  let mut in_progress_terrain = server.terrain_loader.in_progress_terrain.lock().unwrap();
+  match load_reason {
+    LoadReason::Local(owner) => {
+      for voxel_bounds in voxel_bounds.into_iter() {
+        server.terrain_loader.terrain.load(
+          &voxel_bounds,
+          |block| {
+            let bounds =
+              match block {
+                &voxel::Volume(voxel::Material::Empty) => Vec::new(),
+                _ => {
+                  let (low, high) = voxel_bounds.corners();
+                  let id = id_allocator::allocate(&server.id_allocator);
+                  vec!((id, Aabb3::new(low, high)))
+                },
+              };
+            // TODO: Check that this block isn't stale, i.e. should still be loaded.
+            // Maybe this should just ping the original thread, same as we ping the client.
+            terrain_loader::T::insert_block(
+              &terrain_loader::LoadedTerrain { bounds: bounds },
+              &voxel_bounds,
+              owner,
+              &server.physics,
+              &mut *lod_map,
+              &mut *in_progress_terrain,
+              &mut *server.terrain_loader.loaded.lock().unwrap(),
+            );
+          }
+        );
+      }
+    },
+    LoadReason::ForClient(id) => {
+      let mut voxels = Vec::new();
+      for voxel_bounds in voxel_bounds.into_iter() {
+        server.terrain_loader.terrain.load(
+          &voxel_bounds,
+          |voxel| {
+            voxels.push((voxel_bounds, voxel.clone()));
+          },
+        );
+      }
+
+      let mut clients = server.clients.lock().unwrap();
+      let client = clients.get_mut(&id).unwrap();
+      client.send(
+        protocol::ServerToClient::Voxels(
+          voxels,
+          protocol::VoxelReason::Requested,
+        )
+      );
+    },
+  }
 }

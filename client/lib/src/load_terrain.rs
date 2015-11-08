@@ -142,7 +142,7 @@ pub fn load_voxel<UpdateBlock>(
     let lg_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
     if lg_size != bounds.lg_size {
       debug!(
-        "Not loading {:?} is not the desired LOD {:?}.",
+        "{:?} is not the desired LOD {:?}.",
         bounds,
         lod
       );
