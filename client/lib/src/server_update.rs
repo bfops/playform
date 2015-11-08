@@ -20,16 +20,16 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
   bounds.min.add_v(&bounds.max.to_vec()).mul_s(0.5)
 }
 
-pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
+pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
   client: &client::T,
   update_view: &mut UpdateView,
   update_server: &mut UpdateServer,
-  queue_block: &mut QueueBlock,
+  enqueue_block_updates: &mut EnqueueBlockUpdates,
   update: protocol::ServerToClient,
 ) where
   UpdateView: FnMut(ClientToView),
   UpdateServer: FnMut(protocol::ClientToServer),
-  QueueBlock: FnMut(voxel::T, voxel::bounds::T),
+  EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>),
 {
   stopwatch::time("apply_server_update", move || {
     match update {
@@ -106,9 +106,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, QueueBlock>(
           },
         }
 
-        for (bounds, voxel) in voxels.into_iter() {
-          queue_block(voxel, bounds);
-        }
+        enqueue_block_updates(voxels);
       },
     }
   })

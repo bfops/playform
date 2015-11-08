@@ -95,6 +95,7 @@ pub fn update_gaia(
         server.terrain_loader.terrain.brush(
           &brush,
           |block, bounds| {
+            trace!("update bounds {:?}", bounds);
             updates.push((bounds.clone(), block.clone()));
           },
         );

@@ -133,7 +133,7 @@ dependencies = [
 [[package]]
 name = "isosurface-extraction"
 version = "0.0.0"
-source = "git+https://github.com/bfops/rust-isosurface-extraction#6f39967e4f3221d404bd72d2e39e7a0c3683d5ba"
+source = "git+https://github.com/bfops/rust-isosurface-extraction#f8e22374b60f5507fd059f668f870e53e4f824c6"
 dependencies = [
  "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "clippy 0.0.23 (registry+https://github.com/rust-lang/crates.io-index)",

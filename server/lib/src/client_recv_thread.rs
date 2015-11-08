@@ -199,7 +199,7 @@ pub fn apply_client_update<UpdateGaia>(
         let bounds = cast(server, player_id);
 
         bounds.map(|bounds| {
-          debug!("bounds {:?}", bounds);
+          debug!("remove bounds {:?}", bounds);
           let center = bounds.center();
           let r = 8.0;
           let sphere =

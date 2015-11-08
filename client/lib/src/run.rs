@@ -24,12 +24,12 @@ fn try_recv<T>(recv: &Receiver<T>) -> Option<T>
 
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, server_url: &str) {
-  let (terrain_blocks_send, mut terrain_blocks_recv) = channel();
+  let (voxel_updates_send, mut voxel_updates_recv) = channel();
   let (view_thread_send0, mut view_thread_recv0) = channel();
   let (view_thread_send1, mut view_thread_recv1) = channel();
 
-  let terrain_blocks_send: &Sender<(voxel::T, voxel::bounds::T)> = &terrain_blocks_send;
-  let terrain_blocks_recv = &mut terrain_blocks_recv;
+  let voxel_updates_send: &Sender<Vec<(voxel::bounds::T, voxel::T)>> = &voxel_updates_send;
+  let voxel_updates_recv = &mut voxel_updates_recv;
   let view_thread_send0 = &view_thread_send0;
   let view_thread_recv0 = &mut view_thread_recv0;
   let view_thread_send1 = &view_thread_send1;
@@ -49,18 +49,18 @@ pub fn run(listen_url: &str, server_url: &str) {
       let view_thread_send0 = view_thread_send0.clone();
       let view_thread_send1 = view_thread_send1.clone();
       let server = server.clone();
-      let terrain_blocks_send = terrain_blocks_send.clone();
+      let voxel_updates_send = voxel_updates_send.clone();
       unsafe {
         thread_scoped::scoped(move || {
           update_thread(
             quit,
             client,
             &mut || { server.listen.try() },
-            &mut || { try_recv(terrain_blocks_recv) },
+            &mut || { try_recv(voxel_updates_recv) },
             &mut |up| { view_thread_send0.send(up).unwrap() },
             &mut |up| { view_thread_send1.send(up).unwrap() },
   	        &mut |up| { server.talk.tell(&up) },
-            &mut |voxel, bounds| { terrain_blocks_send.send((voxel, bounds)).unwrap() },
+            &mut |voxel_updates| { voxel_updates_send.send(voxel_updates).unwrap() },
           );
 
           stopwatch::clone()

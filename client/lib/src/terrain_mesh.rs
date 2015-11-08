@@ -4,7 +4,6 @@ use cgmath::{Point, Point3, Vector3, Aabb, Aabb3};
 use isosurface_extraction::dual_contouring;
 use num::iter::range_inclusive;
 use std::f32;
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use stopwatch;
 
@@ -24,7 +23,7 @@ pub const LG_WIDTH: i16 = 3;
 pub const WIDTH: i32 = 1 << LG_WIDTH;
 
 /// lg(EDGE_SAMPLES)
-pub const LG_EDGE_SAMPLES: [u16; LOD_COUNT] = [3, 2, 1, 0];
+pub const LG_EDGE_SAMPLES: [u16; LOD_COUNT] = [0, 0, 0, 0];
 /// The number of voxels along an axis within a block, indexed by LOD.
 pub const EDGE_SAMPLES: [u16; LOD_COUNT] = [
   1 << LG_EDGE_SAMPLES[0],
@@ -122,14 +121,16 @@ mod voxel_storage {
 
   use common::voxel;
 
-  use super::Partial;
-
-  fn get_voxel<'a>(this: &'a mut Partial, bounds: &voxel::bounds::T) -> Option<&'a voxel::T> {
-    debug!("Getting {:?} from {:?}", bounds, this.position);
-    this.voxels.get(bounds)
+  pub struct T<'a> {
+    pub voxels: &'a voxel::tree::T,
   }
 
-  impl<'a> dual_contouring::voxel_storage::T<voxel::Material> for Partial {
+  fn get_voxel<'a>(this: &mut T<'a>, bounds: &voxel::bounds::T) -> Option<&'a voxel::T> {
+    trace!("fetching {:?}", bounds);
+    Some(this.voxels.get(bounds).unwrap())
+  }
+
+  impl<'a> dual_contouring::voxel_storage::T<voxel::Material> for T<'a> {
     fn get_material(&mut self, bounds: &voxel::bounds::T) -> Option<voxel::Material> {
       match get_voxel(self, bounds) {
         None => None,
@@ -155,122 +156,90 @@ mod voxel_storage {
   }
 }
 
-pub struct Partial {
-  position: block_position::T,
+pub fn generate(
+  voxels: &voxel::tree::T,
+  block_position: &block_position::T,
   lod: lod::T,
-  voxels: HashMap<voxel::bounds::T, voxel::T>,
-}
+  id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
+) -> T
+{
+  stopwatch::time("terrain_mesh::generate", || {
+    let mut block = empty();
+    {
+      let block2 = Arc::make_mut(&mut block);
 
-impl Partial {
-  pub fn new(position: block_position::T, lod: lod::T) -> Partial {
-    Partial {
-      position: position,
-      lod: lod,
-      voxels: HashMap::new(),
-    }
-  }
+      let lg_edge_samples = LG_EDGE_SAMPLES[lod.0 as usize];
+      let lg_sample_size = LG_SAMPLE_SIZE[lod.0 as usize];
 
-  pub fn lod(&self) -> lod::T {
-    self.lod
-  }
+      let low = block_position.as_pnt().clone();
+      let high = low.add_v(&Vector3::new(1, 1, 1));
+      let low =
+        Point3::new(
+          low.x << lg_edge_samples,
+          low.y << lg_edge_samples,
+          low.z << lg_edge_samples,
+        );
+      let high =
+        Point3::new(
+          high.x << lg_edge_samples,
+          high.y << lg_edge_samples,
+          high.z << lg_edge_samples,
+        );
 
-  pub fn add(&mut self, voxel: voxel::T, bounds: voxel::bounds::T) {
-    self.voxels.insert(bounds, voxel);
-  }
+      trace!("low {:?}", low);
+      trace!("high {:?}", high);
 
-  pub fn finalize(
-    &mut self,
-    id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
-  ) -> Option<T>
-  {
-    // We load a buffer of one voxel around each chunk so we can render seams.
-    // TODO: PartialBlock::voxels_to_fetch();
-    let edge_samples = EDGE_SAMPLES[self.lod.0 as usize] as usize + 2;
-    let samples = edge_samples * edge_samples * edge_samples;
-    assert!(self.voxels.len() <= samples);
-    trace!("len {:?} out of {:?}", self.voxels.len(), samples);
-    if self.voxels.len() < samples {
-      return None
-    }
-
-    stopwatch::time("terrain_mesh::finalize", || {
-      let mut block = empty();
       {
-        let block2 = Arc::make_mut(&mut block);
+        let mut edges = |direction, low_x, high_x, low_y, high_y, low_z, high_z| {
+          for x in range_inclusive(low_x, high_x) {
+          for y in range_inclusive(low_y, high_y) {
+          for z in range_inclusive(low_z, high_z) {
+            trace!("edge: {:?} {:?}", direction, Point3::new(x, y, z));
+            let edge =
+              dual_contouring::edge::T {
+                low_corner: Point3::new(x, y, z),
+                direction: direction,
+                lg_size: lg_sample_size,
+              };
 
-        let lg_edge_samples = LG_EDGE_SAMPLES[self.lod.0 as usize];
-        let lg_sample_size = LG_SAMPLE_SIZE[self.lod.0 as usize];
+            dual_contouring::edge::extract(
+              &mut voxel_storage::T { voxels: voxels },
+              &edge,
+              &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
+                let id = id_allocator::allocate(id_allocator);
 
-        let low = self.position.as_pnt().clone();
-        let high = low.add_v(&Vector3::new(1, 1, 1));
-        let low =
-          Point3::new(
-            low.x << lg_edge_samples,
-            low.y << lg_edge_samples,
-            low.z << lg_edge_samples,
-          );
-        let high =
-          Point3::new(
-            high.x << lg_edge_samples,
-            high.y << lg_edge_samples,
-            high.z << lg_edge_samples,
-          );
+                block2.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
+                block2.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
+                block2.materials.push(polygon.material as i32);
+                block2.ids.push(id);
+                block2.bounds.push((id, make_bounds(&polygon.vertices[0], &polygon.vertices[1], &polygon.vertices[2])));
+              }
+            );
+          }}}
+        };
 
-        trace!("low {:?}", low);
-        trace!("high {:?}", high);
-
-        {
-          let mut edges = |direction, low_x, high_x, low_y, high_y, low_z, high_z| {
-            for x in range_inclusive(low_x, high_x) {
-            for y in range_inclusive(low_y, high_y) {
-            for z in range_inclusive(low_z, high_z) {
-              trace!("edge: {:?} {:?}", direction, Point3::new(x, y, z));
-              let edge =
-                dual_contouring::edge::T {
-                  low_corner: Point3::new(x, y, z),
-                  direction: direction,
-                  lg_size: lg_sample_size,
-                };
-
-              dual_contouring::edge::extract(
-                self,
-                &edge,
-                &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
-                  let id = id_allocator::allocate(id_allocator);
-
-                  block2.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
-                  block2.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
-                  block2.materials.push(polygon.material as i32);
-                  block2.ids.push(id);
-                  block2.bounds.push((id, make_bounds(&polygon.vertices[0], &polygon.vertices[1], &polygon.vertices[2])));
-                }
-              );
-            }}}
-          };
-
-          edges(
-            dual_contouring::edge::Direction::X,
-            low.x, high.x - 1,
-            low.y, high.y - 1,
-            low.z, high.z - 1,
-          );
-          edges(
-            dual_contouring::edge::Direction::Y,
-            low.x, high.x - 1,
-            low.y, high.y - 1,
-            low.z, high.z - 1,
-          );
-          edges(
-            dual_contouring::edge::Direction::Z,
-            low.x, high.x - 1,
-            low.y, high.y - 1,
-            low.z, high.z - 1,
-          );
-        }
+        edges(
+          dual_contouring::edge::Direction::X,
+          low.x, high.x - 1,
+          low.y, high.y - 1,
+          low.z, high.z - 1,
+        );
+        edges(
+          dual_contouring::edge::Direction::Y,
+          low.x, high.x - 1,
+          low.y, high.y - 1,
+          low.z, high.z - 1,
+        );
+        edges(
+          dual_contouring::edge::Direction::Z,
+          low.x, high.x - 1,
+          low.y, high.y - 1,
+          low.z, high.z - 1,
+        );
       }
-      Some(block)
-    })
-  }
+    }
+    block
+  })
 }
 
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]

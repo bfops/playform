@@ -100,7 +100,14 @@ impl T {
     let mut voxels = self.voxels.lock().unwrap();
     voxels.brush(
       brush,
-      &mut |bounds| Some(voxel::unwrap(voxel::of_field(&self.mosaic, bounds))),
+      // TODO: Put a max size on this
+      &mut |bounds| {
+        if bounds.lg_size > 3 {
+          None
+        } else {
+          Some(voxel::unwrap(voxel::of_field(&self.mosaic, bounds)))
+        }
+      },
       &mut voxel_changed,
     );
   }

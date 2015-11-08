@@ -1,4 +1,5 @@
 use cgmath::{Aabb3, Point3};
+use std;
 use std::sync::Mutex;
 use stopwatch;
 use time;
@@ -10,29 +11,30 @@ use common::voxel;
 
 use block_position;
 use client;
-use load_terrain::{load_terrain_mesh, lod_index};
+use load_terrain;
+use load_terrain::lod_index;
 use server_update::apply_server_update;
 use terrain_mesh;
 use view_update::ClientToView;
 
 const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 8;
 
-pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServer, QueueBlock>(
+pub fn update_thread<RecvServer, RecvBlockUpdates, UpdateView0, UpdateView1, UpdateServer, EnqueueBlockUpdates>(
   quit: &Mutex<bool>,
   client: &client::T,
   recv_server: &mut RecvServer,
-  recv_block: &mut RecvBlock,
+  recv_voxel_updates: &mut RecvBlockUpdates,
   update_view0: &mut UpdateView0,
   update_view1: &mut UpdateView1,
   update_server: &mut UpdateServer,
-  queue_block: &mut QueueBlock,
+  enqueue_block_updates: &mut EnqueueBlockUpdates,
 ) where
   RecvServer: FnMut() -> Option<protocol::ServerToClient>,
-  RecvBlock: FnMut() -> Option<(voxel::T, voxel::bounds::T)>,
+  RecvBlockUpdates: FnMut() -> Option<Vec<(voxel::bounds::T, voxel::T)>>,
   UpdateView0: FnMut(ClientToView),
   UpdateView1: FnMut(ClientToView),
   UpdateServer: FnMut(protocol::ClientToServer),
-  QueueBlock: FnMut(voxel::T, voxel::bounds::T),
+  EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>),
 {
   'update_loop: loop {
     if *quit.lock().unwrap() == true {
@@ -45,7 +47,7 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
             client,
             update_view0,
             update_server,
-            queue_block,
+            enqueue_block_updates,
             up,
           );
 
@@ -179,14 +181,26 @@ pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServ
         });
 
         let start = time::precise_time_ns();
-        while let Some((block, bounds)) = recv_block() {
-          trace!("Got block: {:?} at {:?}", block, bounds);
-          load_terrain_mesh(
-            client,
-            update_view1,
-            block,
-            bounds,
-          );
+        while let Some(voxel_updates) = recv_voxel_updates() {
+          let mut update_blocks = std::collections::HashSet::new();
+          for (bounds, voxel) in voxel_updates {
+            trace!("Got voxel at {:?}", bounds);
+            load_terrain::load_voxel(
+              client,
+              voxel,
+              bounds,
+              |block, lod| { update_blocks.insert((block, lod)); },
+            );
+          }
+
+          for (block, lod) in update_blocks.into_iter() {
+            load_terrain::load_block(
+              client,
+              update_view1,
+              &block,
+              lod
+            )
+          }
 
           if time::precise_time_ns() - start >= 1_000_000 {
             break

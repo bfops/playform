@@ -2,12 +2,14 @@
 
 use cgmath::Point3;
 use num::iter::range_inclusive;
+use std;
 use std::sync::Mutex;
 
 use common::entity_id;
 use common::id_allocator;
 use common::protocol;
 use common::surroundings_loader::SurroundingsLoader;
+use common::voxel;
 
 use block_position;
 use lod;
@@ -18,7 +20,7 @@ use terrain_buffers;
 pub const LOD_THRESHOLDS: [i32; terrain_mesh::LOD_COUNT-1] = [2, 16, 32];
 
 // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-const MAX_LOAD_DISTANCE: i32 = 20;
+const MAX_LOAD_DISTANCE: i32 = 4;
 
 /// The main client state.
 pub struct T {
@@ -35,7 +37,11 @@ pub struct T {
   pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
   /// A record of all the blocks that have been loaded.
   pub loaded_blocks: Mutex<block_position::Map<(terrain_mesh::T, lod::T)>>,
-  pub partial_blocks: Mutex<block_position::Map<terrain_mesh::Partial>>,
+  /// Map each block to the number of voxels inside it that we have.
+  pub block_voxels_loaded: Mutex<std::collections::HashMap<(block_position::T, lod::T), u32>>,
+  /// The voxels we have cached from the server.
+  // TODO: Should probably remove from this at some point.
+  pub voxels: Mutex<voxel::tree::T>,
   /// The number of terrain requests that are outstanding,
   pub outstanding_terrain_requests: Mutex<u32>,
 }
@@ -65,8 +71,9 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     max_load_distance: load_distance,
     surroundings_loader: Mutex::new(surroundings_loader),
     id_allocator: Mutex::new(id_allocator::new()),
-    partial_blocks: Mutex::new(block_position::new_map()),
     loaded_blocks: Mutex::new(block_position::new_map()),
+    block_voxels_loaded: Mutex::new(std::collections::HashMap::new()),
+    voxels: Mutex::new(voxel::tree::T::new()),
     outstanding_terrain_requests: Mutex::new(0),
   }
 }
