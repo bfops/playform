@@ -1,5 +1,4 @@
 use num;
-use std;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 use common::surroundings_loader;
@@ -10,6 +9,30 @@ use client;
 use lod;
 use terrain_mesh;
 use view_update::ClientToView;
+
+#[inline(never)]
+fn updated_block_positions(
+  voxel: &voxel::bounds::T,
+) -> block_position::set::T
+{
+  let mut block_positions = block_position::set::new();
+  for dx in num::range_inclusive(-1, 1) {
+  for dy in num::range_inclusive(-1, 1) {
+  for dz in num::range_inclusive(-1, 1) {
+    block_positions.insert(
+      block_position::containing_voxel(
+        &voxel::bounds::new(
+          voxel.x + dx,
+          voxel.y + dy,
+          voxel.z + dz,
+          voxel.lg_size,
+        )
+      )
+    );
+  }}}
+
+  block_positions
+}
 
 pub fn load_voxel<UpdateBlock>(
   client: &client::T,
@@ -48,40 +71,31 @@ pub fn load_voxel<UpdateBlock>(
   }
 
   trace!("voxel bounds {:?}", bounds);
-  let mut block_positions = std::collections::HashSet::new();
-  for dx in num::range_inclusive(-1, 1) {
-  for dy in num::range_inclusive(-1, 1) {
-  for dz in num::range_inclusive(-1, 1) {
-    block_positions.insert(
-      block_position::containing_voxel(
-        &voxel::bounds::new(
-          bounds.x + dx,
-          bounds.y + dy,
-          bounds.z + dz,
-          bounds.lg_size,
-        )
-      )
-    );
-  }}}
 
-  for block_position in block_positions.into_iter() {
+  // The LOD of the blocks that should be updated.
+  // This doesn't necessarily match the LOD they're loaded at.
+  let mut updated_lod = None;
+  for lod in 0..terrain_mesh::LOD_COUNT as u32 {
+    let lod = lod::T(lod);
+
+    let lg_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
+    if lg_size == bounds.lg_size {
+      updated_lod = Some(lod);
+      break
+    }
+  }
+
+  for block_position in updated_block_positions(&bounds).into_iter() {
     trace!("block_position {:?}", block_position);
     if new_voxel_loaded {
-      trace!("new_voxel_loaded");
-      // Find the block this voxel fits into, and increment its voxel count.
-
-      for lod in 0..terrain_mesh::LOD_COUNT as u32 {
-        let lod = lod::T(lod);
-        let block_voxels_loaded =
-          block_voxels_loaded.entry((block_position, lod))
-          .or_insert_with(|| 0);
-
-        let lg_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
-        if lg_size == bounds.lg_size {
+      match updated_lod {
+        None => {}
+        Some(updated_lod) => {
+          let block_voxels_loaded =
+            block_voxels_loaded.entry((block_position, updated_lod))
+            .or_insert_with(|| 0);
           *block_voxels_loaded += 1;
-          trace!("Adding {:?} to {:?} at {:?}", bounds, block_position, lod);
-          // TODO: break;
-        }
+        },
       }
     }
 
@@ -118,6 +132,7 @@ pub fn load_voxel<UpdateBlock>(
   }
 }
 
+#[inline(never)]
 pub fn load_block<UpdateView>(
   client: &client::T,
   update_view: &mut UpdateView,

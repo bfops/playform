@@ -1,13 +1,7 @@
 //! Position data structure for terrain blocks.
 
 use cgmath::{Point3, Vector3};
-//use fnv::FnvHasher;
-//use std::collections::hash_state::DefaultState;
-use std::collections::HashMap;
-//use std::hash::{Hash, Hasher};
-//use std::mem;
 use std::ops::Add;
-//use std::slice;
 
 use common::voxel;
 
@@ -18,20 +12,68 @@ use terrain_mesh;
 /// The position is implicitly in units of terrain_mesh::WIDTH.
 pub struct T(Point3<i32>);
 
-//pub type Map<V> = HashMap<T, V, DefaultState<FnvHasher>>;
-pub type Map<V> = HashMap<T, V>;
+pub mod map {
+  use fnv::FnvHasher;
+  use std;
+  use std::collections::hash_state::DefaultState;
 
-pub fn new_map<V>() -> Map<V> {
-  //HashMap::with_hash_state(Default::default())
-  HashMap::new()
+  pub type T<V> = std::collections::HashMap<super::T, V, DefaultState<FnvHasher>>;
+
+  pub fn new<V>() -> T<V> {
+    std::collections::HashMap::with_hash_state(Default::default())
+  }
 }
 
+pub mod set {
+  use fnv::FnvHasher;
+  use std;
+  use std::collections::hash_state::DefaultState;
+
+  pub type T = std::collections::HashSet<super::T, DefaultState<FnvHasher>>;
+
+  #[allow(dead_code)]
+  pub fn new() -> T {
+    std::collections::HashSet::with_hash_state(Default::default())
+  }
+}
+
+pub mod with_lod {
+  use lod;
+
+  pub type T = (super::T, lod::T);
+
+  pub mod set {
+    use fnv::FnvHasher;
+    use std;
+    use std::collections::hash_state::DefaultState;
+
+    pub type T = std::collections::HashSet<super::T, DefaultState<FnvHasher>>;
+
+    pub fn new() -> T {
+      std::collections::HashSet::with_hash_state(Default::default())
+    }
+  }
+
+  pub mod map {
+    use fnv::FnvHasher;
+    use std;
+    use std::collections::hash_state::DefaultState;
+
+    pub type T<V> = std::collections::HashMap<super::T, V, DefaultState<FnvHasher>>;
+
+    pub fn new<V>() -> T<V> {
+      std::collections::HashMap::with_hash_state(Default::default())
+    }
+  }
+}
+
+#[inline(never)]
 pub fn containing_voxel(bounds: &voxel::bounds::T) -> T {
   if bounds.lg_size < 0 {
     new(
-      bounds.x >> -bounds.lg_size >> terrain_mesh::LG_WIDTH,
-      bounds.y >> -bounds.lg_size >> terrain_mesh::LG_WIDTH,
-      bounds.z >> -bounds.lg_size >> terrain_mesh::LG_WIDTH,
+      (bounds.x >> -bounds.lg_size) >> terrain_mesh::LG_WIDTH,
+      (bounds.y >> -bounds.lg_size) >> terrain_mesh::LG_WIDTH,
+      (bounds.z >> -bounds.lg_size) >> terrain_mesh::LG_WIDTH,
     )
   } else {
     new(

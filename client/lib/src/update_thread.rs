@@ -1,5 +1,4 @@
 use cgmath::{Aabb3, Point3};
-use std;
 use std::sync::Mutex;
 use stopwatch;
 use time;
@@ -42,6 +41,7 @@ pub fn update_thread<RecvServer, RecvBlockUpdates, UpdateView0, UpdateView1, Upd
     } else {
       stopwatch::time("update_iteration", || {
         let start = time::precise_time_ns();
+        let mut i = 0;
         while let Some(up) = recv_server() {
           apply_server_update(
             client,
@@ -51,13 +51,18 @@ pub fn update_thread<RecvServer, RecvBlockUpdates, UpdateView0, UpdateView1, Upd
             up,
           );
 
-          if time::precise_time_ns() - start >= 1_000_000 {
-            break
+          if i > 10 {
+            i -= 10;
+            if time::precise_time_ns() - start >= 1_000_000 {
+              break
+            }
           }
+          i += 1;
         }
 
         stopwatch::time("update_surroundings", || {
           let start = time::precise_time_ns();
+          let mut i = 0;
           let player_position = *client.player_position.lock().unwrap();
           let player_position = block_position::of_world_position(&player_position);
           let mut loaded_blocks = client.loaded_blocks.lock().unwrap();
@@ -174,15 +179,20 @@ pub fn update_thread<RecvServer, RecvBlockUpdates, UpdateView0, UpdateView1, Upd
               },
             };
 
-            if time::precise_time_ns() - start >= 1_000_000 {
-              break
+            if i >= 10 {
+              i -= 10;
+              if time::precise_time_ns() - start >= 1_000_000 {
+                break
+              }
             }
+            i += 1;
           }
         });
 
         let start = time::precise_time_ns();
+        let mut i = 0;
         while let Some((voxel_updates, reason)) = recv_voxel_updates() {
-          let mut update_blocks = std::collections::HashSet::new();
+          let mut update_blocks = block_position::with_lod::set::new();
           for (bounds, voxel) in voxel_updates {
             trace!("Got voxel at {:?}", bounds);
             load_terrain::load_voxel(
@@ -213,9 +223,13 @@ pub fn update_thread<RecvServer, RecvBlockUpdates, UpdateView0, UpdateView1, Upd
             },
           }
 
-          if time::precise_time_ns() - start >= 1_000_000 {
-            break
+          if i >= 10 {
+            i -= 10;
+            if time::precise_time_ns() - start >= 1_000_000 {
+              break
+            }
           }
+          i += 1;
         }
       })
     }
