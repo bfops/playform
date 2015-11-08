@@ -1,3 +1,4 @@
+use cgmath::Point3;
 use num;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
 
@@ -13,25 +14,50 @@ use view_update::ClientToView;
 #[inline(never)]
 fn updated_block_positions(
   voxel: &voxel::bounds::T,
-) -> block_position::set::T
+) -> Vec<block_position::T>
 {
-  let mut block_positions = block_position::set::new();
-  for dx in num::range_inclusive(-1, 1) {
-  for dy in num::range_inclusive(-1, 1) {
-  for dz in num::range_inclusive(-1, 1) {
-    block_positions.insert(
-      block_position::containing_voxel(
-        &voxel::bounds::new(
-          voxel.x + dx,
-          voxel.y + dy,
-          voxel.z + dz,
-          voxel.lg_size,
-        )
-      )
-    );
-  }}}
+  let block = block_position::containing_voxel(voxel);
 
-  block_positions
+  macro_rules! tweak(($dim:ident) => {{
+    let mut new_voxel = voxel.clone();
+    new_voxel.$dim += 1;
+    if block_position::containing_voxel(&new_voxel) != block {
+      1
+    } else {
+      let mut new_voxel = voxel.clone();
+      new_voxel.$dim -= 1;
+      if block_position::containing_voxel(&new_voxel) != block {
+        -1
+      } else {
+        0
+      }
+    }
+  }});
+
+  let tweak =
+    Point3::new(
+      tweak!(x),
+      tweak!(y),
+      tweak!(z),
+    );
+
+  macro_rules! consider(($dim:ident, $block:expr, $next:expr) => {{
+    $next($block);
+    if tweak.$dim != 0 {
+      let mut block = $block;
+      block.as_mut_pnt().$dim += tweak.$dim;
+      $next(block);
+    }
+  }});
+
+  let mut blocks = Vec::new();
+  consider!(x, block, |block: block_position::T| {
+  consider!(y, block, |block: block_position::T| {
+  consider!(z, block, |block: block_position::T| {
+    blocks.push(block);
+  })})});
+
+  blocks
 }
 
 pub fn load_voxel<UpdateBlock>(
@@ -94,6 +120,7 @@ pub fn load_voxel<UpdateBlock>(
           let block_voxels_loaded =
             block_voxels_loaded.entry((block_position, updated_lod))
             .or_insert_with(|| 0);
+          trace!("{:?} gets {:?}", block_position, bounds);
           *block_voxels_loaded += 1;
         },
       }
@@ -125,7 +152,7 @@ pub fn load_voxel<UpdateBlock>(
 
     let edge_samples = terrain_mesh::EDGE_SAMPLES[lod.0 as usize] as u32 + 2;
     let samples = edge_samples * edge_samples * edge_samples;
-    assert!(*block_voxels_loaded <= samples);
+    assert!(*block_voxels_loaded <= samples, "{:?}", block_position);
     if *block_voxels_loaded == samples {
       update_block(block_position, lod);
     }
