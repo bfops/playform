@@ -28,7 +28,7 @@ pub fn run(listen_url: &str, server_url: &str) {
   let (view_thread_send0, mut view_thread_recv0) = channel();
   let (view_thread_send1, mut view_thread_recv1) = channel();
 
-  let voxel_updates_send: &Sender<Vec<(voxel::bounds::T, voxel::T)>> = &voxel_updates_send;
+  let voxel_updates_send: &Sender<(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)> = &voxel_updates_send;
   let voxel_updates_recv = &mut voxel_updates_recv;
   let view_thread_send0 = &view_thread_send0;
   let view_thread_recv0 = &mut view_thread_recv0;
@@ -60,7 +60,7 @@ pub fn run(listen_url: &str, server_url: &str) {
             &mut |up| { view_thread_send0.send(up).unwrap() },
             &mut |up| { view_thread_send1.send(up).unwrap() },
   	        &mut |up| { server.talk.tell(&up) },
-            &mut |voxel_updates| { voxel_updates_send.send(voxel_updates).unwrap() },
+            &mut |voxel_updates, reason| { voxel_updates_send.send((voxel_updates, reason)).unwrap() },
           );
 
           stopwatch::clone()

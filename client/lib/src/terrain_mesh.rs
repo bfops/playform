@@ -23,7 +23,7 @@ pub const LG_WIDTH: i16 = 3;
 pub const WIDTH: i32 = 1 << LG_WIDTH;
 
 /// lg(EDGE_SAMPLES)
-pub const LG_EDGE_SAMPLES: [u16; LOD_COUNT] = [0, 0, 0, 0];
+pub const LG_EDGE_SAMPLES: [u16; LOD_COUNT] = [3, 2, 1, 0];
 /// The number of voxels along an axis within a block, indexed by LOD.
 pub const EDGE_SAMPLES: [u16; LOD_COUNT] = [
   1 << LG_EDGE_SAMPLES[0],

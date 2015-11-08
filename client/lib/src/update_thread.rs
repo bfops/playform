@@ -30,11 +30,11 @@ pub fn update_thread<RecvServer, RecvBlockUpdates, UpdateView0, UpdateView1, Upd
   enqueue_block_updates: &mut EnqueueBlockUpdates,
 ) where
   RecvServer: FnMut() -> Option<protocol::ServerToClient>,
-  RecvBlockUpdates: FnMut() -> Option<Vec<(voxel::bounds::T, voxel::T)>>,
+  RecvBlockUpdates: FnMut() -> Option<(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)>,
   UpdateView0: FnMut(ClientToView),
   UpdateView1: FnMut(ClientToView),
   UpdateServer: FnMut(protocol::ClientToServer),
-  EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>),
+  EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {
   'update_loop: loop {
     if *quit.lock().unwrap() == true {
@@ -181,7 +181,7 @@ pub fn update_thread<RecvServer, RecvBlockUpdates, UpdateView0, UpdateView1, Upd
         });
 
         let start = time::precise_time_ns();
-        while let Some(voxel_updates) = recv_voxel_updates() {
+        while let Some((voxel_updates, reason)) = recv_voxel_updates() {
           let mut update_blocks = std::collections::HashSet::new();
           for (bounds, voxel) in voxel_updates {
             trace!("Got voxel at {:?}", bounds);
@@ -200,6 +200,17 @@ pub fn update_thread<RecvServer, RecvBlockUpdates, UpdateView0, UpdateView1, Upd
               &block,
               lod
             )
+          }
+
+          match reason {
+            protocol::VoxelReason::Updated => {},
+            protocol::VoxelReason::Requested => {
+              *client.outstanding_terrain_requests.lock().unwrap() -= 1;
+              debug!("Outstanding terrain requests: {}", *client.outstanding_terrain_requests.lock().unwrap());
+              if *client.outstanding_terrain_requests.lock().unwrap() == 0 {
+                info!("No more outstanding terrain requests");
+              }
+            },
           }
 
           if time::precise_time_ns() - start >= 1_000_000 {

@@ -29,7 +29,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
 ) where
   UpdateView: FnMut(ClientToView),
   UpdateServer: FnMut(protocol::ClientToServer),
-  EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>),
+  EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {
   stopwatch::time("apply_server_update", move || {
     match update {
@@ -95,18 +95,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
       protocol::ServerToClient::Voxels(voxels, reason) => {
         debug!("Receiving a voxel request");
 
-        match reason {
-          protocol::VoxelReason::Updated => {},
-          protocol::VoxelReason::Requested => {
-            *client.outstanding_terrain_requests.lock().unwrap() -= 1;
-            debug!("Outstanding terrain requests: {}", *client.outstanding_terrain_requests.lock().unwrap());
-            if *client.outstanding_terrain_requests.lock().unwrap() == 0 {
-              info!("No more outstanding terrain requests");
-            }
-          },
-        }
-
-        enqueue_block_updates(voxels);
+        enqueue_block_updates(voxels, reason);
       },
     }
   })
