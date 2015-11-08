@@ -60,6 +60,7 @@ fn updated_block_positions(
   blocks
 }
 
+#[inline(never)]
 pub fn load_voxel<UpdateBlock>(
   client: &client::T,
   voxel: voxel::T,

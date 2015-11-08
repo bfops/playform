@@ -16,7 +16,7 @@ use server_update::apply_server_update;
 use terrain_mesh;
 use view_update::ClientToView;
 
-const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 6;
+const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 4;
 
 pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, UpdateServer, EnqueueBlockUpdates>(
   quit: &Mutex<bool>,
@@ -74,7 +74,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
   let mut updates = surroundings_loader.updates(player_position.as_pnt()) ;
   loop {
     if *client.outstanding_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
-      debug!("update loop breaking");
+      trace!("update loop breaking");
       break;
     }
 
