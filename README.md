@@ -2,7 +2,7 @@
 
 ## Introduction
 
-**FYI: Playform is on hiatus, until there's a compelling way for Rust projects to use C++ libraries. I'm also taking a detour into learning about Unity and Cubiquity. I'm still happy to talk with anybody about Playform, merge PRs, etc., but I don't plan to invest much more coding time.**
+**FYI: Playform is on hiatus - too many wheels being reinvented. I'm taking a detour into learning about Unity and Cubiquity. If/when Rust gets better support for C++ libraries, Playform might spin up again. I'm still happy to talk with anybody about Playform, merge PRs, etc, but I don't plan to invest much more coding time in the near future.**
 
 Playform aspires to be an open-world sandbox game written in Rust, taking
 inspiration from [Voxel Farm](http://procworld.blogspot.com/) and Minecraft. The dev blog is available [here](http://playformdev.blogspot.com/).
