@@ -1,12 +1,17 @@
 language: rust
 rust: nightly
+sudo: required
 
-before_install:
-  - sudo apt-add-repository --yes ppa:zoogie/sdl2-snapshots
-  - sudo apt-get update -qq
+addons:
+  apt:
+    packages:
+    - libportaudio-dev
+    - libsdl2-dev
+    - libsdl2-mixer-dev
+    - libsdl2-ttf-dev
+    - opencl-headers
 
 install:
-  - sudo apt-get install -qq libportaudio-dev libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev opencl-headers fglrx
   - wget http://download.nanomsg.org/nanomsg-0.5-beta.tar.gz
   - tar -xvzf nanomsg-0.5-beta.tar.gz
   - ( cd nanomsg-0.5-beta && ./configure && make && sudo make install )
