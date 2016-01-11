@@ -9,7 +9,6 @@
 #![deny(warnings)]
 
 #![feature(box_syntax)]
-#![feature(iter_cmp)]
 #![feature(plugin)]
 #![feature(test)]
 #![feature(unboxed_closures)]

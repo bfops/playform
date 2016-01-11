@@ -4,7 +4,7 @@
 //! Data structures and functions shared between server and client.
 
 #![feature(box_syntax)]
-#![feature(core)]
+#![feature(fn_traits)]
 #![feature(plugin)]
 #![feature(test)]
 #![feature(unboxed_closures)]

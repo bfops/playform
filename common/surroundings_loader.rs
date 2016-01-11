@@ -15,7 +15,7 @@ mod surroundings_iter {
 
   use cube_shell::cube_shell;
 
-  struct CubeShellClosure {
+  pub struct CubeShellClosure {
     center: Point3<i32>,
   }
 
@@ -32,9 +32,9 @@ mod surroundings_iter {
     }
   }
 
-  pub type T = 
+  pub type T =
     std::iter::FlatMap<
-      std::ops::Range<i32>, 
+      std::ops::Range<i32>,
       std::vec::IntoIter<Point3<i32>>,
       CubeShellClosure,
     >;

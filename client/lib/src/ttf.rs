@@ -1,12 +1,14 @@
 //! Module for creating text textures.
 
-use common::color::Color4;
-use gl;
+use std::ffi::CString;
+use std::path::Path;
 use sdl2_sys::pixels::{SDL_Color,SDL_PIXELFORMAT_ARGB8888};
 use sdl2_sys::surface::SDL_Surface;
 use sdl2_sys::surface;
-use std::ffi::CString;
-use std::path::Path;
+use gl;
+
+use common::color::Color4;
+
 use yaglw::gl_context::GLContext;
 use yaglw::texture::Texture2D;
 
@@ -130,7 +132,7 @@ impl Font {
     let texture = Texture2D::new(gl);
     unsafe {
       gl::BindTexture(gl::TEXTURE_2D, texture.handle.gl_id);
-      gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, tex.w, tex.h, 0, gl::BGRA, gl::UNSIGNED_INT_8_8_8_8_REV, tex.pixels);
+      gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, tex.w, tex.h, 0, gl::BGRA, gl::UNSIGNED_INT_8_8_8_8_REV, tex.pixels as *const _);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 

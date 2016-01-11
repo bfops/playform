@@ -105,7 +105,7 @@ impl Map {
           },
         };
 
-        let (_, new_lod) = *block_load_state.owner_lods.iter().max_by(|&&(_, x)| x).unwrap();
+        let (_, new_lod) = *block_load_state.owner_lods.iter().max_by_key(|&&(_, x)| x).unwrap();
 
         if new_lod == block_load_state.loaded_lod {
           // Already loaded at the right T.
@@ -155,7 +155,7 @@ impl Map {
             let loaded_lod = block_load_state.loaded_lod;
 
             let new_lod;
-            match block_load_state.owner_lods.iter().max_by(|&&(_, x)| x) {
+            match block_load_state.owner_lods.iter().max_by_key(|&&(_, x)| x) {
               None => {
                 remove = true;
                 return (
