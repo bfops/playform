@@ -9,6 +9,7 @@ use common::surroundings_loader;
 use client;
 use view_update::ClientToView;
 
+#[allow(cyclomatic_complexity)]
 pub fn load_terrain_block<UpdateView>(
   client: &client::T,
   update_view: &mut UpdateView,

@@ -2,7 +2,7 @@
 
 use cgmath;
 use cgmath::Vector2;
-use std::f32::consts::PI;
+use std;
 use yaglw::gl_context::GLContext;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, DrawMode, VertexAttribData};
 use yaglw::texture::{Texture2D, TextureUnit};
@@ -143,13 +143,13 @@ impl<'a> T<'a> {
       fontloader: FontLoader::new(),
 
       camera: {
-        let fovy = cgmath::rad(3.14 / 3.0);
+        let fovy = cgmath::rad(std::f32::consts::PI / 3.0);
         let aspect = window_size.x as f32 / window_size.y as f32;
         let mut camera = Camera::unit();
         // Initialize the projection matrix.
         camera.fov = cgmath::perspective(fovy, aspect, 0.1, 2048.0);
         // TODO: This should use player rotation from the server.
-        camera.rotate_lateral(PI / 2.0);
+        camera.rotate_lateral(std::f32::consts::PI / 2.0);
         camera
       },
 

@@ -1,9 +1,7 @@
 use bincode;
-use env_logger;
 use nanomsg;
 use std;
 use std::convert::AsRef;
-use std::env;
 use std::sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use std::sync::Mutex;
 use stopwatch;
@@ -19,18 +17,8 @@ use update_gaia;
 use update_gaia::update_gaia;
 use update_world::update_world;
 
-#[main]
-fn main() {
-  env_logger::init().unwrap();
-
-  let mut args = env::args();
-  args.next().unwrap();
-  let listen_url
-    = args.next().unwrap_or(String::from("ipc:///tmp/server.ipc"));
-  assert!(args.next().is_none());
-
-  info!("Listening on {}.", listen_url);
-
+#[allow(missing_docs)]
+pub fn run(listen_url: &str) {
   let (gaia_send, gaia_recv) = channel();
 
   let gaia_recv = Mutex::new(gaia_recv);
@@ -111,7 +99,7 @@ fn quit_upon(signal: &Mutex<bool>) -> closure_series::Closure {
 }
 
 fn consider_world_update(
-  server: &Server, 
+  server: &Server,
   to_gaia: Sender<update_gaia::Message>,
 ) -> closure_series::Closure {
   box move || {
@@ -128,8 +116,8 @@ fn consider_world_update(
 }
 
 fn network_listen<'a>(
-  socket: &'a Mutex<ReceiveSocket>, 
-  server: &'a Server, 
+  socket: &'a Mutex<ReceiveSocket>,
+  server: &'a Server,
   to_gaia: Sender<update_gaia::Message>,
 ) -> closure_series::Closure<'a> {
   box move || {
@@ -145,7 +133,7 @@ fn network_listen<'a>(
 }
 
 fn consider_gaia_update<'a>(
-  server: &'a Server, 
+  server: &'a Server,
   to_gaia: &'a Mutex<Receiver<update_gaia::Message>>,
 ) -> closure_series::Closure<'a> {
   box move || {

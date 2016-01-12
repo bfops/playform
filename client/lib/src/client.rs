@@ -53,7 +53,7 @@ pub fn new(client_id: ClientId, player_id: EntityId, position: Point3<f32>) -> T
   let surroundings_loader = {
     SurroundingsLoader::new(
       load_distance,
-      LOD_THRESHOLDS.iter().map(|&x| x).collect(),
+      LOD_THRESHOLDS.iter().cloned().collect(),
     )
   };
 

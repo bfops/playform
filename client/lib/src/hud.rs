@@ -17,7 +17,7 @@ pub fn make_hud<'a, 'b:'a>(view: &'a mut view::T<'b>) {
       Point2 { x: -0.02, y: -0.02 },
       Point2 { x:  0.02, y:  0.02 },
       cursor_color
-    ).iter().map(|&x| x).collect();
+    ).iter().cloned().collect();
 
   view.hud_triangles.bind(&mut view.gl);
   view.hud_triangles.push(&mut view.gl, triangles.as_ref());
@@ -43,7 +43,7 @@ pub fn make_hud<'a, 'b:'a>(view: &'a mut view::T<'b>) {
         Vector2 { x: 0.0,   y: y       }
       )
       .iter()
-      .map(|&x| x)
+      .cloned()
       .collect();
     view.text_triangles.bind(&mut view.gl);
     view.text_triangles.push(&mut view.gl, triangles.as_ref());

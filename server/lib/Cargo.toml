@@ -1,20 +1,23 @@
 [package]
 
-name = "terrain"
+name = "server-lib"
 version = "0.0.0"
 authors = []
 
 [lib]
-name = "terrain"
-path = "mod.rs"
+name = "server_lib"
+path = "./src/mod.rs"
 
 [dependencies]
-cgmath = "0.3.1"
+bincode = "*"
+cgmath = "0.3.*"
 clippy = "*"
 log = "*"
-rand = "*"
-time = "*"
 num = "*"
+rand = "*"
+rustc-serialize = "*"
+thread-scoped = "*"
+time = "*"
 
 [dependencies.playform-common]
 path = "../../common"
@@ -23,12 +26,15 @@ version = "*"
 [dependencies.voxel-data]
 git = "https://github.com/bfops/rust-voxel-data"
 
-[dependencies.isosurface-extraction]
-git = "https://github.com/bfops/rust-isosurface-extraction"
+[dependencies.terrain]
+path = "./terrain"
+version = "*"
+
+[dependencies.nanomsg]
+git = "https://github.com/thehydroimpulse/nanomsg.rs"
 
 [dependencies.noise]
 git = "https://github.com/bjz/noise-rs"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
-

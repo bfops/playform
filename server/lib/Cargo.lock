@@ -1,0 +1,246 @@
+[root]
+name = "server-lib"
+version = "0.0.0"
+dependencies = [
+ "bincode 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cgmath 0.7.0 (git+https://github.com/bjz/cgmath-rs)",
+ "clippy 0.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nanomsg 0.4.2 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
+ "noise 0.1.5 (git+https://github.com/bjz/noise-rs)",
+ "num 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
+ "playform-common 0.0.0",
+ "rand 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
+ "terrain 0.0.0",
+ "thread-scoped 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.34 (registry+https://github.com/rust-lang/crates.io-index)",
+ "voxel-data 0.0.0 (git+https://github.com/bfops/rust-voxel-data)",
+]
+
+[[package]]
+name = "advapi32-sys"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "winapi 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "bincode"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "byteorder 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "byteorder"
+version = "0.3.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "cgmath"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "num 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "cgmath"
+version = "0.7.0"
+source = "git+https://github.com/bjz/cgmath-rs#92812958914eb05b00b57244573fb4ee62ea7960"
+dependencies = [
+ "num 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "clippy"
+version = "0.0.35"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "unicode-normalization 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "isosurface-extraction"
+version = "0.0.0"
+source = "git+https://github.com/bfops/rust-isosurface-extraction#f8e22374b60f5507fd059f668f870e53e4f824c6"
+dependencies = [
+ "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "voxel-data 0.0.0 (git+https://github.com/bfops/rust-voxel-data)",
+]
+
+[[package]]
+name = "kernel32-sys"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "winapi 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libc"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "log"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "nanomsg"
+version = "0.4.2"
+source = "git+https://github.com/thehydroimpulse/nanomsg.rs#62ae28550f0edf987386612449629ab398c3bfdf"
+dependencies = [
+ "libc 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nanomsg-sys 0.4.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
+]
+
+[[package]]
+name = "nanomsg-sys"
+version = "0.4.1"
+source = "git+https://github.com/thehydroimpulse/nanomsg.rs#62ae28550f0edf987386612449629ab398c3bfdf"
+dependencies = [
+ "libc 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "noise"
+version = "0.1.5"
+source = "git+https://github.com/bjz/noise-rs#d46df3fd9e37000a45fa76aad3fcdb85f4967318"
+dependencies = [
+ "num 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "num"
+version = "0.1.30"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "rand 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "playform-common"
+version = "0.0.0"
+dependencies = [
+ "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nanomsg 0.4.2 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
+ "num 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
+ "time 0.1.34 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rand"
+version = "0.3.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "advapi32-sys 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rustc-serialize"
+version = "0.3.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "serde"
+version = "0.6.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "num 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "stopwatch"
+version = "0.0.0"
+source = "git+https://github.com/bfops/stopwatch-rs#da2876226ff7e5c0175c05f9e5638615c6779d2a"
+dependencies = [
+ "log 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.34 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "terrain"
+version = "0.0.0"
+dependencies = [
+ "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
+ "isosurface-extraction 0.0.0 (git+https://github.com/bfops/rust-isosurface-extraction)",
+ "log 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "noise 0.1.5 (git+https://github.com/bjz/noise-rs)",
+ "num 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
+ "playform-common 0.0.0",
+ "rand 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
+ "time 0.1.34 (registry+https://github.com/rust-lang/crates.io-index)",
+ "voxel-data 0.0.0 (git+https://github.com/bfops/rust-voxel-data)",
+]
+
+[[package]]
+name = "thread-scoped"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "time"
+version = "0.1.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "kernel32-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "unicode-normalization"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "voxel-data"
+version = "0.0.0"
+source = "git+https://github.com/bfops/rust-voxel-data#33c5e6810dc510501bfdac58307c833141b7b4e0"
+dependencies = [
+ "cgmath 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "winapi"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "winapi-build"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+

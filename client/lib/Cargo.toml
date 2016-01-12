@@ -1,22 +1,17 @@
 [package]
 
-name = "playform-client"
+name = "client-lib"
 version = "0.0.0"
-authors = [
-  "Ben Foppa <benjamin.foppa@gmail.com>",
-  "Clark Gaebel <cg.wowus.cg@gmail.com>",
-  "Elijah Andrews <elijahcandrews@gmail.com>",
-]
+authors = []
 
-[[bin]]
-name = "client"
+[lib]
+name = "client_lib"
 path = "src/mod.rs"
 
 [dependencies]
 bincode = "*"
-cgmath = "0.3.1"
+cgmath = "0.3.*"
 clippy = "*"
-env_logger= "*"
 libc = "*"
 log = "*"
 num = "*"
@@ -25,7 +20,7 @@ thread-scoped = "*"
 time = "*"
 
 [dependencies.playform-common]
-path = "../common"
+path = "../../common"
 version = "*"
 
 [dependencies.gl]
@@ -39,6 +34,12 @@ git = "https://github.com/AngryLawyer/rust-sdl2"
 
 [dependencies.yaglw]
 git = "https://github.com/bfops/yaglw"
+
+[dependencies.voxel-data]
+git = "https://github.com/bfops/rust-voxel-data"
+
+[dependencies.isosurface-extraction]
+git = "https://github.com/bfops/rust-isosurface-extraction"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
