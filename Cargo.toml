@@ -1,0 +1,29 @@
+[package]
+
+name = "playform"
+version = "0.0.0"
+authors = [
+  "Zeke Foppa <benjamin.foppa@gmail.com>",
+  "Clark Gaebel <cg.wowus.cg@gmail.com>",
+  "Elijah Andrews <elijahcandrews@gmail.com>",
+]
+
+[[bin]]
+name = "playform"
+path = "src/mod.rs"
+
+[dependencies]
+clippy = "*"
+env_logger= "*"
+log = "*"
+thread-scoped = "*"
+time = "*"
+
+[dependencies.client-lib]
+path = "client/lib"
+
+[dependencies.server-lib]
+path = "server/lib"
+
+[dependencies.stopwatch]
+git = "https://github.com/bfops/stopwatch-rs"

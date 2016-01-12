@@ -12,25 +12,19 @@ path = "src/mod.rs"
 bincode = "*"
 cgmath = "0.3.*"
 clippy = "*"
-libc = "*"
+gl = "0.5.*"
+libc = "0.1.*"
 log = "*"
 num = "*"
 rustc-serialize = "*"
+sdl2 = "0.9.*"
+sdl2-sys = "0.6.*"
 thread-scoped = "*"
 time = "*"
 
 [dependencies.playform-common]
 path = "../../common"
 version = "*"
-
-[dependencies.gl]
-git = "https://github.com/bjz/gl-rs"
-
-[dependencies.sdl2-sys]
-git = "https://github.com/AngryLawyer/rust-sdl2"
-
-[dependencies.sdl2]
-git = "https://github.com/AngryLawyer/rust-sdl2"
 
 [dependencies.yaglw]
 git = "https://github.com/bfops/yaglw"

@@ -68,7 +68,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   let _sdl_gl_context = window.gl_create_context().unwrap();
 
   // Load the OpenGL function pointers.
-  gl::load_with(|s| video.gl_get_proc_address(s));
+  gl::load_with(|s| video.gl_get_proc_address(s) as *const _ );
 
   let gl = unsafe {
     GLContext::new()

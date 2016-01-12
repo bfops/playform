@@ -130,7 +130,7 @@ impl Font {
     let texture = Texture2D::new(gl);
     unsafe {
       gl::BindTexture(gl::TEXTURE_2D, texture.handle.gl_id);
-      gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, tex.w, tex.h, 0, gl::BGRA, gl::UNSIGNED_INT_8_8_8_8_REV, tex.pixels);
+      gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, tex.w, tex.h, 0, gl::BGRA, gl::UNSIGNED_INT_8_8_8_8_REV, tex.pixels as *const _);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
