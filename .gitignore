@@ -20,5 +20,5 @@
 */*/target/
 /.rust/
 
-common/Cargo.lock
+Cargo.lock
 out.txt
