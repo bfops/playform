@@ -143,11 +143,7 @@ impl<'a> T<'a> {
       fontloader: FontLoader::new(),
 
       camera: {
-<<<<<<< HEAD:client/lib/src/view.rs
-        let fovy = cgmath::rad(PI / 3.0);
-=======
         let fovy = cgmath::rad(std::f32::consts::PI / 3.0);
->>>>>>> master:client/lib/src/view.rs
         let aspect = window_size.x as f32 / window_size.y as f32;
         let mut camera = Camera::unit();
         // Initialize the projection matrix.

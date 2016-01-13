@@ -41,14 +41,10 @@ pub fn make_hud<'a, 'b:'a>(view: &'a mut view::T<'b>) {
       TextureVertex::square(
         Vector2 { x: -0.97, y: y - 0.2 },
         Vector2 { x: 0.0,   y: y       }
-<<<<<<< HEAD:client/lib/src/hud.rs
-      ).iter().cloned().collect();
-=======
       )
       .iter()
       .cloned()
       .collect();
->>>>>>> master:client/lib/src/hud.rs
     view.text_triangles.bind(&mut view.gl);
     view.text_triangles.push(&mut view.gl, triangles.as_ref());
     y -= 0.2;

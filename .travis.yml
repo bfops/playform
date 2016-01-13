@@ -13,16 +13,8 @@ install:
   - sudo ldconfig
 
 script:
-<<<<<<< HEAD
-  - ( cd common && cargo test --verbose )
-  - ( cd client/bin && cargo build --verbose )
-  - ( cd server/bin && cargo build --verbose )
-  - ( cd client/lib && cargo test --verbose )
-  - ( cd server/lib && cargo test --verbose )
-=======
   - ( cd client/bin && cargo build --verbose )
   - ( cd server/bin && cargo build --verbose )
   - ( cd common     && cargo test  --verbose )
   - ( cd client/lib && cargo test  --verbose )
   - ( cd server/lib && cargo test  --verbose )
->>>>>>> master

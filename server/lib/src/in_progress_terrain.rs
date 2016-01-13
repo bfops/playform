@@ -1,22 +1,21 @@
-use cgmath::{Aabb3, Point, Vector, Vector3};
+use cgmath::{Aabb3};
 use std::collections::hash_map::{HashMap, Entry};
 use std::sync::Mutex;
 
-use common::block_position::BlockPosition;
-use common::entity::EntityId;
-use common::id_allocator::IdAllocator;
-use common::terrain_block;
+use common::entity_id;
+use common::id_allocator;
+use common::voxel;
 
 use physics::Physics;
 
 // TODO: Rename this to something more memorable.
-pub struct InProgressTerrain {
-  pub blocks: HashMap<BlockPosition, EntityId>,
+pub struct T {
+  pub blocks: HashMap<voxel::bounds::T, entity_id::T>,
 }
 
-impl InProgressTerrain {
-  pub fn new() -> InProgressTerrain {
-    InProgressTerrain {
+impl T {
+  pub fn new() -> T {
+    T {
       blocks: HashMap::new(),
     }
   }
@@ -24,9 +23,9 @@ impl InProgressTerrain {
   /// Mark a block as in-progress by making it solid.
   pub fn insert(
     &mut self,
-    id_allocator: &Mutex<IdAllocator<EntityId>>,
+    id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
     physics: &Mutex<Physics>,
-    block_position: &BlockPosition,
+    block_position: &voxel::bounds::T,
   ) -> bool {
     match self.blocks.entry(*block_position) {
       Entry::Occupied(_) => {
@@ -34,17 +33,11 @@ impl InProgressTerrain {
         false
       },
       Entry::Vacant(entry) => {
-        let id = id_allocator.lock().unwrap().allocate();
+        let id = id_allocator::allocate(id_allocator);
         entry.insert(id);
 
-        let low_corner = block_position.to_world_position();
-        let block_span =
-          Vector3::new(
-            terrain_block::WIDTH as f32,
-            terrain_block::WIDTH as f32,
-            terrain_block::WIDTH as f32,
-          );
-        physics.lock().unwrap().insert_misc(id, Aabb3::new(low_corner, low_corner.add_v(&block_span)));
+        let (low, high) = block_position.corners();
+        physics.lock().unwrap().insert_misc(id, Aabb3::new(low, high));
         true
       }
     }
@@ -54,7 +47,7 @@ impl InProgressTerrain {
   pub fn remove(
     &mut self,
     physics: &Mutex<Physics>,
-    block_position: &BlockPosition,
+    block_position: &voxel::bounds::T,
   ) -> bool {
     self.blocks.remove(block_position)
       .map(|id| physics.lock().unwrap().remove_misc(id)).is_some()

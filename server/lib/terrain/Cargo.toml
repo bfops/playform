@@ -9,11 +9,7 @@ name = "terrain"
 path = "mod.rs"
 
 [dependencies]
-<<<<<<< HEAD:server/lib/terrain/Cargo.toml
-cgmath = "0.3.1"
-=======
 cgmath = "0.3.*"
->>>>>>> master:server/lib/terrain/Cargo.toml
 clippy = "*"
 log = "*"
 rand = "*"
