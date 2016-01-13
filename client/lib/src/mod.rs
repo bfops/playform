@@ -4,7 +4,10 @@
 #![deny(warnings)]
 
 #![feature(convert)]
+<<<<<<< HEAD:client/lib/src/mod.rs
 #![feature(hashmap_hasher)]
+=======
+>>>>>>> master:client/lib/src/mod.rs
 #![feature(plugin)]
 #![feature(test)]
 #![feature(unboxed_closures)]
@@ -18,7 +21,10 @@
 extern crate bincode;
 extern crate cgmath;
 extern crate common;
+<<<<<<< HEAD:client/lib/src/mod.rs
 extern crate fnv;
+=======
+>>>>>>> master:client/lib/src/mod.rs
 extern crate gl;
 extern crate isosurface_extraction;
 #[macro_use]
@@ -42,7 +48,10 @@ mod fontloader;
 mod hud;
 mod light;
 mod load_terrain;
+<<<<<<< HEAD:client/lib/src/mod.rs
 mod lod;
+=======
+>>>>>>> master:client/lib/src/mod.rs
 mod mob_buffers;
 mod player_buffers;
 mod process_event;

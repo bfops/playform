@@ -1,4 +1,8 @@
+<<<<<<< HEAD:client/lib/src/run.rs
 use std::sync::mpsc::{channel, Sender, Receiver, TryRecvError};
+=======
+use std::sync::mpsc::{channel, Receiver, TryRecvError};
+>>>>>>> master:client/lib/src/run.rs
 use std::sync::Mutex;
 use stopwatch;
 use thread_scoped;
@@ -24,7 +28,11 @@ fn try_recv<T>(recv: &Receiver<T>) -> Option<T>
 
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, server_url: &str) {
+<<<<<<< HEAD:client/lib/src/run.rs
   let (voxel_updates_send, mut voxel_updates_recv) = channel();
+=======
+  let (terrain_blocks_send, mut terrain_blocks_recv) = channel();
+>>>>>>> master:client/lib/src/run.rs
   let (view_thread_send0, mut view_thread_recv0) = channel();
   let (view_thread_send1, mut view_thread_recv1) = channel();
 
@@ -59,8 +67,13 @@ pub fn run(listen_url: &str, server_url: &str) {
             &mut || { try_recv(voxel_updates_recv) },
             &mut |up| { view_thread_send0.send(up).unwrap() },
             &mut |up| { view_thread_send1.send(up).unwrap() },
+<<<<<<< HEAD:client/lib/src/run.rs
   	        &mut |up| { server.talk.tell(&up) },
             &mut |voxel_updates, reason| { voxel_updates_send.send((voxel_updates, reason)).unwrap() },
+=======
+            &mut |up| { server.talk.tell(&up) },
+            &mut |block| { terrain_blocks_send.send(block).unwrap() },
+>>>>>>> master:client/lib/src/run.rs
           );
 
           stopwatch::clone()

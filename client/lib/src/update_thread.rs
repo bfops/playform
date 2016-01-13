@@ -1,276 +1,163 @@
-use cgmath::{Aabb3, Point3};
 use std::sync::Mutex;
 use stopwatch;
 use time;
 
-use common::protocol;
+use common::block_position::BlockPosition;
+use common::communicate::{ClientToServer, ServerToClient, TerrainBlockSend};
 use common::surroundings_loader;
 use common::surroundings_loader::LoadType;
-use common::voxel;
 
-use block_position;
 use client;
-use load_terrain;
-use load_terrain::lod_index;
+use load_terrain::{load_terrain_block, lod_index};
 use server_update::apply_server_update;
-use terrain_mesh;
 use view_update::ClientToView;
 
-const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
+const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 8;
 
-pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, UpdateServer, EnqueueBlockUpdates>(
+pub fn update_thread<RecvServer, RecvBlock, UpdateView0, UpdateView1, UpdateServer, QueueBlock>(
   quit: &Mutex<bool>,
   client: &client::T,
   recv_server: &mut RecvServer,
-  recv_voxel_updates: &mut RecvVoxelUpdates,
+  recv_block: &mut RecvBlock,
   update_view0: &mut UpdateView0,
   update_view1: &mut UpdateView1,
   update_server: &mut UpdateServer,
-  enqueue_block_updates: &mut EnqueueBlockUpdates,
+  queue_block: &mut QueueBlock,
 ) where
-  RecvServer: FnMut() -> Option<protocol::ServerToClient>,
-  RecvVoxelUpdates: FnMut() -> Option<(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)>,
+  RecvServer: FnMut() -> Option<ServerToClient>,
+  RecvBlock: FnMut() -> Option<TerrainBlockSend>,
   UpdateView0: FnMut(ClientToView),
   UpdateView1: FnMut(ClientToView),
-  UpdateServer: FnMut(protocol::ClientToServer),
-  EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
+  UpdateServer: FnMut(ClientToServer),
+  QueueBlock: FnMut(TerrainBlockSend),
 {
   'update_loop: loop {
     if *quit.lock().unwrap() == true {
       break 'update_loop
     } else {
       stopwatch::time("update_iteration", || {
-        stopwatch::time("process_server_updates", || {
-          process_server_updates(client, recv_server, update_view0, update_server, enqueue_block_updates);
-        });
+        let start = time::precise_time_ns();
+        while let Some(up) = recv_server() {
+          apply_server_update(
+            client,
+            update_view0,
+            update_server,
+            queue_block,
+            up,
+          );
+
+          if time::precise_time_ns() - start >= 1_000_000 {
+            break
+          }
+        }
 
         stopwatch::time("update_surroundings", || {
-          update_surroundings(client, update_view1, update_server);
+          let start = time::precise_time_ns();
+          let player_position = *client.player_position.lock().unwrap();
+          let player_position = BlockPosition::of_world_position(&player_position);
+          let mut loaded_blocks = client.loaded_blocks.lock().unwrap();
+          let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
+          let mut updates = surroundings_loader.updates(player_position.as_pnt()) ;
+          loop {
+            if *client.outstanding_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
+              break;
+            }
+
+            let block_position;
+            let load_type;
+            match updates.next() {
+              None => break,
+              Some((b, l)) => {
+                block_position = BlockPosition::of_pnt(&b);
+                load_type = l;
+              },
+            }
+
+            let distance =
+              surroundings_loader::distance_between(
+                player_position.as_pnt(),
+                block_position.as_pnt(),
+              );
+            match load_type {
+              LoadType::Load => {
+                stopwatch::time("update_thread.load_block", || {
+                  let lod = lod_index(distance);
+                  let loaded_lod =
+                    loaded_blocks
+                    .get(&block_position)
+                    .map(|&(_, lod)| lod);
+                  if loaded_lod != Some(lod) {
+                    update_server(
+                      ClientToServer::RequestBlock(
+                        client.id,
+                        block_position,
+                        lod,
+                      )
+                    );
+                    *client.outstanding_terrain_requests.lock().unwrap() += 1;
+                  } else {
+                    trace!("Not re-loading {:?} at {:?}", block_position, lod);
+                  }
+                })
+              },
+              LoadType::Update => {
+                stopwatch::time("update_thread.update_block", || {
+                  let new_lod = lod_index(distance);
+                  let lod_change =
+                    loaded_blocks
+                    .get(&block_position)
+                    .map(|&(_, lod)| new_lod < lod);
+                  if lod_change == Some(true) {
+                    update_server(
+                      ClientToServer::RequestBlock(
+                        client.id,
+                        block_position,
+                        new_lod,
+                      )
+                    );
+                    *client.outstanding_terrain_requests.lock().unwrap() += 1;
+                  } else {
+                    trace!("Not updating {:?} at {:?}", block_position, new_lod);
+                  }
+                })
+              },
+              LoadType::Unload => {
+                stopwatch::time("update_thread.unload", || {
+                  // The block removal code is duplicated elsewhere.
+
+                  loaded_blocks
+                    .remove(&block_position)
+                    // If it wasn't loaded, don't unload anything.
+                    .map(|(block, prev_lod)| {
+                      for id in &block.ids {
+                        update_view1(ClientToView::RemoveTerrain(*id));
+                      }
+                      update_view1(ClientToView::RemoveBlockData(block_position, prev_lod));
+                    });
+                })
+              },
+            };
+
+            if time::precise_time_ns() - start >= 1_000_000 {
+              break
+            }
+          }
         });
 
-        stopwatch::time("process_voxel_updates", || {
-          process_voxel_updates(client, recv_voxel_updates, update_view1);
-        });
+        let start = time::precise_time_ns();
+        while let Some(block) = recv_block() {
+          trace!("Got block: {:?} at {:?}", block.position, block.lod);
+          load_terrain_block(
+            client,
+            update_view1,
+            block,
+          );
+
+          if time::precise_time_ns() - start >= 1_000_000 {
+            break
+          }
+        }
       })
     }
-  }
-}
-
-#[inline(never)]
-fn update_surroundings<UpdateView, UpdateServer>(
-  client: &client::T,
-  update_view: &mut UpdateView,
-  update_server: &mut UpdateServer,
-) where
-  UpdateView: FnMut(ClientToView),
-  UpdateServer: FnMut(protocol::ClientToServer),
-{
-  let start = time::precise_time_ns();
-  let mut i = 0;
-  let player_position = *client.player_position.lock().unwrap();
-  let player_position = block_position::of_world_position(&player_position);
-  let mut loaded_blocks = client.loaded_blocks.lock().unwrap();
-  let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
-  let mut updates = surroundings_loader.updates(player_position.as_pnt()) ;
-  loop {
-    if *client.outstanding_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
-      trace!("update loop breaking");
-      break;
-    }
-
-    let block_position;
-    let load_type;
-    match updates.next() {
-      None => break,
-      Some((b, l)) => {
-        block_position = block_position::of_pnt(&b);
-        load_type = l;
-      },
-    }
-
-    debug!("block surroundings");
-    let distance =
-      surroundings_loader::distance_between(
-        player_position.as_pnt(),
-        block_position.as_pnt(),
-      );
-    match load_type {
-      LoadType::Load => {
-        stopwatch::time("update_thread.load_block", || {
-          let lod = lod_index(distance);
-          let loaded_lod =
-            loaded_blocks
-            .get(&block_position)
-            .map(|&(_, lod)| lod);
-          if loaded_lod != Some(lod) {
-            let voxel_size = 1 << terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
-            update_server(
-              protocol::ClientToServer::RequestVoxels(
-                client.id,
-                terrain_mesh::voxels_in(
-                  &Aabb3::new(
-                    Point3::new(
-                      (block_position.as_pnt().x << terrain_mesh::LG_WIDTH) - voxel_size,
-                      (block_position.as_pnt().y << terrain_mesh::LG_WIDTH) - voxel_size,
-                      (block_position.as_pnt().z << terrain_mesh::LG_WIDTH) - voxel_size,
-                    ),
-                    Point3::new(
-                      ((block_position.as_pnt().x + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-                      ((block_position.as_pnt().y + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-                      ((block_position.as_pnt().z + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-                    ),
-                  ),
-                  terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize],
-                ),
-              )
-            );
-            debug!("{:?} Sending a block {:?}", player_position, block_position);
-            *client.outstanding_terrain_requests.lock().unwrap() += 1;
-          } else {
-            debug!("Not re-loading {:?} at {:?}", block_position, lod);
-          }
-        })
-      },
-      LoadType::Update => {
-        stopwatch::time("update_thread.update_block", || {
-          let new_lod = lod_index(distance);
-          let lod_change =
-            loaded_blocks
-            .get(&block_position)
-            .map(|&(_, lod)| new_lod < lod);
-          if lod_change == Some(true) {
-            debug!("Sending a block");
-            let voxel_size = 1 << terrain_mesh::LG_SAMPLE_SIZE[new_lod.0 as usize];
-            update_server(
-              protocol::ClientToServer::RequestVoxels(
-                client.id,
-                terrain_mesh::voxels_in(
-                  &Aabb3::new(
-                    Point3::new(
-                      (block_position.as_pnt().x << terrain_mesh::LG_WIDTH) - voxel_size,
-                      (block_position.as_pnt().y << terrain_mesh::LG_WIDTH) - voxel_size,
-                      (block_position.as_pnt().z << terrain_mesh::LG_WIDTH) - voxel_size,
-                    ),
-                    Point3::new(
-                      ((block_position.as_pnt().x + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-                      ((block_position.as_pnt().y + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-                      ((block_position.as_pnt().z + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-                    ),
-                  ),
-                  terrain_mesh::LG_SAMPLE_SIZE[new_lod.0 as usize],
-                ),
-              )
-            );
-            *client.outstanding_terrain_requests.lock().unwrap() += 1;
-          } else {
-            trace!("Not updating {:?} at {:?}", block_position, new_lod);
-          }
-        })
-      },
-      LoadType::Unload => {
-        stopwatch::time("update_thread.unload", || {
-          // The block removal code is duplicated elsewhere.
-
-          loaded_blocks
-            .remove(&block_position)
-            // If it wasn't loaded, don't unload anything.
-            .map(|(block, _)| {
-              for id in &block.ids {
-                update_view(ClientToView::RemoveTerrain(*id));
-              }
-            });
-        })
-      },
-    };
-
-    if i >= 10 {
-      i -= 10;
-      if time::precise_time_ns() - start >= 1_000_000 {
-        break
-      }
-    }
-    i += 1;
-  }
-}
-
-#[inline(never)]
-fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
-  client: &client::T,
-  recv_voxel_updates: &mut RecvVoxelUpdates,
-  update_view: &mut UpdateView,
-) where
-  RecvVoxelUpdates: FnMut() -> Option<(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)>,
-  UpdateView: FnMut(ClientToView),
-{
-  let start = time::precise_time_ns();
-  while let Some((voxel_updates, reason)) = recv_voxel_updates() {
-    let mut update_blocks = block_position::with_lod::set::new();
-    for (bounds, voxel) in voxel_updates {
-      trace!("Got voxel at {:?}", bounds);
-      load_terrain::load_voxel(
-        client,
-        voxel,
-        bounds,
-        |block, lod| { update_blocks.insert((block, lod)); },
-      );
-    }
-
-    for (block, lod) in update_blocks.into_iter() {
-      load_terrain::load_block(
-        client,
-        update_view,
-        &block,
-        lod
-      )
-    }
-
-    match reason {
-      protocol::VoxelReason::Updated => {},
-      protocol::VoxelReason::Requested => {
-        *client.outstanding_terrain_requests.lock().unwrap() -= 1;
-        debug!("Outstanding terrain requests: {}", *client.outstanding_terrain_requests.lock().unwrap());
-        if *client.outstanding_terrain_requests.lock().unwrap() == 0 {
-          info!("No more outstanding terrain requests");
-        }
-      },
-    }
-
-    if time::precise_time_ns() - start >= 1_000_000 {
-      break
-    }
-  }
-}
-
-#[inline(never)]
-fn process_server_updates<RecvServer, UpdateView, UpdateServer, EnqueueBlockUpdates>(
-  client: &client::T,
-  recv_server: &mut RecvServer,
-  update_view: &mut UpdateView,
-  update_server: &mut UpdateServer,
-  enqueue_block_updates: &mut EnqueueBlockUpdates,
-) where
-  RecvServer: FnMut() -> Option<protocol::ServerToClient>,
-  UpdateView: FnMut(ClientToView),
-  UpdateServer: FnMut(protocol::ClientToServer),
-  EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
-{
-  let start = time::precise_time_ns();
-  let mut i = 0;
-  while let Some(up) = recv_server() {
-    apply_server_update(
-      client,
-      update_view,
-      update_server,
-      enqueue_block_updates,
-      up,
-    );
-
-    if i > 10 {
-      i -= 10;
-      if time::precise_time_ns() - start >= 1_000_000 {
-        break
-      }
-    }
-    i += 1;
   }
 }

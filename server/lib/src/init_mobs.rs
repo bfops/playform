@@ -21,7 +21,11 @@ pub fn init_mobs(
     fn to_player(world: &Server, mob: &mob::Mob) -> Option<Vector3<f32>> {
       let mob_posn = center(world.physics.lock().unwrap().get_bounds(mob.entity_id).unwrap());
 
+<<<<<<< HEAD:server/lib/src/init_mobs.rs
       let players: Vec<entity_id::T> = world.players.lock().unwrap().keys().cloned().collect();
+=======
+      let players: Vec<EntityId> = world.players.lock().unwrap().keys().cloned().collect();
+>>>>>>> master:server/lib/src/init_mobs.rs
       let mut players = players.into_iter();
 
       players.next().map(|id| {

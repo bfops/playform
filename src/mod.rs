@@ -7,9 +7,12 @@
 #![plugin(clippy)]
 #![allow(mutex_atomic)]
 
+<<<<<<< HEAD
 #![feature(alloc_system)]
 extern crate alloc_system;
 
+=======
+>>>>>>> master
 extern crate env_logger;
 extern crate nanomsg;
 #[macro_use]

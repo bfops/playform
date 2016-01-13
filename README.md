@@ -2,6 +2,8 @@
 
 ## Introduction
 
+**FYI: Playform is on hiatus. I'm taking a detour into learning about Unity and Cubiquity. If/when Rust gets stronger support for using C++ libraries, Playform might spin up again (or a similar project). I'm still happy to merge PRs, talk with anybody about the design, about how it works, about voxels in general, etc, but I don't plan to invest much more coding time in the near future.**
+
 Playform aspires to be an open-world sandbox game written in Rust, taking
 inspiration from [Voxel Farm](http://procworld.blogspot.com/) and Minecraft. The dev blog is available [here](http://playformdev.blogspot.com/).
 
@@ -11,7 +13,7 @@ better and better, part of the plan is to start using seasoned C++
 libraries like [bullet physics](https://github.com/bulletphysics/bullet3).
 
 Help is great! PRs and [issues](https://github.com/bfops/playform/issues)
-are appreciated.
+are appreciated. Featureful changes should go into the client-voxels branch, which is a major refactoring. It hasn't been merged into master because it degrades performance a lot right now.
 
 Some picture things:
 
