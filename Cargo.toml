@@ -16,6 +16,7 @@ path = "src/mod.rs"
 clippy = "*"
 env_logger= "*"
 log = "*"
+nanomsg = "*"
 thread-scoped = "*"
 time = "*"
 
