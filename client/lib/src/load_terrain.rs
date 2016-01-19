@@ -90,7 +90,12 @@ pub fn load_voxel<UpdateBlock>(
       &mut voxel::tree::Branch { ref mut data, .. } => {
         match data {
           &mut None => new_voxel_loaded = true,
-          &mut Some(_) => new_voxel_loaded = false,
+          &mut Some(old_voxel) => {
+            new_voxel_loaded = false;
+            if old_voxel == voxel {
+              return
+            }
+          },
         }
         *data = Some(voxel);
       }
