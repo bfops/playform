@@ -25,7 +25,7 @@ fn main() {
   let mut args = env::args();
   args.next().unwrap();
   let listen_url
-    = args.next().unwrap_or(String::from("ipc:///tmp/server.ipc"));
+    = args.next().unwrap_or_else(|| String::from("ipc:///tmp/server.ipc"));
   assert!(args.next().is_none());
 
   info!("Listening on {}.", listen_url);
