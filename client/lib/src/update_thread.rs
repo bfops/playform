@@ -10,6 +10,7 @@ use common::voxel;
 
 use block_position;
 use client;
+use lod;
 use load_terrain;
 use load_terrain::lod_index;
 use server_update::apply_server_update;
@@ -97,37 +98,15 @@ fn update_surroundings<UpdateView, UpdateServer>(
     match load_type {
       LoadType::Load => {
         stopwatch::time("update_thread.load_block", || {
-          let lod = lod_index(distance);
-          let loaded_lod =
+          let new_lod = lod_index(distance);
+          let lod_change =
             loaded_blocks
             .get(&block_position)
-            .map(|&(_, lod)| lod);
-          if loaded_lod != Some(lod) {
-            let voxel_size = 1 << terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
-            update_server(
-              protocol::ClientToServer::RequestVoxels(
-                client.id,
-                terrain_mesh::voxels_in(
-                  &Aabb3::new(
-                    Point3::new(
-                      (block_position.as_pnt().x << terrain_mesh::LG_WIDTH) - voxel_size,
-                      (block_position.as_pnt().y << terrain_mesh::LG_WIDTH) - voxel_size,
-                      (block_position.as_pnt().z << terrain_mesh::LG_WIDTH) - voxel_size,
-                    ),
-                    Point3::new(
-                      ((block_position.as_pnt().x + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-                      ((block_position.as_pnt().y + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-                      ((block_position.as_pnt().z + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-                    ),
-                  ),
-                  terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize],
-                ),
-              )
-            );
-            debug!("{:?} Sending a block {:?}", player_position, block_position);
-            *client.outstanding_terrain_requests.lock().unwrap() += 1;
+            .map(|&(_, lod)| lod != new_lod);
+          if lod_change != Some(false) {
+            load_or_request_chunk(client, update_server, block_position, new_lod);
           } else {
-            debug!("Not re-loading {:?} at {:?}", block_position, lod);
+            debug!("Not re-loading {:?} at {:?}", block_position, new_lod);
           }
         })
       },
@@ -139,29 +118,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
             .get(&block_position)
             .map(|&(_, lod)| new_lod < lod);
           if lod_change == Some(true) {
-            debug!("Sending a block");
-            let voxel_size = 1 << terrain_mesh::LG_SAMPLE_SIZE[new_lod.0 as usize];
-            update_server(
-              protocol::ClientToServer::RequestVoxels(
-                client.id,
-                terrain_mesh::voxels_in(
-                  &Aabb3::new(
-                    Point3::new(
-                      (block_position.as_pnt().x << terrain_mesh::LG_WIDTH) - voxel_size,
-                      (block_position.as_pnt().y << terrain_mesh::LG_WIDTH) - voxel_size,
-                      (block_position.as_pnt().z << terrain_mesh::LG_WIDTH) - voxel_size,
-                    ),
-                    Point3::new(
-                      ((block_position.as_pnt().x + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-                      ((block_position.as_pnt().y + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-                      ((block_position.as_pnt().z + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-                    ),
-                  ),
-                  terrain_mesh::LG_SAMPLE_SIZE[new_lod.0 as usize],
-                ),
-              )
-            );
-            *client.outstanding_terrain_requests.lock().unwrap() += 1;
+            load_or_request_chunk(client, update_server, block_position, new_lod);
           } else {
             trace!("Not updating {:?} at {:?}", block_position, new_lod);
           }
@@ -191,6 +148,38 @@ fn update_surroundings<UpdateView, UpdateServer>(
     }
     i += 1;
   }
+}
+
+fn load_or_request_chunk<UpdateServer>(
+  client: &client::T,
+  update_server: &mut UpdateServer,
+  block_position: block_position::T,
+  lod: lod::T,
+) where
+  UpdateServer: FnMut(protocol::ClientToServer),
+{
+  let voxel_size = 1 << terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
+  update_server(
+    protocol::ClientToServer::RequestVoxels(
+      client.id,
+      terrain_mesh::voxels_in(
+        &Aabb3::new(
+          Point3::new(
+            (block_position.as_pnt().x << terrain_mesh::LG_WIDTH) - voxel_size,
+            (block_position.as_pnt().y << terrain_mesh::LG_WIDTH) - voxel_size,
+            (block_position.as_pnt().z << terrain_mesh::LG_WIDTH) - voxel_size,
+            ),
+            Point3::new(
+              ((block_position.as_pnt().x + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+              ((block_position.as_pnt().y + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+              ((block_position.as_pnt().z + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+              ),
+              ),
+              terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize],
+              ),
+              )
+    );
+  *client.outstanding_terrain_requests.lock().unwrap() += 1;
 }
 
 #[inline(never)]
