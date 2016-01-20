@@ -167,7 +167,7 @@ impl Drop for Font {
   }
 }
 
-#[test]
-fn load_and_unload() {
-  Font::new(&Path::new("fonts/Open_Sans/OpenSans-Regular.ttf"), 12);
-}
+//#[test]
+//fn load_and_unload() {
+//  Font::new(&Path::new("fonts/Open_Sans/OpenSans-Regular.ttf"), 12);
+//}
