@@ -1,4 +1,5 @@
 language: rust
+dist: trusty
 rust: nightly-2016-01-18
 sudo: required
 
@@ -9,7 +10,6 @@ addons:
     - libsdl2-dev
     - libsdl2-mixer-dev
     - libsdl2-ttf-dev
-    - opencl-headers
 
 install:
   - wget http://download.nanomsg.org/nanomsg-0.5-beta.tar.gz
