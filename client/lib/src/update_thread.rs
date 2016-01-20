@@ -70,7 +70,6 @@ fn update_surroundings<UpdateView, UpdateServer>(
   let mut i = 0;
   let player_position = *client.player_position.lock().unwrap();
   let player_position = block_position::of_world_position(&player_position);
-  let mut loaded_blocks = client.loaded_blocks.lock().unwrap();
   let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
   let mut updates = surroundings_loader.updates(player_position.as_pnt()) ;
   loop {
@@ -100,7 +99,8 @@ fn update_surroundings<UpdateView, UpdateServer>(
         stopwatch::time("update_thread.load_block", || {
           let new_lod = lod_index(distance);
           let lod_change =
-            loaded_blocks
+            client.loaded_blocks
+            .lock().unwrap()
             .get(&block_position)
             .map(|&(_, lod)| lod != new_lod);
           if lod_change != Some(false) {
@@ -114,7 +114,8 @@ fn update_surroundings<UpdateView, UpdateServer>(
         stopwatch::time("update_thread.update_block", || {
           let new_lod = lod_index(distance);
           let lod_change =
-            loaded_blocks
+            client.loaded_blocks
+            .lock().unwrap()
             .get(&block_position)
             .map(|&(_, lod)| new_lod < lod);
           if lod_change == Some(true) {
@@ -128,7 +129,8 @@ fn update_surroundings<UpdateView, UpdateServer>(
         stopwatch::time("update_thread.unload", || {
           // The block removal code is duplicated elsewhere.
 
-          loaded_blocks
+          client.loaded_blocks
+          .lock().unwrap()
             .remove(&block_position)
             // If it wasn't loaded, don't unload anything.
             .map(|(block, _)| {
@@ -160,8 +162,7 @@ fn load_or_request_chunk<UpdateServer, UpdateView>(
   UpdateServer: FnMut(protocol::ClientToServer),
   UpdateView: FnMut(ClientToView),
 {
-  let r = load_terrain::all_voxels_loaded(&client.block_voxels_loaded.lock().unwrap(), block_position, lod);
-  if r && false {
+  if load_terrain::all_voxels_loaded(&client.block_voxels_loaded.lock().unwrap(), block_position, lod) {
     load_terrain::load_block(
       client,
       update_view,
