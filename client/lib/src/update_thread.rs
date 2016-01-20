@@ -229,9 +229,6 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
       protocol::VoxelReason::Requested => {
         *client.outstanding_terrain_requests.lock().unwrap() -= 1;
         debug!("Outstanding terrain requests: {}", *client.outstanding_terrain_requests.lock().unwrap());
-        if *client.outstanding_terrain_requests.lock().unwrap() == 0 {
-          info!("No more outstanding terrain requests");
-        }
       },
     }
 

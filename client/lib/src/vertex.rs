@@ -49,33 +49,6 @@ pub struct TextureVertex {
   pub texture_position: Vector2<f32>,
 }
 
-impl TextureVertex {
-  /// Generates two textured triangles, representing a square in 2D space,
-  /// at z = 0.
-  /// The bounds of the square is represented by `b`.
-  ///
-  /// The coordinates on the texture will implicitly be the "whole thing".
-  /// i.e. [(0, 0), (1, 1)].
-  pub fn square(min: Vector2<f32>, max: Vector2<f32>) -> [TextureVertex; 6] {
-    let vtx = |x, y, tx, ty| {
-        TextureVertex {
-          world_position:   Vector3::new(x, y, 0.0),
-          texture_position: Vector2::new(tx, ty),
-        }
-      };
-
-    [
-      vtx(min.x, min.y, 0.0, 0.0),
-      vtx(max.x, max.y, 1.0, 1.0),
-      vtx(min.x, max.y, 0.0, 1.0),
-
-      vtx(min.x, min.y, 0.0, 0.0),
-      vtx(max.x, min.y, 1.0, 0.0),
-      vtx(max.x, max.y, 1.0, 1.0),
-    ]
-  }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 /// A point in the world with corresponding texture and normal data.
 ///

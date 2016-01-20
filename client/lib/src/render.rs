@@ -34,13 +34,5 @@ pub fn render(
     unsafe {
       gl::ActiveTexture(rndr.misc_texture_unit.gl_id());
     }
-
-    rndr.text_triangles.bind(&mut rndr.gl);
-    for (i, tex) in rndr.text_textures.iter().enumerate() {
-      unsafe {
-        gl::BindTexture(gl::TEXTURE_2D, tex.handle.gl_id);
-      }
-      rndr.text_triangles.draw_slice(&mut rndr.gl, i * 6, 6);
-    }
   }
 }

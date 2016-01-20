@@ -5,19 +5,18 @@ use cgmath::Vector2;
 use std;
 use yaglw::gl_context::GLContext;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, DrawMode, VertexAttribData};
-use yaglw::texture::{Texture2D, TextureUnit};
+use yaglw::texture::{TextureUnit};
 
 use common::id_allocator;
 
 use camera::Camera;
-use fontloader::FontLoader;
 use gl;
 use gl::types::*;
 use mob_buffers::MobBuffers;
 use player_buffers::PlayerBuffers;
 use shaders::Shaders;
 use terrain_buffers::TerrainBuffers;
-use vertex::{ColoredVertex, TextureVertex};
+use vertex::{ColoredVertex};
 
 const VERTICES_PER_TRIANGLE: usize = 3;
 
@@ -36,15 +35,9 @@ pub struct T<'a> {
   pub player_buffers: PlayerBuffers<'a>,
   /// Hud triangles for non-text.
   pub hud_triangles: GLArray<'a, ColoredVertex>,
-  /// HUD triangles for text.
-  pub text_triangles: GLArray<'a, TextureVertex>,
 
   /// A texture unit for misc use.
   pub misc_texture_unit: TextureUnit,
-  /// The text textures loaded in the current view.
-  pub text_textures: Vec<Texture2D<'a>>,
-  #[allow(missing_docs)]
-  pub fontloader: FontLoader,
 
   #[allow(missing_docs)]
   pub camera: Camera,
@@ -84,21 +77,6 @@ impl<'a> T<'a> {
       )
     };
 
-    let buffer = GLBuffer::new(&mut gl, 8 * VERTICES_PER_TRIANGLE);
-    let text_triangles =
-      GLArray::new(
-        &mut gl,
-        &shaders.hud_texture_shader.shader,
-        &[
-          VertexAttribData { name: "position", size: 3, unit: GLType::Float },
-          VertexAttribData { name: "texture_position", size: 2, unit: GLType::Float },
-        ],
-        DrawMode::Triangles,
-        buffer,
-      );
-
-    let text_textures = Vec::new();
-
     let misc_texture_unit = texture_unit_alloc.allocate();
 
     unsafe {
@@ -136,11 +114,8 @@ impl<'a> T<'a> {
       mob_buffers: mob_buffers,
       player_buffers: player_buffers,
       hud_triangles: hud_triangles,
-      text_triangles: text_triangles,
 
       misc_texture_unit: misc_texture_unit,
-      text_textures: text_textures,
-      fontloader: FontLoader::new(),
 
       camera: {
         let fovy = cgmath::rad(std::f32::consts::PI / 3.0);

@@ -7,7 +7,6 @@
 #![feature(plugin)]
 #![feature(test)]
 #![feature(unboxed_closures)]
-#![feature(ptr_as_ref)]
 
 #![allow(mutex_atomic)]
 #![allow(match_ref_pats)]
@@ -37,7 +36,6 @@ extern crate yaglw;
 mod block_position;
 mod camera;
 mod client;
-mod fontloader;
 mod hud;
 mod light;
 mod load_terrain;
@@ -52,7 +50,6 @@ mod server_update;
 mod shaders;
 mod terrain_buffers;
 mod terrain_mesh;
-mod ttf;
 mod update_thread;
 mod vertex;
 mod view;

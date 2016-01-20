@@ -1,11 +1,10 @@
 //! HUD initialization code.
 
 use cgmath::Point2;
-use cgmath::Vector2;
 
 use common::color::Color4;
 
-use vertex::{ColoredVertex, TextureVertex};
+use vertex::{ColoredVertex};
 use view;
 
 /// Add HUD data into `view`.
@@ -21,32 +20,4 @@ pub fn make_hud<'a, 'b:'a>(view: &'a mut view::T<'b>) {
 
   view.hud_triangles.bind(&mut view.gl);
   view.hud_triangles.push(&mut view.gl, triangles.as_ref());
-
-  let instructions = vec!(
-    "Use WASD to move, and spacebar to jump.",
-    "Use the mouse to look around.",
-  );
-
-  let mut y = 0.99;
-
-  for line in &instructions {
-    let tex = view.fontloader.sans.render(
-      &view.gl,
-      line,
-      Color4::of_rgba(0xFF, 0, 0, 0xFF),
-    );
-    view.text_textures.push(tex);
-
-    let triangles: Vec<_> =
-      TextureVertex::square(
-        Vector2 { x: -0.97, y: y - 0.2 },
-        Vector2 { x: 0.0,   y: y       }
-      )
-      .iter()
-      .cloned()
-      .collect();
-    view.text_triangles.bind(&mut view.gl);
-    view.text_triangles.push(&mut view.gl, triangles.as_ref());
-    y -= 0.2;
-  }
 }
