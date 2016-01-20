@@ -21,18 +21,18 @@ Some picture things:
 
 Make sure you have:
 
-  * The **2015-01-18 nightly build** of the Rust compiler and cargo. There are probably other versions that work, but that's what I'm running.
+  * The **nightly build** of the Rust compiler and cargo.
   * OpenGL 3.3+
   * libpng
   * SDL2
   * SDL2\_ttf
   * libnanomsg
 
-At any point, `--release` can be appended onto `cargo build` or `cargo run` for a slower
-build, but a much more optimized binary.
-
 Playform has a separate server and client, which can be built and run in `server/bin` and `client/bin`,
 but there's also a server+client (singleplayer) bundled binary that builds in the root directory.
+
+`cargo build` and `cargo run` take an optional `--release` parameter for release builds.
+Performance is pretty abysmal in debug builds.
 
 ## Performance
 
