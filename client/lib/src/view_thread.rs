@@ -58,7 +58,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   let window = window.position(0, 0);
   let window = window.opengl();
 
-  let mut window = window.build().unwrap();
+  let window = window.build().unwrap();
 
   assert_eq!(gl_attr.context_profile(), video::GLProfile::Core);
   assert_eq!(gl_attr.context_version(), (GL_MAJOR_VERSION, GL_MINOR_VERSION));
@@ -82,6 +82,8 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   };
 
   let mut view = view::T::new(gl, window_size);
+
+  sdl.mouse().set_relative_mouse_mode(true);
 
   make_hud(&mut view);
 
@@ -134,11 +136,9 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
             event => {
               if has_focus {
                 process_event(
-                  &sdl,
                   player_id,
                   update_server,
                   &mut view,
-                  &mut window,
                   event,
                 );
               }

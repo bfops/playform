@@ -1,11 +1,9 @@
 //! SDL input event processing code.
 
 use cgmath::{Vector2, Vector3};
-use sdl2;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::Mouse;
-use sdl2::video;
 use std::f32::consts::PI;
 use stopwatch;
 
@@ -16,11 +14,9 @@ use view;
 
 #[allow(missing_docs)]
 pub fn process_event<UpdateServer>(
-  sdl: &sdl2::Sdl,
   player_id: entity_id::T,
   update_server: &mut UpdateServer,
   view: &mut view::T,
-  window: &mut video::Window,
   event: Event,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
 {
@@ -39,8 +35,8 @@ pub fn process_event<UpdateServer>(
         }
       });
     },
-    Event::MouseMotion{x, y, ..} => {
-      mouse_move(sdl, player_id, update_server, view, window, x, y);
+    Event::MouseMotion{xrel, yrel, ..} => {
+      mouse_move(player_id, update_server, view, xrel, yrel);
     },
     Event::MouseButtonDown{mouse_btn, ..} => {
       mouse_press(player_id, update_server, mouse_btn);
@@ -149,29 +145,22 @@ fn key_release<UpdateServer>(
   })
 }
 
+// x and y are relative to last position.
 fn mouse_move<UpdateServer>(
-  sdl: &sdl2::Sdl,
   player_id: entity_id::T,
   update_server: &mut UpdateServer,
   view: &mut view::T,
-  window: &mut video::Window,
-  x: i32, y: i32,
+  dx: i32, dy: i32,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
 {
-  // x and y are measured from the top-left corner.
-
   stopwatch::time("event.mouse_move", || {
-    let (w, h) = window.size();
-    let (cx, cy) = (w as i32 / 2, h as i32 / 2);
-    let d = Vector2::new(x - cx, cy - y);
+    let d = Vector2::new(dx, dy);
     // To-radians coefficient. Numbers closer to zero dull the mouse movement more.
-    let to_radians = Vector2::new(-1.0 / 1000.0, 1.0 / 1600.0);
+    let to_radians = Vector2::new(-1.0 / 1000.0, -1.0 / 1600.0);
     let r = Vector2::new(d.x as f32 * to_radians.x, d.y as f32 * to_radians.y);
 
     update_server(protocol::ClientToServer::RotatePlayer(player_id, r));
     view.camera.rotate_lateral(r.x);
     view.camera.rotate_vertical(r.y);
-
-    sdl.mouse().warp_mouse_in_window(window, cx, cy);
   })
 }
