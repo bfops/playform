@@ -60,6 +60,23 @@ fn updated_block_positions(
   blocks
 }
 
+pub fn all_voxels_loaded(
+  block_voxels_loaded: &block_position::with_lod::map::T<u32>,
+  block_position: block_position::T,
+  lod: lod::T,
+) -> bool {
+  let block_voxels_loaded =
+    match block_voxels_loaded.get(&(block_position, lod)) {
+      None => return false,
+      Some(x) => x,
+    };
+
+  let edge_samples = terrain_mesh::EDGE_SAMPLES[lod.0 as usize] as u32 + 2;
+  let samples = edge_samples * edge_samples * edge_samples;
+  assert!(*block_voxels_loaded <= samples, "{:?}", block_position);
+  *block_voxels_loaded == samples
+}
+
 #[inline(never)]
 pub fn load_voxel<UpdateBlock>(
   client: &client::T,
@@ -154,12 +171,7 @@ pub fn load_voxel<UpdateBlock>(
       continue;
     }
 
-    let block_voxels_loaded = block_voxels_loaded.get(&(block_position, lod)).unwrap();
-
-    let edge_samples = terrain_mesh::EDGE_SAMPLES[lod.0 as usize] as u32 + 2;
-    let samples = edge_samples * edge_samples * edge_samples;
-    assert!(*block_voxels_loaded <= samples, "{:?}", block_position);
-    if *block_voxels_loaded == samples {
+    if all_voxels_loaded(&block_voxels_loaded, block_position, lod) {
       update_block(block_position, lod);
     }
   }

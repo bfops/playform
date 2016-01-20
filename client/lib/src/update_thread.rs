@@ -104,7 +104,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
             .get(&block_position)
             .map(|&(_, lod)| lod != new_lod);
           if lod_change != Some(false) {
-            load_or_request_chunk(client, update_server, block_position, new_lod);
+            load_or_request_chunk(client, update_server, update_view, block_position, new_lod);
           } else {
             debug!("Not re-loading {:?} at {:?}", block_position, new_lod);
           }
@@ -118,7 +118,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
             .get(&block_position)
             .map(|&(_, lod)| new_lod < lod);
           if lod_change == Some(true) {
-            load_or_request_chunk(client, update_server, block_position, new_lod);
+            load_or_request_chunk(client, update_server, update_view, block_position, new_lod);
           } else {
             trace!("Not updating {:?} at {:?}", block_position, new_lod);
           }
@@ -150,36 +150,48 @@ fn update_surroundings<UpdateView, UpdateServer>(
   }
 }
 
-fn load_or_request_chunk<UpdateServer>(
+fn load_or_request_chunk<UpdateServer, UpdateView>(
   client: &client::T,
   update_server: &mut UpdateServer,
+  update_view: &mut UpdateView,
   block_position: block_position::T,
   lod: lod::T,
 ) where
   UpdateServer: FnMut(protocol::ClientToServer),
+  UpdateView: FnMut(ClientToView),
 {
-  let voxel_size = 1 << terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
-  update_server(
-    protocol::ClientToServer::RequestVoxels(
-      client.id,
-      terrain_mesh::voxels_in(
-        &Aabb3::new(
-          Point3::new(
-            (block_position.as_pnt().x << terrain_mesh::LG_WIDTH) - voxel_size,
-            (block_position.as_pnt().y << terrain_mesh::LG_WIDTH) - voxel_size,
-            (block_position.as_pnt().z << terrain_mesh::LG_WIDTH) - voxel_size,
+  let r = load_terrain::all_voxels_loaded(&client.block_voxels_loaded.lock().unwrap(), block_position, lod);
+  if r && false {
+    load_terrain::load_block(
+      client,
+      update_view,
+      &block_position,
+      lod,
+    );
+  } else {
+    let voxel_size = 1 << terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
+    update_server(
+      protocol::ClientToServer::RequestVoxels(
+        client.id,
+        terrain_mesh::voxels_in(
+          &Aabb3::new(
+            Point3::new(
+              (block_position.as_pnt().x << terrain_mesh::LG_WIDTH) - voxel_size,
+              (block_position.as_pnt().y << terrain_mesh::LG_WIDTH) - voxel_size,
+              (block_position.as_pnt().z << terrain_mesh::LG_WIDTH) - voxel_size,
+            ),
+            Point3::new(
+              ((block_position.as_pnt().x + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+              ((block_position.as_pnt().y + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+              ((block_position.as_pnt().z + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+            ),
           ),
-          Point3::new(
-            ((block_position.as_pnt().x + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-            ((block_position.as_pnt().y + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-            ((block_position.as_pnt().z + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-          ),
+          terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize],
         ),
-        terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize],
-      ),
-    )
-  );
-  *client.outstanding_terrain_requests.lock().unwrap() += 1;
+      )
+    );
+    *client.outstanding_terrain_requests.lock().unwrap() += 1;
+  }
 }
 
 #[inline(never)]
