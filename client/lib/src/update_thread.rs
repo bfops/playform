@@ -168,17 +168,17 @@ fn load_or_request_chunk<UpdateServer>(
             (block_position.as_pnt().x << terrain_mesh::LG_WIDTH) - voxel_size,
             (block_position.as_pnt().y << terrain_mesh::LG_WIDTH) - voxel_size,
             (block_position.as_pnt().z << terrain_mesh::LG_WIDTH) - voxel_size,
-            ),
-            Point3::new(
-              ((block_position.as_pnt().x + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-              ((block_position.as_pnt().y + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-              ((block_position.as_pnt().z + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-              ),
-              ),
-              terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize],
-              ),
-              )
-    );
+          ),
+          Point3::new(
+            ((block_position.as_pnt().x + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+            ((block_position.as_pnt().y + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+            ((block_position.as_pnt().z + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+          ),
+        ),
+        terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize],
+      ),
+    )
+  );
   *client.outstanding_terrain_requests.lock().unwrap() += 1;
 }
 
