@@ -1,7 +1,7 @@
-use bincode;
+use std;
 use std::convert::AsRef;
-use std::sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use std::sync::Mutex;
+use bincode;
 use stopwatch;
 use thread_scoped;
 use time;
@@ -17,9 +17,7 @@ use update_world::update_world;
 
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
-  let (gaia_send, gaia_recv) = channel();
-
-  let gaia_recv = Mutex::new(gaia_recv);
+  let gaia_updates = Mutex::new(std::collections::VecDeque::new());
 
   let listen_socket = ReceiveSocket::new(listen_url.as_ref(), None);
   let listen_socket = Mutex::new(listen_socket);
@@ -31,15 +29,14 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
 
   unsafe {
     let server = &server;
-    let gaia_send = gaia_send.clone();
-    let gaia_recv = &gaia_recv;
+    let gaia_updates = &gaia_updates;
     let listen_socket = &listen_socket;
     threads.push(thread_scoped::scoped(move || {
       closure_series::new(vec!(
         quit_upon(&quit_signal),
-        consider_world_update(&server, gaia_send.clone()),
-        network_listen(&listen_socket, server, gaia_send.clone()),
-        consider_gaia_update(&server, &gaia_recv),
+        consider_world_update(&server, |up| { gaia_updates.lock().unwrap().push_back(up) }),
+        network_listen(&listen_socket, server, |up| { gaia_updates.lock().unwrap().push_back(up) }),
+        consider_gaia_update(&server, || { gaia_updates.lock().unwrap().pop_front() } ),
       ))
       .until_quit();
 
@@ -48,14 +45,14 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
   }
   unsafe {
     let server = &server;
-    let gaia_send = gaia_send.clone();
+    let gaia_updates = &gaia_updates;
     let quit_signal = &quit_signal;
     let listen_socket = &listen_socket;
     threads.push(thread_scoped::scoped(move || {
       closure_series::new(vec!(
         quit_upon(&quit_signal),
-        consider_world_update(&server, gaia_send.clone()),
-        network_listen(&listen_socket, server, gaia_send.clone()),
+        consider_world_update(&server, |up| { gaia_updates.lock().unwrap().push_back(up) }),
+        network_listen(&listen_socket, server, |up| { gaia_updates.lock().unwrap().push_back(up) }),
       ))
       .until_quit();
 
@@ -81,15 +78,17 @@ fn quit_upon(signal: &Mutex<bool>) -> closure_series::Closure {
   }
 }
 
-fn consider_world_update(
-  server: &Server,
-  to_gaia: Sender<update_gaia::Message>,
-) -> closure_series::Closure {
+fn consider_world_update<'a, ToGaia>(
+  server: &'a Server,
+  mut to_gaia: ToGaia,
+) -> closure_series::Closure<'a> where
+  ToGaia: FnMut(update_gaia::Message) + 'a,
+{
   box move || {
     if server.update_timer.lock().unwrap().update(time::precise_time_ns()) > 0 {
       update_world(
         server,
-        &to_gaia,
+        &mut to_gaia,
       );
       closure_series::Restart
     } else {
@@ -98,38 +97,38 @@ fn consider_world_update(
   }
 }
 
-fn network_listen<'a>(
+fn network_listen<'a, ToGaia>(
   socket: &'a Mutex<ReceiveSocket>,
   server: &'a Server,
-  to_gaia: Sender<update_gaia::Message>,
-) -> closure_series::Closure<'a> {
+  mut to_gaia: ToGaia,
+) -> closure_series::Closure<'a> where
+  ToGaia: FnMut(update_gaia::Message) + 'a,
+{
   box move || {
     match socket.lock().unwrap().try_read() {
       None => closure_series::Continue,
       Some(up) => {
         let up = bincode::rustc_serialize::decode(up.as_ref()).unwrap();
-        apply_client_update(server, &mut |block| { to_gaia.send(block).unwrap() }, up);
+        apply_client_update(server, &mut to_gaia, up);
         closure_series::Restart
       },
     }
   }
 }
 
-fn consider_gaia_update<'a>(
+fn consider_gaia_update<'a, Get>(
   server: &'a Server,
-  to_gaia: &'a Mutex<Receiver<update_gaia::Message>>,
-) -> closure_series::Closure<'a> {
+  mut get_update: Get,
+) -> closure_series::Closure<'a> where
+  Get: FnMut() -> Option<update_gaia::Message> + 'a,
+{
   box move || {
-    match to_gaia.lock().unwrap().try_recv() {
-      Ok(up) => {
+    match get_update() {
+      Some(up) => {
         update_gaia(server, up);
         closure_series::Restart
       },
-      Err(TryRecvError::Empty) => closure_series::Continue,
-      err => {
-        err.unwrap();
-        unreachable!();
-      },
+      None => closure_series::Continue,
     }
   }
 }

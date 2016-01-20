@@ -1,6 +1,5 @@
 use cgmath::{Point, Point3, Vector, Vector3};
 use std::ops::Neg;
-use std::sync::mpsc::Sender;
 use stopwatch;
 
 use common::protocol;
@@ -14,16 +13,16 @@ use update_gaia;
 
 // TODO: Consider removing the IntervalTimer.
 
-pub fn update_world(
+pub fn update_world<RequestBlock>(
   server: &Server,
-  request_block: &Sender<update_gaia::Message>,
-) {
-  let mut request_block = |block| { request_block.send(block).unwrap() };
-
+  request_block: &mut RequestBlock,
+) where
+  RequestBlock: FnMut(update_gaia::Message),
+{
   stopwatch::time("update_world", || {
     stopwatch::time("update_world.player", || {
       for (_, player) in server.players.lock().unwrap().iter_mut() {
-        player.update(server, &mut request_block);
+        player.update(server, request_block);
       }
 
       let players: Vec<_> = server.players.lock().unwrap().keys().cloned().collect();
@@ -49,7 +48,7 @@ pub fn update_world(
           load_placeholders(
             owner_id,
             server,
-            &mut request_block,
+            request_block,
             &voxel::bounds::new(position.x, position.y, position.z, 0),
             load_type,
           )

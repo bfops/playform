@@ -1,39 +1,20 @@
-use std::sync::mpsc::{channel, Sender, Receiver, TryRecvError};
+use std;
 use std::sync::Mutex;
 use stopwatch;
 use thread_scoped;
 
 use common::protocol;
-use common::voxel;
 
 use client;
 use server;
 use update_thread::update_thread;
 use view_thread::view_thread;
 
-// TODO: This is duplicated in the server. Fix that.
-fn try_recv<T>(recv: &Receiver<T>) -> Option<T>
-  where T: Send,
-{
-  match recv.try_recv() {
-    Ok(msg) => Some(msg),
-    Err(TryRecvError::Empty) => None,
-    e => Some(e.unwrap()),
-  }
-}
-
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, server_url: &str) {
-  let (voxel_updates_send, mut voxel_updates_recv) = channel();
-  let (view_thread_send0, mut view_thread_recv0) = channel();
-  let (view_thread_send1, mut view_thread_recv1) = channel();
-
-  let voxel_updates_send: &Sender<(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)> = &voxel_updates_send;
-  let voxel_updates_recv = &mut voxel_updates_recv;
-  let view_thread_send0 = &view_thread_send0;
-  let view_thread_recv0 = &mut view_thread_recv0;
-  let view_thread_send1 = &view_thread_send1;
-  let view_thread_recv1 = &mut view_thread_recv1;
+  let voxel_updates = Mutex::new(std::collections::VecDeque::new());
+  let view_updates0 = Mutex::new(std::collections::VecDeque::new());
+  let view_updates1 = Mutex::new(std::collections::VecDeque::new());
 
   let quit = Mutex::new(false);
   let quit = &quit;
@@ -46,21 +27,21 @@ pub fn run(listen_url: &str, server_url: &str) {
   {
     let update_thread = {
       let client = &client;
-      let view_thread_send0 = view_thread_send0.clone();
-      let view_thread_send1 = view_thread_send1.clone();
+      let view_updates0 = &view_updates0;
+      let view_updates1 = &view_updates1;
+      let voxel_updates = &voxel_updates;
       let server = server.clone();
-      let voxel_updates_send = voxel_updates_send.clone();
       unsafe {
         thread_scoped::scoped(move || {
           update_thread(
             quit,
             client,
             &mut || { server.listen.try() },
-            &mut || { try_recv(voxel_updates_recv) },
-            &mut |up| { view_thread_send0.send(up).unwrap() },
-            &mut |up| { view_thread_send1.send(up).unwrap() },
+            &mut || { voxel_updates.lock().unwrap().pop_front() },
+            &mut |up| { view_updates0.lock().unwrap().push_back(up) },
+            &mut |up| { view_updates1.lock().unwrap().push_back(up) },
   	        &mut |up| { server.talk.tell(&up) },
-            &mut |voxel_updates, reason| { voxel_updates_send.send((voxel_updates, reason)).unwrap() },
+            &mut |updates, reason| { voxel_updates.lock().unwrap().push_back((updates, reason)) },
           );
 
           stopwatch::clone()
@@ -72,22 +53,8 @@ pub fn run(listen_url: &str, server_url: &str) {
       let server = server.clone();
       view_thread(
         client.player_id,
-        &mut || {
-          match view_thread_recv0.try_recv() {
-            Ok(msg) => Some(msg),
-            Err(TryRecvError::Empty) => None,
-            Err(TryRecvError::Disconnected) =>
-              panic!("view_thread_send should not be closed."),
-          }
-        },
-        &mut || {
-          match view_thread_recv1.try_recv() {
-            Ok(msg) => Some(msg),
-            Err(TryRecvError::Empty) => None,
-            Err(TryRecvError::Disconnected) =>
-              panic!("view_thread_send should not be closed."),
-          }
-        },
+        &mut || { view_updates0.lock().unwrap().pop_front() },
+        &mut || { view_updates1.lock().unwrap().pop_front() },
         &mut |server_update| { server.talk.tell(&server_update) },
       );
 
