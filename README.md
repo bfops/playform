@@ -1,17 +1,14 @@
 [![Build Status](https://travis-ci.org/bfops/playform.svg?branch=master)](https://travis-ci.org/bfops/playform)
 
-## Introduction
+## Overview
 
 Playform aspires to be an open-world sandbox game written in Rust, taking
-inspiration from [Voxel Farm](http://procworld.blogspot.com/) and Minecraft. The dev blog is available [here](http://playformdev.blogspot.com/).
+inspiration from [Voxel Farm](http://procworld.blogspot.com/) and Minecraft. The "dev blog" is at [here](http://playformdev.blogspot.com/).
 
-It's currently.. well, very much a WIP. As
-[michaelwu's rust-bindgen fork](https://github.com/michaelwu/rust-bindgen/tree/sm-hacks) supports C++
-better and better, part of the plan is to start using seasoned C++
-libraries like [bullet physics](https://github.com/bulletphysics/bullet3).
+It's very much a WIP. Hopefully as the Rust ecosystem improves (and, in a perfect world, when Rust gets a story for linking with C++),
+the hackiest parts of Playform can be outsourced to other libraries (physics and graphics APIs, threading, networking).
 
-Help is great! PRs and [issues](https://github.com/bfops/playform/issues)
-are appreciated. Featureful changes should go into the client-voxels branch, which is a major refactoring. It hasn't been merged into master because it degrades performance a lot right now.
+Help is great! PRs and [issues](https://github.com/bfops/playform/issues) are appreciated.
 
 Some picture things:
 
@@ -24,39 +21,30 @@ Some picture things:
 
 Make sure you have:
 
-  * The **2015-10-31 nightly build** of the Rust compiler and cargo. It's possible that other versions will work.
+  * The **2015-01-18 nightly build** of the Rust compiler and cargo. There are probably other versions that work, but that's what I'm running.
   * OpenGL 3.3+
   * libpng
   * SDL2
-  * SDL2_ttf
+  * SDL2\_ttf
   * libnanomsg
 
 At any point, `--release` can be appended onto `cargo build` or `cargo run` for a slower
 build, but a much more optimized binary.
 
-Run the Playform server using `cargo run` in the `server` folder. It takes one parameter:
-the listen URL for the server. It defaults to running locally: `ipc:///tmp/server.ipc`.
-
-The client can be run similarly with `cargo run` in the `client` folder. It takes two
-parameters: the listen URL of the client and the listen URL of the server. They
-both default to running locally (`ipc:///tmp/client.ipc` for the client URL).
-
-**Some dependencies might not build**. Look for forks that are updated for
-your `rustc`, and then point your `~/.cargo/config` at them.
-
-If you find `playform` itself won't build on the latest `rustc`, please open an issue or file a PR!
+Playform has a separate server and client, which can be built and run in `server/bin` and `client/bin`,
+but there's also a server+client (singleplayer) bundled binary that builds in the root directory.
 
 ## Performance
 
-I mostly work on non-performance stuff because it's more fun, so Playform runs passably on my pretty good computer. If it's too slow for you, try tweaking `MAX_LOAD_DISTANCE` in `client/src/client.rs`. 
+It's not great. It would be great to get Playform running well on a variety of PCs, but I only have mine.
 
 ## How to play
 
   * Move: WASD
   * Jump: Space
   * Look around: Mouse
-  * Place a tree: Left mouse button
-  * Sphere eraser tool: Right mouse button
+  * Tree tool: Left mouse button
+  * Dig tool: Right mouse button
   * Toggle HUD: H
 
 One mob spawns that will play "tag" with you: tag it and it will chase you until it tags you back. If you get too far away from it, it'll probably get lost and fall through the planet. It's a little needy.
