@@ -97,8 +97,6 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
     render_timer = IntervalTimer::new(render_interval, now);
   }
 
-  let mut has_focus = true;
-
   let mut last_update = time::precise_time_ns();
 
   loop {
@@ -118,30 +116,13 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
             Event::AppTerminating{..} => {
               return ViewIteration::Quit
             }
-            Event::Window{win_event_id: event_id, ..} => {
-              // Manage has_focus so that we don't capture the cursor when the
-              // window is in the background
-              match event_id {
-                sdl2::event::WindowEventId::FocusGained => {
-                  has_focus = true;
-                  sdl.mouse().show_cursor(false);
-                }
-                sdl2::event::WindowEventId::FocusLost => {
-                  has_focus = false;
-                  sdl.mouse().show_cursor(true);
-                }
-                _ => {}
-              }
-            }
             event => {
-              if has_focus {
-                process_event(
-                  player_id,
-                  update_server,
-                  &mut view,
-                  event,
-                );
-              }
+              process_event(
+                player_id,
+                update_server,
+                &mut view,
+                event,
+              );
             },
           }
         }
