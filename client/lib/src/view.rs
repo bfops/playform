@@ -1,5 +1,7 @@
 //! The state associated with perceiving the world state.
 
+extern crate fps_counter;
+
 use cgmath;
 use cgmath::Vector2;
 use std;
@@ -44,6 +46,9 @@ pub struct T<'a> {
 
   #[allow(missing_docs)]
   pub show_hud: bool,
+  
+  /// A counter of frames per second
+  pub fps_counter: fps_counter::FPSCounter,
 }
 
 impl<'a> T<'a> {
@@ -129,6 +134,8 @@ impl<'a> T<'a> {
       },
 
       show_hud: true,
+      
+      fps_counter: fps_counter::FPSCounter::new(),
     }
   }
 }
