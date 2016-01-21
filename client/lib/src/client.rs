@@ -10,8 +10,7 @@ use common::protocol;
 use common::surroundings_loader::SurroundingsLoader;
 use common::voxel;
 
-use block_position;
-use lod;
+use edge;
 use terrain_mesh;
 use terrain_buffers;
 
@@ -37,9 +36,7 @@ pub struct T {
   pub surroundings_loader: Mutex<SurroundingsLoader>,
   pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
   /// A record of all the blocks that have been loaded.
-  pub loaded_blocks: Mutex<block_position::map::T<(terrain_mesh::T, lod::T)>>,
-  /// Map each block to the number of voxels inside it that we have.
-  pub block_voxels_loaded: Mutex<block_position::with_lod::map::T<u32>>,
+  pub loaded_fragments: Mutex<edge::map::T<terrain_mesh::T>>,
   /// The voxels we have cached from the server.
   // TODO: Should probably remove from this at some point.
   pub voxels: Mutex<voxel::tree::T>,
@@ -73,9 +70,8 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     max_load_distance: load_distance,
     surroundings_loader: Mutex::new(surroundings_loader),
     id_allocator: Mutex::new(id_allocator::new()),
-    loaded_blocks: Mutex::new(block_position::map::new()),
-    block_voxels_loaded: Mutex::new(block_position::with_lod::map::new()),
-    voxels: Mutex::new(voxel::tree::new()),
+    loaded_fragments: Mutex::new(edge::map::new()),
+    voxels: Mutex::new(voxel::tree::T::new()),
     outstanding_terrain_requests: Mutex::new(0),
   }
 }

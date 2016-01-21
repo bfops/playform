@@ -36,6 +36,7 @@ extern crate yaglw;
 mod block_position;
 mod camera;
 mod client;
+mod edge;
 mod hud;
 mod light;
 mod load_terrain;

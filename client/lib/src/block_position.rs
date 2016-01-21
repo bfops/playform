@@ -1,10 +1,10 @@
 //! Position data structure for terrain blocks.
 
-use cgmath::{Point3, Vector3};
+use cgmath::{Point3, Vector3, Point};
 use std::ops::Add;
 
-use common::voxel;
-
+use edge;
+use lod;
 use terrain_mesh;
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
@@ -12,71 +12,50 @@ use terrain_mesh;
 /// The position is implicitly in units of terrain_mesh::WIDTH.
 pub struct T(Point3<i32>);
 
-pub mod map {
-  use fnv::FnvHasher;
-  use std;
-
-  pub type T<V> = std::collections::HashMap<super::T, V, std::hash::BuildHasherDefault<FnvHasher>>;
-
-  pub fn new<V>() -> T<V> {
-    std::collections::HashMap::with_hasher(Default::default())
-  }
+pub struct Edges {
+  lower: Point3<i32>,
+  upper: Point3<i32>,
+  cur: Point3<i32>,
+  direction: edge::Direction,
+  lg_size: i16,
 }
 
-pub mod set {
-  use fnv::FnvHasher;
-  use std;
+impl Iterator for Edges {
+  type Item = edge::T;
 
-  pub type T = std::collections::HashSet<super::T, std::hash::BuildHasherDefault<FnvHasher>>;
-
-  #[allow(dead_code)]
-  pub fn new() -> T {
-    std::collections::HashSet::with_hasher(Default::default())
-  }
-}
-
-pub mod with_lod {
-  use lod;
-
-  pub type T = (super::T, lod::T);
-
-  pub mod set {
-    use fnv::FnvHasher;
-    use std;
-
-    pub type T = std::collections::HashSet<super::T, std::hash::BuildHasherDefault<FnvHasher>>;
-
-    pub fn new() -> T {
-      std::collections::HashSet::with_hasher(Default::default())
+  fn next(&mut self) -> Option<Self::Item> {
+    match self.direction {
+      edge::Direction::X => {
+        self.direction = edge::Direction::Y;
+      },
+      edge::Direction::Y => {
+        self.direction = edge::Direction::Z;
+      },
+      edge::Direction::Z => {
+        if self.cur.z < self.upper.z {
+          self.cur.z += 1;
+        } else {
+          self.cur.z = self.lower.z;
+          if self.cur.y < self.upper.y {
+            self.cur.y += 1;
+          } else {
+            self.cur.y = self.lower.y;
+            if self.cur.x < self.upper.x {
+              self.cur.x += 1;
+            } else {
+              self.cur.x = self.lower.x;
+              return None
+            }
+          }
+        }
+      },
     }
-  }
 
-  pub mod map {
-    use fnv::FnvHasher;
-    use std;
-
-    pub type T<V> = std::collections::HashMap<super::T, V, std::hash::BuildHasherDefault<FnvHasher>>;
-
-    pub fn new<V>() -> T<V> {
-      std::collections::HashMap::with_hasher(Default::default())
-    }
-  }
-}
-
-#[inline(never)]
-pub fn containing_voxel(bounds: &voxel::bounds::T) -> T {
-  if bounds.lg_size < 0 {
-    new(
-      (bounds.x >> -bounds.lg_size) >> terrain_mesh::LG_WIDTH,
-      (bounds.y >> -bounds.lg_size) >> terrain_mesh::LG_WIDTH,
-      (bounds.z >> -bounds.lg_size) >> terrain_mesh::LG_WIDTH,
-    )
-  } else {
-    new(
-      (bounds.x << bounds.lg_size) >> terrain_mesh::LG_WIDTH,
-      (bounds.y << bounds.lg_size) >> terrain_mesh::LG_WIDTH,
-      (bounds.z << bounds.lg_size) >> terrain_mesh::LG_WIDTH,
-    )
+    Some(edge::T {
+      low_corner: self.cur,
+      direction: self.direction,
+      lg_size: self.lg_size,
+    })
   }
 }
 
@@ -102,11 +81,34 @@ impl T {
       (self.as_pnt().z * terrain_mesh::WIDTH) as f32,
     )
   }
-}
 
-#[allow(missing_docs)]
-pub fn of_pnt(p: &Point3<i32>) -> T {
-  T(*p)
+  pub fn edges(&self, lod: lod::T) -> Edges {
+    let lg_edge_samples = terrain_mesh::LG_EDGE_SAMPLES[lod.0 as usize];
+    let lg_sample_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
+
+    let low = self.as_pnt().clone();
+    let high = low.add_v(&Vector3::new(1, 1, 1));
+    let low =
+      Point3::new(
+        low.x << lg_edge_samples,
+        low.y << lg_edge_samples,
+        low.z << lg_edge_samples,
+      );
+    let high =
+      Point3::new(
+        high.x << lg_edge_samples,
+        high.y << lg_edge_samples,
+        high.z << lg_edge_samples,
+      );
+
+    Edges {
+      lower: low,
+      upper: high.add_v(&Vector3::new(-1, -1, -1)),
+      cur: low,
+      lg_size: lg_sample_size,
+      direction: edge::Direction::X,
+    }
+  }
 }
 
 #[allow(missing_docs)]

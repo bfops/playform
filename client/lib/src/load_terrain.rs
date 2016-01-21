@@ -1,206 +1,110 @@
-use cgmath::Point3;
+use cgmath::{Point3, Point};
 use num;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
 
-use common::surroundings_loader;
 use common::voxel;
 
-use block_position;
 use client;
+use edge;
 use lod;
 use terrain_mesh;
 use view_update::ClientToView;
 
 #[inline(never)]
-fn updated_block_positions(
-  voxel: &voxel::bounds::T,
-) -> Vec<block_position::T>
-{
-  let block = block_position::containing_voxel(voxel);
-
-  macro_rules! tweak(($dim:ident) => {{
-    let mut new_voxel = voxel.clone();
-    new_voxel.$dim += 1;
-    if block_position::containing_voxel(&new_voxel) != block {
-      1
-    } else {
-      let mut new_voxel = voxel.clone();
-      new_voxel.$dim -= 1;
-      if block_position::containing_voxel(&new_voxel) != block {
-        -1
-      } else {
-        0
-      }
-    }
-  }});
-
-  let tweak =
-    Point3::new(
-      tweak!(x),
-      tweak!(y),
-      tweak!(z),
-    );
-
-  macro_rules! consider(($dim:ident, $block:expr, $next:expr) => {{
-    $next($block);
-    if tweak.$dim != 0 {
-      let mut block = $block;
-      block.as_mut_pnt().$dim += tweak.$dim;
-      $next(block);
-    }
-  }});
-
-  let mut blocks = Vec::new();
-  consider!(x, block, |block: block_position::T| {
-  consider!(y, block, |block: block_position::T| {
-  consider!(z, block, |block: block_position::T| {
-    blocks.push(block);
-  })})});
-
-  blocks
-}
-
-pub fn all_voxels_loaded(
-  block_voxels_loaded: &block_position::with_lod::map::T<u32>,
-  block_position: block_position::T,
-  lod: lod::T,
-) -> bool {
-  let block_voxels_loaded =
-    match block_voxels_loaded.get(&(block_position, lod)) {
-      None => return false,
-      Some(x) => x,
-    };
-
-  let edge_samples = terrain_mesh::EDGE_SAMPLES[lod.0 as usize] as u32 + 2;
-  let samples = edge_samples * edge_samples * edge_samples;
-  assert!(*block_voxels_loaded <= samples, "{:?}", block_position);
-  *block_voxels_loaded == samples
-}
-
-#[inline(never)]
-pub fn load_voxel<UpdateBlock>(
+pub fn load_voxel<Edge>(
   client: &client::T,
   voxel: voxel::T,
-  bounds: &voxel::bounds::T,
-  mut update_block: UpdateBlock,
+  bounds: voxel::bounds::T,
+  mut touch_edge: Edge,
 ) where
-  UpdateBlock: FnMut(block_position::T, lod::T),
+  Edge: FnMut(edge::T),
 {
-  let player_position =
-    block_position::of_world_position(&client.player_position.lock().unwrap());
-
   let mut voxels = client.voxels.lock().unwrap();
-  let mut block_voxels_loaded = client.block_voxels_loaded.lock().unwrap();
 
-  // Has a new voxel been loaded? (in contrast to changing an existing voxel)
-  let new_voxel_loaded;
+  // TODO: Reject voxels at the wrong LOD.
+
   {
-    let voxel = Some(voxel);
-    let branch = voxels.get_mut_or_create(bounds);
-    let old_voxel = &mut branch.force_branches().data;
-    new_voxel_loaded = old_voxel.is_none();
-    if *old_voxel == voxel {
-      return
+    let branch = voxels.get_mut_or_create(&bounds);
+    match branch {
+      &mut voxel::tree::Empty => {
+        *branch =
+          voxel::tree::Branch {
+            data: Some(voxel),
+            branches: Box::new(voxel::tree::Branches::empty()),
+          };
+      },
+      &mut voxel::tree::Branch { ref mut data, .. } => {
+        match data {
+          &mut None => {},
+          &mut Some(old_voxel) => {
+            if old_voxel == voxel {
+              return
+            }
+          },
+        }
+        *data = Some(voxel);
+      }
     }
     *old_voxel = voxel;
   }
 
   trace!("voxel bounds {:?}", bounds);
 
-  // The LOD of the blocks that should be updated.
-  // This doesn't necessarily match the LOD they're loaded at.
-  let mut updated_lod = None;
-  for lod in 0..terrain_mesh::LOD_COUNT as u32 {
-    let lod = lod::T(lod);
-
-    let lg_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
-    if lg_size == bounds.lg_size {
-      updated_lod = Some(lod);
-      break
-    }
-  }
-
-  for block_position in updated_block_positions(&bounds).into_iter() {
-    trace!("block_position {:?}", block_position);
-    if new_voxel_loaded {
-      match updated_lod {
-        None => {}
-        Some(updated_lod) => {
-          let block_voxels_loaded =
-            block_voxels_loaded.entry((block_position, updated_lod))
-            .or_insert_with(|| 0);
-          trace!("{:?} gets {:?}", block_position, bounds);
-          *block_voxels_loaded += 1;
-        },
-      }
-    }
-
-    let distance = surroundings_loader::distance_between(player_position.as_pnt(), &block_position.as_pnt());
-
-    if distance > client.max_load_distance {
-      debug!(
-        "Not loading {:?}: too far away from player at {:?}.",
-        bounds,
-        player_position,
+  for direction in &[edge::Direction::X, edge::Direction::Y, edge::Direction::Z] {
+    let p0 = Point3::new(bounds.x, bounds.y, bounds.z);
+    let (v1, v2) = direction.perpendicular();
+    let (v1, v2) = (v1.to_vec(), v2.to_vec());
+    for p in &[p0, p0.add_v(&-direction.to_vec()), p0.add_v(&v1), p0.add_v(&v1).add_v(&v2), p0.add_v(&v2)] {
+      touch_edge(
+        edge::T {
+          low_corner: *p,
+          direction: *direction,
+          lg_size: bounds.lg_size,
+        }
       );
-      continue;
-    }
-
-    let lod = lod_index(distance);
-    let lg_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
-    if lg_size != bounds.lg_size {
-      debug!(
-        "{:?} is not the desired LOD {:?}.",
-        bounds,
-        lod
-      );
-      continue;
-    }
-
-    if all_voxels_loaded(&block_voxels_loaded, block_position, lod) {
-      update_block(block_position, lod);
     }
   }
 }
 
 #[inline(never)]
-pub fn load_block<UpdateView>(
+pub fn load_edge<UpdateView>(
   client: &client::T,
   update_view: &mut UpdateView,
-  block_position: &block_position::T,
-  lod: lod::T,
-) where
+  edge: &edge::T,
+) -> Result<(), ()> where
   UpdateView: FnMut(ClientToView),
 {
-  debug!("generate {:?} at {:?}", block_position, lod);
+  debug!("generate {:?}", edge);
   let voxels = client.voxels.lock().unwrap();
-  let mesh_block = terrain_mesh::generate(&voxels, &block_position, lod, &client.id_allocator);
+  let mesh_fragment = try!(terrain_mesh::generate(&voxels, edge, &client.id_allocator));
 
   let mut updates = Vec::new();
 
   // TODO: Rc instead of clone.
-  match client.loaded_blocks.lock().unwrap().entry(*block_position) {
+  match client.loaded_fragments.lock().unwrap().entry(edge.clone()) {
     Vacant(entry) => {
-      entry.insert((mesh_block.clone(), lod));
+      entry.insert(mesh_fragment.clone());
     },
     Occupied(mut entry) => {
       {
-        // The mesh_block removal code is duplicated elsewhere.
+        // The mesh_fragment removal code is duplicated elsewhere.
 
-        let &(ref prev_block, _) = entry.get();
+        let prev_block = entry.get();
         for &id in &prev_block.ids {
           updates.push(ClientToView::RemoveTerrain(id));
         }
       }
-      entry.insert((mesh_block.clone(), lod));
+      entry.insert(mesh_fragment.clone());
     },
   };
 
-  if !mesh_block.ids.is_empty() {
-    updates.push(ClientToView::AddBlock(*block_position, mesh_block, lod));
+  if !mesh_fragment.ids.is_empty() {
+    updates.push(ClientToView::AddBlock(mesh_fragment));
   }
 
   update_view(ClientToView::Atomic(updates));
+
+  Ok(())
 }
 
 pub fn lod_index(distance: i32) -> lod::T {

@@ -6,10 +6,8 @@ use stopwatch;
 use common::color::Color3;
 use common::entity_id;
 
-use block_position;
 use light;
 use light::{set_sun, set_ambient_light};
-use lod;
 use mob_buffers::VERTICES_PER_MOB;
 use player_buffers::VERTICES_PER_PLAYER;
 use terrain_mesh;
@@ -34,7 +32,7 @@ pub enum ClientToView {
   SetClearColor(Color3<f32>),
 
   /// Add a terrain block to the view.
-  AddBlock(block_position::T, terrain_mesh::T, lod::T),
+  AddBlock(terrain_mesh::T),
   /// Remove a terrain entity.
   RemoveTerrain(entity_id::T),
   /// Treat a series of updates as an atomic operation.
@@ -72,7 +70,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: ClientToView) {
     ClientToView::SetClearColor(color) => {
       view.gl.set_background_color(color.r, color.g, color.b, 1.0);
     },
-    ClientToView::AddBlock(_, block, _) => {
+    ClientToView::AddBlock(block) => {
       stopwatch::time("add_block", || {
         view.terrain_buffers.push(
           &mut view.gl,
