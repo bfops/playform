@@ -1,6 +1,6 @@
 language: rust
 dist: trusty
-rust: nightly-2016-01-18
+rust: nightly
 sudo: required
 
 addons:
