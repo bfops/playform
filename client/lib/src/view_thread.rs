@@ -147,11 +147,11 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
         let renders = render_timer.update(time::precise_time_ns());
         if renders > 0 {
           
-          let fps = view.fps_counter.tick();
+          let _fps = view.fps_counter.tick();
           
           // TODO: display in client
 	  // for now, print to console every frame
-          println!("{} fps", fps);
+          //println!("{} fps", fps);
 
           stopwatch::time("render", || {
             render(&mut view);
