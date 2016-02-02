@@ -150,7 +150,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
           let _fps = view.fps_counter.tick();
           
           // TODO: display in client
-	  // for now, print to console every frame
+          // for now, print to console every frame
           //println!("{} fps", fps);
 
           stopwatch::time("render", || {
