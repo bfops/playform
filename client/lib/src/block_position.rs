@@ -15,25 +15,23 @@ pub struct T(Point3<i32>);
 pub mod map {
   use fnv::FnvHasher;
   use std;
-  use std::collections::hash_state::DefaultState;
 
-  pub type T<V> = std::collections::HashMap<super::T, V, DefaultState<FnvHasher>>;
+  pub type T<V> = std::collections::HashMap<super::T, V, std::hash::BuildHasherDefault<FnvHasher>>;
 
   pub fn new<V>() -> T<V> {
-    std::collections::HashMap::with_hash_state(Default::default())
+    std::collections::HashMap::with_hasher(Default::default())
   }
 }
 
 pub mod set {
   use fnv::FnvHasher;
   use std;
-  use std::collections::hash_state::DefaultState;
 
-  pub type T = std::collections::HashSet<super::T, DefaultState<FnvHasher>>;
+  pub type T = std::collections::HashSet<super::T, std::hash::BuildHasherDefault<FnvHasher>>;
 
   #[allow(dead_code)]
   pub fn new() -> T {
-    std::collections::HashSet::with_hash_state(Default::default())
+    std::collections::HashSet::with_hasher(Default::default())
   }
 }
 
@@ -45,24 +43,22 @@ pub mod with_lod {
   pub mod set {
     use fnv::FnvHasher;
     use std;
-    use std::collections::hash_state::DefaultState;
 
-    pub type T = std::collections::HashSet<super::T, DefaultState<FnvHasher>>;
+    pub type T = std::collections::HashSet<super::T, std::hash::BuildHasherDefault<FnvHasher>>;
 
     pub fn new() -> T {
-      std::collections::HashSet::with_hash_state(Default::default())
+      std::collections::HashSet::with_hasher(Default::default())
     }
   }
 
   pub mod map {
     use fnv::FnvHasher;
     use std;
-    use std::collections::hash_state::DefaultState;
 
-    pub type T<V> = std::collections::HashMap<super::T, V, DefaultState<FnvHasher>>;
+    pub type T<V> = std::collections::HashMap<super::T, V, std::hash::BuildHasherDefault<FnvHasher>>;
 
     pub fn new<V>() -> T<V> {
-      std::collections::HashMap::with_hash_state(Default::default())
+      std::collections::HashMap::with_hasher(Default::default())
     }
   }
 }

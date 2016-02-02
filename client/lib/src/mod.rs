@@ -3,7 +3,6 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-#![feature(hashmap_hasher)]
 #![feature(plugin)]
 #![feature(test)]
 #![feature(unboxed_closures)]
