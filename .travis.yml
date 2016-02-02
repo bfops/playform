@@ -18,6 +18,7 @@ install:
   - sudo ldconfig
 
 script:
+  - ( cargo build --verbose )
   - ( cd client/bin && cargo build --verbose )
   - ( cd server/bin && cargo build --verbose )
   - ( cd common     && cargo test  --verbose )
