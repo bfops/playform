@@ -130,8 +130,8 @@ pub fn apply_client_update<UpdateGaia>(
         player.rotate_lateral(v.x);
         player.rotate_vertical(v.y);
       },
-      protocol::ClientToServer::RequestVoxels(client_id, bounds) => {
-        update_gaia(update_gaia::Message::Load(bounds, LoadReason::ForClient(client_id)));
+      protocol::ClientToServer::RequestVoxels(request_time, client_id, bounds) => {
+        update_gaia(update_gaia::Message::Load(request_time, bounds, LoadReason::ForClient(client_id)));
       },
       protocol::ClientToServer::Add(player_id) => {
         let bounds = cast(server, player_id);

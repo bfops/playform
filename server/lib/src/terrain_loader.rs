@@ -2,6 +2,7 @@ use cgmath::{Aabb3};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use stopwatch;
+use time;
 
 use common::entity_id;
 use common::id_allocator;
@@ -95,7 +96,7 @@ impl T {
         let mut generate_block = || {
           debug!("{:?} requested from gaia", block_position);
           load_block(
-            update_gaia::Message::Load(vec!(*block_position), LoadReason::Local(owner))
+            update_gaia::Message::Load(time::precise_time_ns(), vec!(*block_position), LoadReason::Local(owner))
           );
         };
         generate_block();

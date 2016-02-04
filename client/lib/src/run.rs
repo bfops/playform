@@ -1,4 +1,5 @@
 use std;
+use std::io::Write;
 use std::sync::Mutex;
 use stopwatch;
 use thread_scoped;
@@ -7,6 +8,7 @@ use common::protocol;
 
 use client;
 use server;
+use record_book;
 use update_thread::update_thread;
 use view_thread::view_thread;
 
@@ -25,6 +27,19 @@ pub fn run(listen_url: &str, server_url: &str) {
   let client = &client;
 
   {
+    let monitor_thread = {
+      unsafe {
+        thread_scoped::scoped(|| {
+          while !*quit.lock().unwrap() {
+            info!("Outstanding voxel updates: {}", voxel_updates.lock().unwrap().len());
+            info!("Outstanding view0 updates: {}", view_updates0.lock().unwrap().len());
+            info!("Outstanding view1 updates: {}", view_updates1.lock().unwrap().len());
+            std::thread::sleep(std::time::Duration::from_secs(1));
+          }
+        })
+      }
+    };
+
     let update_thread = {
       let client = &client;
       let view_updates0 = &view_updates0;
@@ -41,8 +56,23 @@ pub fn run(listen_url: &str, server_url: &str) {
             &mut |up| { view_updates0.lock().unwrap().push_back(up) },
             &mut |up| { view_updates1.lock().unwrap().push_back(up) },
   	        &mut |up| { server.talk.tell(&up) },
-            &mut |updates, reason| { voxel_updates.lock().unwrap().push_back((updates, reason)) },
+            &mut |request_time, updates, reason| { voxel_updates.lock().unwrap().push_back((request_time, updates, reason)) },
           );
+
+          let mut recorded = record_book::thread_local::clone();
+          recorded.block_loads.sort_by(|x, y| x.loaded_at.cmp(&y.loaded_at));
+
+          let mut file = std::fs::File::create("block_loads.out").unwrap();
+
+          file.write_all(b"records = [").unwrap();
+          for (i, record) in recorded.block_loads.iter().enumerate() {
+            if i > 0 {
+              file.write_all(b", ").unwrap();
+            }
+            file.write_fmt(format_args!("[{}; {}; {}; {}]", record.requested_at, record.responded_at, record.processed_at, record.loaded_at)).unwrap();
+          }
+          file.write_all(b"];\n").unwrap();
+          file.write_fmt(format_args!("plot([1:{}], records);", recorded.block_loads.len())).unwrap();
 
           stopwatch::clone()
         })
@@ -64,6 +94,8 @@ pub fn run(listen_url: &str, server_url: &str) {
 
     // View thread returned, so we got a quit event.
     *quit.lock().unwrap() = true;
+
+    monitor_thread.join();
 
     let stopwatch = update_thread.join();
     stopwatch.print();

@@ -129,7 +129,7 @@ mod voxel_storage {
 
   fn get_voxel<'a>(this: &mut T<'a>, bounds: &voxel::bounds::T) -> Option<&'a voxel::T> {
     trace!("fetching {:?}", bounds);
-    Some(this.voxels.get(bounds).unwrap())
+    Some(this.voxels.get(bounds).unwrap_or_else(|| panic!("No entry for {:?}", bounds)))
   }
 
   impl<'a> dual_contouring::voxel_storage::T<voxel::Material> for T<'a> {

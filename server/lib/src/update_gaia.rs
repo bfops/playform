@@ -20,7 +20,7 @@ pub enum LoadReason {
 }
 
 pub enum Message {
-  Load(Vec<voxel::bounds::T>, LoadReason),
+  Load(u64, Vec<voxel::bounds::T>, LoadReason),
   Brush(voxel_data::brush::T<Box<voxel_data::mosaic::T<common::voxel::Material> + Send>>),
 }
 
@@ -31,9 +31,9 @@ pub fn update_gaia(
 ) {
   stopwatch::time("update_gaia", move || {
     match update {
-      Message::Load(voxel_bounds, load_reason) => {
+      Message::Load(request_time, voxel_bounds, load_reason) => {
         stopwatch::time("terrain.load", || {
-          load(server, voxel_bounds, load_reason);
+          load(server, request_time, voxel_bounds, load_reason);
         });
       },
       Message::Brush(brush) => {
@@ -50,6 +50,7 @@ pub fn update_gaia(
         for (_, client) in clients.iter_mut() {
           client.send(
             protocol::ServerToClient::Voxels(
+              None,
               updates.clone(),
               protocol::VoxelReason::Updated,
             )
@@ -63,6 +64,7 @@ pub fn update_gaia(
 #[inline(never)]
 fn load(
   server: &Server,
+  request_time: u64,
   voxel_bounds: Vec<voxel::bounds::T>,
   load_reason: LoadReason,
 ) {
@@ -115,6 +117,7 @@ fn load(
       let client = clients.get_mut(&id).unwrap();
       client.send(
         protocol::ServerToClient::Voxels(
+          Some(request_time),
           voxels,
           protocol::VoxelReason::Requested,
         )

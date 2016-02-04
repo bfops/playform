@@ -2,6 +2,7 @@ use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
 use std::f32;
 use std::f32::consts::PI;
 use stopwatch;
+use time;
 
 use common::color::{Color3, Color4};
 use common::protocol;
@@ -29,7 +30,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
 ) where
   UpdateView: FnMut(ClientToView),
   UpdateServer: FnMut(protocol::ClientToServer),
-  EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
+  EnqueueBlockUpdates: FnMut(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {
   stopwatch::time("apply_server_update", move || {
     match update {
@@ -92,10 +93,13 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
 
         update_view(ClientToView::SetClearColor(sun_color));
       },
-      protocol::ServerToClient::Voxels(voxels, reason) => {
-        debug!("Receiving a voxel request");
+      protocol::ServerToClient::Voxels(request_time, voxels, reason) => {
+        match request_time {
+          None => {},
+          Some(request_time) => debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - request_time),
+        }
 
-        enqueue_block_updates(voxels, reason);
+        enqueue_block_updates(request_time, voxels, reason);
       },
     }
   })

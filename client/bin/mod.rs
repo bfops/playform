@@ -5,6 +5,7 @@
 
 #![feature(plugin)]
 #![plugin(clippy)]
+#![allow(or_fun_call)]
 
 extern crate env_logger;
 #[macro_use]

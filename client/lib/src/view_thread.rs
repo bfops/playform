@@ -135,6 +135,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
             } else if let Some(update) = recv1() {
               apply_client_to_view(&mut view, update);
             } else {
+              info!("Out of view updates");
               break
             }
 

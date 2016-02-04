@@ -28,6 +28,17 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
   let mut threads = Vec::new();
 
   unsafe {
+    threads.push(thread_scoped::scoped(|| {
+      while !*quit_signal.lock().unwrap() {
+        info!("Outstanding gaia updates: {}", gaia_updates.lock().unwrap().len());
+        std::thread::sleep(std::time::Duration::from_secs(1));
+      }
+
+      stopwatch::clone()
+    }))
+  }
+
+  unsafe {
     let server = &server;
     let gaia_updates = &gaia_updates;
     let listen_socket = &listen_socket;

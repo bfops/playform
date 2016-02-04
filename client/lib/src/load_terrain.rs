@@ -92,6 +92,7 @@ pub fn load_voxel<UpdateBlock>(
   let mut voxels = client.voxels.lock().unwrap();
   let mut block_voxels_loaded = client.block_voxels_loaded.lock().unwrap();
 
+  // Has a new voxel been loaded? (in contrast to changing an existing voxel)
   let new_voxel_loaded;
   {
     let voxel = Some(voxel);

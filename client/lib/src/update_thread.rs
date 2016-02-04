@@ -13,11 +13,12 @@ use client;
 use lod;
 use load_terrain;
 use load_terrain::lod_index;
+use record_book;
 use server_update::apply_server_update;
 use terrain_mesh;
 use view_update::ClientToView;
 
-const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
+const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 1;
 
 pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, UpdateServer, EnqueueBlockUpdates>(
   quit: &Mutex<bool>,
@@ -30,11 +31,11 @@ pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, Upd
   enqueue_block_updates: &mut EnqueueBlockUpdates,
 ) where
   RecvServer: FnMut() -> Option<protocol::ServerToClient>,
-  RecvVoxelUpdates: FnMut() -> Option<(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)>,
+  RecvVoxelUpdates: FnMut() -> Option<(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)>,
   UpdateView0: FnMut(ClientToView),
   UpdateView1: FnMut(ClientToView),
   UpdateServer: FnMut(protocol::ClientToServer),
-  EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
+  EnqueueBlockUpdates: FnMut(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {
   'update_loop: loop {
     let should_quit = *quit.lock().unwrap();
@@ -77,7 +78,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
   let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
   let mut updates = surroundings_loader.updates(load_position.as_pnt()) ;
   loop {
-    if *client.outstanding_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
+    if*client.outstanding_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
       trace!("update loop breaking");
       break;
     }
@@ -177,6 +178,7 @@ fn load_or_request_chunk<UpdateServer, UpdateView>(
     let voxel_size = 1 << terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
     update_server(
       protocol::ClientToServer::RequestVoxels(
+        time::precise_time_ns(),
         client.id,
         terrain_mesh::voxels_in(
           &Aabb3::new(
@@ -205,12 +207,13 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
   recv_voxel_updates: &mut RecvVoxelUpdates,
   update_view: &mut UpdateView,
 ) where
-  RecvVoxelUpdates: FnMut() -> Option<(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)>,
+  RecvVoxelUpdates: FnMut() -> Option<(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)>,
   UpdateView: FnMut(ClientToView),
 {
   let start = time::precise_time_ns();
-  while let Some((voxel_updates, reason)) = recv_voxel_updates() {
+  while let Some((request_time, voxel_updates, reason)) = recv_voxel_updates() {
     let mut update_blocks = block_position::with_lod::set::new();
+    let response_time = time::precise_time_ns();
     for (bounds, voxel) in voxel_updates {
       trace!("Got voxel at {:?}", bounds);
       load_terrain::load_voxel(
@@ -221,6 +224,8 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
       );
     }
 
+    let processed_time = time::precise_time_ns();
+
     for (block, lod) in update_blocks.into_iter() {
       load_terrain::load_block(
         client,
@@ -228,6 +233,22 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
         &block,
         lod
       )
+    }
+
+    let block_loaded = time::precise_time_ns();
+
+    match request_time {
+      None => {},
+      Some(request_time) => {
+        record_book::thread_local::push_block_load(
+          record_book::BlockLoad {
+            requested_at: request_time,
+            responded_at: response_time,
+            processed_at: processed_time,
+            loaded_at: block_loaded,
+          }
+        );
+      },
     }
 
     match reason {
@@ -255,7 +276,7 @@ fn process_server_updates<RecvServer, UpdateView, UpdateServer, EnqueueBlockUpda
   RecvServer: FnMut() -> Option<protocol::ServerToClient>,
   UpdateView: FnMut(ClientToView),
   UpdateServer: FnMut(protocol::ClientToServer),
-  EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
+  EnqueueBlockUpdates: FnMut(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {
   let start = time::precise_time_ns();
   let mut i = 0;

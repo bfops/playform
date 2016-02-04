@@ -6,6 +6,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 #![allow(mutex_atomic)]
+#![allow(or_fun_call)]
 
 extern crate env_logger;
 extern crate nanomsg;
