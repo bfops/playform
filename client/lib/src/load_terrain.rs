@@ -2,34 +2,49 @@ use cgmath::{Point3, Point};
 use num;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
 
+use common::surroundings_loader;
 use common::voxel;
 
+use block_position;
 use client;
 use edge;
 use lod;
 use terrain_mesh;
-use view_update::ClientToView;
+use view_update;
+
+fn has_desired_lod(voxel: &voxel::bounds::T, player_position: &block_position::T) -> bool {
+  let block_position = block_position::containing(voxel);
+  let distance = surroundings_loader::distance_between(player_position.as_pnt(), &block_position.as_pnt());
+  let lod = lod_index(distance);
+
+  voxel.lg_size == terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize]
+}
 
 #[inline(never)]
 pub fn load_voxel<Edge>(
   client: &client::T,
-  voxel: voxel::T,
-  bounds: voxel::bounds::T,
+  voxel: &voxel::T,
+  bounds: &voxel::bounds::T,
   mut touch_edge: Edge,
 ) where
   Edge: FnMut(edge::T),
 {
   let mut voxels = client.voxels.lock().unwrap();
 
-  // TODO: Reject voxels at the wrong LOD.
+  let player_position =
+    block_position::of_world_position(&client.player_position.lock().unwrap().clone());
+
+  if !has_desired_lod(bounds, &player_position) {
+    return
+  }
 
   {
-    let branch = voxels.get_mut_or_create(&bounds);
+    let branch = voxels.get_mut_or_create(bounds);
     match branch {
       &mut voxel::tree::Empty => {
         *branch =
           voxel::tree::Branch {
-            data: Some(voxel),
+            data: Some(*voxel),
             branches: Box::new(voxel::tree::Branches::empty()),
           };
       },
@@ -37,12 +52,12 @@ pub fn load_voxel<Edge>(
         match data {
           &mut None => {},
           &mut Some(old_voxel) => {
-            if old_voxel == voxel {
+            if old_voxel == *voxel {
               return
             }
           },
         }
-        *data = Some(voxel);
+        *data = Some(*voxel);
       }
     }
     *old_voxel = voxel;
@@ -72,7 +87,7 @@ pub fn load_edge<UpdateView>(
   update_view: &mut UpdateView,
   edge: &edge::T,
 ) -> Result<(), ()> where
-  UpdateView: FnMut(ClientToView),
+  UpdateView: FnMut(view_update::T),
 {
   debug!("generate {:?}", edge);
   let voxels = client.voxels.lock().unwrap();
@@ -91,7 +106,7 @@ pub fn load_edge<UpdateView>(
 
         let prev_block = entry.get();
         for &id in &prev_block.ids {
-          updates.push(ClientToView::RemoveTerrain(id));
+          updates.push(view_update::RemoveTerrain(id));
         }
       }
       entry.insert(mesh_fragment.clone());
@@ -99,10 +114,10 @@ pub fn load_edge<UpdateView>(
   };
 
   if !mesh_fragment.ids.is_empty() {
-    updates.push(ClientToView::AddBlock(mesh_fragment));
+    updates.push(view_update::AddBlock(mesh_fragment));
   }
 
-  update_view(ClientToView::Atomic(updates));
+  update_view(view_update::Atomic(updates));
 
   Ok(())
 }

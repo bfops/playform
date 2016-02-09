@@ -15,7 +15,7 @@ use load_terrain;
 use load_terrain::lod_index;
 use record_book;
 use server_update::apply_server_update;
-use view_update::ClientToView;
+use view_update;
 
 const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 10;
 
@@ -31,8 +31,8 @@ pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, Upd
 ) where
   RecvServer: FnMut() -> Option<protocol::ServerToClient>,
   RecvVoxelUpdates: FnMut() -> Option<(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)>,
-  UpdateView0: FnMut(ClientToView),
-  UpdateView1: FnMut(ClientToView),
+  UpdateView0: FnMut(view_update::T),
+  UpdateView1: FnMut(view_update::T),
   UpdateServer: FnMut(protocol::ClientToServer),
   EnqueueBlockUpdates: FnMut(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {
@@ -64,7 +64,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
   update_view: &mut UpdateView,
   update_server: &mut UpdateServer,
 ) where
-  UpdateView: FnMut(ClientToView),
+  UpdateView: FnMut(view_update::T),
   UpdateServer: FnMut(protocol::ClientToServer),
 {
   let start = time::precise_time_ns();
@@ -125,7 +125,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
               // If it wasn't loaded, don't unload anything.
               .map(|block| {
                 for id in &block.ids {
-                  update_view(ClientToView::RemoveTerrain(*id));
+                  update_view(view_update::RemoveTerrain(*id));
                 }
               });
           })
@@ -150,7 +150,7 @@ fn load_or_request_edge<UpdateServer, UpdateView>(
   edge: &edge::T,
 ) where
   UpdateServer: FnMut(protocol::ClientToServer),
-  UpdateView: FnMut(ClientToView),
+  UpdateView: FnMut(view_update::T),
 {
   match
     load_terrain::load_edge(
@@ -202,7 +202,7 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
   update_view: &mut UpdateView,
 ) where
   RecvVoxelUpdates: FnMut() -> Option<(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)>,
-  UpdateView: FnMut(ClientToView),
+  UpdateView: FnMut(view_update::T),
 {
   let start = time::precise_time_ns();
   while let Some((requested_time, voxel_updates, reason)) = recv_voxel_updates() {
@@ -213,9 +213,9 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
       trace!("Got voxel at {:?}", bounds);
       load_terrain::load_voxel(
         client,
-        voxel,
+        &voxel,
         &bounds,
-        |block, lod| { update_blocks.insert((block, lod)); },
+        |edge| { update_edges.insert(edge); },
       );
     }
 
@@ -269,7 +269,7 @@ fn process_server_updates<RecvServer, UpdateView, UpdateServer, EnqueueBlockUpda
   enqueue_block_updates: &mut EnqueueBlockUpdates,
 ) where
   RecvServer: FnMut() -> Option<protocol::ServerToClient>,
-  UpdateView: FnMut(ClientToView),
+  UpdateView: FnMut(view_update::T),
   UpdateServer: FnMut(protocol::ClientToServer),
   EnqueueBlockUpdates: FnMut(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {

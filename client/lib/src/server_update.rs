@@ -11,7 +11,7 @@ use common::voxel;
 use client;
 use light;
 use vertex::ColoredVertex;
-use view_update::ClientToView;
+use view_update;
 
 pub const TRIANGLES_PER_BOX: u32 = 12;
 pub const VERTICES_PER_TRIANGLE: u32 = 3;
@@ -28,7 +28,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
   enqueue_block_updates: &mut EnqueueBlockUpdates,
   update: protocol::ServerToClient,
 ) where
-  UpdateView: FnMut(ClientToView),
+  UpdateView: FnMut(view_update::T),
   UpdateServer: FnMut(protocol::ClientToServer),
   EnqueueBlockUpdates: FnMut(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {
@@ -45,7 +45,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
       },
       protocol::ServerToClient::UpdatePlayer(player_id, bounds) => {
         let mesh = to_triangles(&bounds, &Color4::of_rgba(0.0, 0.0, 1.0, 1.0));
-        update_view(ClientToView::UpdatePlayer(player_id, mesh));
+        update_view(view_update::UpdatePlayer(player_id, mesh));
 
         // We "lock" the client to client.player_id, so for updates to that player only,
         // there is more client-specific logic.
@@ -56,11 +56,11 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
         let position = center(&bounds);
 
         *client.player_position.lock().unwrap() = position;
-        update_view(ClientToView::MoveCamera(position));
+        update_view(view_update::MoveCamera(position));
       },
       protocol::ServerToClient::UpdateMob(id, bounds) => {
         let mesh = to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0));
-        update_view(ClientToView::UpdateMob(id, mesh));
+        update_view(view_update::UpdateMob(id, mesh));
       },
       protocol::ServerToClient::UpdateSun(fraction) => {
         // Convert to radians.
@@ -74,7 +74,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
             (s * 0.75 + 0.25).abs(),
           );
 
-        update_view(ClientToView::SetSun(
+        update_view(view_update::SetSun(
           light::Sun {
             direction: Vector3::new(c, s, 0.0),
             intensity: sun_color,
@@ -83,7 +83,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
 
         let ambient_light = f32::max(0.4, s / 2.0);
 
-        update_view(ClientToView::SetAmbientLight(
+        update_view(view_update::SetAmbientLight(
           Color3::of_rgb(
             sun_color.r * ambient_light,
             sun_color.g * ambient_light,
@@ -91,7 +91,7 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
           ),
         ));
 
-        update_view(ClientToView::SetClearColor(sun_color));
+        update_view(view_update::SetClearColor(sun_color));
       },
       protocol::ServerToClient::Voxels(request_time, voxels, reason) => {
         match request_time {
