@@ -187,18 +187,7 @@ fn load_or_request_edge<RequestVoxel, UpdateView>(
       );
       voxel_coords.extend(edge.neighbors().iter().cloned());
 
-      let requests =
-        voxel_coords
-        .into_iter()
-        .map(|low_corner| {
-          voxel::bounds::T {
-            x: low_corner.x,
-            y: low_corner.y,
-            z: low_corner.z,
-            lg_size: edge.lg_size,
-          }
-        });
-      for voxel in requests {
+      for voxel in voxel_coords {
         request_voxel(voxel);
       }
     }
