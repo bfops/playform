@@ -34,6 +34,7 @@ impl Iterator for Edges {
         self.direction = edge::Direction::Z;
       },
       edge::Direction::Z => {
+        self.direction = edge::Direction::X;
         if self.cur.z < self.upper.z {
           self.cur.z += 1;
         } else {
