@@ -216,7 +216,7 @@ pub fn generate(
                 block2.ids.push(id);
                 block2.bounds.push((id, make_bounds(&polygon.vertices[0], &polygon.vertices[1], &polygon.vertices[2])));
               }
-            );
+            ).unwrap();
           }}}
         };
 
