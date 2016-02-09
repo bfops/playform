@@ -176,13 +176,16 @@ fn load_or_request_edge<RequestVoxel, UpdateView>(
     Ok(()) => {},
     Err(()) => {
       let mut voxel_coords = Vec::new();
-      let (v1, v2) = edge.direction.perpendicular();
-      let (v1, v2) = (v1.to_vec(), v2.to_vec());
-      voxel_coords.push(edge.low_corner);
-      voxel_coords.push(edge.low_corner.add_v(&edge.direction.to_vec()));
-      voxel_coords.push(edge.low_corner.add_v(&-v1));
-      voxel_coords.push(edge.low_corner.add_v(&-v1).add_v(&-v2));
-      voxel_coords.push(edge.low_corner.add_v(&-v2));
+      let low_corner = edge.low_corner.add_v(&edge.direction.to_vec());
+      voxel_coords.push(
+        voxel::bounds::T {
+          x: low_corner.x,
+          y: low_corner.y,
+          z: low_corner.z,
+          lg_size: edge.lg_size,
+        },
+      );
+      voxel_coords.extend(edge.neighbors().iter().cloned());
 
       let requests =
         voxel_coords
