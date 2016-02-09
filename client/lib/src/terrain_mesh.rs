@@ -204,19 +204,20 @@ pub fn generate(
                 lg_size: lg_sample_size,
               };
 
-            dual_contouring::edge::extract(
-              &mut voxel_storage::T { voxels: voxels },
-              &edge,
-              &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
-                let id = id_allocator::allocate(id_allocator);
+            let _ =
+              dual_contouring::edge::extract(
+                &mut voxel_storage::T { voxels: voxels },
+                &edge,
+                &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
+                  let id = id_allocator::allocate(id_allocator);
 
-                block2.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
-                block2.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
-                block2.materials.push(polygon.material as i32);
-                block2.ids.push(id);
-                block2.bounds.push((id, make_bounds(&polygon.vertices[0], &polygon.vertices[1], &polygon.vertices[2])));
-              }
-            ).unwrap();
+                  block2.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
+                  block2.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
+                  block2.materials.push(polygon.material as i32);
+                  block2.ids.push(id);
+                  block2.bounds.push((id, make_bounds(&polygon.vertices[0], &polygon.vertices[1], &polygon.vertices[2])));
+                }
+              );
           }}}
         };
 
