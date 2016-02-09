@@ -3,8 +3,6 @@
 use cgmath::{Point3, Vector3, Point};
 use std::ops::Add;
 
-use common::voxel;
-
 use edge;
 use lod;
 use terrain_mesh;
@@ -137,19 +135,6 @@ pub fn of_world_position(world_position: &Point3<f32>) -> T {
       convert_coordinate(world_position.x),
       convert_coordinate(world_position.y),
       convert_coordinate(world_position.z),
-    )
-  )
-}
-
-/// Find the chunk that contains the given voxel
-pub fn containing(voxel: &voxel::bounds::T) -> T {
-  assert!(voxel.lg_size <= terrain_mesh::LG_WIDTH);
-  let lg_ratio = terrain_mesh::LG_WIDTH - voxel.lg_size;
-  of_pnt(
-    &Point3::new(
-      voxel.x >> lg_ratio,
-      voxel.y >> lg_ratio,
-      voxel.z >> lg_ratio,
     )
   )
 }
