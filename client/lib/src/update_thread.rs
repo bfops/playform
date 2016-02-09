@@ -6,7 +6,6 @@ use time;
 use common::protocol;
 use common::surroundings_loader;
 use common::surroundings_loader::LoadType;
-use common::voxel;
 
 use block_position;
 use client;
@@ -16,8 +15,9 @@ use load_terrain::lod_index;
 use record_book;
 use server_update::apply_server_update;
 use view_update;
+use voxel;
 
-const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 10;
+const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
 
 pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, UpdateServer, EnqueueBlockUpdates>(
   quit: &Mutex<bool>,
@@ -99,6 +99,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
         block_position.as_pnt(),
       );
     let new_lod = lod_index(distance);
+    let mut requested_voxels = voxel::bounds::set::new();
     for edge in block_position.edges(new_lod) {
       match load_type {
         LoadType::Load => {
@@ -106,7 +107,10 @@ fn update_surroundings<UpdateView, UpdateServer>(
             if client.loaded_fragments.lock().unwrap().contains_key(&edge) {
               debug!("Not re-loading {:?} at {:?}", block_position, new_lod);
             } else {
-              load_or_request_edge(client, update_server, update_view, &edge);
+              let mut request_voxel = |voxel| {
+                requested_voxels.insert(voxel);
+              };
+              load_or_request_edge(client, &mut request_voxel, update_view, &edge);
             }
           })
         },
@@ -133,6 +137,16 @@ fn update_surroundings<UpdateView, UpdateServer>(
       };
     }
 
+    if !requested_voxels.is_empty() {
+      update_server(
+        protocol::ClientToServer::RequestVoxels(
+          client.id,
+          requested_voxels.into_iter().collect(),
+        )
+      );
+      *client.outstanding_terrain_requests.lock().unwrap() += 1;
+    }
+
     if i >= 10 {
       i -= 10;
       if time::precise_time_ns() - start >= 1_000_000 {
@@ -143,13 +157,13 @@ fn update_surroundings<UpdateView, UpdateServer>(
   }
 }
 
-fn load_or_request_edge<UpdateServer, UpdateView>(
+fn load_or_request_edge<RequestVoxel, UpdateView>(
   client: &client::T,
-  update_server: &mut UpdateServer,
+  request_voxel: &mut RequestVoxel,
   update_view: &mut UpdateView,
   edge: &edge::T,
 ) where
-  UpdateServer: FnMut(protocol::ClientToServer),
+  RequestVoxel: FnMut(voxel::bounds::T),
   UpdateView: FnMut(view_update::T),
 {
   match
@@ -161,36 +175,29 @@ fn load_or_request_edge<UpdateServer, UpdateView>(
   {
     Ok(()) => {},
     Err(()) => {
-      let bounds: Vec<_> = {
-        let mut voxel_coords = Vec::new();
-        let (v1, v2) = edge.direction.perpendicular();
-        let (v1, v2) = (v1.to_vec(), v2.to_vec());
-        voxel_coords.push(edge.low_corner);
-        voxel_coords.push(edge.low_corner.add_v(&edge.direction.to_vec()));
-        voxel_coords.push(edge.low_corner.add_v(&-v1));
-        voxel_coords.push(edge.low_corner.add_v(&-v1).add_v(&-v2));
-        voxel_coords.push(edge.low_corner.add_v(&-v2));
+      let mut voxel_coords = Vec::new();
+      let (v1, v2) = edge.direction.perpendicular();
+      let (v1, v2) = (v1.to_vec(), v2.to_vec());
+      voxel_coords.push(edge.low_corner);
+      voxel_coords.push(edge.low_corner.add_v(&edge.direction.to_vec()));
+      voxel_coords.push(edge.low_corner.add_v(&-v1));
+      voxel_coords.push(edge.low_corner.add_v(&-v1).add_v(&-v2));
+      voxel_coords.push(edge.low_corner.add_v(&-v2));
 
+      let requests =
         voxel_coords
-          .into_iter()
-          .map(|low_corner| {
-            voxel::bounds::T {
-              x: low_corner.x,
-              y: low_corner.y,
-              z: low_corner.z,
-              lg_size: edge.lg_size,
-            }
-          })
-          .collect()
-      };
-      update_server(
-        protocol::ClientToServer::RequestVoxels(
-          time::precise_time_ns(),
-          client.id,
-          bounds,
-        )
-      );
-      *client.outstanding_terrain_requests.lock().unwrap() += 1;
+        .into_iter()
+        .map(|low_corner| {
+          voxel::bounds::T {
+            x: low_corner.x,
+            y: low_corner.y,
+            z: low_corner.z,
+            lg_size: edge.lg_size,
+          }
+        });
+      for voxel in requests {
+        request_voxel(voxel);
+      }
     }
   }
 }
