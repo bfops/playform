@@ -1,3 +1,6 @@
+use std;
+use cgmath::{Point, Vector};
+
 use edge;
 use terrain_mesh;
 
@@ -14,17 +17,22 @@ impl<Edge> T<Edge> {
       let mut edge = edge.clone();
       edge.lg_size = lg_size;
       if lg_ratio < 0 {
-        edge.low_corner.x = edge.low_corner.x >> -lg_ratio;
-        edge.low_corner.y = edge.low_corner.y >> -lg_ratio;
-        edge.low_corner.z = edge.low_corner.z >> -lg_ratio;
+        edge.low_corner.x = edge.low_corner.x << -lg_ratio;
+        edge.low_corner.y = edge.low_corner.y << -lg_ratio;
+        edge.low_corner.z = edge.low_corner.z << -lg_ratio;
       } else {
-        edge.low_corner.x = edge.low_corner.x << lg_ratio;
-        edge.low_corner.y = edge.low_corner.y << lg_ratio;
-        edge.low_corner.z = edge.low_corner.z << lg_ratio;
+        edge.low_corner.x = edge.low_corner.x >> lg_ratio;
+        edge.low_corner.y = edge.low_corner.y >> lg_ratio;
+        edge.low_corner.z = edge.low_corner.z >> lg_ratio;
       }
 
-      self.remove(&edge)
-        .map(|edge| removed.push(edge));
+      for i in 0 .. (1 << std::cmp::max(0, -lg_ratio)) {
+        let mut edge = edge.clone();
+        edge.low_corner.add_self_v(&edge.direction.to_vec().mul_s(i));
+
+        self.remove(&edge)
+          .map(|edge| removed.push(edge));
+      }
     }
 
     self.edges.insert(edge, data);
