@@ -104,7 +104,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
       match load_type {
         LoadType::Load => {
           stopwatch::time("update_thread.load_edge", || {
-            if client.loaded_fragments.lock().unwrap().contains_key(&edge) {
+            if client.loaded_edges.lock().unwrap().contains_key(&edge) {
               debug!("Not re-loading {:?} at {:?}", block_position, new_lod);
             } else {
               let mut request_voxel = |voxel| {
@@ -123,12 +123,12 @@ fn update_surroundings<UpdateView, UpdateServer>(
           stopwatch::time("update_thread.unload", || {
             // The block removal code is duplicated elsewhere.
 
-            client.loaded_fragments
+            client.loaded_edges
             .lock().unwrap()
               .remove(&edge)
               // If it wasn't loaded, don't unload anything.
-              .map(|block| {
-                for id in &block.ids {
+              .map(|mesh_fragment| {
+                for id in &mesh_fragment.ids {
                   update_view(view_update::RemoveTerrain(*id));
                 }
               });

@@ -40,6 +40,7 @@ mod edge;
 mod hud;
 mod light;
 mod load_terrain;
+mod loaded_edges;
 mod lod;
 mod mob_buffers;
 mod player_buffers;

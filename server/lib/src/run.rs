@@ -41,12 +41,9 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
   unsafe {
     let server = &server;
     let gaia_updates = &gaia_updates;
-    let listen_socket = &listen_socket;
     threads.push(thread_scoped::scoped(move || {
       closure_series::new(vec!(
         quit_upon(&quit_signal),
-        consider_world_update(&server, |up| { gaia_updates.lock().unwrap().push_back(up) }),
-        network_listen(&listen_socket, server, |up| { gaia_updates.lock().unwrap().push_back(up) }),
         consider_gaia_update(&server, || { gaia_updates.lock().unwrap().pop_front() } ),
       ))
       .until_quit();

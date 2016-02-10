@@ -10,7 +10,7 @@ use common::protocol;
 use common::surroundings_loader::SurroundingsLoader;
 use common::voxel;
 
-use edge;
+use loaded_edges;
 use terrain_mesh;
 use terrain_buffers;
 
@@ -35,8 +35,8 @@ pub struct T {
   #[allow(missing_docs)]
   pub surroundings_loader: Mutex<SurroundingsLoader>,
   pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
-  /// A record of all the blocks that have been loaded.
-  pub loaded_fragments: Mutex<edge::map::T<terrain_mesh::T>>,
+  /// The set of currently loaded edges.
+  pub loaded_edges: Mutex<loaded_edges::T<terrain_mesh::T>>,
   /// The voxels we have cached from the server.
   // TODO: Should probably remove from this at some point.
   pub voxels: Mutex<voxel::tree::T>,
@@ -70,7 +70,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     max_load_distance: load_distance,
     surroundings_loader: Mutex::new(surroundings_loader),
     id_allocator: Mutex::new(id_allocator::new()),
-    loaded_fragments: Mutex::new(edge::map::new()),
+    loaded_edges: Mutex::new(loaded_edges::new()),
     voxels: Mutex::new(voxel::tree::T::new()),
     outstanding_terrain_requests: Mutex::new(0),
   }

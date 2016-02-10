@@ -1,6 +1,5 @@
 use cgmath::{Point3, Point};
 use num;
-use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 use common::voxel;
 
@@ -79,22 +78,13 @@ pub fn load_edge<UpdateView>(
   let mut updates = Vec::new();
 
   // TODO: Rc instead of clone.
-  match client.loaded_fragments.lock().unwrap().entry(edge.clone()) {
-    Vacant(entry) => {
-      entry.insert(mesh_fragment.clone());
-    },
-    Occupied(mut entry) => {
-      {
-        // The mesh_fragment removal code is duplicated elsewhere.
+  let unload_fragments = client.loaded_edges.lock().unwrap().insert(edge.clone(), mesh_fragment.clone());
 
-        let prev_block = entry.get();
-        for &id in &prev_block.ids {
-          updates.push(view_update::RemoveTerrain(id));
-        }
-      }
-      entry.insert(mesh_fragment.clone());
-    },
-  };
+  for mesh_fragment in unload_fragments {
+    for id in &mesh_fragment.ids {
+      updates.push(view_update::RemoveTerrain(*id));
+    }
+  }
 
   if !mesh_fragment.ids.is_empty() {
     updates.push(view_update::AddBlock(mesh_fragment));
