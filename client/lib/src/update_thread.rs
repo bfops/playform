@@ -100,9 +100,9 @@ fn update_surroundings<UpdateView, UpdateServer>(
       );
     let new_lod = lod_index(distance);
     let mut requested_voxels = voxel::bounds::set::new();
-    for edge in block_position.edges(new_lod) {
-      match load_type {
-        LoadType::Load => {
+    match load_type {
+      LoadType::Load => {
+        for edge in block_position.edges(new_lod) {
           stopwatch::time("update_thread.load_edge", || {
             let already_loaded = client.loaded_edges.lock().unwrap().contains_key(&edge);
             if already_loaded {
@@ -114,18 +114,29 @@ fn update_surroundings<UpdateView, UpdateServer>(
               load_or_request_edge(client, &mut request_voxel, update_view, &edge);
             }
           })
-        },
-        LoadType::Update => {
+        }
+      },
+      LoadType::Update => {
+        for edge in block_position.edges(new_lod) {
           stopwatch::time("update_thread.update_block", || {
-            // TODO: In this case, if new_lod < current_lod, unload the edge pre-emptively.
+            // Reload any edges that are at too high a LOD.
+            let collisions = client.loaded_edges.lock().unwrap().find_collisions(&edge);
+            if collisions.iter().any(|collision| collision.lg_size < edge.lg_size) {
+              let mut request_voxel = |voxel| {
+                requested_voxels.insert(voxel);
+              };
+              load_or_request_edge(client, &mut request_voxel, update_view, &edge);
+            }
           })
-        },
-        LoadType::Unload => {
+        }
+      },
+      LoadType::Unload => {
+        let mut loaded_edges = client.loaded_edges.lock().unwrap();
+        for edge in block_position.edges(new_lod) {
           stopwatch::time("update_thread.unload", || {
             // The block removal code is duplicated elsewhere.
 
-            client.loaded_edges
-            .lock().unwrap()
+            loaded_edges
               .remove(&edge)
               // If it wasn't loaded, don't unload anything.
               .map(|mesh_fragment| {
@@ -134,8 +145,8 @@ fn update_surroundings<UpdateView, UpdateServer>(
                 }
               });
           })
-        },
-      };
+        }
+      },
     }
 
     if !requested_voxels.is_empty() {

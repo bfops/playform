@@ -77,7 +77,6 @@ pub fn load_edge<UpdateView>(
 
   let mut updates = Vec::new();
 
-  // TODO: Rc instead of clone.
   let unload_fragments = client.loaded_edges.lock().unwrap().insert(edge.clone(), mesh_fragment.clone());
 
   for mesh_fragment in unload_fragments {

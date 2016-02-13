@@ -83,10 +83,7 @@ impl T {
     )
   }
 
-  pub fn edges(&self, lod: lod::T) -> Edges {
-    let lg_edge_samples = terrain_mesh::LG_EDGE_SAMPLES[lod.0 as usize];
-    let lg_sample_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
-
+  pub fn corners(&self, lg_edge_samples: u16) -> (Point3<i32>, Point3<i32>) {
     let low = self.as_pnt().clone();
     let high = low.add_v(&Vector3::new(1, 1, 1));
     let low =
@@ -101,6 +98,15 @@ impl T {
         high.y << lg_edge_samples,
         high.z << lg_edge_samples,
       );
+
+    (low, high)
+  }
+
+  pub fn edges(&self, lod: lod::T) -> Edges {
+    let lg_edge_samples = terrain_mesh::LG_EDGE_SAMPLES[lod.0 as usize];
+    let lg_sample_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
+
+    let (low, high) = self.corners(lg_edge_samples);
 
     Edges {
       lower: low,

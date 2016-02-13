@@ -11,9 +11,29 @@ pub struct T<Edge> {
 impl<Edge> T<Edge> {
   pub fn insert(&mut self, edge: edge::T, data: Edge) -> Vec<Edge> {
     let mut removed = Vec::new();
+    for edge in self.find_collisions(&edge) {
+      removed.push(self.remove(&edge).unwrap());
+    }
+
+    self.edges.insert(edge, data);
+
+    removed
+  }
+
+  pub fn remove(&mut self, edge: &edge::T) -> Option<Edge> {
+    self.edges.remove(edge)
+  }
+
+  pub fn contains_key(&self, edge: &edge::T) -> bool {
+    self.edges.contains_key(edge)
+  }
+
+  pub fn find_collisions(&self, edge: &edge::T) -> Vec<edge::T> {
+    let mut collisions = Vec::new();
     for i in 0 .. terrain_mesh::LOD_COUNT {
       let lg_size = terrain_mesh::LG_SAMPLE_SIZE[i];
       let lg_ratio = lg_size - edge.lg_size;
+
       let mut edge = edge.clone();
       edge.lg_size = lg_size;
       if lg_ratio < 0 {
@@ -30,22 +50,13 @@ impl<Edge> T<Edge> {
         let mut edge = edge.clone();
         edge.low_corner.add_self_v(&edge.direction.to_vec().mul_s(i));
 
-        self.remove(&edge)
-          .map(|edge| removed.push(edge));
+        if self.contains_key(&edge) {
+          collisions.push(edge);
+        }
       }
     }
 
-    self.edges.insert(edge, data);
-
-    removed
-  }
-
-  pub fn remove(&mut self, edge: &edge::T) -> Option<Edge> {
-    self.edges.remove(edge)
-  }
-
-  pub fn contains_key(&self, edge: &edge::T) -> bool {
-    self.edges.contains_key(edge)
+    collisions
   }
 }
 
