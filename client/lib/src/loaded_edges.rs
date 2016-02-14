@@ -1,31 +1,76 @@
 use std;
-use cgmath::{Point, Vector};
+use cgmath::{Point, Vector, Vector3};
+use voxel_data;
 
 use edge;
 use terrain_mesh;
 
 pub struct T<Edge> {
-  edges: edge::map::T<Edge>,
+  edges: Vector3<voxel_data::tree::T<Edge>>,
+}
+
+fn bounds(edge: &edge::T) -> voxel_data::bounds::T {
+  voxel_data::bounds::new(edge.low_corner.x, edge.low_corner.y, edge.low_corner.z, edge.lg_size)
 }
 
 impl<Edge> T<Edge> {
-  pub fn insert(&mut self, edge: edge::T, data: Edge) -> Vec<Edge> {
+  fn tree(&self, direction: edge::Direction) -> &voxel_data::tree::T<Edge> {
+    match direction {
+      edge::Direction::X => &self.edges.x,
+      edge::Direction::Y => &self.edges.y,
+      edge::Direction::Z => &self.edges.z,
+    }
+  }
+
+  fn tree_mut(&mut self, direction: edge::Direction) -> &mut voxel_data::tree::T<Edge> {
+    match direction {
+      edge::Direction::X => &mut self.edges.x,
+      edge::Direction::Y => &mut self.edges.y,
+      edge::Direction::Z => &mut self.edges.z,
+    }
+  }
+
+  pub fn insert(&mut self, edge: &edge::T, edge_data: Edge) -> Vec<Edge> {
     let mut removed = Vec::new();
     for edge in self.find_collisions(&edge) {
       removed.push(self.remove(&edge).unwrap());
     }
 
-    self.edges.insert(edge, data);
+    let edges = self.tree_mut(edge.direction);
+    let bounds = bounds(&edge);
+
+    let dest = edges.get_mut_or_create(&bounds);
+    match dest {
+      &mut voxel_data::tree::TreeBody::Empty => {
+        *dest = voxel_data::tree::TreeBody::leaf(Some(edge_data));
+      },
+      &mut voxel_data::tree::TreeBody::Branch { ref mut data, branches: _ } => {
+        *data = Some(edge_data);
+      }
+    }
 
     removed
   }
 
   pub fn remove(&mut self, edge: &edge::T) -> Option<Edge> {
-    self.edges.remove(edge)
+    let mut edges = self.tree_mut(edge.direction);
+    let bounds = bounds(&edge);
+
+    match edges.get_mut_pointer(&bounds) {
+      Some(&mut voxel_data::tree::TreeBody::Branch { ref mut data, branches: _ }) => {
+        let mut r = None;
+        std::mem::swap(data, &mut r);
+        r
+      },
+      _ => None,
+    }
   }
 
   pub fn contains_key(&self, edge: &edge::T) -> bool {
-    self.edges.contains_key(edge)
+    let edges = self.tree(edge.direction);
+    let bounds = bounds(&edge);
+
+    edges.get(&bounds).is_some()
   }
 
   pub fn find_collisions(&self, edge: &edge::T) -> Vec<edge::T> {
@@ -62,6 +107,11 @@ impl<Edge> T<Edge> {
 
 pub fn new<Edge>() -> T<Edge> {
   T {
-    edges: edge::map::new(),
+    edges:
+      Vector3::new(
+        voxel_data::tree::new(),
+        voxel_data::tree::new(),
+        voxel_data::tree::new(),
+      ),
   }
 }

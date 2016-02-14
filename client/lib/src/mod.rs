@@ -1,5 +1,6 @@
 //! This crate contains client-only components of Playform.
 
+#![allow(unneeded_field_pattern)]
 #![deny(missing_docs)]
 #![deny(warnings)]
 

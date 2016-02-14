@@ -56,14 +56,3 @@ pub mod set {
     std::collections::HashSet::with_hasher(Default::default())
   }
 }
-
-pub mod map {
-  use fnv::FnvHasher;
-  use std;
-
-  pub type T<V> = std::collections::HashMap<super::T, V, std::hash::BuildHasherDefault<FnvHasher>>;
-
-  pub fn new<V>() -> T<V> {
-    std::collections::HashMap::with_hasher(Default::default())
-  }
-}

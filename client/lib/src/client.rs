@@ -71,7 +71,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     surroundings_loader: Mutex::new(surroundings_loader),
     id_allocator: Mutex::new(id_allocator::new()),
     loaded_edges: Mutex::new(loaded_edges::new()),
-    voxels: Mutex::new(voxel::tree::T::new()),
+    voxels: Mutex::new(voxel::tree::new()),
     outstanding_terrain_requests: Mutex::new(0),
   }
 }
