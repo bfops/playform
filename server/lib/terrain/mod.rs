@@ -69,7 +69,11 @@ impl T {
       None => {
         let voxel = voxel::unwrap(voxel::of_field(&self.mosaic, bounds));
         f(&voxel);
-        branches.data = Some(voxel);
+        *branch =
+          voxel_data::tree::Branch {
+            data: Some(voxel),
+            branches: Box::new(voxel_data::tree::Branches::empty()),
+          };
       },
       Some(ref data) => {
         f(data);

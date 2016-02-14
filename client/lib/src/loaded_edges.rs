@@ -65,4 +65,3 @@ pub fn new<Edge>() -> T<Edge> {
     edges: edge::map::new(),
   }
 }
-

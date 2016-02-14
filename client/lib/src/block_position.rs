@@ -84,7 +84,7 @@ impl T {
   }
 
   pub fn corners(&self, lg_edge_samples: u16) -> (Point3<i32>, Point3<i32>) {
-    let low = self.as_pnt().clone();
+    let low = *self.as_pnt();
     let high = low.add_v(&Vector3::new(1, 1, 1));
     let low =
       Point3::new(
@@ -119,8 +119,8 @@ impl T {
 }
 
 #[allow(missing_docs)]
-pub fn new(x: i32, y: i32, z: i32) -> T {
-  T(Point3::new(x, y, z))
+pub fn of_pnt(p: &Point3<i32>) -> T {
+  T(*p)
 }
 
 #[allow(missing_docs)]
