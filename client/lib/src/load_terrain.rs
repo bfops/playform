@@ -21,26 +21,11 @@ pub fn load_voxel<Edge>(
   let mut voxels = client.voxels.lock().unwrap();
 
   {
+    let voxel = Some(*voxel);
     let branch = voxels.get_mut_or_create(bounds);
-    match branch {
-      &mut voxel::tree::Empty => {
-        *branch =
-          voxel::tree::Branch {
-            data: Some(*voxel),
-            branches: Box::new(voxel::tree::Branches::empty()),
-          };
-      },
-      &mut voxel::tree::Branch { ref mut data, .. } => {
-        match data {
-          &mut None => {},
-          &mut Some(old_voxel) => {
-            if old_voxel == *voxel {
-              return
-            }
-          },
-        }
-        *data = Some(*voxel);
-      }
+    let old_voxel = &mut branch.force_branches().data;
+    if *old_voxel == voxel {
+      return
     }
     *old_voxel = voxel;
   }

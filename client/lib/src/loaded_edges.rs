@@ -31,23 +31,19 @@ impl<Edge> T<Edge> {
   }
 
   pub fn insert(&mut self, edge: &edge::T, edge_data: Edge) -> Vec<Edge> {
+    let bounds = bounds(&edge);
+
     let mut removed = Vec::new();
     for edge in self.find_collisions(edge) {
       removed.push(self.remove(&edge).unwrap());
     }
 
     let edges = self.tree_mut(edge.direction);
-    let bounds = bounds(&edge);
 
-    let dest = edges.get_mut_or_create(&bounds);
-    match dest {
-      &mut voxel_data::tree::TreeBody::Empty => {
-        *dest = voxel_data::tree::TreeBody::leaf(Some((*edge, edge_data)));
-      },
-      &mut voxel_data::tree::TreeBody::Branch { ref mut data, branches: _ } => {
-        *data = Some((*edge, edge_data));
-      }
-    }
+    edges
+      .get_mut_or_create(&bounds)
+      .force_branches()
+      .data = Some((*edge, edge_data));
 
     removed
   }
@@ -57,9 +53,9 @@ impl<Edge> T<Edge> {
     let bounds = bounds(&edge);
 
     match edges.get_mut_pointer(&bounds) {
-      Some(&mut voxel_data::tree::TreeBody::Branch { ref mut data, branches: _ }) => {
+      Some(&mut voxel_data::tree::Inner::Branches(ref mut branches)) => {
         let mut r = None;
-        std::mem::swap(data, &mut r);
+        std::mem::swap(&mut branches.data, &mut r);
         r.map(|(_, d)| d)
       },
       _ => None,
