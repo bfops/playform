@@ -6,7 +6,7 @@ use edge;
 use terrain_mesh;
 
 pub struct T<Edge> {
-  edges: Vector3<voxel_data::tree::T<Edge>>,
+  edges: Vector3<voxel_data::tree::T<(edge::T, Edge)>>,
 }
 
 fn bounds(edge: &edge::T) -> voxel_data::bounds::T {
@@ -14,7 +14,7 @@ fn bounds(edge: &edge::T) -> voxel_data::bounds::T {
 }
 
 impl<Edge> T<Edge> {
-  fn tree(&self, direction: edge::Direction) -> &voxel_data::tree::T<Edge> {
+  fn tree(&self, direction: edge::Direction) -> &voxel_data::tree::T<(edge::T, Edge)> {
     match direction {
       edge::Direction::X => &self.edges.x,
       edge::Direction::Y => &self.edges.y,
@@ -22,7 +22,7 @@ impl<Edge> T<Edge> {
     }
   }
 
-  fn tree_mut(&mut self, direction: edge::Direction) -> &mut voxel_data::tree::T<Edge> {
+  fn tree_mut(&mut self, direction: edge::Direction) -> &mut voxel_data::tree::T<(edge::T, Edge)> {
     match direction {
       edge::Direction::X => &mut self.edges.x,
       edge::Direction::Y => &mut self.edges.y,
@@ -32,7 +32,7 @@ impl<Edge> T<Edge> {
 
   pub fn insert(&mut self, edge: &edge::T, edge_data: Edge) -> Vec<Edge> {
     let mut removed = Vec::new();
-    for edge in self.find_collisions(&edge) {
+    for edge in self.find_collisions(edge) {
       removed.push(self.remove(&edge).unwrap());
     }
 
@@ -42,10 +42,10 @@ impl<Edge> T<Edge> {
     let dest = edges.get_mut_or_create(&bounds);
     match dest {
       &mut voxel_data::tree::TreeBody::Empty => {
-        *dest = voxel_data::tree::TreeBody::leaf(Some(edge_data));
+        *dest = voxel_data::tree::TreeBody::leaf(Some((*edge, edge_data)));
       },
       &mut voxel_data::tree::TreeBody::Branch { ref mut data, branches: _ } => {
-        *data = Some(edge_data);
+        *data = Some((*edge, edge_data));
       }
     }
 
@@ -60,7 +60,7 @@ impl<Edge> T<Edge> {
       Some(&mut voxel_data::tree::TreeBody::Branch { ref mut data, branches: _ }) => {
         let mut r = None;
         std::mem::swap(data, &mut r);
-        r
+        r.map(|(_, d)| d)
       },
       _ => None,
     }
@@ -79,7 +79,7 @@ impl<Edge> T<Edge> {
       let lg_size = terrain_mesh::LG_SAMPLE_SIZE[i];
       let lg_ratio = lg_size - edge.lg_size;
 
-      let mut edge = edge.clone();
+      let mut edge = *edge;
       edge.lg_size = lg_size;
       if lg_ratio < 0 {
         edge.low_corner.x = edge.low_corner.x << -lg_ratio;
@@ -92,7 +92,7 @@ impl<Edge> T<Edge> {
       }
 
       for i in 0 .. (1 << std::cmp::max(0, -lg_ratio)) {
-        let mut edge = edge.clone();
+        let mut edge = edge;
         edge.low_corner.add_self_v(&edge.direction.to_vec().mul_s(i));
 
         if self.contains_key(&edge) {

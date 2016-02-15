@@ -23,7 +23,7 @@ impl Direction {
   }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(missing_docs)]
 pub struct T {
   pub low_corner: Point3<i32>,
