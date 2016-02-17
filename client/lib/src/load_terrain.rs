@@ -81,42 +81,27 @@ pub fn all_voxels_loaded(
 pub fn load_voxel<UpdateBlock>(
   client: &client::T,
   voxel: voxel::T,
-  bounds: voxel::bounds::T,
+  bounds: &voxel::bounds::T,
   mut update_block: UpdateBlock,
 ) where
   UpdateBlock: FnMut(block_position::T, lod::T),
 {
   let player_position =
-    block_position::of_world_position(&client.player_position.lock().unwrap().clone());
+    block_position::of_world_position(&client.player_position.lock().unwrap());
 
   let mut voxels = client.voxels.lock().unwrap();
   let mut block_voxels_loaded = client.block_voxels_loaded.lock().unwrap();
 
   let new_voxel_loaded;
   {
-    let branch = voxels.get_mut_or_create(&bounds);
-    match branch {
-      &mut voxel::tree::Empty => {
-        *branch =
-          voxel::tree::Branch {
-            data: Some(voxel),
-            branches: Box::new(voxel::tree::Branches::empty()),
-          };
-        new_voxel_loaded = true;
-      },
-      &mut voxel::tree::Branch { ref mut data, .. } => {
-        match data {
-          &mut None => new_voxel_loaded = true,
-          &mut Some(old_voxel) => {
-            new_voxel_loaded = false;
-            if old_voxel == voxel {
-              return
-            }
-          },
-        }
-        *data = Some(voxel);
-      }
+    let voxel = Some(voxel);
+    let branch = voxels.get_mut_or_create(bounds);
+    let old_voxel = &mut branch.force_branches().data;
+    new_voxel_loaded = old_voxel.is_none();
+    if *old_voxel == voxel {
+      return
     }
+    *old_voxel = voxel;
   }
 
   trace!("voxel bounds {:?}", bounds);
@@ -193,7 +178,7 @@ pub fn load_block<UpdateView>(
   let mut updates = Vec::new();
 
   // TODO: Rc instead of clone.
-  match client.loaded_blocks.lock().unwrap().entry(block_position.clone()) {
+  match client.loaded_blocks.lock().unwrap().entry(*block_position) {
     Vacant(entry) => {
       entry.insert((mesh_block.clone(), lod));
     },
@@ -211,7 +196,7 @@ pub fn load_block<UpdateView>(
   };
 
   if !mesh_block.ids.is_empty() {
-    updates.push(ClientToView::AddBlock(block_position.clone(), mesh_block, lod));
+    updates.push(ClientToView::AddBlock(*block_position, mesh_block, lod));
   }
 
   update_view(ClientToView::Atomic(updates));

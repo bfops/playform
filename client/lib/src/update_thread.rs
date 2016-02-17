@@ -37,7 +37,8 @@ pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, Upd
   EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {
   'update_loop: loop {
-    if *quit.lock().unwrap() == true {
+    let should_quit = *quit.lock().unwrap();
+    if should_quit {
       break 'update_loop
     } else {
       stopwatch::time("update_iteration", || {
@@ -212,7 +213,7 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
       load_terrain::load_voxel(
         client,
         voxel,
-        bounds,
+        &bounds,
         |block, lod| { update_blocks.insert((block, lod)); },
       );
     }

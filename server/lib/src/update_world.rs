@@ -28,7 +28,7 @@ pub fn update_world<RequestBlock>(
       let players: Vec<_> = server.players.lock().unwrap().keys().cloned().collect();
       for (_, client) in server.clients.lock().unwrap().iter_mut() {
         for &id in &players {
-          let bounds = server.physics.lock().unwrap().get_bounds(id).unwrap().clone();
+          let bounds = *server.physics.lock().unwrap().get_bounds(id).unwrap();
           client.send(protocol::ServerToClient::UpdatePlayer(id, bounds));
         }
       }
@@ -95,7 +95,7 @@ fn translate_mob(
       mob.speed.add_self_v(&delta_p.neg());
       return;
     } else {
-      bounds = physics.get_bounds(mob.entity_id).unwrap().clone();
+      bounds = *physics.get_bounds(mob.entity_id).unwrap();
     }
   }
 
@@ -103,7 +103,7 @@ fn translate_mob(
 
   for (_, client) in server.clients.lock().unwrap().iter_mut() {
     client.send(
-      protocol::ServerToClient::UpdateMob(mob.entity_id, bounds.clone())
+      protocol::ServerToClient::UpdateMob(mob.entity_id, bounds),
     );
   }
 }

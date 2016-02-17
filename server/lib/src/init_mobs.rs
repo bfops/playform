@@ -114,6 +114,6 @@ fn add_mob(
       surroundings_loader: SurroundingsLoader::new(8, Vec::new()),
     };
 
-  server.physics.lock().unwrap().insert_misc(entity_id, bounds);
+  server.physics.lock().unwrap().insert_misc(entity_id, &bounds);
   server.mobs.lock().unwrap().insert(entity_id, mob);
 }

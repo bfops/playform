@@ -9,6 +9,7 @@
 
 #![allow(mutex_atomic)]
 #![allow(match_ref_pats)]
+#![allow(match_same_arms)]
 
 #![plugin(clippy)]
 

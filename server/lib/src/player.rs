@@ -87,7 +87,7 @@ impl Player {
         bounds.min.add_v(&v),
         bounds.max.add_v(&v),
       );
-    let mut new_bounds = init_bounds.clone();
+    let mut new_bounds = init_bounds;
     // The height of the player's "step".
     let mut step_height = 0.0;
     let mut collided = false;
@@ -95,7 +95,7 @@ impl Player {
       loop {
         match physics.terrain_octree.intersect(&new_bounds, None) {
           None => {
-            if Physics::reinsert(&mut physics.misc_octree, self.entity_id, bounds, new_bounds).is_some() {
+            if Physics::reinsert(&mut physics.misc_octree, self.entity_id, bounds, &new_bounds).is_some() {
               collided = true;
             } else {
               self.position.add_self_v(&v);

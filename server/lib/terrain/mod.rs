@@ -40,7 +40,7 @@ use common::voxel;
 /// This struct contains and lazily generates the world's terrain.
 #[allow(missing_docs)]
 pub struct T {
-  pub mosaic: Box<voxel_data::mosaic::T<voxel::Material> + Sync>,
+  pub mosaic: Box<voxel::mosaic::T<voxel::Material> + Sync>,
   pub voxels: Mutex<voxel::tree::T>,
 }
 
@@ -49,7 +49,7 @@ impl T {
   pub fn new(terrain_seed: Seed) -> T {
     T {
       mosaic: Box::new(biome::hills::new(terrain_seed)),
-      voxels: Mutex::new(voxel::tree::T::new()),
+      voxels: Mutex::new(voxel::tree::new()),
     }
   }
 
@@ -63,28 +63,16 @@ impl T {
     F: FnMut(&voxel::T)
   {
     let mut voxels = self.voxels.lock().unwrap();
-    let branch = voxels.get_mut_or_create(bounds);
-    match branch {
-      &mut voxel_data::tree::Empty => {
+    let branches = voxels.get_mut_or_create(bounds);
+    let branches = branches.force_branches();
+    match branches.data {
+      None => {
         let voxel = voxel::unwrap(voxel::of_field(&self.mosaic, bounds));
         f(&voxel);
-        *branch =
-          voxel_data::tree::Branch {
-            data: Some(voxel.clone()),
-            branches: Box::new(voxel_data::tree::Branches::empty()),
-          };
+        branches.data = Some(voxel);
       },
-      &mut voxel_data::tree::Branch { ref mut data, branches: _ }  => {
-        match data {
-          &mut None => {
-            let voxel = voxel::unwrap(voxel::of_field(&self.mosaic, bounds));
-            f(&voxel);
-            *data = Some(voxel);
-          },
-          &mut Some(ref data) => {
-            f(data);
-          },
-        }
+      Some(ref data) => {
+        f(data);
       },
     }
   }
@@ -92,11 +80,11 @@ impl T {
   /// Apply a voxel brush to the terrain.
   pub fn brush<VoxelChanged, Mosaic>(
     &self,
-    brush: &voxel_data::brush::T<Mosaic>,
+    brush: &voxel::brush::T<Mosaic>,
     mut voxel_changed: VoxelChanged,
   ) where
     VoxelChanged: FnMut(&voxel::T, &voxel::bounds::T),
-    Mosaic: voxel_data::mosaic::T<voxel::Material>,
+    Mosaic: voxel::mosaic::T<voxel::Material>,
   {
     let mut voxels = self.voxels.lock().unwrap();
     voxels.brush(

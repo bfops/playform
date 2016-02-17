@@ -41,7 +41,7 @@ mod surroundings_iter {
 
   pub fn new(center: &Point3<i32>, max_distance: i32) -> T {
     (0 .. max_distance).flat_map(CubeShellClosure {
-      center: center.clone(),
+      center: *center,
     })
   }
 }

@@ -4,6 +4,9 @@
 #![allow(match_ref_pats)]
 #![allow(mutex_atomic)]
 #![allow(type_complexity)]
+#![allow(items_after_statements)]
+#![allow(collapsible_if)]
+#![allow(match_same_arms)]
 
 #![deny(missing_docs)]
 #![deny(warnings)]

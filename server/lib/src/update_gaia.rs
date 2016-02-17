@@ -42,7 +42,7 @@ pub fn update_gaia(
           &brush,
           |block, bounds| {
             trace!("update bounds {:?}", bounds);
-            updates.push((bounds.clone(), block.clone()));
+            updates.push((*bounds, *block));
           },
         );
 
@@ -106,7 +106,7 @@ fn load(
         server.terrain_loader.terrain.load(
           &voxel_bounds,
           |voxel| {
-            voxels.push((voxel_bounds, voxel.clone()));
+            voxels.push((voxel_bounds, *voxel));
           },
         );
       }

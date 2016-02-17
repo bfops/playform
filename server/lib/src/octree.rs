@@ -48,15 +48,15 @@ fn set(d: Dimension, p: &mut Point3<f32>, v: f32) {
   }
 }
 
-fn split(mid: f32, d: Dimension, bounds: Aabb3<f32>) -> (Option<Aabb3<f32>>, Option<Aabb3<f32>>) {
+fn split(mid: f32, d: Dimension, bounds: &Aabb3<f32>) -> (Option<Aabb3<f32>>, Option<Aabb3<f32>>) {
   if get(d, &bounds.max) <= mid {
-    (Some(bounds), None)
+    (Some(*bounds), None)
   } else if get(d, &bounds.min) >= mid {
-    (None, Some(bounds))
+    (None, Some(*bounds))
   } else {
     let (new_min, new_max) = {
-      let (mut new_min, mut new_max) = (bounds.min.clone(), bounds.max.clone());
-      set(d, &mut new_min, mid.clone());
+      let (mut new_min, mut new_max) = (bounds.min, bounds.max);
+      set(d, &mut new_min, mid);
       set(d, &mut new_max, mid);
       (new_min, new_max)
     };
@@ -99,23 +99,23 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
     Octree {
       parent: ptr::null_mut(),
       dimension: Dimension::X,
-      bounds: bounds.clone(),
+      bounds: *bounds,
       contents: OctreeContents::Leaf(Vec::new()),
     }
   }
 
-  pub fn insert(&mut self, bounds: Aabb3<f32>, v: V) {
+  pub fn insert(&mut self, bounds: &Aabb3<f32>, v: V) {
     let this: *mut Octree<V> = self;
     assert!(contains(&self.bounds, &bounds));
     let contents = match self.contents {
       OctreeContents::Leaf(ref mut vs) => {
-        vs.push((bounds, v));
+        vs.push((*bounds, v));
 
         let d = self.dimension;
         let avg_length =
           vs.iter().fold(
             0.0,
-            |x, &(ref bounds, _)| x + length(bounds, d)
+            |x, &(bounds, _)| x + length(&bounds, d)
           ) / (vs.len() as f32);
 
         let l = length(&self.bounds, self.dimension);
@@ -140,8 +140,8 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
       OctreeContents::Branch(ref mut b) => {
         // copied in remove()
         let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, bounds);
-        l.map(|low_half| b.low_tree.insert(low_half, v));
-        h.map(|high_half| b.high_tree.insert(high_half, v));
+        l.map(|low_half| b.low_tree.insert(&low_half, v));
+        h.map(|high_half| b.high_tree.insert(&high_half, v));
         None
       },
     };
@@ -157,7 +157,7 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
     vs: &LeafContents<V>
   ) -> (Octree<V>, Octree<V>) {
     let mid = middle(bounds, dimension);
-    let (low_bounds, high_bounds) = split(mid, dimension, bounds.clone());
+    let (low_bounds, high_bounds) = split(mid, dimension, bounds);
     let low_bounds = low_bounds.unwrap();
     let high_bounds = high_bounds.unwrap();
     let new_d = match dimension {
@@ -169,20 +169,20 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
     let mut low = Octree {
       parent: parent,
       dimension: new_d,
-      bounds: low_bounds.clone(),
+      bounds: low_bounds,
       contents: OctreeContents::Leaf(Vec::new()),
     };
     let mut high = Octree {
       parent: parent,
       dimension: new_d,
-      bounds: high_bounds.clone(),
+      bounds: high_bounds,
       contents: OctreeContents::Leaf(Vec::new()),
     };
 
-    for &(ref bounds, v) in vs.iter() {
-      let (low_bounds, high_bounds) = split(mid, dimension, bounds.clone());
-      low_bounds.map(|bs| low.insert(bs, v));
-      high_bounds.map(|bs| high.insert(bs, v));
+    for &(bounds, v) in vs.iter() {
+      let (low_bounds, high_bounds) = split(mid, dimension, &bounds);
+      low_bounds.map(|bs| low.insert(&bs, v));
+      high_bounds.map(|bs| high.insert(&bs, v));
     }
 
     (low, high)
@@ -223,11 +223,11 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
       OctreeContents::Leaf(ref vs) => {
         vs.iter()
           .find(|&&(ref bs, ref v)| Some(*v) != self_v && aabb_overlap(bounds, bs))
-          .map(|&(ref bounds, v)| (bounds.clone(), v))
+          .map(|&(bounds, v)| (bounds, v))
       },
       OctreeContents::Branch(ref b) => {
         let mid = middle(&self.bounds, self.dimension);
-        let (low_bounds, high_bounds) = split(mid, self.dimension, bounds.clone());
+        let (low_bounds, high_bounds) = split(mid, self.dimension, bounds);
         let high = |high_bounds| {
           match high_bounds {
             None => None,
@@ -248,8 +248,8 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
 
   // like insert, but before recursing downward, we recurse up the parents
   // until the bounds provided are inside the tree.
-  fn insert_from(&mut self, bounds: Aabb3<f32>, v: V) {
-    self.on_mut_ancestor(&bounds, |t| t.insert(bounds.clone(), v))
+  fn insert_from(&mut self, bounds: &Aabb3<f32>, v: V) {
+    self.on_mut_ancestor(bounds, |t| t.insert(bounds, v))
   }
 
   pub fn remove(&mut self, bounds: &Aabb3<f32>, v: V) {
@@ -267,7 +267,7 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
         false
       },
       OctreeContents::Branch(ref mut bs) => {
-        let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, bounds.clone());
+        let (l, h) = split(middle(&self.bounds, self.dimension), self.dimension, bounds);
         l.map(|low_half| bs.low_tree.remove(&low_half, v));
         h.map(|high_half| bs.high_tree.remove(&high_half, v));
         bs.low_tree.is_empty() && bs.high_tree.is_empty()
@@ -286,7 +286,7 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
     }
   }
 
-  pub fn reinsert(&mut self, v: V, bounds: &Aabb3<f32>, new_bounds: Aabb3<f32>) {
+  pub fn reinsert(&mut self, v: V, bounds: &Aabb3<f32>, new_bounds: &Aabb3<f32>) {
     self.remove(bounds, v);
     self.insert_from(new_bounds, v)
   }

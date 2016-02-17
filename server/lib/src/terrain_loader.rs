@@ -142,7 +142,7 @@ impl T {
     stopwatch::time("terrain_loader.load.physics", || {
       let mut physics = physics.lock().unwrap();
       for &(ref id, ref bounds) in &block.bounds {
-        physics.insert_terrain(*id, bounds.clone());
+        physics.insert_terrain(*id, bounds);
       }
     });
   }

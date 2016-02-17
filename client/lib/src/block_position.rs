@@ -105,13 +105,13 @@ impl T {
 }
 
 #[allow(missing_docs)]
-pub fn new(x: i32, y: i32, z: i32) -> T {
-  T(Point3::new(x, y, z))
+pub fn of_pnt(p: &Point3<i32>) -> T {
+  T(*p)
 }
 
 #[allow(missing_docs)]
-pub fn of_pnt(p: &Point3<i32>) -> T {
-  T(p.clone())
+pub fn new(x: i32, y: i32, z: i32) -> T {
+  T(Point3::new(x, y, z))
 }
 
 #[allow(missing_docs)]

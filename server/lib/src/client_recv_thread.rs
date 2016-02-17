@@ -85,7 +85,7 @@ pub fn apply_client_update<UpdateGaia>(
         let min = Point3::new(0.0, 64.0, 4.0);
         let max = min.add_v(&Vector3::new(1.0, 2.0, 1.0));
         let bounds = Aabb3::new(min, max);
-        server.physics.lock().unwrap().insert_misc(player.entity_id, bounds.clone());
+        server.physics.lock().unwrap().insert_misc(player.entity_id, &bounds);
 
         player.position = center(&bounds);
         player.rotate_lateral(PI / 2.0);

@@ -136,8 +136,8 @@ mod voxel_storage {
     fn get_material(&mut self, bounds: &voxel::bounds::T) -> Option<voxel::Material> {
       match get_voxel(self, bounds) {
         None => None,
-        Some(&voxel::Surface(ref voxel)) => Some(voxel.corner.clone()),
-        Some(&voxel::Volume(ref material)) => Some(material.clone()),
+        Some(&voxel::Surface(ref voxel)) => Some(voxel.corner),
+        Some(&voxel::Volume(ref material)) => Some(*material),
       }
     }
 
@@ -148,7 +148,7 @@ mod voxel_storage {
         Some(&voxel::Surface(ref voxel)) =>
           Some({
             dual_contouring::voxel_storage::VoxelData {
-              bounds: bounds.clone(),
+              bounds: *bounds,
               vertex: voxel.surface_vertex.to_world_vertex(&bounds),
               normal: voxel.normal.to_float_normal(),
             }
@@ -173,7 +173,7 @@ pub fn generate(
       let lg_edge_samples = LG_EDGE_SAMPLES[lod.0 as usize];
       let lg_sample_size = LG_SAMPLE_SIZE[lod.0 as usize];
 
-      let low = block_position.as_pnt().clone();
+      let low = *block_position.as_pnt();
       let high = low.add_v(&Vector3::new(1, 1, 1));
       let low =
         Point3::new(

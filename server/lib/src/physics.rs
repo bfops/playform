@@ -18,14 +18,14 @@ impl Physics {
     }
   }
 
-  pub fn insert_terrain(&mut self, id: entity_id::T, bounds: Aabb3<f32>) {
-    self.terrain_octree.insert(bounds.clone(), id);
-    self.bounds.insert(id, bounds);
+  pub fn insert_terrain(&mut self, id: entity_id::T, bounds: &Aabb3<f32>) {
+    self.terrain_octree.insert(bounds, id);
+    self.bounds.insert(id, *bounds);
   }
 
-  pub fn insert_misc(&mut self, id: entity_id::T, bounds: Aabb3<f32>) {
-    self.misc_octree.insert(bounds.clone(), id);
-    self.bounds.insert(id, bounds);
+  pub fn insert_misc(&mut self, id: entity_id::T, bounds: &Aabb3<f32>) {
+    self.misc_octree.insert(bounds, id);
+    self.bounds.insert(id, *bounds);
   }
 
   pub fn remove_terrain(&mut self, id: entity_id::T) {
@@ -54,12 +54,12 @@ impl Physics {
     octree: &mut Octree<entity_id::T>,
     id: entity_id::T,
     bounds: &mut Aabb3<f32>,
-    new_bounds: Aabb3<f32>,
+    new_bounds: &Aabb3<f32>,
   ) -> Option<(Aabb3<f32>, entity_id::T)> {
-    match octree.intersect(&new_bounds, Some(id)) {
+    match octree.intersect(new_bounds, Some(id)) {
       None => {
-        octree.reinsert(id, bounds, new_bounds.clone());
-        *bounds = new_bounds;
+        octree.reinsert(id, bounds, new_bounds);
+        *bounds = *new_bounds;
         None
       },
       collision => collision,
@@ -75,7 +75,7 @@ impl Physics {
       );
     let terrain_collision = self.terrain_octree.intersect(&new_bounds, None);
     if terrain_collision.is_none() {
-      Physics::reinsert(&mut self.misc_octree, id, bounds, new_bounds)
+      Physics::reinsert(&mut self.misc_octree, id, bounds, &new_bounds)
     } else {
       terrain_collision
     }

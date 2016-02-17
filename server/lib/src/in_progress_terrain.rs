@@ -37,7 +37,7 @@ impl T {
         entry.insert(id);
 
         let (low, high) = block_position.corners();
-        physics.lock().unwrap().insert_misc(id, Aabb3::new(low, high));
+        physics.lock().unwrap().insert_misc(id, &Aabb3::new(low, high));
         true
       }
     }

@@ -111,7 +111,7 @@ fn to_triangles(
   let vtx = |x, y, z| {
     ColoredVertex {
       position: Point3::new(x, y, z),
-      color: c.clone(),
+      color: *c,
     }
   };
 

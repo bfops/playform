@@ -72,7 +72,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     id_allocator: Mutex::new(id_allocator::new()),
     loaded_blocks: Mutex::new(block_position::map::new()),
     block_voxels_loaded: Mutex::new(block_position::with_lod::map::new()),
-    voxels: Mutex::new(voxel::tree::T::new()),
+    voxels: Mutex::new(voxel::tree::new()),
     outstanding_terrain_requests: Mutex::new(0),
   }
 }
