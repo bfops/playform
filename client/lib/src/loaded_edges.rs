@@ -66,13 +66,13 @@ impl<Edge> T<Edge> {
   }
 
   pub fn find_collisions(&self, edge: &edge::T) -> Vec<edge::T> {
-    fn all<Edge>(collisions: &mut Vec<edge::T>, branches: &voxel::tree::Branches<(edge::T, Edge)>) {
-      if let Some((edge, _)) = branches.data {
-        collisions.push(edge);
-      }
+    fn all<Edge>(collisions: &mut Vec<edge::T>, branches: &voxel::tree::Inner<(edge::T, Edge)>) {
+      if let &voxel::tree::Inner::Branches(ref branches) = branches {
+        if let Some((edge, _)) = branches.data {
+          collisions.push(edge);
+        }
 
-      for branches in branches.as_flat_array() {
-        if let &voxel::tree::Inner::Branches(ref branches) = branches {
+        for branches in branches.as_flat_array() {
           all(collisions, branches);
         }
       }
@@ -87,9 +87,7 @@ impl<Edge> T<Edge> {
     loop {
       match traversal.next(edges) {
         voxel::tree::traversal::Step::Last(branches) => {
-          if let &voxel::tree::Inner::Branches(ref branches) = branches {
-            all(&mut collisions, branches);
-          }
+          all(&mut collisions, branches);
           break;
         },
         voxel::tree::traversal::Step::Step(branches) => {
