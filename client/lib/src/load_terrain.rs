@@ -76,6 +76,7 @@ pub fn load_edge<UpdateView>(
 
   update_view(view_update::Atomic(updates));
 
+  debug!("generate success!");
   Ok(())
 }
 

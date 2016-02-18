@@ -10,7 +10,10 @@ use stopwatch;
 use common::entity_id;
 use common::protocol;
 
+use block_position;
 use client;
+use edge;
+use terrain_mesh;
 use view;
 
 #[allow(missing_docs)]
@@ -94,6 +97,21 @@ fn key_press<UpdateServer>(
         match *load_position {
           None => *load_position = Some(*client.player_position.lock().unwrap()),
           Some(_) => *load_position = None,
+        }
+      },
+      Keycode::O => {
+        let player_position = *client.player_position.lock().unwrap();
+        let player_position = block_position::of_world_position(&player_position);
+        for &direction in &[edge::Direction::X, edge::Direction::Y, edge::Direction::Z] {
+          let edge =
+            edge::T {
+              low_corner: *player_position.as_pnt(),
+              direction: direction,
+              lg_size: terrain_mesh::LG_WIDTH,
+            };
+
+          let loaded_edges = client.loaded_edges.lock().unwrap();
+          println!("{:?} has {:?}", player_position, loaded_edges.find_collisions(&edge));
         }
       },
       _ => {},
