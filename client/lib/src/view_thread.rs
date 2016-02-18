@@ -9,10 +9,10 @@ use stopwatch;
 use time;
 use yaglw::gl_context::GLContext;
 
-use common::entity_id;
 use common::interval_timer::IntervalTimer;
 use common::protocol;
 
+use client;
 use hud::make_hud;
 use process_event::process_event;
 use render::render;
@@ -31,7 +31,7 @@ enum ViewIteration {
 
 #[allow(missing_docs)]
 pub fn view_thread<Recv0, Recv1, UpdateServer>(
-  player_id: entity_id::T,
+  client: &client::T,
   recv0: &mut Recv0,
   recv1: &mut Recv1,
   update_server: &mut UpdateServer,
@@ -118,9 +118,9 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
             }
             event => {
               process_event(
-                player_id,
                 update_server,
                 &mut view,
+                &client,
                 event,
               );
             },

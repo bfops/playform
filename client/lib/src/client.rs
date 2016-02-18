@@ -30,6 +30,8 @@ pub struct T {
   #[allow(missing_docs)]
   pub player_position: Mutex<Point3<f32>>,
   #[allow(missing_docs)]
+  pub load_position: Mutex<Option<Point3<f32>>>,
+  #[allow(missing_docs)]
   pub max_load_distance: i32,
   #[allow(missing_docs)]
   pub surroundings_loader: Mutex<SurroundingsLoader>,
@@ -67,6 +69,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     id: client_id,
     player_id: player_id,
     player_position: Mutex::new(position),
+    load_position: Mutex::new(None),
     max_load_distance: load_distance,
     surroundings_loader: Mutex::new(surroundings_loader),
     id_allocator: Mutex::new(id_allocator::new()),

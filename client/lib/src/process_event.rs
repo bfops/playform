@@ -10,13 +10,14 @@ use stopwatch;
 use common::entity_id;
 use common::protocol;
 
+use client;
 use view;
 
 #[allow(missing_docs)]
 pub fn process_event<UpdateServer>(
-  player_id: entity_id::T,
   update_server: &mut UpdateServer,
   view: &mut view::T,
+  client: &client::T,
   event: Event,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
 {
@@ -24,69 +25,76 @@ pub fn process_event<UpdateServer>(
     Event::KeyDown{keycode, repeat, ..} => {
       keycode.map(|keycode| {
         if !repeat {
-          key_press(player_id, update_server, view, keycode);
+          key_press(update_server, view, client, keycode);
         }
       });
     },
     Event::KeyUp{keycode, repeat, ..} => {
       keycode.map(|keycode| {
         if !repeat {
-          key_release(player_id, update_server, keycode);
+          key_release(client.player_id, update_server, keycode);
         }
       });
     },
     Event::MouseMotion{xrel, yrel, ..} => {
-      mouse_move(player_id, update_server, view, xrel, yrel);
+      mouse_move(client.player_id, update_server, view, xrel, yrel);
     },
     Event::MouseButtonDown{mouse_btn, ..} => {
-      mouse_press(player_id, update_server, mouse_btn);
+      mouse_press(client.player_id, update_server, mouse_btn);
     },
     _ => {},
   }
 }
 
 fn key_press<UpdateServer>(
-  player_id: entity_id::T,
   update_server: &mut UpdateServer,
   view: &mut view::T,
+  client: &client::T,
   key: Keycode,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
 {
   stopwatch::time("event.key_press", || {
     match key {
       Keycode::A => {
-        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(-1.0, 0.0, 0.0)));
+        update_server(protocol::ClientToServer::Walk(client.player_id, Vector3::new(-1.0, 0.0, 0.0)));
       },
       Keycode::D => {
-        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(1.0, 0.0, 0.0)));
+        update_server(protocol::ClientToServer::Walk(client.player_id, Vector3::new(1.0, 0.0, 0.0)));
       },
       Keycode::Space => {
-        update_server(protocol::ClientToServer::StartJump(player_id));
+        update_server(protocol::ClientToServer::StartJump(client.player_id));
       },
       Keycode::W => {
-        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(0.0, 0.0, -1.0)));
+        update_server(protocol::ClientToServer::Walk(client.player_id, Vector3::new(0.0, 0.0, -1.0)));
       },
       Keycode::S => {
-        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(0.0, 0.0, 1.0)));
+        update_server(protocol::ClientToServer::Walk(client.player_id, Vector3::new(0.0, 0.0, 1.0)));
       },
       Keycode::Left => {
-        update_server(protocol::ClientToServer::RotatePlayer(player_id, Vector2::new(PI / 12.0, 0.0)));
+        update_server(protocol::ClientToServer::RotatePlayer(client.player_id, Vector2::new(PI / 12.0, 0.0)));
         view.camera.rotate_lateral(PI / 12.0);
       },
       Keycode::Right => {
-        update_server(protocol::ClientToServer::RotatePlayer(player_id, Vector2::new(-PI / 12.0, 0.0)));
+        update_server(protocol::ClientToServer::RotatePlayer(client.player_id, Vector2::new(-PI / 12.0, 0.0)));
         view.camera.rotate_lateral(-PI / 12.0);
       },
       Keycode::Up => {
-        update_server(protocol::ClientToServer::RotatePlayer(player_id, Vector2::new(0.0, PI / 12.0)));
+        update_server(protocol::ClientToServer::RotatePlayer(client.player_id, Vector2::new(0.0, PI / 12.0)));
         view.camera.rotate_vertical(PI / 12.0);
       },
       Keycode::Down => {
-        update_server(protocol::ClientToServer::RotatePlayer(player_id, Vector2::new(0.0, -PI / 12.0)));
+        update_server(protocol::ClientToServer::RotatePlayer(client.player_id, Vector2::new(0.0, -PI / 12.0)));
         view.camera.rotate_vertical(-PI / 12.0);
       },
       Keycode::H => {
         view.show_hud = !view.show_hud;
+      },
+      Keycode::P => {
+        let mut load_position = client.load_position.lock().unwrap();
+        match *load_position {
+          None => *load_position = Some(*client.player_position.lock().unwrap()),
+          Some(_) => *load_position = None,
+        }
       },
       _ => {},
     }

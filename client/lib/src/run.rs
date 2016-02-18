@@ -50,9 +50,10 @@ pub fn run(listen_url: &str, server_url: &str) {
     };
 
     {
+      let client = &client;
       let server = server.clone();
       view_thread(
-        client.player_id,
+        client,
         &mut || { view_updates0.lock().unwrap().pop_front() },
         &mut || { view_updates1.lock().unwrap().pop_front() },
         &mut |server_update| { server.talk.tell(&server_update) },

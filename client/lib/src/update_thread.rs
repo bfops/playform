@@ -69,10 +69,13 @@ fn update_surroundings<UpdateView, UpdateServer>(
 {
   let start = time::precise_time_ns();
   let mut i = 0;
-  let player_position = *client.player_position.lock().unwrap();
-  let player_position = block_position::of_world_position(&player_position);
+  let load_position = {
+    let load_position = *client.load_position.lock().unwrap();
+    load_position.unwrap_or_else(|| *client.player_position.lock().unwrap())
+  };
+  let load_position = block_position::of_world_position(&load_position);
   let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
-  let mut updates = surroundings_loader.updates(player_position.as_pnt()) ;
+  let mut updates = surroundings_loader.updates(load_position.as_pnt()) ;
   loop {
     if *client.outstanding_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
       trace!("update loop breaking");
@@ -92,7 +95,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
     debug!("block surroundings");
     let distance =
       surroundings_loader::distance_between(
-        player_position.as_pnt(),
+        load_position.as_pnt(),
         block_position.as_pnt(),
       );
     match load_type {
