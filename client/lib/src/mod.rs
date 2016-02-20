@@ -12,6 +12,7 @@
 #![allow(match_same_arms)]
 
 #![plugin(clippy)]
+#![allow(new_ret_no_self)]
 
 extern crate bincode;
 extern crate cgmath;
