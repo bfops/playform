@@ -36,7 +36,7 @@ pub struct Shaders<'a> {
 
 impl<'a> Shaders<'a> {
   #[allow(missing_docs)]
-  pub fn new<'b:'a>(gl: &'a mut GLContext, window_size: Vector2<i32>) -> Shaders<'b> {
+  pub fn new<'b>(gl: &'b mut GLContext, window_size: Vector2<i32>) -> Self where 'a: 'b {
     let mut terrain_shader = self::terrain::TerrainShader::new(gl);
     let mob_shader = self::color::ColorShader::new(gl);
     let mut hud_color_shader = self::color::ColorShader::new(gl);

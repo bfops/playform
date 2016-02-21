@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
+#![allow(items_after_statements)]
 
 //! Data structures and functions shared between server and client.
 

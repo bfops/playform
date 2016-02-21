@@ -12,7 +12,7 @@ pub struct TerrainShader<'a> {
 
 impl<'a> TerrainShader<'a> {
   #[allow(missing_docs)]
-  pub fn new<'b:'a>(gl: &'a GLContext) -> TerrainShader<'b> {
+  pub fn new<'b>(gl: &'b GLContext) -> Self where 'a: 'b {
     let components = vec!(
       (gl::VERTEX_SHADER, "
         #version 330 core

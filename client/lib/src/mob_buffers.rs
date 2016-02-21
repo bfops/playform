@@ -23,10 +23,12 @@ pub struct MobBuffers<'a> {
 
 impl<'a> MobBuffers<'a> {
   #[allow(missing_docs)]
-  pub fn new<'b:'a>(
-    gl: &'a mut GLContext,
-    shader: &ColorShader<'b>,
-  ) -> MobBuffers<'b> {
+  pub fn new<'b>(
+    gl: &'b mut GLContext,
+    shader: &ColorShader<'a>,
+  ) -> Self where
+    'a: 'b,
+  {
     let buffer = GLBuffer::new(gl, 32 * VERTICES_PER_MOB);
     MobBuffers {
       id_to_index: HashMap::new(),

@@ -52,9 +52,11 @@ fn correct_size() {
 
 impl<'a> TerrainBuffers<'a> {
   #[allow(missing_docs)]
-  pub fn new<'b:'a>(
-    gl: &'a mut GLContext,
-  ) -> TerrainBuffers<'b> {
+  pub fn new<'b>(
+    gl: &'b mut GLContext,
+  ) -> Self where
+    'a: 'b,
+  {
     TerrainBuffers {
       id_to_index: HashMap::new(),
       index_to_id: Vec::new(),

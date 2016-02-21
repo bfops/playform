@@ -12,7 +12,7 @@ pub struct TextureShader<'a> {
 
 impl<'a> TextureShader<'a> {
   #[allow(missing_docs)]
-  pub fn new<'b:'a>(gl: &'a GLContext) -> TextureShader<'b> {
+  pub fn new<'b>(gl: &'b GLContext) -> Self where 'a: 'b {
     let components = vec!(
       (gl::VERTEX_SHADER, "
         #version 330 core

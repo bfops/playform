@@ -12,7 +12,7 @@ pub struct ColorShader<'a> {
 
 impl<'a> ColorShader<'a> {
   #[allow(missing_docs)]
-  pub fn new<'b:'a>(gl: &'a GLContext) -> ColorShader<'b> {
+  pub fn new<'b>(gl: &'b GLContext) -> Self where 'a: 'b {
     let components = vec!(
       (gl::FRAGMENT_SHADER, "
         #version 330 core
