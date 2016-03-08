@@ -21,16 +21,16 @@ fn updated_block_positions(
   macro_rules! tweak(($dim:ident) => {{
     let mut new_voxel = voxel.clone();
     new_voxel.$dim += 1;
-    if block_position::containing_voxel(&new_voxel) != block {
-      1
-    } else {
+    if block_position::containing_voxel(&new_voxel) == block {
       let mut new_voxel = voxel.clone();
       new_voxel.$dim -= 1;
-      if block_position::containing_voxel(&new_voxel) != block {
-        -1
-      } else {
+      if block_position::containing_voxel(&new_voxel) == block {
         0
+      } else {
+        -1
       }
+    } else {
+      1
     }
   }});
 

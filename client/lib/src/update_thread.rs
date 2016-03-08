@@ -108,10 +108,10 @@ fn update_surroundings<UpdateView, UpdateServer>(
             .lock().unwrap()
             .get(&block_position)
             .map(|&(_, lod)| lod != new_lod);
-          if lod_change != Some(false) {
-            load_or_request_chunk(client, update_server, update_view, block_position, new_lod);
-          } else {
+          if lod_change == Some(false) {
             debug!("Not re-loading {:?} at {:?}", block_position, new_lod);
+          } else {
+            load_or_request_chunk(client, update_server, update_view, block_position, new_lod);
           }
         })
       },
