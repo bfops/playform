@@ -18,7 +18,7 @@ use server_update::apply_server_update;
 use terrain_mesh;
 use view_update::ClientToView;
 
-const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 1;
+const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
 
 pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, UpdateServer, EnqueueBlockUpdates>(
   quit: &Mutex<bool>,
