@@ -216,51 +216,51 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
   while let Some((requested_time, voxel_updates, reason)) = recv_voxel_updates() {
     let responded_time = time::preicse_time_ns();
 
-    let mut update_edges = edge::set::new();
-    for (bounds, voxel) in voxel_updates {
-      trace!("Got voxel at {:?}", bounds);
-      load_terrain::load_voxel(
-        client,
-        &voxel,
-        &bounds,
-        |edge| { update_edges.insert(edge); },
-      );
-    }
-
-    let processed_time = time::precise_time_ns();
-
-    for edge in update_edges.into_iter() {
-      let _ =
-        load_terrain::load_edge(
+    stopwatch::time("process_voxel_update", || {
+      let mut update_edges = edge::set::new();
+      for (bounds, voxel) in voxel_updates {
+        trace!("Got voxel at {:?}", bounds);
+        load_terrain::load_voxel(
           client,
-          update_view,
-          &edge,
+          &voxel,
+          &bounds,
+          |edge| { update_edges.insert(edge); },
         );
-    }
+      }
 
-    let block_loaded = time::precise_time_ns();
+      let processed_time = time::precise_time_ns();
 
-    match request_time {
-      None => {},
-      Some(request_time) => {
-        record_book::thread_local::push_block_load(
-          record_book::BlockLoad {
-            requested_at: request_time,
-            responded_at: response_time,
-            processed_at: processed_time,
-            loaded_at: block_loaded,
-          }
-        );
-      },
-    }
+      match request_time {
+        None => {},
+        Some(request_time) => {
+          record_book::thread_local::push_block_load(
+            record_book::BlockLoad {
+              requested_at: request_time,
+              responded_at: response_time,
+              processed_at: processed_time,
+              loaded_at: block_loaded,
+            }
+          );
+        },
+      }
 
-    match reason {
-      protocol::VoxelReason::Updated => {},
-      protocol::VoxelReason::Requested => {
-        *client.outstanding_terrain_requests.lock().unwrap() -= 1;
-        debug!("Outstanding terrain requests: {}", *client.outstanding_terrain_requests.lock().unwrap());
-      },
-    }
+      for edge in update_edges.into_iter() {
+        let _ =
+          load_terrain::load_edge(
+            client,
+            update_view,
+            &edge,
+          );
+      }
+
+      match reason {
+        protocol::VoxelReason::Updated => {},
+        protocol::VoxelReason::Requested => {
+          *client.outstanding_terrain_requests.lock().unwrap() -= 1;
+          debug!("Outstanding terrain requests: {}", *client.outstanding_terrain_requests.lock().unwrap());
+        },
+      }
+    });
 
     if time::precise_time_ns() - start >= 1_000_000 {
       break
