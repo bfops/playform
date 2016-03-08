@@ -28,10 +28,10 @@ impl<T> Iterator for RangeAbs<T>
   fn next(&mut self) -> Option<T> {
     let n = self.n;
     if n == self.max { return None }
-    if !n.is_positive() {
-      self.n = -n + One::one();
-    } else {
+    if n.is_positive() {
       self.n = -self.n;
+    } else {
+      self.n = -n + One::one();
     }
     Some(n)
   }
