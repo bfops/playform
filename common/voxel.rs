@@ -35,6 +35,21 @@ pub mod tree {
   }
 }
 
+#[allow(missing_docs)]
+pub mod brush {
+    pub use voxel_data::brush::*;
+}
+
+#[allow(missing_docs)]
+pub mod field {
+    pub use voxel_data::field::*;
+}
+
+#[allow(missing_docs)]
+pub mod mosaic {
+    pub use voxel_data::mosaic::*;
+}
+
 impl isosurface_extraction::dual_contouring::material::T for Material {
   fn is_opaque(&self) -> bool {
     *self != Material::Empty

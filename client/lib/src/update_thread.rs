@@ -148,6 +148,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
     if !requested_voxels.is_empty() {
       update_server(
         protocol::ClientToServer::RequestVoxels(
+          time::precise_time_ns(),
           client.id,
           requested_voxels.into_iter().collect(),
         )
@@ -213,8 +214,8 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
   UpdateView: FnMut(view_update::T),
 {
   let start = time::precise_time_ns();
-  while let Some((requested_time, voxel_updates, reason)) = recv_voxel_updates() {
-    let responded_time = time::preicse_time_ns();
+  while let Some((request_time, voxel_updates, reason)) = recv_voxel_updates() {
+    let response_time = time::precise_time_ns();
 
     stopwatch::time("process_voxel_update", || {
       let mut update_edges = edge::set::new();
@@ -230,6 +231,17 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
 
       let processed_time = time::precise_time_ns();
 
+      for edge in update_edges.into_iter() {
+        let _ =
+          load_terrain::load_edge(
+            client,
+            update_view,
+            &edge,
+          );
+      }
+
+      let block_loaded = time::precise_time_ns();
+
       match request_time {
         None => {},
         Some(request_time) => {
@@ -242,15 +254,6 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
             }
           );
         },
-      }
-
-      for edge in update_edges.into_iter() {
-        let _ =
-          load_terrain::load_edge(
-            client,
-            update_view,
-            &edge,
-          );
       }
 
       match reason {

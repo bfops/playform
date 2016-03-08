@@ -14,8 +14,6 @@
 #![allow(match_ref_pats)]
 #![allow(match_same_arms)]
 
-#![plugin(clippy)]
-
 extern crate bincode;
 extern crate cgmath;
 extern crate common;
