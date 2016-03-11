@@ -24,7 +24,7 @@ impl<'a> TerrainShader<'a> {
         uniform isamplerBuffer materials;
 
         out vec3 world_position;
-        out vec3 normal;
+        out vec3 vs_normal;
         flat out int material;
 
         void main() {
@@ -35,9 +35,9 @@ impl<'a> TerrainShader<'a> {
           world_position.z = texelFetch(positions, position_id + 2).r;
 
           int normal_id = position_id;
-          normal.x = texelFetch(normals, normal_id + 0).r;
-          normal.y = texelFetch(normals, normal_id + 1).r;
-          normal.z = texelFetch(normals, normal_id + 2).r;
+          vs_normal.x = texelFetch(normals, normal_id + 0).r;
+          vs_normal.y = texelFetch(normals, normal_id + 1).r;
+          vs_normal.z = texelFetch(normals, normal_id + 2).r;
 
           int face_id = gl_VertexID / 3;
 
@@ -58,7 +58,7 @@ impl<'a> TerrainShader<'a> {
         uniform samplerBuffer positions;
 
         in vec3 world_position;
-        in vec3 normal;
+        in vec3 vs_normal;
         flat in int material;
 
         out vec4 frag_color;
@@ -86,8 +86,37 @@ impl<'a> TerrainShader<'a> {
           {}
         }}
 
+        // http://www.neilmendoza.com/glsl-rotation-about-an-arbitrary-axis/
+        mat3 rotationMatrix(vec3 axis, float angle)
+        {{
+            axis = normalize(axis);
+            float s = sin(angle);
+            float c = cos(angle);
+            float oc = 1.0 - c;
+
+            return mat3(oc * axis.x * axis.x + c,           oc * axis.x * axis.y - axis.z * s,  oc * axis.z * axis.x + axis.y * s,
+                        oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,
+                        oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c         );
+        }}
+
+        vec3 bump_map(vec3 v) {{
+          vec3 seed = 20 * world_position + vec3(0x123411);
+          float p0 = cnoise(seed);
+          float d = 0.1;
+          float px = cnoise(seed + vec3(d, 0, 0));
+          float py = cnoise(seed + vec3(0, d, 0));
+          float pz = cnoise(seed + vec3(0, 0, d));
+          vec3 r = normalize(vec3(px, py, pz) - vec3(p0));
+
+          vec3 axis = cross(vec3(0, 1, 0), r);
+          float c = dot(vec3(0, 1, 0), r);
+          return rotationMatrix(axis, acos(c) / 8) * v;
+        }}
+
         void main() {{
           vec4 base_color;
+
+          vec3 normal = vs_normal;
 
           if (material == 1) {{
             float grass_amount =
@@ -102,6 +131,7 @@ impl<'a> TerrainShader<'a> {
             base_color = vec4(leaves(), 1);
           }} else if (material == 4) {{
             base_color = vec4(stone(), 1);
+            normal = bump_map(normal);
           }} else {{
             base_color = vec4(0.5, 0, 0.5, 0.5);
           }}
