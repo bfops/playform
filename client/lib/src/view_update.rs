@@ -30,8 +30,6 @@ pub enum ClientToView {
   SetSun(light::Sun),
   /// Update the ambient light.
   SetAmbientLight(Color3<f32>),
-  /// Update the GL clear color.
-  SetClearColor(Color3<f32>),
 
   /// Add a terrain block to the view.
   AddBlock(block_position::T, terrain_mesh::T, lod::T),
@@ -61,6 +59,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: ClientToView) {
         &mut view.gl,
         &sun,
       );
+      view.sun = sun;
     },
     ClientToView::SetAmbientLight(color) => {
       set_ambient_light(
@@ -68,9 +67,6 @@ pub fn apply_client_to_view(view: &mut view::T, up: ClientToView) {
         &mut view.gl,
         color,
       );
-    },
-    ClientToView::SetClearColor(color) => {
-      view.gl.set_background_color(color.r, color.g, color.b, 1.0);
     },
     ClientToView::AddBlock(_, block, _) => {
       stopwatch::time("add_block", || {

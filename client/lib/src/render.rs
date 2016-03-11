@@ -2,13 +2,36 @@
 
 use camera::set_camera;
 use gl;
+use std;
 use view;
+
+fn draw_backdrop(
+  rndr: &mut view::T,
+) {
+  rndr.shaders.clouds.shader.use_shader(&mut rndr.gl);
+
+  unsafe {
+    gl::BindVertexArray(rndr.empty_gl_array.gl_id);
+  }
+
+  let sun_uniform = rndr.shaders.clouds.shader.get_uniform_location("sun_color");
+  unsafe {
+    let ptr = std::mem::transmute(&rndr.sun.intensity);
+    gl::Uniform3fv(sun_uniform, 1, ptr);
+
+    gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
+
+    gl::Clear(gl::DEPTH_BUFFER_BIT);
+  }
+}
 
 #[allow(missing_docs)]
 pub fn render(
   rndr: &mut view::T,
 ) {
-  &mut rndr.gl.clear_buffer();
+  rndr.gl.clear_buffer();
+
+  draw_backdrop(rndr);
 
   set_camera(&mut rndr.shaders.mob_shader.shader, &mut rndr.gl, &rndr.camera);
 

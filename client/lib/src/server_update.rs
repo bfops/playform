@@ -90,8 +90,6 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
             sun_color.b * ambient_light,
           ),
         ));
-
-        update_view(ClientToView::SetClearColor(sun_color));
       },
       protocol::ServerToClient::Voxels(request_time, voxels, reason) => {
         match request_time {

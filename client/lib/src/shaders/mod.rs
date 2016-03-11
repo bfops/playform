@@ -7,6 +7,7 @@ pub mod texture;
 mod noise;
 
 mod bark;
+mod clouds;
 mod dirt;
 mod grass;
 mod leaves;
@@ -32,6 +33,8 @@ pub struct Shaders<'a> {
   pub hud_texture_shader: self::texture::TextureShader<'a>,
   #[allow(missing_docs)]
   pub hud_color_shader: self::color::ColorShader<'a>,
+  #[allow(missing_docs)]
+  pub clouds: self::clouds::T<'a>,
 }
 
 impl<'a> Shaders<'a> {
@@ -41,6 +44,7 @@ impl<'a> Shaders<'a> {
     let mob_shader = self::color::ColorShader::new(gl);
     let mut hud_color_shader = self::color::ColorShader::new(gl);
     let mut hud_texture_shader = self::texture::TextureShader::new(gl);
+    let clouds = self::clouds::new(gl);
 
     set_sun(
       &mut terrain_shader.shader,
@@ -85,6 +89,7 @@ impl<'a> Shaders<'a> {
       terrain_shader: terrain_shader,
       hud_texture_shader: hud_texture_shader,
       hud_color_shader: hud_color_shader,
+      clouds: clouds,
     }
   }
 }

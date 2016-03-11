@@ -1,17 +1,18 @@
 //! The state associated with perceiving the world state.
 
 use cgmath;
-use cgmath::Vector2;
+use gl;
+use gl::types::*;
 use std;
 use yaglw::gl_context::GLContext;
+use yaglw;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, DrawMode, VertexAttribData};
 use yaglw::texture::{TextureUnit};
 
-use common::id_allocator;
-
 use camera::Camera;
-use gl;
-use gl::types::*;
+use common;
+use common::id_allocator;
+use light;
 use mob_buffers::MobBuffers;
 use player_buffers::PlayerBuffers;
 use shaders::Shaders;
@@ -36,8 +37,13 @@ pub struct T<'a> {
   /// Hud triangles for non-text.
   pub hud_triangles: GLArray<'a, ColoredVertex>,
 
+  pub empty_gl_array: yaglw::vertex_buffer::ArrayHandle<'a>,
+
   /// A texture unit for misc use.
   pub misc_texture_unit: TextureUnit,
+
+  #[allow(missing_docs)]
+  pub sun: light::Sun,
 
   #[allow(missing_docs)]
   pub camera: Camera,
@@ -48,7 +54,7 @@ pub struct T<'a> {
 
 impl<'a> T<'a> {
   #[allow(missing_docs)]
-  pub fn new(mut gl: GLContext, window_size: Vector2<i32>) -> T<'a> {
+  pub fn new(mut gl: GLContext, window_size: cgmath::Vector2<i32>) -> T<'a> {
     let mut texture_unit_alloc = id_allocator::new();
 
     let mut shaders = Shaders::new(&mut gl, window_size);
@@ -106,6 +112,8 @@ impl<'a> T<'a> {
       gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
     }
 
+    let empty_gl_array = yaglw::vertex_buffer::ArrayHandle::new(&gl);
+
     T {
       gl: gl,
       shaders: shaders,
@@ -114,6 +122,8 @@ impl<'a> T<'a> {
       mob_buffers: mob_buffers,
       player_buffers: player_buffers,
       hud_triangles: hud_triangles,
+
+      empty_gl_array: empty_gl_array,
 
       misc_texture_unit: misc_texture_unit,
 
@@ -127,6 +137,12 @@ impl<'a> T<'a> {
         camera.rotate_lateral(std::f32::consts::PI / 2.0);
         camera
       },
+
+      sun:
+        light::Sun {
+          direction: cgmath::Vector3::new(0.0, 0.0, 0.0),
+          intensity: common::color::Color3 { r: 0.0, g: 0.0, b: 0.0 },
+        },
 
       show_hud: true,
     }
