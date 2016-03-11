@@ -14,9 +14,9 @@ pub struct Camera {
   #[allow(missing_docs)]
   pub position: Point3<f32>,
   #[allow(missing_docs)]
-  pub lateral_rotation: f32,
+  lateral_rotation: f32,
   #[allow(missing_docs)]
-  pub vertical_rotation: f32,
+  vertical_rotation: f32,
 
   // Projection matrix components
 
@@ -57,7 +57,7 @@ impl Camera {
   }
 
   /// Rotate about a given vector, by `r` radians.
-  pub fn rotate(&mut self, v: &Vector3<f32>, r: f32) {
+  fn rotate(&mut self, v: &Vector3<f32>, r: f32) {
     let mat = Matrix3::from_axis_angle(v, -cgmath::rad(r));
     let mat =
       Matrix4::new(

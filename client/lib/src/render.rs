@@ -1,6 +1,7 @@
 //! Draw the view.
 
 use camera::set_camera;
+use cgmath;
 use gl;
 use std;
 use view;
@@ -14,10 +15,26 @@ fn draw_backdrop(
     gl::BindVertexArray(rndr.empty_gl_array.gl_id);
   }
 
-  let sun_uniform = rndr.shaders.clouds.shader.get_uniform_location("sun_color");
   unsafe {
+    let sun_uniform = rndr.shaders.clouds.shader.get_uniform_location("sun_color");
     let ptr = std::mem::transmute(&rndr.sun.intensity);
     gl::Uniform3fv(sun_uniform, 1, ptr);
+
+    let eye_uniform = rndr.shaders.clouds.shader.get_uniform_location("eye_position");
+    let ptr = std::mem::transmute(&rndr.camera.position);
+    gl::Uniform3fv(eye_uniform, 1, ptr);
+
+    let rotation_uniform = rndr.shaders.clouds.shader.get_uniform_location("rotation");
+    let ptr = std::mem::transmute(&rndr.camera.rotation);
+    gl::UniformMatrix4fv(rotation_uniform, 1, 0, ptr);
+
+    let fov_uniform = rndr.shaders.clouds.shader.get_uniform_location("fov");
+    gl::Uniform1f(fov_uniform, ::view::FOV);
+
+    let window_size_uniform = rndr.shaders.clouds.shader.get_uniform_location("window_size");
+    let window_size = cgmath::Vector2::new(rndr.window_size.x as f32, rndr.window_size.y as f32);
+    let ptr = std::mem::transmute(&window_size);
+    gl::Uniform2fv(window_size_uniform, 1, ptr);
 
     gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
 

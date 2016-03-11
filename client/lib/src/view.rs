@@ -19,6 +19,8 @@ use shaders::Shaders;
 use terrain_buffers::TerrainBuffers;
 use vertex::{ColoredVertex};
 
+pub const FOV: f32 = std::f32::consts::FRAC_PI_3;
+
 const VERTICES_PER_TRIANGLE: usize = 3;
 
 /// The state associated with perceiving the world state.
@@ -50,6 +52,8 @@ pub struct T<'a> {
 
   #[allow(missing_docs)]
   pub show_hud: bool,
+
+  pub window_size: cgmath::Vector2<i32>,
 }
 
 impl<'a> T<'a> {
@@ -124,11 +128,12 @@ impl<'a> T<'a> {
       hud_triangles: hud_triangles,
 
       empty_gl_array: empty_gl_array,
-
       misc_texture_unit: misc_texture_unit,
 
+      window_size: window_size,
+
       camera: {
-        let fovy = cgmath::rad(std::f32::consts::PI / 3.0);
+        let fovy = cgmath::rad(FOV);
         let aspect = window_size.x as f32 / window_size.y as f32;
         let mut camera = Camera::unit();
         // Initialize the projection matrix.

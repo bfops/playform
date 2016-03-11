@@ -25,9 +25,6 @@ pub const FRAMES_PER_SECOND: u64 = 30;
 pub const GL_MAJOR_VERSION: u8 = 3;
 pub const GL_MINOR_VERSION: u8 = 3;
 
-pub const WINDOW_WIDTH: u32 = 800;
-pub const WINDOW_HEIGHT: u32 = 600;
-
 enum ViewIteration {
   Quit,
   Continue,
@@ -56,10 +53,10 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   let mut window =
     video.window(
       "Playform",
-      WINDOW_WIDTH, WINDOW_HEIGHT,
+      0, 0,
     );
 
-  let window = window.position(0, 0);
+  let window = window.fullscreen_desktop();
   let window = window.opengl();
 
   let window = window.build().unwrap();
@@ -132,7 +129,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
         }
 
         if window.window_flags() & (sdl2_sys::video::SDL_WindowFlags::SDL_WINDOW_MOUSE_FOCUS as u32) != 0 {
-          sdl.mouse().warp_mouse_in_window(&window, WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2);
+          sdl.mouse().warp_mouse_in_window(&window, window_size.x / 2, window_size.y / 2);
         }
 
         stopwatch::time("apply_view_updates", || {

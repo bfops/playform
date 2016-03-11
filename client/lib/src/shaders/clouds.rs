@@ -23,16 +23,46 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
           gl_Position = vec4(-1, 1, 0, 1);
         }
       }".to_owned()),
-    (gl::FRAGMENT_SHADER, "
-      #version 330 core
+    (gl::FRAGMENT_SHADER,
+      format!(r#"
+        #version 330 core
 
-      uniform vec3 sun_color;
+        const float CLOUD_HEIGHT = 1000;
 
-      out vec4 frag_color;
+        uniform vec2 window_size;
+        uniform float fov;
+        uniform vec3 sun_color;
+        uniform mat4 rotation;
+        uniform vec3 eye_position;
 
-      void main() {
-        frag_color = vec4(sun_color, 1);
-      }".to_owned()),
+        out vec4 frag_color;
+
+        // include cnoise
+        {}
+
+        vec3 pixel_direction(vec2 pixel) {{
+          // Scale to [0, 1]
+          pixel /= window_size;
+          // Scale to [-1, 1]
+          pixel = 2*pixel - 1;
+          // Using vec2(window_size.y) is like using window_size, but then scaling x by aspect ratio.
+          pixel *= tan(fov / 2) * vec2(window_size.x / window_size.y, 1);
+          return vec3(inverse(rotation) * vec4(pixel, -1, 0));
+        }}
+
+        void main() {{
+          vec3 direction = pixel_direction(gl_FragCoord.xy);
+          float dist = CLOUD_HEIGHT;
+          vec3 seed = (eye_position + dist * direction) / CLOUD_HEIGHT * vec3(1, 4, 1);
+          float f = cnoise(seed);
+          f = sign(f) * pow(abs(f), 15.0/16);
+          f = f / 2 + 0.5;
+          f = f * f;
+          frag_color = vec4(mix(sun_color, vec3(1, 1, 1), f), 1);
+        }}"#,
+        ::shaders::noise::cnoise(),
+      )
+    ),
   );
   T {
     shader: Shader::new(gl, components.into_iter()),
