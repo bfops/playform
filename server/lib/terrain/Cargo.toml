@@ -14,6 +14,7 @@ clippy = "*"
 log = "*"
 rand = "*"
 time = "*"
+noise = "0.1.5"
 num = "*"
 
 [dependencies.playform-common]
@@ -25,9 +26,6 @@ git = "https://github.com/bfops/rust-voxel-data"
 
 [dependencies.isosurface-extraction]
 git = "https://github.com/bfops/rust-isosurface-extraction"
-
-[dependencies.noise]
-git = "https://github.com/bjz/noise-rs"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
