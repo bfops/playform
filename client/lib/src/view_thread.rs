@@ -5,6 +5,7 @@ use gl;
 use sdl2;
 use sdl2::event::Event;
 use sdl2::video;
+use sdl2_sys;
 use stopwatch;
 use time;
 use yaglw::gl_context::GLContext;
@@ -23,6 +24,9 @@ pub const FRAMES_PER_SECOND: u64 = 30;
 
 pub const GL_MAJOR_VERSION: u8 = 3;
 pub const GL_MINOR_VERSION: u8 = 3;
+
+pub const WINDOW_WIDTH: u32 = 800;
+pub const WINDOW_HEIGHT: u32 = 600;
 
 enum ViewIteration {
   Quit,
@@ -52,7 +56,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   let mut window =
     video.window(
       "Playform",
-      1200, 1024,
+      WINDOW_WIDTH, WINDOW_HEIGHT,
     );
 
   let window = window.position(0, 0);
@@ -125,6 +129,10 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
               );
             },
           }
+        }
+
+        if window.window_flags() & (sdl2_sys::video::SDL_WindowFlags::SDL_WINDOW_MOUSE_FOCUS as u32) != 0 {
+          sdl.mouse().warp_mouse_in_window(&window, WINDOW_WIDTH as i32 / 2, WINDOW_HEIGHT as i32 / 2);
         }
 
         stopwatch::time("apply_view_updates", || {
