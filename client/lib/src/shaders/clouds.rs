@@ -54,15 +54,22 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
 
         void main() {{
           vec3 direction = pixel_direction(gl_FragCoord.xy);
-          float dist = CLOUD_HEIGHT;
-          vec3 seed = (eye_position + dist * direction) / CLOUD_HEIGHT * vec3(1, 4, 1);
-          float f = cnoise(seed);
-          f = sign(f) * pow(abs(f), 15.0/16);
-          f = f / 2 + 0.5;
-          f = f * f;
-          vec4 sky_color = vec4(mix(sun_color, vec3(1, 1, 1), f), 1);
+          float dist = (CLOUD_HEIGHT - eye_position.y) / direction.y;
           vec4 fog_color = vec4(sun_color, 1);
-          frag_color = apply_fog(sky_color, fog_color, dist / 768);
+          if (dist <= 0 || dist > 1000000) {{
+            frag_color = fog_color;
+          }} else {{
+            vec3 seed = (eye_position + dist * direction) / CLOUD_HEIGHT * vec3(1, 4, 1);
+            float f = cnoise(seed);
+            // squish away from 0
+            f = sign(f) * pow(abs(f), 12.0/16);
+            // to [0, 1]
+            f = f / 2 + 0.5;
+            // squish towards 0
+            f = pow(f, 4);
+            vec4 sky_color = vec4(mix(sun_color, vec3(1, 1, 1), f), 1);
+            frag_color = apply_fog(sky_color, fog_color, dist / 32);
+          }}
         }}"#,
         ::shaders::depth_fog::to_string(),
         ::shaders::noise::cnoise(),
