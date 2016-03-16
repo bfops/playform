@@ -12,6 +12,7 @@
 #![allow(mutex_atomic)]
 #![allow(match_ref_pats)]
 #![allow(match_same_arms)]
+#![allow(too_many_arguments)]
 
 extern crate bincode;
 extern crate cgmath;
