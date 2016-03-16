@@ -24,12 +24,10 @@ fn draw_backdrop(
     let ptr = std::mem::transmute(&rndr.camera.position);
     gl::Uniform3fv(eye_uniform, 1, ptr);
 
-    let rotation_uniform = rndr.shaders.clouds.shader.get_uniform_location("rotation");
-    let ptr = std::mem::transmute(&rndr.camera.rotation);
-    gl::UniformMatrix4fv(rotation_uniform, 1, 0, ptr);
-
-    let fov_uniform = rndr.shaders.clouds.shader.get_uniform_location("fov");
-    gl::Uniform1f(fov_uniform, ::view::FOV);
+    let projection_uniform = rndr.shaders.clouds.shader.get_uniform_location("projection_matrix");
+    let projection_matrix = rndr.camera.projection_matrix();
+    let ptr = std::mem::transmute(&projection_matrix);
+    gl::UniformMatrix4fv(projection_uniform, 1, 0, ptr);
 
     let window_size_uniform = rndr.shaders.clouds.shader.get_uniform_location("window_size");
     let window_size = cgmath::Vector2::new(rndr.window_size.x as f32, rndr.window_size.y as f32);

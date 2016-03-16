@@ -63,6 +63,9 @@ impl<'a> TerrainShader<'a> {
 
         out vec4 frag_color;
 
+        // depth fog
+        {}
+
         // include cnoise
         {}
 
@@ -140,15 +143,12 @@ impl<'a> TerrainShader<'a> {
           brightness = clamp(brightness, 0, 1);
           vec3 lighting = brightness * sun.intensity + ambient_light;
 
-          float fog_factor = gl_FragCoord.z / gl_FragCoord.w / 768;
-          float fog_density = 1 - exp(-fog_factor);
-          vec3 fog_color = sun.intensity;
-          vec4 fog_component = vec4(fog_color, 1) * fog_density;
-          vec4 material_component =
-            vec4(clamp(lighting, 0, 1), 1) * base_color * vec4(1, 1, 1, 1 - fog_density);
-
-          frag_color = fog_component + material_component;
+          vec4 material_color = vec4(clamp(lighting, 0, 1), 1) * base_color;
+          vec4 fog_color = vec4(sun.intensity, 1);
+          float frag_distance = gl_FragCoord.z / gl_FragCoord.w;
+          frag_color = apply_fog(material_color, fog_color, frag_distance);
         }}",
+        ::shaders::depth_fog::to_string(),
         ::shaders::noise::cnoise(),
         ::shaders::grass::grass(),
         ::shaders::dirt::dirt(),

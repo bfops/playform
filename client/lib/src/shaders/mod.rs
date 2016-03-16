@@ -4,6 +4,7 @@ pub mod color;
 pub mod terrain;
 pub mod texture;
 
+mod depth_fog;
 mod noise;
 
 mod bark;

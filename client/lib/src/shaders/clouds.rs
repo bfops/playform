@@ -30,12 +30,15 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
         const float CLOUD_HEIGHT = 1000;
 
         uniform vec2 window_size;
-        uniform float fov;
         uniform vec3 sun_color;
-        uniform mat4 rotation;
+
+        uniform mat4 projection_matrix;
         uniform vec3 eye_position;
 
         out vec4 frag_color;
+
+        // include depth fog
+        {}
 
         // include cnoise
         {}
@@ -45,9 +48,8 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
           pixel /= window_size;
           // Scale to [-1, 1]
           pixel = 2*pixel - 1;
-          // Using vec2(window_size.y) is like using window_size, but then scaling x by aspect ratio.
-          pixel *= tan(fov / 2) * vec2(window_size.x / window_size.y, 1);
-          return vec3(inverse(rotation) * vec4(pixel, -1, 0));
+          vec4 p = inverse(projection_matrix) * vec4(pixel, -1, 1);
+          return normalize(vec3(p / p.w) - eye_position);
         }}
 
         void main() {{
@@ -58,8 +60,11 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
           f = sign(f) * pow(abs(f), 15.0/16);
           f = f / 2 + 0.5;
           f = f * f;
-          frag_color = vec4(mix(sun_color, vec3(1, 1, 1), f), 1);
+          vec4 sky_color = vec4(mix(sun_color, vec3(1, 1, 1), f), 1);
+          vec4 fog_color = vec4(sun_color, 1);
+          frag_color = apply_fog(sky_color, fog_color, dist / 768);
         }}"#,
+        ::shaders::depth_fog::to_string(),
         ::shaders::noise::cnoise(),
       )
     ),
