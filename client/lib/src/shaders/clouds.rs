@@ -68,7 +68,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
             // squish towards 0
             f = pow(f, 4);
             vec4 sky_color = vec4(mix(sun_color, vec3(1, 1, 1), f), 1);
-            frag_color = apply_fog(sky_color, fog_color, dist / 32);
+            frag_color = apply_fog(sky_color, fog_color, dist / 8);
           }}
         }}"#,
         ::shaders::depth_fog::to_string(),
