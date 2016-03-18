@@ -27,8 +27,6 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
       format!(r#"
         #version 330 core
 
-        const float CLOUD_HEIGHT = 1000;
-
         uniform vec2 window_size;
         uniform vec3 sun_color;
 
@@ -52,24 +50,35 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
           return normalize(vec3(p / p.w) - eye_position);
         }}
 
+        float cloud_noise(vec3 seed) {{
+          float f = cnoise(seed);
+          // to [0, 1]
+          f = f / 2 + 0.5;
+          return f;
+        }}
+
         void main() {{
           vec3 direction = pixel_direction(gl_FragCoord.xy);
-          float dist = (CLOUD_HEIGHT - eye_position.y) / direction.y;
-          vec4 fog_color = vec4(sun_color, 1);
-          if (dist <= 0 || dist > 1000000) {{
-            frag_color = fog_color;
-          }} else {{
-            vec3 seed = (eye_position + dist * direction) / CLOUD_HEIGHT * vec3(1, 4, 1);
-            float f = cnoise(seed);
-            // squish away from 0
-            f = sign(f) * pow(abs(f), 12.0/16);
-            // to [0, 1]
-            f = f / 2 + 0.5;
-            // squish towards 0
-            f = pow(f, 4);
-            vec4 sky_color = vec4(mix(sun_color, vec3(1, 1, 1), f), 1);
-            frag_color = apply_fog(sky_color, fog_color, dist / 8);
+          const int HEIGHTS = 2;
+          float heights[HEIGHTS] = float[](150, 1000);
+          vec3 offsets[HEIGHTS] = vec3[](vec3(12,553,239), vec3(-10, 103, 10004));
+
+          float alpha = 0;
+          for (int i = 0; i < HEIGHTS; ++i) {{
+            float cloud_height = heights[i];
+            float dist = (cloud_height - eye_position.y) / direction.y;
+            if (dist <= 0 || dist > 1000000) {{
+              continue;
+            }} else {{
+              vec3 seed = (eye_position + dist * direction + offsets[i]) / 1000 * vec3(1, 4, 1);
+              float f = cloud_noise(seed) * cloud_noise(seed + vec3(-10, -103, 1));
+              f = f * f;
+              alpha += f * (1 - fog_density(dist / 8));
+            }}
           }}
+
+          alpha = min(alpha, 1);
+          frag_color = vec4(mix(sun_color, vec3(1, 1, 1), alpha), 1);
         }}"#,
         ::shaders::depth_fog::to_string(),
         ::shaders::noise::cnoise(),
