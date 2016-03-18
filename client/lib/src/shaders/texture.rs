@@ -39,16 +39,11 @@ impl<'a> TextureShader<'a> {
         out vec4 frag_color;
 
         void main() {
-          vec4 c = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
-          float x = 1;
-          if (x == 0) {
-            if (c.a < alpha_threshold) {
-              discard;
-            }
-            frag_color = c;
-            } else {
-            frag_color = vec4(1, 0, 0, 1);
-            }
+          vec4 c = texture(texture_in, tex_position);
+          if (c.a < alpha_threshold) {
+            discard;
+          }
+          frag_color = c;
         }".to_owned()),
     );
     TextureShader {

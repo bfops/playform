@@ -1,7 +1,7 @@
 //! Data structure for a small block of terrain.
 
 use cgmath;
-use cgmath::{Point, Point3, Vector3, Vector, Matrix, Aabb, Aabb3};
+use cgmath::{Point, Point3, Vector3, Vector, EuclideanVector, Matrix, Aabb, Aabb3};
 use isosurface_extraction::dual_contouring;
 use num::iter::range_inclusive;
 use std::f32;
@@ -193,13 +193,13 @@ fn grass_tuft(
       tri(
         Point::add_v(root, &-v.div_s(2.0))               , cgmath::Vector2::new(0.0 , 0.0) ,
         Point::add_v(root, &v.div_s(2.0).add_v(&normal)) , cgmath::Vector2::new(1.0 , 1.0) ,
-        Point::add_v(root, normal)                      , cgmath::Vector2::new(0.0 , 1.0) ,
+        Point::add_v(root, &normal)                      , cgmath::Vector2::new(0.0 , 1.0) ,
       );
     };
 
     quad(tangent);
-    quad(&cgmath::Matrix3::from_axis_angle(normal, cgmath::rad(f32::consts::FRAC_PI_3)).mul_v(tangent));
-    quad(&cgmath::Matrix3::from_axis_angle(normal, cgmath::rad(2.0 * f32::consts::FRAC_PI_3)).mul_v(tangent));
+    quad(&cgmath::Matrix3::from_axis_angle(&normal, cgmath::rad(f32::consts::FRAC_PI_3)).mul_v(tangent));
+    quad(&cgmath::Matrix3::from_axis_angle(&normal, cgmath::rad(2.0 * f32::consts::FRAC_PI_3)).mul_v(tangent));
   }
   r
 }
@@ -216,7 +216,9 @@ fn grass_billboards<T>(polygon: &dual_contouring::polygon::T<T>) -> Vec<Triangle
     )
   ;
 
-  grass_tuft(&middle, &normal, &polygon.vertices[1].sub_p(&polygon.vertices[0]))
+  let tangent = polygon.vertices[1].sub_p(&polygon.vertices[0]).div_s(2.0);
+  let normal = normal.normalize().mul_s(tangent.length());
+  grass_tuft(&middle, &normal, &tangent)
 }
 
 pub fn generate(

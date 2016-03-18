@@ -3,6 +3,8 @@
 use cgmath;
 use gl;
 use gl::types::*;
+use image;
+use image::GenericImage;
 use std;
 use yaglw::gl_context::GLContext;
 use yaglw;
@@ -59,6 +61,35 @@ pub struct T<'a> {
   pub window_size: cgmath::Vector2<i32>,
 }
 
+fn load_grass_texture<'a, 'b:'a>(
+  gl: &'a mut GLContext,
+) -> image::ImageResult<yaglw::texture::Texture2D<'b>> {
+  let grass_texture = yaglw::texture::Texture2D::new(&gl);
+  let fd = std::fs::File::open("Assets/Free_Vector_Grass.png").unwrap();
+  let image = try!(image::load(fd, image::ImageFormat::PNG));
+  let (w, h) = image.dimensions();
+  let colortype = image.color();
+  assert!(colortype == image::ColorType::RGBA(8));
+
+  let mut pixels: Vec<u8> = Vec::with_capacity((w * h) as usize);
+  for y in 0 .. h {
+  for x in 0 .. w {
+    let y = h - y - 1;
+    let pixel = image.get_pixel(x, y);
+    pixels.extend_from_slice(&pixel.data);
+  }}
+
+  unsafe {
+    gl::BindTexture(gl::TEXTURE_2D, grass_texture.handle.gl_id);
+    let data = std::mem::transmute(pixels.as_ptr());
+    gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, w as i32, h as i32, 0, gl::RGBA, gl::UNSIGNED_BYTE, data);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+  }
+
+  Ok(grass_texture)
+}
+
 impl<'a> T<'a> {
   #[allow(missing_docs)]
   pub fn new(mut gl: GLContext, window_size: cgmath::Vector2<i32>) -> T<'a> {
@@ -72,10 +103,6 @@ impl<'a> T<'a> {
       &mut texture_unit_alloc,
       &mut shaders.terrain_shader,
     );
-
-    let grass_buffers = grass_buffers::new(&mut gl, &shaders.texture_shader.shader);
-    let grass_texture = yaglw::texture::Texture2D::new(&gl);
-    // TODO: load a real grass billboard
 
     let mob_buffers = MobBuffers::new(&mut gl, &shaders.mob_shader);
     let player_buffers = PlayerBuffers::new(&mut gl, &shaders.mob_shader);
@@ -122,6 +149,9 @@ impl<'a> T<'a> {
     unsafe {
       gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
     }
+
+    let grass_buffers = grass_buffers::new(&mut gl, &shaders.texture_shader.shader);
+    let grass_texture = load_grass_texture(&mut gl).unwrap();
 
     let empty_gl_array = yaglw::vertex_buffer::ArrayHandle::new(&gl);
 

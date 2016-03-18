@@ -26,7 +26,7 @@ time = "*"
 [dependencies.image]
 version = "*"
 default-features = false
-features = ["bmp"]
+features = ["png_codec"]
 
 [dependencies.playform-common]
 path = "../../common"

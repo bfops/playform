@@ -20,6 +20,7 @@ extern crate cgmath;
 extern crate common;
 extern crate fnv;
 extern crate gl;
+extern crate image;
 extern crate isosurface_extraction;
 #[macro_use]
 extern crate log;
