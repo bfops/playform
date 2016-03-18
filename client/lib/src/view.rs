@@ -13,6 +13,7 @@ use camera::Camera;
 use common;
 use common::id_allocator;
 use light;
+use grass_buffers;
 use mob_buffers::MobBuffers;
 use player_buffers::PlayerBuffers;
 use shaders::Shaders;
@@ -32,6 +33,8 @@ pub struct T<'a> {
 
   #[allow(missing_docs)]
   pub terrain_buffers: TerrainBuffers<'a>,
+  pub grass_buffers: grass_buffers::T<'a>,
+  pub grass_texture: yaglw::texture::Texture2D<'a>,
   #[allow(missing_docs)]
   pub mob_buffers: MobBuffers<'a>,
   #[allow(missing_docs)]
@@ -69,6 +72,10 @@ impl<'a> T<'a> {
       &mut texture_unit_alloc,
       &mut shaders.terrain_shader,
     );
+
+    let grass_buffers = grass_buffers::new(&mut gl, &shaders.texture_shader.shader);
+    let grass_texture = yaglw::texture::Texture2D::new(&gl);
+    // TODO: load a real grass billboard
 
     let mob_buffers = MobBuffers::new(&mut gl, &shaders.mob_shader);
     let player_buffers = PlayerBuffers::new(&mut gl, &shaders.mob_shader);
@@ -110,8 +117,8 @@ impl<'a> T<'a> {
     }
 
     let texture_in =
-      shaders.hud_texture_shader.shader.get_uniform_location("texture_in");
-    shaders.hud_texture_shader.shader.use_shader(&mut gl);
+      shaders.texture_shader.shader.get_uniform_location("texture_in");
+    shaders.texture_shader.shader.use_shader(&mut gl);
     unsafe {
       gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
     }
@@ -123,6 +130,8 @@ impl<'a> T<'a> {
       shaders: shaders,
 
       terrain_buffers: terrain_buffers,
+      grass_buffers: grass_buffers,
+      grass_texture: grass_texture,
       mob_buffers: mob_buffers,
       player_buffers: player_buffers,
       hud_triangles: hud_triangles,

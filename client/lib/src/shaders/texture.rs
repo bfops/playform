@@ -32,13 +32,23 @@ impl<'a> TextureShader<'a> {
         #version 330 core
 
         uniform sampler2D texture_in;
+        uniform float alpha_threshold;
 
         in vec2 tex_position;
 
         out vec4 frag_color;
 
         void main() {
-          frag_color = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
+          vec4 c = texture(texture_in, vec2(tex_position.x, 1.0 - tex_position.y));
+          float x = 1;
+          if (x == 0) {
+            if (c.a < alpha_threshold) {
+              discard;
+            }
+            frag_color = c;
+            } else {
+            frag_color = vec4(1, 0, 0, 1);
+            }
         }".to_owned()),
     );
     TextureShader {

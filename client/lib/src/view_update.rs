@@ -35,6 +35,8 @@ pub enum ClientToView {
   AddBlock(block_position::T, terrain_mesh::T, lod::T),
   /// Remove a terrain entity.
   RemoveTerrain(entity_id::T),
+  /// Remove a grass billboard.
+  RemoveGrass(entity_id::T),
   /// Treat a series of updates as an atomic operation.
   Atomic(Vec<ClientToView>),
 }
@@ -72,16 +74,23 @@ pub fn apply_client_to_view(view: &mut view::T, up: ClientToView) {
       stopwatch::time("add_block", || {
         view.terrain_buffers.push(
           &mut view.gl,
-
           block.vertex_coordinates.as_ref(),
           block.normals.as_ref(),
           block.ids.as_ref(),
           block.materials.as_ref(),
         );
+        view.grass_buffers.push(
+          &mut view.gl,
+          block.grass_vertices.as_ref(),
+          block.grass_ids.as_ref(),
+        );
       })
     },
     ClientToView::RemoveTerrain(id) => {
       view.terrain_buffers.swap_remove(&mut view.gl, id);
+    },
+    ClientToView::RemoveGrass(id) => {
+      view.grass_buffers.swap_remove(&mut view.gl, id);
     },
     ClientToView::Atomic(updates) => {
       for up in updates.into_iter() {

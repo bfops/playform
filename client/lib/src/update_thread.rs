@@ -132,13 +132,16 @@ fn update_surroundings<UpdateView, UpdateServer>(
       },
       LoadType::Unload => {
         stopwatch::time("update_thread.unload", || {
-          // The block removal code is duplicated elsewhere.
+          // The block removal code is duplicated in load_terrain.
 
           client.loaded_blocks
           .lock().unwrap()
             .remove(&block_position)
             // If it wasn't loaded, don't unload anything.
             .map(|(block, _)| {
+              for id in &block.grass_ids {
+                update_view(ClientToView::RemoveGrass(*id));
+              }
               for id in &block.ids {
                 update_view(ClientToView::RemoveTerrain(*id));
               }

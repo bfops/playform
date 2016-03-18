@@ -7,6 +7,8 @@ A voxel sandbox project in Rust, inspired in part by [Voxel Farm](http://procwor
 It's very much a WIP. Hopefully as the Rust ecosystem grows (and, in a perfect world, when Rust gets a story for linking with C++),
 the hackiest parts of Playform can be outsourced to other libraries (physics and graphics APIs, threading, networking).
 
+Thanks to [http://vector.me/browse/104477/free\_vector\_grass](http://vector.me/browse/104477/free_vector_grass) for the grass billboards!
+
 Some picture things:
 
 ![screenshot 1](/../screenshots/screenshots/screenshot1.png?raw=true)

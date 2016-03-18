@@ -31,7 +31,7 @@ pub struct Shaders<'a> {
   #[allow(missing_docs)]
   pub terrain_shader: self::terrain::TerrainShader<'a>,
   #[allow(missing_docs)]
-  pub hud_texture_shader: self::texture::TextureShader<'a>,
+  pub texture_shader: self::texture::TextureShader<'a>,
   #[allow(missing_docs)]
   pub hud_color_shader: self::color::ColorShader<'a>,
   #[allow(missing_docs)]
@@ -44,7 +44,7 @@ impl<'a> Shaders<'a> {
     let mut terrain_shader = self::terrain::TerrainShader::new(gl);
     let mob_shader = self::color::ColorShader::new(gl);
     let mut hud_color_shader = self::color::ColorShader::new(gl);
-    let mut hud_texture_shader = self::texture::TextureShader::new(gl);
+    let mut texture_shader = self::texture::TextureShader::new(gl);
     let clouds = self::clouds::new(gl);
 
     set_sun(
@@ -75,7 +75,7 @@ impl<'a> Shaders<'a> {
       &hud_camera,
     );
     camera::set_camera(
-      &mut hud_texture_shader.shader,
+      &mut texture_shader.shader,
       gl,
       &hud_camera,
     );
@@ -88,7 +88,7 @@ impl<'a> Shaders<'a> {
     Shaders {
       mob_shader: mob_shader,
       terrain_shader: terrain_shader,
-      hud_texture_shader: hud_texture_shader,
+      texture_shader: texture_shader,
       hud_color_shader: hud_color_shader,
       clouds: clouds,
     }

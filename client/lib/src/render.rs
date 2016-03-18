@@ -48,29 +48,35 @@ pub fn render(
 
   draw_backdrop(rndr);
 
-  set_camera(&mut rndr.shaders.mob_shader.shader, &mut rndr.gl, &rndr.camera);
-
-  rndr.shaders.mob_shader.shader.use_shader(&mut rndr.gl);
-
-  set_camera(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.camera);
+  unsafe {
+    gl::Enable(gl::CULL_FACE);
+  }
 
   // draw the world
   rndr.shaders.terrain_shader.shader.use_shader(&mut rndr.gl);
+  set_camera(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.camera);
   rndr.terrain_buffers.draw(&mut rndr.gl);
 
   rndr.shaders.mob_shader.shader.use_shader(&mut rndr.gl);
+  set_camera(&mut rndr.shaders.mob_shader.shader, &mut rndr.gl, &rndr.camera);
   rndr.mob_buffers.draw(&mut rndr.gl);
   rndr.player_buffers.draw(&mut rndr.gl);
+
+  rndr.shaders.texture_shader.shader.use_shader(&mut rndr.gl);
+  set_camera(&mut rndr.shaders.texture_shader.shader, &mut rndr.gl, &rndr.camera);
+  let alpha_threshold_uniform =
+    rndr.shaders.texture_shader.shader.get_uniform_location("alpha_threshold");
+  unsafe {
+    gl::Disable(gl::CULL_FACE);
+    gl::Uniform1f(alpha_threshold_uniform, 0.5);
+    gl::ActiveTexture(rndr.misc_texture_unit.gl_id());
+    gl::BindTexture(gl::TEXTURE_2D, rndr.grass_texture.handle.gl_id);
+  }
+  rndr.grass_buffers.draw(&mut rndr.gl);
 
   if rndr.show_hud {
     rndr.shaders.hud_color_shader.shader.use_shader(&mut rndr.gl);
     rndr.hud_triangles.bind(&mut rndr.gl);
     rndr.hud_triangles.draw(&mut rndr.gl);
-
-    // draw hud textures
-    rndr.shaders.hud_texture_shader.shader.use_shader(&mut rndr.gl);
-    unsafe {
-      gl::ActiveTexture(rndr.misc_texture_unit.gl_id());
-    }
   }
 }

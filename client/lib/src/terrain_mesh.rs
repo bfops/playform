@@ -1,6 +1,7 @@
 //! Data structure for a small block of terrain.
 
-use cgmath::{Point, Point3, Vector3, Aabb, Aabb3};
+use cgmath;
+use cgmath::{Point, Point3, Vector3, Vector, Matrix, Aabb, Aabb3};
 use isosurface_extraction::dual_contouring;
 use num::iter::range_inclusive;
 use std::f32;
@@ -14,6 +15,7 @@ use common::voxel;
 
 use block_position;
 use lod;
+use vertex;
 
 /// Number of LODs
 pub const LOD_COUNT: usize = 4;
@@ -158,6 +160,65 @@ mod voxel_storage {
   }
 }
 
+fn grass_tuft(
+  root: &cgmath::Point3<f32>,
+  normal: &cgmath::Vector3<f32>,
+  tangent: &cgmath::Vector3<f32>,
+) -> Vec<Triangle<vertex::TextureVertex>> {
+  let mut r = Vec::new();
+
+  {
+    let mut quad = |v: &cgmath::Vector3<f32>| {
+      let mut tri = |p0, t0, p1, t1, p2, t2| {
+        let vert = |p, t| {
+          vertex::TextureVertex {
+            world_position: p,
+            texture_position: t,
+          }
+        };
+        r.push(
+          Triangle {
+            v1: vert(p0, t0),
+            v2: vert(p1, t1),
+            v3: vert(p2, t2),
+          }
+        );
+      };
+
+      tri(
+        Point::add_v(root, &-v.div_s(2.0))               , cgmath::Vector2::new(0.0 , 0.0) ,
+        Point::add_v(root, &v.div_s(2.0))                , cgmath::Vector2::new(1.0 , 0.0) ,
+        Point::add_v(root, &v.div_s(2.0).add_v(&normal)) , cgmath::Vector2::new(1.0 , 1.0) ,
+      );
+      tri(
+        Point::add_v(root, &-v.div_s(2.0))               , cgmath::Vector2::new(0.0 , 0.0) ,
+        Point::add_v(root, &v.div_s(2.0).add_v(&normal)) , cgmath::Vector2::new(1.0 , 1.0) ,
+        Point::add_v(root, normal)                      , cgmath::Vector2::new(0.0 , 1.0) ,
+      );
+    };
+
+    quad(tangent);
+    quad(&cgmath::Matrix3::from_axis_angle(normal, cgmath::rad(f32::consts::FRAC_PI_3)).mul_v(tangent));
+    quad(&cgmath::Matrix3::from_axis_angle(normal, cgmath::rad(2.0 * f32::consts::FRAC_PI_3)).mul_v(tangent));
+  }
+  r
+}
+
+fn grass_billboards<T>(polygon: &dual_contouring::polygon::T<T>) -> Vec<Triangle<vertex::TextureVertex>> {
+  let v = &polygon.vertices;
+  let normal = v[1].sub_p(&v[0]).cross(&v[2].sub_p(&v[0]));
+  let middle =
+    Point::from_vec(
+      &v[0].to_vec()
+      .add_v(&v[1].to_vec())
+      .add_v(&v[2].to_vec())
+      .div_s(3.0)
+    )
+  ;
+
+  grass_tuft(&middle, &normal, &polygon.vertices[1].sub_p(&polygon.vertices[0]))
+}
+
 pub fn generate(
   voxels: &voxel::tree::T,
   block_position: &block_position::T,
@@ -215,7 +276,15 @@ pub fn generate(
                   block2.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
                   block2.materials.push(polygon.material as i32);
                   block2.ids.push(id);
-                  block2.bounds.push((id, make_bounds(&polygon.vertices[0], &polygon.vertices[1], &polygon.vertices[2])));
+                  let v = &polygon.vertices;
+                  block2.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
+
+                  if polygon.material == voxel::Material::Terrain && lod <= lod::T(0) {
+                    for poly in grass_billboards(&polygon) {
+                      block2.grass_vertices.push(poly);
+                      block2.grass_ids.push(id_allocator::allocate(id_allocator));
+                    }
+                  }
                 }
               );
           }}}
@@ -261,6 +330,9 @@ pub struct T2 {
   // TODO: Change this back to a HashMap once initial capacity is zero for those.
   /// Per-triangle bounding boxes.
   pub bounds: Vec<(entity_id::T, Aabb3<f32>)>,
+
+  pub grass_vertices: Vec<Triangle<vertex::TextureVertex>>,
+  pub grass_ids: Vec<entity_id::T>,
 }
 
 pub type T = Arc<T2>;
@@ -274,5 +346,8 @@ pub fn empty() -> T {
     ids: Vec::new(),
     materials: Vec::new(),
     bounds: Vec::new(),
+
+    grass_vertices: Vec::new(),
+    grass_ids: Vec::new(),
   })
 }

@@ -4,6 +4,7 @@
 #![deny(warnings)]
 
 #![feature(plugin)]
+#![feature(raw)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 
@@ -50,6 +51,7 @@ mod run;
 mod server;
 mod server_update;
 mod shaders;
+mod grass_buffers;
 mod terrain_buffers;
 mod terrain_mesh;
 mod update_thread;
