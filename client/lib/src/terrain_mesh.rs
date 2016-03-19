@@ -15,7 +15,6 @@ use common::voxel;
 
 use block_position;
 use lod;
-use vertex;
 
 /// Number of LODs
 pub const LOD_COUNT: usize = 4;
@@ -160,51 +159,9 @@ mod voxel_storage {
   }
 }
 
-fn grass_tuft(
-  root: &cgmath::Point3<f32>,
-  normal: &cgmath::Vector3<f32>,
-  tangent: &cgmath::Vector3<f32>,
-) -> Vec<Triangle<vertex::TextureVertex>> {
-  let mut r = Vec::new();
-
-  {
-    let mut quad = |v: &cgmath::Vector3<f32>| {
-      let mut tri = |p0, t0, p1, t1, p2, t2| {
-        let vert = |p, t| {
-          vertex::TextureVertex {
-            world_position: p,
-            texture_position: t,
-          }
-        };
-        r.push(
-          Triangle {
-            v1: vert(p0, t0),
-            v2: vert(p1, t1),
-            v3: vert(p2, t2),
-          }
-        );
-      };
-
-      tri(
-        Point::add_v(root, &-v.div_s(2.0))               , cgmath::Vector2::new(0.0 , 0.0) ,
-        Point::add_v(root, &v.div_s(2.0))                , cgmath::Vector2::new(1.0 , 0.0) ,
-        Point::add_v(root, &v.div_s(2.0).add_v(&normal)) , cgmath::Vector2::new(1.0 , 1.0) ,
-      );
-      tri(
-        Point::add_v(root, &-v.div_s(2.0))               , cgmath::Vector2::new(0.0 , 0.0) ,
-        Point::add_v(root, &v.div_s(2.0).add_v(&normal)) , cgmath::Vector2::new(1.0 , 1.0) ,
-        Point::add_v(root, &normal)                      , cgmath::Vector2::new(0.0 , 1.0) ,
-      );
-    };
-
-    quad(tangent);
-    quad(&cgmath::Matrix3::from_axis_angle(&normal, cgmath::rad(f32::consts::FRAC_PI_3)).mul_v(tangent));
-    quad(&cgmath::Matrix3::from_axis_angle(&normal, cgmath::rad(2.0 * f32::consts::FRAC_PI_3)).mul_v(tangent));
-  }
-  r
-}
-
-fn grass_billboards<T>(polygon: &dual_contouring::polygon::T<T>) -> Vec<Triangle<vertex::TextureVertex>> {
+fn place_grass<T>(
+  polygon: &dual_contouring::polygon::T<T>,
+) -> Vec<Grass> {
   let v = &polygon.vertices;
   let normal = v[1].sub_p(&v[0]).cross(&v[2].sub_p(&v[0]));
   let middle =
@@ -218,7 +175,13 @@ fn grass_billboards<T>(polygon: &dual_contouring::polygon::T<T>) -> Vec<Triangle
 
   let tangent = polygon.vertices[1].sub_p(&polygon.vertices[0]).div_s(2.0);
   let normal = normal.normalize().mul_s(tangent.length());
-  grass_tuft(&middle, &normal, &tangent)
+  vec!(
+    Grass {
+      root: middle,
+      normal: normal,
+      tex_ids: [0, 1, 2],
+    }
+  )
 }
 
 pub fn generate(
@@ -281,10 +244,11 @@ pub fn generate(
                   let v = &polygon.vertices;
                   block2.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
 
-                  if polygon.material == voxel::Material::Terrain && lod <= lod::T(0) {
-                    for poly in grass_billboards(&polygon) {
-                      block2.grass_vertices.push(poly);
-                      block2.grass_ids.push(id_allocator::allocate(id_allocator));
+                  if polygon.material == voxel::Material::Terrain && lod <= lod::T(1) {
+                    for grass in place_grass(&polygon) {
+                      let id = id_allocator::allocate(id_allocator);
+                      block2.grass.push(grass);
+                      block2.grass_ids.push(id);
                     }
                   }
                 }
@@ -316,7 +280,14 @@ pub fn generate(
   })
 }
 
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone)]
+pub struct Grass {
+  pub root: cgmath::Point3<f32>,
+  pub normal: cgmath::Vector3<f32>,
+  pub tex_ids: [u32; 3],
+}
+
+#[derive(Debug, Clone)]
 /// A small continguous chunk of terrain.
 pub struct T2 {
   // These Vecs must all be ordered the same way; each entry is the next triangle.
@@ -333,7 +304,7 @@ pub struct T2 {
   /// Per-triangle bounding boxes.
   pub bounds: Vec<(entity_id::T, Aabb3<f32>)>,
 
-  pub grass_vertices: Vec<Triangle<vertex::TextureVertex>>,
+  pub grass: Vec<Grass>,
   pub grass_ids: Vec<entity_id::T>,
 }
 
@@ -349,7 +320,7 @@ pub fn empty() -> T {
     materials: Vec::new(),
     bounds: Vec::new(),
 
-    grass_vertices: Vec::new(),
+    grass: Vec::new(),
     grass_ids: Vec::new(),
   })
 }

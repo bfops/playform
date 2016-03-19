@@ -113,8 +113,8 @@ impl<'a> T<'a> {
         &mut gl,
         &shaders.hud_color_shader.shader,
         &[
-          VertexAttribData { name: "position", size: 3, unit: GLType::Float },
-          VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },
+          VertexAttribData { name: "position", size: 3, unit: GLType::Float, divisor: 0 },
+          VertexAttribData { name: "in_color", size: 4, unit: GLType::Float, divisor: 0 },
         ],
         DrawMode::Triangles,
         buffer,
@@ -150,7 +150,14 @@ impl<'a> T<'a> {
       gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
     }
 
-    let grass_buffers = grass_buffers::new(&mut gl, &shaders.texture_shader.shader);
+    let texture_in =
+      shaders.grass_billboard.shader.get_uniform_location("texture_in");
+    shaders.grass_billboard.shader.use_shader(&mut gl);
+    unsafe {
+      gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
+    }
+
+    let grass_buffers = grass_buffers::new(&mut gl, &shaders.grass_billboard.shader);
     let grass_texture = load_grass_texture(&mut gl).unwrap();
 
     let empty_gl_array = yaglw::vertex_buffer::ArrayHandle::new(&gl);

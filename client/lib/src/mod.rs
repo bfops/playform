@@ -4,7 +4,6 @@
 #![deny(warnings)]
 
 #![feature(plugin)]
-#![feature(raw)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 

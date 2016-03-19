@@ -62,10 +62,10 @@ pub fn render(
   rndr.mob_buffers.draw(&mut rndr.gl);
   rndr.player_buffers.draw(&mut rndr.gl);
 
-  rndr.shaders.texture_shader.shader.use_shader(&mut rndr.gl);
-  set_camera(&mut rndr.shaders.texture_shader.shader, &mut rndr.gl, &rndr.camera);
+  rndr.shaders.grass_billboard.shader.use_shader(&mut rndr.gl);
+  set_camera(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.camera);
   let alpha_threshold_uniform =
-    rndr.shaders.texture_shader.shader.get_uniform_location("alpha_threshold");
+    rndr.shaders.grass_billboard.shader.get_uniform_location("alpha_threshold");
   unsafe {
     gl::Disable(gl::CULL_FACE);
     gl::Uniform1f(alpha_threshold_uniform, 0.5);

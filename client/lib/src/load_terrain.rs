@@ -188,8 +188,8 @@ pub fn load_block<UpdateView>(
         // The mesh_block removal code is duplicated in update_thread.
 
         let &(ref prev_block, _) = entry.get();
-        for &id in &prev_block.grass_ids {
-          updates.push(ClientToView::RemoveGrass(id));
+        for id in &prev_block.grass_ids {
+          updates.push(ClientToView::RemoveGrass(*id));
         }
         for &id in &prev_block.ids {
           updates.push(ClientToView::RemoveTerrain(id));

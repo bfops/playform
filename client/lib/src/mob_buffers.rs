@@ -38,8 +38,8 @@ impl<'a> MobBuffers<'a> {
         gl,
         &shader.shader,
         &[
-          VertexAttribData { name: "position", size: 3, unit: GLType::Float },
-          VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },
+          VertexAttribData { name: "position", size: 3, unit: GLType::Float, divisor: 0 },
+          VertexAttribData { name: "in_color", size: 4, unit: GLType::Float, divisor: 0 },
         ],
         DrawMode::Triangles,
         buffer,

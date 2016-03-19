@@ -81,7 +81,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: ClientToView) {
         );
         view.grass_buffers.push(
           &mut view.gl,
-          block.grass_vertices.as_ref(),
+          block.grass.as_ref(),
           block.grass_ids.as_ref(),
         );
       })

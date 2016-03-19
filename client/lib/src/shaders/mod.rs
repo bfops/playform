@@ -1,6 +1,7 @@
 //! This module contains the game's custom shader structs.
 
 pub mod color;
+pub mod grass_billboard;
 pub mod terrain;
 pub mod texture;
 
@@ -33,6 +34,8 @@ pub struct Shaders<'a> {
   #[allow(missing_docs)]
   pub texture_shader: self::texture::TextureShader<'a>,
   #[allow(missing_docs)]
+  pub grass_billboard: self::grass_billboard::T<'a>,
+  #[allow(missing_docs)]
   pub hud_color_shader: self::color::ColorShader<'a>,
   #[allow(missing_docs)]
   pub clouds: self::clouds::T<'a>,
@@ -44,7 +47,8 @@ impl<'a> Shaders<'a> {
     let mut terrain_shader = self::terrain::TerrainShader::new(gl);
     let mob_shader = self::color::ColorShader::new(gl);
     let mut hud_color_shader = self::color::ColorShader::new(gl);
-    let mut texture_shader = self::texture::TextureShader::new(gl);
+    let texture_shader = self::texture::TextureShader::new(gl);
+    let grass_billboard = self::grass_billboard::new(gl);
     let clouds = self::clouds::new(gl);
 
     set_sun(
@@ -74,11 +78,6 @@ impl<'a> Shaders<'a> {
       gl,
       &hud_camera,
     );
-    camera::set_camera(
-      &mut texture_shader.shader,
-      gl,
-      &hud_camera,
-    );
 
     match gl.get_error() {
       gl::NO_ERROR => {},
@@ -89,6 +88,7 @@ impl<'a> Shaders<'a> {
       mob_shader: mob_shader,
       terrain_shader: terrain_shader,
       texture_shader: texture_shader,
+      grass_billboard: grass_billboard,
       hud_color_shader: hud_color_shader,
       clouds: clouds,
     }
