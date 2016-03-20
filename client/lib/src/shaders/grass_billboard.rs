@@ -25,6 +25,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
       in ivec3 tex_id;
 
       out vec2 vs_texture_position;
+      out vec3 vs_normal;
       out float vs_tex_id;
 
       mat3 between(vec3 v1, vec3 v2) {
@@ -44,30 +45,58 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
         mat3 rot = between(vec3(0, 1, 0), normalize(normal));
         vs_texture_position = texture_position;
         vs_tex_id = float(tex_id[gl_VertexID / 6]);
+        vs_normal = normal;
         gl_Position = projection_matrix * vec4(root + rot*vertex_position, 1.0);
       }".to_owned()),
-    (gl::FRAGMENT_SHADER, "
+    (gl::FRAGMENT_SHADER, format!("
       #version 330 core
+
+      uniform struct Sun {{
+        vec3 direction;
+        vec3 intensity;
+      }} sun;
+
+      uniform vec3 ambient_light;
 
       uniform sampler2D texture_in;
       uniform float alpha_threshold;
 
       in vec2 vs_texture_position;
+      in vec3 vs_normal;
       in float vs_tex_id;
 
       out vec4 frag_color;
 
-      void main() {
+      // depth fog
+      {}
+
+      // world fragment shading
+      {}
+
+      void main() {{
         int tex_id = int(round(vs_tex_id));
         int y = tex_id / 3;
         int x = tex_id % 3;
         vec2 tex_position = (vs_texture_position + y*vec2(0, 1) + x*vec2(1, 0)) / 3;
         vec4 c = texture(texture_in, tex_position);
-        if (c.a < alpha_threshold) {
+        if (c.a < alpha_threshold) {{
           discard;
-        }
-        frag_color = c;
-      }".to_owned()),
+        }}
+        vec4 fog_color = vec4(sun.intensity, 1);
+        frag_color =
+          world_fragment(
+            sun.direction,
+            sun.intensity,
+            ambient_light,
+            c,
+            vs_normal,
+            fog_color,
+            gl_FragCoord.z / gl_FragCoord.w
+          );
+      }}",
+      ::shaders::depth_fog::to_string(),
+      ::shaders::world_fragment::to_string(),
+    )),
   );
   T {
     shader: Shader::new(gl, components.into_iter()),

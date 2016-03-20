@@ -2,6 +2,7 @@
 
 use camera::set_camera;
 use cgmath;
+use light::set_sun;
 use gl;
 use std;
 use view;
@@ -40,6 +41,23 @@ fn draw_backdrop(
   }
 }
 
+fn draw_grass_billboards(
+  rndr: &mut view::T,
+) {
+  rndr.shaders.grass_billboard.shader.use_shader(&mut rndr.gl);
+  set_camera(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.camera);
+  set_sun(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.sun);
+  let alpha_threshold_uniform =
+    rndr.shaders.grass_billboard.shader.get_uniform_location("alpha_threshold");
+  unsafe {
+    gl::Disable(gl::CULL_FACE);
+    gl::Uniform1f(alpha_threshold_uniform, 0.5);
+    gl::ActiveTexture(rndr.misc_texture_unit.gl_id());
+    gl::BindTexture(gl::TEXTURE_2D, rndr.grass_texture.handle.gl_id);
+  }
+  rndr.grass_buffers.draw(&mut rndr.gl);
+}
+
 #[allow(missing_docs)]
 pub fn render(
   rndr: &mut view::T,
@@ -54,6 +72,7 @@ pub fn render(
 
   // draw the world
   rndr.shaders.terrain_shader.shader.use_shader(&mut rndr.gl);
+  set_sun(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.sun);
   set_camera(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.camera);
   rndr.terrain_buffers.draw(&mut rndr.gl);
 
@@ -62,17 +81,7 @@ pub fn render(
   rndr.mob_buffers.draw(&mut rndr.gl);
   rndr.player_buffers.draw(&mut rndr.gl);
 
-  rndr.shaders.grass_billboard.shader.use_shader(&mut rndr.gl);
-  set_camera(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.camera);
-  let alpha_threshold_uniform =
-    rndr.shaders.grass_billboard.shader.get_uniform_location("alpha_threshold");
-  unsafe {
-    gl::Disable(gl::CULL_FACE);
-    gl::Uniform1f(alpha_threshold_uniform, 0.5);
-    gl::ActiveTexture(rndr.misc_texture_unit.gl_id());
-    gl::BindTexture(gl::TEXTURE_2D, rndr.grass_texture.handle.gl_id);
-  }
-  rndr.grass_buffers.draw(&mut rndr.gl);
+  draw_grass_billboards(rndr);
 
   if rndr.show_hud {
     rndr.shaders.hud_color_shader.shader.use_shader(&mut rndr.gl);
