@@ -5,6 +5,7 @@ use cgmath;
 use light::set_sun;
 use gl;
 use std;
+use time;
 use view;
 
 fn draw_backdrop(
@@ -24,6 +25,9 @@ fn draw_backdrop(
     let eye_uniform = rndr.shaders.clouds.shader.get_uniform_location("eye_position");
     let ptr = std::mem::transmute(&rndr.camera.position);
     gl::Uniform3fv(eye_uniform, 1, ptr);
+
+    let time_ms_uniform = rndr.shaders.clouds.shader.get_uniform_location("time_ms");
+    gl::Uniform1f(time_ms_uniform, (time::precise_time_ns() / 1_000_000) as f32);
 
     let projection_uniform = rndr.shaders.clouds.shader.get_uniform_location("projection_matrix");
     let projection_matrix = rndr.camera.projection_matrix();

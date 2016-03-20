@@ -33,6 +33,8 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
         uniform mat4 projection_matrix;
         uniform vec3 eye_position;
 
+        uniform float time_ms;
+
         out vec4 frag_color;
 
         // include depth fog
@@ -51,7 +53,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
         }}
 
         float cloud_noise(vec3 seed) {{
-          float f = cnoise(seed);
+          float f = cnoise(seed + time_ms / 10000);
           // to [0, 1]
           f = f / 2 + 0.5;
           return f;
