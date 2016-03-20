@@ -7,6 +7,7 @@ pub mod texture;
 
 mod depth_fog;
 mod noise;
+mod world_fragment;
 
 mod bark;
 mod clouds;
