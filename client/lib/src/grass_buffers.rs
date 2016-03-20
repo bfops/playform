@@ -12,9 +12,6 @@ use common::entity_id;
 use terrain_mesh;
 use vertex;
 
-#[cfg(test)]
-use std::mem;
-
 // VRAM bytes
 pub const BYTE_BUDGET: usize = 64_000_000;
 pub const TUFT_COST: usize = 64;
