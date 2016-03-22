@@ -11,30 +11,30 @@ use view;
 fn draw_backdrop(
   rndr: &mut view::T,
 ) {
-  rndr.shaders.clouds.shader.use_shader(&mut rndr.gl);
+  rndr.shaders.sky.shader.use_shader(&mut rndr.gl);
 
   unsafe {
     gl::BindVertexArray(rndr.empty_gl_array.gl_id);
   }
 
   unsafe {
-    let sun_uniform = rndr.shaders.clouds.shader.get_uniform_location("sun_color");
+    let sun_uniform = rndr.shaders.sky.shader.get_uniform_location("sun_color");
     let ptr = std::mem::transmute(&rndr.sun.intensity);
     gl::Uniform3fv(sun_uniform, 1, ptr);
 
-    let eye_uniform = rndr.shaders.clouds.shader.get_uniform_location("eye_position");
+    let eye_uniform = rndr.shaders.sky.shader.get_uniform_location("eye_position");
     let ptr = std::mem::transmute(&rndr.camera.position);
     gl::Uniform3fv(eye_uniform, 1, ptr);
 
-    let time_ms_uniform = rndr.shaders.clouds.shader.get_uniform_location("time_ms");
+    let time_ms_uniform = rndr.shaders.sky.shader.get_uniform_location("time_ms");
     gl::Uniform1f(time_ms_uniform, (time::precise_time_ns() / 1_000_000) as f32);
 
-    let projection_uniform = rndr.shaders.clouds.shader.get_uniform_location("projection_matrix");
+    let projection_uniform = rndr.shaders.sky.shader.get_uniform_location("projection_matrix");
     let projection_matrix = rndr.camera.projection_matrix();
     let ptr = std::mem::transmute(&projection_matrix);
     gl::UniformMatrix4fv(projection_uniform, 1, 0, ptr);
 
-    let window_size_uniform = rndr.shaders.clouds.shader.get_uniform_location("window_size");
+    let window_size_uniform = rndr.shaders.sky.shader.get_uniform_location("window_size");
     let window_size = cgmath::Vector2::new(rndr.window_size.x as f32, rndr.window_size.y as f32);
     let ptr = std::mem::transmute(&window_size);
     gl::Uniform2fv(window_size_uniform, 1, ptr);

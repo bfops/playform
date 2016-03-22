@@ -10,7 +10,7 @@ mod noise;
 mod world_fragment;
 
 mod bark;
-mod clouds;
+mod sky;
 mod dirt;
 mod grass;
 mod leaves;
@@ -39,7 +39,7 @@ pub struct Shaders<'a> {
   #[allow(missing_docs)]
   pub hud_color_shader: self::color::ColorShader<'a>,
   #[allow(missing_docs)]
-  pub clouds: self::clouds::T<'a>,
+  pub sky: self::sky::T<'a>,
 }
 
 impl<'a> Shaders<'a> {
@@ -50,7 +50,7 @@ impl<'a> Shaders<'a> {
     let mut hud_color_shader = self::color::ColorShader::new(gl);
     let texture_shader = self::texture::TextureShader::new(gl);
     let grass_billboard = self::grass_billboard::new(gl);
-    let clouds = self::clouds::new(gl);
+    let sky = self::sky::new(gl);
 
     set_sun(
       &mut terrain_shader.shader,
@@ -91,7 +91,7 @@ impl<'a> Shaders<'a> {
       texture_shader: texture_shader,
       grass_billboard: grass_billboard,
       hud_color_shader: hud_color_shader,
-      clouds: clouds,
+      sky: sky,
     }
   }
 }
