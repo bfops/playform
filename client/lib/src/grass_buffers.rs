@@ -105,14 +105,26 @@ pub fn new<'a, 'b:'a>(
     vertex_buffer::VertexAttribData::apply(
       &[
         vertex_buffer::VertexAttribData {
-          name: "root",
-          size: 3,
+          name: "model_matrix_col0",
+          size: 4,
           unit: vertex_buffer::GLType::Float,
           divisor: 1,
         },
         vertex_buffer::VertexAttribData {
-          name: "normal",
-          size: 3,
+          name: "model_matrix_col1",
+          size: 4,
+          unit: vertex_buffer::GLType::Float,
+          divisor: 1,
+        },
+        vertex_buffer::VertexAttribData {
+          name: "model_matrix_col2",
+          size: 4,
+          unit: vertex_buffer::GLType::Float,
+          divisor: 1,
+        },
+        vertex_buffer::VertexAttribData {
+          name: "model_matrix_col3",
+          size: 4,
           unit: vertex_buffer::GLType::Float,
           divisor: 1,
         },

@@ -5,6 +5,7 @@
 
 #![feature(plugin)]
 #![feature(test)]
+#![feature(type_ascription)]
 #![feature(unboxed_closures)]
 
 #![plugin(clippy)]

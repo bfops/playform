@@ -167,20 +167,23 @@ fn place_grass<T, Rng: rand::Rng>(
 ) -> Vec<Grass> {
   let v = &polygon.vertices;
   let normal = v[1].sub_p(&v[0]).cross(&v[2].sub_p(&v[0]));
-  let middle =
-    Point::from_vec(
-      &v[0].to_vec()
-      .add_v(&v[1].to_vec())
-      .add_v(&v[2].to_vec())
-      .div_s(3.0)
-    )
+  let to_middle =
+    &v[0].to_vec()
+    .add_v(&v[1].to_vec())
+    .add_v(&v[2].to_vec())
+    .div_s(3.0)
   ;
 
-  // TODO: Random rotation
   let tangent = polygon.vertices[1].sub_p(&polygon.vertices[0]).div_s(2.0);
   // TODO: Point straight up
   let normal = normal.normalize().mul_s(tangent.length());
-//  let tangent = cgmath::Matrix3::from_axis_angle(&normal, cgmath::rad(2.0 * f32::consts::PI * rng.next_f32())).mul_v(&tangent);
+  let rotate_up: cgmath::Quaternion<f32> = cgmath::Rotation::between_vectors(&cgmath::Vector3::new(0.0, 1.0, 0.0), &normal);
+  let rotate_up: cgmath::Matrix4<f32> = From::from(rotate_up);
+  let rotate_root: cgmath::Quaternion<f32> = cgmath::Rotation3::from_axis_angle(&normal, cgmath::rad(2.0 * f32::consts::PI * rng.next_f32()));
+  let rotate_root: cgmath::Matrix4<f32> = From::from(rotate_root);
+  let translate = cgmath::Matrix4::from_translation(&to_middle);
+  let model = From::from(translate * rotate_root * rotate_up);
+
   let billboard_indices = [
     rng.gen_range(0, 9),
     rng.gen_range(0, 9),
@@ -188,8 +191,7 @@ fn place_grass<T, Rng: rand::Rng>(
   ];
   vec!(
     Grass {
-      root: middle,
-      normal: normal,
+      model_matrix: model,
       tex_ids: billboard_indices,
     }
   )
@@ -294,8 +296,7 @@ pub fn generate<Rng: rand::Rng>(
 
 #[derive(Debug, Clone)]
 pub struct Grass {
-  pub root: cgmath::Point3<f32>,
-  pub normal: cgmath::Vector3<f32>,
+  pub model_matrix: cgmath::Matrix4<f32>,
   pub tex_ids: [u32; 3],
 }
 
