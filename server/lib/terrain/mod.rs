@@ -48,7 +48,7 @@ impl T {
   #[allow(missing_docs)]
   pub fn new(terrain_seed: Seed) -> T {
     T {
-      mosaic: Box::new(biome::hills::new(terrain_seed)),
+      mosaic: Box::new(biome::demo::new(terrain_seed)),
       voxels: Mutex::new(voxel::tree::new()),
     }
   }
