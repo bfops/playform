@@ -25,6 +25,7 @@ extern crate isosurface_extraction;
 extern crate log;
 extern crate libc;
 extern crate num;
+extern crate rand;
 extern crate sdl2;
 extern crate sdl2_sys;
 extern crate stopwatch;

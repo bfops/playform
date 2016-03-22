@@ -174,7 +174,8 @@ pub fn load_block<UpdateView>(
 {
   debug!("generate {:?} at {:?}", block_position, lod);
   let voxels = client.voxels.lock().unwrap();
-  let mesh_block = terrain_mesh::generate(&voxels, &block_position, lod, &client.id_allocator);
+  let mut rng = client.rng.lock().unwrap();
+  let mesh_block = terrain_mesh::generate(&voxels, &block_position, lod, &client.id_allocator, &mut *rng);
 
   let mut updates = Vec::new();
 

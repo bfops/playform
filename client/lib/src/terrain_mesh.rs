@@ -4,6 +4,8 @@ use cgmath;
 use cgmath::{Point, Point3, Vector3, Vector, EuclideanVector, Matrix, Aabb, Aabb3};
 use isosurface_extraction::dual_contouring;
 use num::iter::range_inclusive;
+use rand;
+use rand::Rng;
 use std::f32;
 use std::sync::{Arc, Mutex};
 use stopwatch;
@@ -159,8 +161,9 @@ mod voxel_storage {
   }
 }
 
-fn place_grass<T>(
+fn place_grass<T, Rng: rand::Rng>(
   polygon: &dual_contouring::polygon::T<T>,
+  rng: &mut Rng,
 ) -> Vec<Grass> {
   let v = &polygon.vertices;
   let normal = v[1].sub_p(&v[0]).cross(&v[2].sub_p(&v[0]));
@@ -173,22 +176,31 @@ fn place_grass<T>(
     )
   ;
 
+  // TODO: Random rotation
   let tangent = polygon.vertices[1].sub_p(&polygon.vertices[0]).div_s(2.0);
+  // TODO: Point straight up
   let normal = normal.normalize().mul_s(tangent.length());
+//  let tangent = cgmath::Matrix3::from_axis_angle(&normal, cgmath::rad(2.0 * f32::consts::PI * rng.next_f32())).mul_v(&tangent);
+  let billboard_indices = [
+    rng.gen_range(0, 9),
+    rng.gen_range(0, 9),
+    rng.gen_range(0, 9),
+  ];
   vec!(
     Grass {
       root: middle,
       normal: normal,
-      tex_ids: [0, 1, 2],
+      tex_ids: billboard_indices,
     }
   )
 }
 
-pub fn generate(
+pub fn generate<Rng: rand::Rng>(
   voxels: &voxel::tree::T,
   block_position: &block_position::T,
   lod: lod::T,
   id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
+  rng: &mut Rng,
 ) -> T
 {
   stopwatch::time("terrain_mesh::generate", || {
@@ -245,7 +257,7 @@ pub fn generate(
                   block2.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
 
                   if polygon.material == voxel::Material::Terrain && lod <= lod::T(1) {
-                    for grass in place_grass(&polygon) {
+                    for grass in place_grass(&polygon, rng) {
                       let id = id_allocator::allocate(id_allocator);
                       block2.grass.push(grass);
                       block2.grass_ids.push(id);

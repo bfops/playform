@@ -2,6 +2,8 @@
 
 use cgmath::Point3;
 use num::iter::range_inclusive;
+use rand;
+use rand::{Rng, SeedableRng};
 use std::sync::Mutex;
 
 use common::entity_id;
@@ -45,6 +47,7 @@ pub struct T {
   pub voxels: Mutex<voxel::tree::T>,
   /// The number of terrain requests that are outstanding,
   pub outstanding_terrain_requests: Mutex<u32>,
+  pub rng: Mutex<rand::XorShiftRng>,
 }
 
 #[allow(missing_docs)]
@@ -65,6 +68,13 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     )
   };
 
+  let mut rng: rand::XorShiftRng = rand::SeedableRng::from_seed([1, 2, 3, 4]);
+  let s1 = rng.next_u32();
+  let s2 = rng.next_u32();
+  let s3 = rng.next_u32();
+  let s4 = rng.next_u32();
+  rng.reseed([s1, s2, s3, s4]);
+
   T {
     id: client_id,
     player_id: player_id,
@@ -77,6 +87,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     block_voxels_loaded: Mutex::new(block_position::with_lod::map::new()),
     voxels: Mutex::new(voxel::tree::new()),
     outstanding_terrain_requests: Mutex::new(0),
+    rng: Mutex::new(rng),
   }
 }
 
