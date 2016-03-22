@@ -28,7 +28,13 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
         #version 330 core
 
         uniform vec2 window_size;
-        uniform vec3 sun_color;
+
+        uniform struct Sun {{
+          vec3 direction;
+          vec3 intensity;
+        }} sun;
+
+        const float sun_angular_radius = 3.14/32;
 
         uniform mat4 projection_matrix;
         uniform vec3 eye_position;
@@ -60,10 +66,17 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
         }}
 
         void main() {{
+          vec3 c = sun.intensity;
+
           vec3 direction = pixel_direction(gl_FragCoord.xy);
+
           const int HEIGHTS = 2;
           float heights[HEIGHTS] = float[](150, 1000);
           vec3 offsets[HEIGHTS] = vec3[](vec3(12,553,239), vec3(-10, 103, 10004));
+
+          if (dot(normalize(sun.direction), direction) > cos(sun_angular_radius)) {{
+            c = vec3(1);
+          }}
 
           float alpha = 0;
           for (int i = 0; i < HEIGHTS; ++i) {{
@@ -80,7 +93,9 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
           }}
 
           alpha = min(alpha, 1);
-          frag_color = vec4(mix(sun_color, vec3(1, 1, 1), alpha), 1);
+          c = mix(c, vec3(1, 1, 1), alpha);
+
+          frag_color = vec4(c, 1);
         }}"#,
         ::shaders::depth_fog::to_string(),
         ::shaders::noise::cnoise(),

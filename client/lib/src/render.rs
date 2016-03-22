@@ -18,9 +18,7 @@ fn draw_backdrop(
   }
 
   unsafe {
-    let sun_uniform = rndr.shaders.sky.shader.get_uniform_location("sun_color");
-    let ptr = std::mem::transmute(&rndr.sun.intensity);
-    gl::Uniform3fv(sun_uniform, 1, ptr);
+    set_sun(&mut rndr.shaders.sky.shader, &mut rndr.gl, &rndr.sun);
 
     let eye_uniform = rndr.shaders.sky.shader.get_uniform_location("eye_position");
     let ptr = std::mem::transmute(&rndr.camera.position);
