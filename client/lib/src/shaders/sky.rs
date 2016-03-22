@@ -74,9 +74,8 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
           float heights[HEIGHTS] = float[](150, 1000);
           vec3 offsets[HEIGHTS] = vec3[](vec3(12,553,239), vec3(-10, 103, 10004));
 
-          if (dot(normalize(sun.direction), direction) > cos(sun_angular_radius)) {{
-            c = vec3(1);
-          }}
+          float sunniness = exp(32 * (dot(sun.direction, direction) - cos(sun_angular_radius)));
+          c = mix(c, vec3(1), sunniness);
 
           float alpha = 0;
           for (int i = 0; i < HEIGHTS; ++i) {{
@@ -95,7 +94,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
           alpha = min(alpha, 1);
           c = mix(c, vec3(1, 1, 1), alpha);
 
-          frag_color = vec4(c, 1);
+          frag_color = min(vec4(c, 1), vec4(1));
         }}"#,
         ::shaders::depth_fog::to_string(),
         ::shaders::noise::cnoise(),
