@@ -74,7 +74,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
           float heights[HEIGHTS] = float[](150, 1000);
           vec3 offsets[HEIGHTS] = vec3[](vec3(12,553,239), vec3(-10, 103, 10004));
 
-          float sunniness = exp(32 * (dot(sun.direction, direction) - cos(sun_angular_radius)));
+          float sunniness = exp(64 * (dot(sun.direction, direction) - cos(sun_angular_radius)));
           c = mix(c, vec3(1), sunniness);
 
           float alpha = 0;

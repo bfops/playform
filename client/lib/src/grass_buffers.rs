@@ -14,7 +14,7 @@ use vertex;
 
 // VRAM bytes
 pub const BYTE_BUDGET: usize = 64_000_000;
-pub const TUFT_COST: usize = 64;
+pub const TUFT_COST: usize = 100;
 pub const TUFT_BUDGET: usize = BYTE_BUDGET / TUFT_COST;
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
