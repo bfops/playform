@@ -13,6 +13,7 @@
 #![allow(mutex_atomic)]
 #![allow(match_ref_pats)]
 #![allow(match_same_arms)]
+#![allow(similar_names)]
 #![allow(too_many_arguments)]
 
 extern crate bincode;

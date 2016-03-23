@@ -2,7 +2,7 @@
 
 use camera::set_camera;
 use cgmath;
-use light::set_sun;
+use light::{set_sun, set_ambient_light};
 use gl;
 use std;
 use time;
@@ -49,6 +49,7 @@ fn draw_grass_billboards(
   rndr.shaders.grass_billboard.shader.use_shader(&mut rndr.gl);
   set_camera(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.camera);
   set_sun(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.sun);
+  set_ambient_light(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.sun);
   let alpha_threshold_uniform =
     rndr.shaders.grass_billboard.shader.get_uniform_location("alpha_threshold");
   unsafe {
@@ -75,6 +76,7 @@ pub fn render(
   // draw the world
   rndr.shaders.terrain_shader.shader.use_shader(&mut rndr.gl);
   set_sun(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.sun);
+  set_ambient_light(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.sun);
   set_camera(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.camera);
   rndr.terrain_buffers.draw(&mut rndr.gl);
 

@@ -12,7 +12,6 @@ use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, DrawMode, VertexAttribData
 use yaglw::texture::{TextureUnit};
 
 use camera::Camera;
-use common;
 use common::id_allocator;
 use light;
 use grass_buffers;
@@ -25,6 +24,11 @@ use vertex::{ColoredVertex};
 pub const FOV: f32 = std::f32::consts::FRAC_PI_3;
 
 const VERTICES_PER_TRIANGLE: usize = 3;
+
+pub enum InputMode {
+  Camera,
+  Sun,
+}
 
 /// The state associated with perceiving the world state.
 pub struct T<'a> {
@@ -54,11 +58,13 @@ pub struct T<'a> {
 
   #[allow(missing_docs)]
   pub camera: Camera,
+  pub window_size: cgmath::Vector2<i32>,
 
-  #[allow(missing_docs)]
+  /// Whether to render HUD elements
   pub show_hud: bool,
 
-  pub window_size: cgmath::Vector2<i32>,
+  /// Whether to render HUD elements
+  pub input_mode: InputMode,
 }
 
 fn load_grass_texture<'a, 'b:'a>(
@@ -191,11 +197,12 @@ impl<'a> T<'a> {
 
       sun:
         light::Sun {
-          direction: cgmath::Vector3::new(0.0, 0.0, 0.0),
-          intensity: common::color::Color3 { r: 0.0, g: 0.0, b: 0.0 },
+          progression: 0.0,
+          rotation: 0.0,
         },
 
       show_hud: true,
+      input_mode: InputMode::Camera,
     }
   }
 }

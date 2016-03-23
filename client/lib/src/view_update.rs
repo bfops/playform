@@ -3,12 +3,10 @@
 use cgmath::Point3;
 use stopwatch;
 
-use common::color::Color3;
 use common::entity_id;
 
 use block_position;
 use light;
-use light::set_ambient_light;
 use lod;
 use mob_buffers::VERTICES_PER_MOB;
 use player_buffers::VERTICES_PER_PLAYER;
@@ -28,8 +26,6 @@ pub enum ClientToView {
 
   /// Update the sun.
   SetSun(light::Sun),
-  /// Update the ambient light.
-  SetAmbientLight(Color3<f32>),
 
   /// Add a terrain block to the view.
   AddBlock(block_position::T, terrain_mesh::T, lod::T),
@@ -56,19 +52,12 @@ pub fn apply_client_to_view(view: &mut view::T, up: ClientToView) {
       view.player_buffers.insert(&mut view.gl, id, &triangles);
     },
     ClientToView::SetSun(sun) => {
-      view.sun = sun;
-    },
-    ClientToView::SetAmbientLight(color) => {
-      set_ambient_light(
-        &mut view.shaders.terrain_shader.shader,
-        &mut view.gl,
-        color,
-      );
-      set_ambient_light(
-        &mut view.shaders.grass_billboard.shader,
-        &mut view.gl,
-        color,
-      );
+      match view.input_mode {
+        view::InputMode::Sun => {},
+        _ => {
+          view.sun = sun;
+        },
+      }
     },
     ClientToView::AddBlock(_, block, _) => {
       stopwatch::time("add_block", || {

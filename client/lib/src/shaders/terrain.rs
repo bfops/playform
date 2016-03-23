@@ -106,7 +106,10 @@ impl<'a> TerrainShader<'a> {
         }}
 
         vec3 bump_map(vec3 v) {{
-          vec3 seed = 20 * world_position + vec3(0x123411);
+          float shallowness = 4;
+          float frequency = 2;
+
+          vec3 seed = frequency * world_position + vec3(0x123411);
           float p0 = cnoise(seed);
           float d = 0.1;
           float px = cnoise(seed + vec3(d, 0, 0));
@@ -116,7 +119,7 @@ impl<'a> TerrainShader<'a> {
 
           vec3 axis = cross(vec3(0, 1, 0), r);
           float c = dot(vec3(0, 1, 0), r);
-          return rotationMatrix(axis, acos(c) / 8) * v;
+          return rotationMatrix(axis, acos(c) / shallowness) * v;
         }}
 
         void main() {{

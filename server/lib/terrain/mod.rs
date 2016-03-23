@@ -2,6 +2,7 @@
 
 #![allow(let_and_return)]
 #![allow(match_ref_pats)]
+#![allow(similar_names)]
 #![allow(type_complexity)]
 #![allow(unneeded_field_pattern)]
 

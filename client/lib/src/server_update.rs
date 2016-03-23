@@ -1,10 +1,8 @@
-use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
-use std::f32;
-use std::f32::consts::PI;
+use cgmath::{Aabb3, Point, Point3, Vector};
 use stopwatch;
 use time;
 
-use common::color::{Color3, Color4};
+use common::color::Color4;
 use common::protocol;
 use common::voxel;
 
@@ -63,32 +61,11 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
         update_view(ClientToView::UpdateMob(id, mesh));
       },
       protocol::ServerToClient::UpdateSun(fraction) => {
-        // Convert to radians.
-        let angle = fraction * 2.0 * PI;
-        let (s, c) = angle.sin_cos();
-
-        let sun_color =
-          Color3::of_rgb(
-            c.abs(),
-            (s + 1.0) / 2.0,
-            (s * 0.75 + 0.25).abs(),
-          );
-
         update_view(ClientToView::SetSun(
           light::Sun {
-            direction: Vector3::new(c, s, 0.0),
-            intensity: sun_color,
+            progression: fraction,
+            rotation: 0.0,
           }
-        ));
-
-        let ambient_light = f32::max(0.4, s / 2.0);
-
-        update_view(ClientToView::SetAmbientLight(
-          Color3::of_rgb(
-            sun_color.r * ambient_light,
-            sun_color.g * ambient_light,
-            sun_color.b * ambient_light,
-          ),
         ));
       },
       protocol::ServerToClient::Voxels(request_time, voxels, reason) => {

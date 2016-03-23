@@ -53,41 +53,72 @@ fn key_press<UpdateServer>(
   key: Keycode,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
 {
+  use common::protocol::ClientToServer::*;
+
+  let lr = |update_server: &mut UpdateServer, view: &mut view::T, k| {
+    match view.input_mode {
+      view::InputMode::Camera => {
+        let angle = k * PI / 12.0;
+        update_server(RotatePlayer(client.player_id, Vector2::new(angle, 0.0)));
+        view.camera.rotate_lateral(angle);
+      },
+      view::InputMode::Sun => {
+        view.sun.rotation += k * PI / 512.0;
+      },
+    }
+  };
+
+  let ud = |update_server: &mut UpdateServer, view: &mut view::T, k| {
+    match view.input_mode {
+      view::InputMode::Camera => {
+        let angle = k * PI / 12.0;
+        update_server(RotatePlayer(client.player_id, Vector2::new(0.0, angle)));
+        view.camera.rotate_vertical(angle);
+      },
+      view::InputMode::Sun => {
+        view.sun.progression += k * PI / 512.0;
+      },
+    }
+  };
+
   stopwatch::time("event.key_press", || {
     match key {
       Keycode::A => {
-        update_server(protocol::ClientToServer::Walk(client.player_id, Vector3::new(-1.0, 0.0, 0.0)));
+        update_server(Walk(client.player_id, Vector3::new(-1.0, 0.0, 0.0)));
       },
       Keycode::D => {
-        update_server(protocol::ClientToServer::Walk(client.player_id, Vector3::new(1.0, 0.0, 0.0)));
+        update_server(Walk(client.player_id, Vector3::new(1.0, 0.0, 0.0)));
       },
       Keycode::Space => {
-        update_server(protocol::ClientToServer::StartJump(client.player_id));
+        update_server(StartJump(client.player_id));
       },
       Keycode::W => {
-        update_server(protocol::ClientToServer::Walk(client.player_id, Vector3::new(0.0, 0.0, -1.0)));
+        update_server(Walk(client.player_id, Vector3::new(0.0, 0.0, -1.0)));
       },
       Keycode::S => {
-        update_server(protocol::ClientToServer::Walk(client.player_id, Vector3::new(0.0, 0.0, 1.0)));
+        update_server(Walk(client.player_id, Vector3::new(0.0, 0.0, 1.0)));
       },
       Keycode::Left => {
-        update_server(protocol::ClientToServer::RotatePlayer(client.player_id, Vector2::new(PI / 12.0, 0.0)));
-        view.camera.rotate_lateral(PI / 12.0);
+        lr(update_server, view, 1.0);
       },
       Keycode::Right => {
-        update_server(protocol::ClientToServer::RotatePlayer(client.player_id, Vector2::new(-PI / 12.0, 0.0)));
-        view.camera.rotate_lateral(-PI / 12.0);
+        lr(update_server, view, -1.0);
       },
       Keycode::Up => {
-        update_server(protocol::ClientToServer::RotatePlayer(client.player_id, Vector2::new(0.0, PI / 12.0)));
-        view.camera.rotate_vertical(PI / 12.0);
+        ud(update_server, view, 1.0);
       },
       Keycode::Down => {
-        update_server(protocol::ClientToServer::RotatePlayer(client.player_id, Vector2::new(0.0, -PI / 12.0)));
-        view.camera.rotate_vertical(-PI / 12.0);
+        ud(update_server, view, -1.0);
       },
       Keycode::H => {
         view.show_hud = !view.show_hud;
+      },
+      Keycode::M => {
+        view.input_mode =
+          match view.input_mode {
+            view::InputMode::Camera => view::InputMode::Sun,
+            view::InputMode::Sun => view::InputMode::Camera,
+          };
       },
       Keycode::P => {
         let mut load_position = client.load_position.lock().unwrap();

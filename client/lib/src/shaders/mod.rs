@@ -18,13 +18,9 @@ mod stone;
 
 use camera;
 use cgmath;
-use cgmath::{Vector2, Vector3};
+use cgmath::{Vector2};
 use gl;
-use light;
-use light::{set_sun, set_ambient_light};
 use yaglw::gl_context::GLContext;
-
-use common::color::Color3;
 
 /// The game's custom shader structs.
 pub struct Shaders<'a> {
@@ -45,26 +41,12 @@ pub struct Shaders<'a> {
 impl<'a> Shaders<'a> {
   #[allow(missing_docs)]
   pub fn new<'b>(gl: &'b mut GLContext, window_size: Vector2<i32>) -> Self where 'a: 'b {
-    let mut terrain_shader = self::terrain::TerrainShader::new(gl);
+    let terrain_shader = self::terrain::TerrainShader::new(gl);
     let mob_shader = self::color::ColorShader::new(gl);
     let mut hud_color_shader = self::color::ColorShader::new(gl);
     let texture_shader = self::texture::TextureShader::new(gl);
     let grass_billboard = self::grass_billboard::new(gl);
     let sky = self::sky::new(gl);
-
-    set_sun(
-      &mut terrain_shader.shader,
-      gl,
-      &light::Sun {
-        direction: Vector3::new(0.0, 0.0, 0.0),
-        intensity: Color3::of_rgb(0.0, 0.0, 0.0),
-      }
-    );
-    set_ambient_light(
-      &mut terrain_shader.shader,
-      gl,
-      Color3::of_rgb(0.4, 0.4, 0.4),
-    );
 
     let hud_camera = {
       let mut c = camera::Camera::unit();
