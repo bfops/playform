@@ -174,15 +174,25 @@ fn place_grass<T, Rng: rand::Rng>(
     .div_s(3.0)
   ;
 
-  let tangent = polygon.vertices[1].sub_p(&polygon.vertices[0]).div_s(2.0);
+  let scale =
+    (rng.next_f32() + 1.0) *
+         (v[1].sub_p(&v[0]).length())
+    .max((v[2].sub_p(&v[0]).length())
+    .max((v[2].sub_p(&v[1]).length())));
+  let scale = cgmath::Vector3::new(1.0, 0.5, 1.0) * cgmath::Vector3::from_value(scale);
   // TODO: Point straight up
-  let normal = normal.normalize().mul_s(tangent.length());
-  let rotate_up: cgmath::Quaternion<f32> = cgmath::Rotation::between_vectors(&cgmath::Vector3::new(0.0, 1.0, 0.0), &normal);
+  let normal = normal.normalize();
+  let y = cgmath::Vector3::new(0.0, 1.0, 0.0);
+  let rotate_up: cgmath::Quaternion<f32> = cgmath::Rotation::between_vectors(&y, &normal);
   let rotate_up: cgmath::Matrix4<f32> = From::from(rotate_up);
-  let rotate_root: cgmath::Quaternion<f32> = cgmath::Rotation3::from_axis_angle(&normal, cgmath::rad(2.0 * f32::consts::PI * rng.next_f32()));
+  let rotate_root: cgmath::Quaternion<f32> = cgmath::Rotation3::from_axis_angle(&y, cgmath::rad(2.0 * f32::consts::PI * rng.next_f32()));
   let rotate_root: cgmath::Matrix4<f32> = From::from(rotate_root);
   let translate = cgmath::Matrix4::from_translation(&to_middle);
-  let model = From::from(translate * rotate_root * rotate_up);
+  let mut scale_mat = cgmath::Matrix4::from_value(1.0);
+  scale_mat[0][0] = scale[0];
+  scale_mat[1][1] = scale[1];
+  scale_mat[2][2] = scale[2];
+  let model = From::from(translate * rotate_up * rotate_root * scale_mat);
 
   let billboard_indices = [
     rng.gen_range(0, 9),
