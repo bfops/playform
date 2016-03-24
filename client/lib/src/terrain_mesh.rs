@@ -174,24 +174,41 @@ fn place_grass<T, Rng: rand::Rng>(
     .div_s(3.0)
   ;
 
+  let y = cgmath::Vector3::new(0.0, 1.0, 0.0);
+  let z = cgmath::Vector3::new(0.0, 0.0, 1.0);
+
   let scale =
     (rng.next_f32() + 1.0) *
          (v[1].sub_p(&v[0]).length())
-    .max((v[2].sub_p(&v[0]).length())
-    .max((v[2].sub_p(&v[1]).length())));
+    .max((v[2].sub_p(&v[1]).length())
+    .max((v[0].sub_p(&v[2]).length())));
   let scale = cgmath::Vector3::new(1.0, 0.5, 1.0) * cgmath::Vector3::from_value(scale);
-  // TODO: Point straight up
+
   let normal = normal.normalize();
-  let y = cgmath::Vector3::new(0.0, 1.0, 0.0);
-  let rotate_up: cgmath::Quaternion<f32> = cgmath::Rotation::between_vectors(&y, &normal);
+
+  // TODO: Point straight up
+  let up =
+  {
+    let altitude = (rng.next_f32()  * 2.0 - 1.0) * f32::consts::PI / 6.0;
+    let altitude: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(&z, cgmath::rad(altitude));
+    let azimuth = rng.next_f32() * 2.0 * f32::consts::PI;
+    let azimuth: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(&y, cgmath::rad(azimuth));
+    (azimuth * altitude).mul_v(&normal)
+  };
+
+  let rotate_up: cgmath::Quaternion<f32> = cgmath::Rotation::between_vectors(&y, &up);
   let rotate_up: cgmath::Matrix4<f32> = From::from(rotate_up);
+
   let rotate_root: cgmath::Quaternion<f32> = cgmath::Rotation3::from_axis_angle(&y, cgmath::rad(2.0 * f32::consts::PI * rng.next_f32()));
   let rotate_root: cgmath::Matrix4<f32> = From::from(rotate_root);
+
   let translate = cgmath::Matrix4::from_translation(&to_middle);
+
   let mut scale_mat = cgmath::Matrix4::from_value(1.0);
   scale_mat[0][0] = scale[0];
   scale_mat[1][1] = scale[1];
   scale_mat[2][2] = scale[2];
+
   let model = From::from(translate * rotate_up * rotate_root * scale_mat);
 
   let billboard_indices = [
@@ -202,6 +219,7 @@ fn place_grass<T, Rng: rand::Rng>(
   vec!(
     Grass {
       model_matrix: model,
+      normal: normal,
       tex_ids: billboard_indices,
     }
   )
@@ -307,6 +325,7 @@ pub fn generate<Rng: rand::Rng>(
 #[derive(Debug, Clone)]
 pub struct Grass {
   pub model_matrix: cgmath::Matrix4<f32>,
+  pub normal: cgmath::Vector3<f32>,
   pub tex_ids: [u32; 3],
 }
 

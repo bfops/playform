@@ -78,7 +78,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
   let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
   let mut updates = surroundings_loader.updates(load_position.as_pnt()) ;
   loop {
-    if*client.outstanding_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
+    if *client.outstanding_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
       trace!("update loop breaking");
       break;
     }
@@ -102,6 +102,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
     match load_type {
       LoadType::Load => {
         stopwatch::time("update_thread.load_block", || {
+          info!("Loading distance {}", distance);
           let new_lod = lod_index(distance);
           let lod_change =
             client.loaded_blocks

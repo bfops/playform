@@ -25,6 +25,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
       in vec4 model_matrix_col1;
       in vec4 model_matrix_col2;
       in vec4 model_matrix_col3;
+      in vec3 normal;
 
       out vec2 vs_texture_position;
       out vec3 vs_normal;
@@ -47,7 +48,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
         mat4 model_matrix = mat4(model_matrix_col0, model_matrix_col1, model_matrix_col2, model_matrix_col3);
         vs_texture_position = texture_position;
         vs_tex_id = float(tex_id[gl_VertexID / 6]);
-        vs_normal = vec3(model_matrix * vec4(0, 1, 0, 0));
+        vs_normal = normal;
         gl_Position = projection_matrix * model_matrix * vec4(vertex_position, 1.0);
       }".to_owned()),
     (gl::FRAGMENT_SHADER, format!("

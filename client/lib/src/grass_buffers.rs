@@ -129,6 +129,12 @@ pub fn new<'a, 'b:'a>(
           divisor: 1,
         },
         vertex_buffer::VertexAttribData {
+          name: "normal",
+          size: 3,
+          unit: vertex_buffer::GLType::Float,
+          divisor: 1,
+        },
+        vertex_buffer::VertexAttribData {
           name: "tex_id",
           size: 3,
           unit: vertex_buffer::GLType::UInt,
