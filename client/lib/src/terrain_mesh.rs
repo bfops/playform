@@ -1,7 +1,7 @@
 //! Data structure for a small block of terrain.
 
 use cgmath;
-use cgmath::{Point, Point3, Vector3, Vector, EuclideanVector, Matrix, Aabb, Aabb3};
+use cgmath::{Point, Point3, Vector3, Vector, EuclideanVector, Matrix, Rotation, Aabb, Aabb3};
 use isosurface_extraction::dual_contouring;
 use num::iter::range_inclusive;
 use rand;
@@ -186,30 +186,44 @@ fn place_grass<T, Rng: rand::Rng>(
 
   let normal = normal.normalize();
 
-  let skew = {
-    let d = normal.dot(&y);
-    let skewness = (1.0 - d*d).sqrt();
-    let mut skew = cgmath::Matrix4::from_value(1.0);
-    skew[1][0] = -normal.x * skewness;
-    skew[1][1] = d;
-    skew[1][2] = -normal.z * skewness;
-    skew
-  };
+  let rotate_normal_basis: cgmath::Basis3<f32> = cgmath::Rotation::between_vectors(&y, &normal);
+  let rotate_normal: cgmath::Matrix3<f32> = From::from(rotate_normal_basis);
 
+  // The direction the grass will point.
+  // This is roughly straight up, perturbed randomly and squeezed into valid directions.
   let up = {
     let altitude = (rng.next_f32()  * 2.0 - 1.0) * f32::consts::PI / 8.0;
     let altitude: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(&z, cgmath::rad(altitude));
     let azimuth = rng.next_f32() * 2.0 * f32::consts::PI;
     let azimuth: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(&y, cgmath::rad(azimuth));
-    let to_normal: cgmath::Basis3<f32> = cgmath::Rotation::between_vectors(&y, &normal);
-    (*to_normal.as_ref() * azimuth * altitude).mul_v(&y)
+    let up = (rotate_normal * azimuth * altitude).mul_v(&y);
+
+    let axis = normal.cross(&y).normalize();
+    let dot = up.y;
+    // Smoothly compress the y vector to be within 90 degrees of the normal.
+    let c = (dot - 1.0).exp().acos();
+    let rotate_normal = cgmath::Matrix3::from_axis_angle(&axis, cgmath::rad(c));
+    rotate_normal.mul_v(&up)
   };
 
-  let rotate_up: cgmath::Quaternion<f32> = cgmath::Rotation::between_vectors(&y, &up);
-  let rotate_up: cgmath::Matrix4<f32> = From::from(rotate_up);
+  // model space skew transformation to make the grass point in the right direction after rotation
+  let skew = {
+    // `up` in model space
+    let up = rotate_normal_basis.invert().as_ref().mul_v(&up);
+    // dot with y
+    let d = up.y;
+    let skewness = (1.0 - d*d).sqrt();
+    let mut skew = cgmath::Matrix4::from_value(1.0);
+    skew[1][0] = up.x * skewness;
+    skew[1][1] = d;
+    skew[1][2] = up.z * skewness;
+    skew
+  };
 
-  let rotate_root: cgmath::Quaternion<f32> = cgmath::Rotation3::from_axis_angle(&y, cgmath::rad(2.0 * f32::consts::PI * rng.next_f32()));
-  let rotate_root: cgmath::Matrix4<f32> = From::from(rotate_root);
+  let rotate_normal: cgmath::Matrix4<f32> = From::from(rotate_normal);
+
+  let rotate_model: cgmath::Quaternion<f32> = cgmath::Rotation3::from_axis_angle(&y, cgmath::rad(2.0 * f32::consts::PI * rng.next_f32()));
+  let rotate_model: cgmath::Matrix4<f32> = From::from(rotate_model);
 
   let translate = cgmath::Matrix4::from_translation(&to_middle);
 
@@ -218,7 +232,7 @@ fn place_grass<T, Rng: rand::Rng>(
   scale_mat[1][1] = scale[1];
   scale_mat[2][2] = scale[2];
 
-  let model = From::from(translate * rotate_up * skew * rotate_root * scale_mat);
+  let model = From::from(translate * rotate_normal * skew * rotate_model * scale_mat);
 
   let billboard_indices = [
     rng.gen_range(0, 9),
