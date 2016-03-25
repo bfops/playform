@@ -101,7 +101,9 @@ impl<'a> T<'a> {
   pub fn new(mut gl: GLContext, window_size: cgmath::Vector2<i32>) -> T<'a> {
     let mut texture_unit_alloc = id_allocator::new();
 
-    let mut shaders = Shaders::new(&mut gl, window_size);
+    let near = 0.1;
+    let far = 2048.0;
+    let mut shaders = Shaders::new(&mut gl, window_size, near, far);
 
     let terrain_buffers = TerrainBuffers::new(&mut gl);
     terrain_buffers.bind_glsl_uniforms(
@@ -189,7 +191,7 @@ impl<'a> T<'a> {
         let aspect = window_size.x as f32 / window_size.y as f32;
         let mut camera = Camera::unit();
         // Initialize the projection matrix.
-        camera.fov = cgmath::perspective(fovy, aspect, 0.1, 2048.0);
+        camera.fov = cgmath::perspective(fovy, aspect, near, far);
         // TODO: This should use player rotation from the server.
         camera.rotate_lateral(std::f32::consts::PI / 2.0);
         camera

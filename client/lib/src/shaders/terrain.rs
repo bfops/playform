@@ -12,9 +12,9 @@ pub struct TerrainShader<'a> {
 
 impl<'a> TerrainShader<'a> {
   #[allow(missing_docs)]
-  pub fn new<'b>(gl: &'b GLContext) -> Self where 'a: 'b {
+  pub fn new<'b>(gl: &'b GLContext, near: f32, far: f32) -> Self where 'a: 'b {
     let components = vec!(
-      (gl::VERTEX_SHADER, "
+      (gl::VERTEX_SHADER, format!(r#"
         #version 330 core
 
         uniform mat4 projection_matrix;
@@ -27,7 +27,10 @@ impl<'a> TerrainShader<'a> {
         out vec3 vs_normal;
         flat out int material;
 
-        void main() {
+        // include adjust_depth_precision
+        {}
+
+        void main() {{
           // Mutiply by 3 because there are 3 components for each normal vector.
           int position_id = gl_VertexID * 3;
           world_position.x = texelFetch(positions, position_id + 0).r;
@@ -43,8 +46,10 @@ impl<'a> TerrainShader<'a> {
 
           material = texelFetch(materials, face_id).r;
 
-          gl_Position = projection_matrix * vec4(world_position, 1.0);
-        }".to_owned()),
+          gl_Position = adjust_depth_precision(projection_matrix * vec4(world_position, 1.0));
+        }}"#,
+        ::shaders::adjust_depth_precision::as_string(near, far),
+      )),
       (gl::FRAGMENT_SHADER, format!("
         #version 330 core
 

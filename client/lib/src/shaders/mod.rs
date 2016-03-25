@@ -5,6 +5,7 @@ pub mod grass_billboard;
 pub mod terrain;
 pub mod texture;
 
+mod adjust_depth_precision;
 mod depth_fog;
 mod noise;
 mod world_fragment;
@@ -40,12 +41,12 @@ pub struct Shaders<'a> {
 
 impl<'a> Shaders<'a> {
   #[allow(missing_docs)]
-  pub fn new<'b>(gl: &'b mut GLContext, window_size: Vector2<i32>) -> Self where 'a: 'b {
-    let terrain_shader = self::terrain::TerrainShader::new(gl);
+  pub fn new<'b>(gl: &'b mut GLContext, window_size: Vector2<i32>, near: f32, far: f32) -> Self where 'a: 'b {
+    let terrain_shader = self::terrain::TerrainShader::new(gl, near, far);
     let mob_shader = self::color::ColorShader::new(gl);
     let mut hud_color_shader = self::color::ColorShader::new(gl);
     let texture_shader = self::texture::TextureShader::new(gl);
-    let grass_billboard = self::grass_billboard::new(gl);
+    let grass_billboard = self::grass_billboard::new(gl, near, far);
     let sky = self::sky::new(gl);
 
     let hud_camera = {

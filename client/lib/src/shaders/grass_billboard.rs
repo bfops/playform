@@ -11,9 +11,9 @@ pub struct T<'a> {
 }
 
 #[allow(missing_docs)]
-pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
+pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
   let components = vec!(
-    (gl::VERTEX_SHADER, "
+    (gl::VERTEX_SHADER, format!(r#"
       #version 330 core
 
       uniform mat4 projection_matrix;
@@ -31,7 +31,10 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
       out vec3 vs_normal;
       out float vs_tex_id;
 
-      mat3 between(vec3 v1, vec3 v2) {
+      // include adjust_depth_precision
+      {}
+
+      mat3 between(vec3 v1, vec3 v2) {{
         vec3 v = cross(v1, v2);
         float s = length(v);
         float c = dot(v1, v2);
@@ -42,15 +45,17 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
             vec3(v.y, -v.x, 0)
           );
         return mat3(1) + skew + skew*skew*(1-c)/(s*s);
-      }
+      }}
 
-      void main() {
+      void main() {{
         mat4 model_matrix = mat4(model_matrix_col0, model_matrix_col1, model_matrix_col2, model_matrix_col3);
         vs_texture_position = texture_position;
         vs_tex_id = float(tex_id[gl_VertexID / 6]);
         vs_normal = normal;
-        gl_Position = projection_matrix * model_matrix * vec4(vertex_position, 1.0);
-      }".to_owned()),
+        gl_Position = adjust_depth_precision(projection_matrix * model_matrix * vec4(vertex_position, 1.0));
+      }}"#,
+      ::shaders::adjust_depth_precision::as_string(near, far),
+    )),
     (gl::FRAGMENT_SHADER, format!("
       #version 330 core
 
