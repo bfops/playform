@@ -14,7 +14,7 @@ pub struct T<'a> {
 pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
   let components = vec!(
     (gl::VERTEX_SHADER, "
-      #version 330 core
+      #version 400 core
 
       uniform mat4 projection_matrix;
 
@@ -49,10 +49,11 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
         vs_texture_position = texture_position;
         vs_tex_id = float(tex_id[gl_VertexID / 6]);
         vs_normal = normal;
-        gl_Position = projection_matrix * model_matrix * vec4(vertex_position, 1.0);
+        dvec4 p = dmat4(projection_matrix) * dmat4(model_matrix) * dvec4(vertex_position, 1.0);
+        gl_Position = vec4(p);
       }".to_owned()),
     (gl::FRAGMENT_SHADER, format!("
-      #version 330 core
+      #version 400 core
 
       uniform struct Sun {{
         vec3 direction;
