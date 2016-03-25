@@ -16,6 +16,7 @@
 #![allow(similar_names)]
 #![allow(too_many_arguments)]
 #![allow(let_and_return)]
+#![allow(many_single_char_names)]
 
 extern crate bincode;
 extern crate cgmath;
