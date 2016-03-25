@@ -186,14 +186,23 @@ fn place_grass<T, Rng: rand::Rng>(
 
   let normal = normal.normalize();
 
-  // TODO: Point straight up
-  let up =
-  {
-    let altitude = (rng.next_f32()  * 2.0 - 1.0) * f32::consts::PI / 6.0;
+  let skew = {
+    let d = normal.dot(&y);
+    let skewness = (1.0 - d*d).sqrt();
+    let mut skew = cgmath::Matrix4::from_value(1.0);
+    skew[1][0] = -normal.x * skewness;
+    skew[1][1] = d;
+    skew[1][2] = -normal.z * skewness;
+    skew
+  };
+
+  let up = {
+    let altitude = (rng.next_f32()  * 2.0 - 1.0) * f32::consts::PI / 8.0;
     let altitude: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(&z, cgmath::rad(altitude));
     let azimuth = rng.next_f32() * 2.0 * f32::consts::PI;
     let azimuth: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(&y, cgmath::rad(azimuth));
-    (azimuth * altitude).mul_v(&normal)
+    let to_normal: cgmath::Basis3<f32> = cgmath::Rotation::between_vectors(&y, &normal);
+    (*to_normal.as_ref() * azimuth * altitude).mul_v(&y)
   };
 
   let rotate_up: cgmath::Quaternion<f32> = cgmath::Rotation::between_vectors(&y, &up);
@@ -209,7 +218,7 @@ fn place_grass<T, Rng: rand::Rng>(
   scale_mat[1][1] = scale[1];
   scale_mat[2][2] = scale[2];
 
-  let model = From::from(translate * rotate_up * rotate_root * scale_mat);
+  let model = From::from(translate * rotate_up * skew * rotate_root * scale_mat);
 
   let billboard_indices = [
     rng.gen_range(0, 9),
