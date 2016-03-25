@@ -59,7 +59,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
         }}
 
         float cloud_noise(vec3 seed) {{
-          float f = cnoise(seed + time_ms / 10000);
+          float f = cnoise(seed + time_ms / 4000);
           // to [0, 1]
           f = f / 2 + 0.5;
           return f;
