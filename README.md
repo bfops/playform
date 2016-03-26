@@ -7,8 +7,6 @@ A voxel sandbox project in Rust, inspired in part by [Voxel Farm](http://procwor
 It's very much a WIP. Hopefully as the Rust ecosystem grows (and, in a perfect world, when Rust gets a story for linking with C++),
 the hackiest parts of Playform can be outsourced to other libraries (physics and graphics APIs, threading, networking).
 
-Thanks to [http://vector.me/browse/104477/free\_vector\_grass](http://vector.me/browse/104477/free_vector_grass) for the grass billboards!
-
 Some picture things:
 
 ![screenshot 5](/../screenshots/screenshots/screenshot5.png?raw=true)
@@ -26,6 +24,8 @@ Make sure you have:
   * SDL2
   * SDL2\_ttf
   * libnanomsg
+  * portaudio
+  * libmad
 
 Playform has a separate server and client, which can be built and run in `server/bin` and `client/bin`,
 but there's also a server+client (singleplayer) bundled binary that builds in the root directory.
@@ -42,3 +42,14 @@ but there's also a server+client (singleplayer) bundled binary that builds in th
   * Toggle HUD: H
 
 One mob spawns that will play "tag" with you: tag it and it will chase you until it tags you back. If you get too far away from it, it'll probably get lost and fall through the planet. It's a little needy.
+
+## License & Credit
+
+I'm not the most familiar with licensing. If I've done something wrong, let me know. My intent is that Playform itself is MIT licensed (see the LICENSE file).
+It includes some code that can be easily found online, and that code usually comes with links to the online source.
+
+Some of the Assets are not mine, and I don't own the rights to them. In particular, thanks to:
+
+  * [http://vector.me/browse/104477/free\_vector\_grass](http://vector.me/browse/104477/free_vector_grass) for the textures used for the grass billboards
+  * [http://soundbible.com/1818-Rainforest-Ambience.html](http://soundbible.com/1818-Rainforest-Ambience.html) for the awesome ambient sound
+  * [http://soundbible.com/1432-Walking-On-Gravel.html](http://soundbible.com/1432-Walking-On-Gravel.html) for the footstep sounds
