@@ -20,6 +20,7 @@ pub enum Material {
   Bark = 2,
   Leaves = 3,
   Stone = 4,
+  Marble = 5,
 }
 
 #[allow(missing_docs)]

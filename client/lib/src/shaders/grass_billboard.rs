@@ -73,6 +73,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
       }} sun;
 
       uniform vec3 ambient_light;
+      uniform vec3 eye_position;
 
       uniform sampler2D texture_in;
       uniform float alpha_threshold;
@@ -98,13 +99,16 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
         if (c.a < alpha_threshold) {{
           discard;
         }}
+        vec3 world_position = vec3(gl_FragCoord.xy * gl_FragCoord.w, gl_FragCoord.w);
         vec4 fog_color = vec4(sun.intensity, 1);
         frag_color =
           world_fragment(
             sun.direction,
             sun.intensity,
+            normalize(world_position - eye_position),
             ambient_light,
             c,
+            1.0 / 0.0,
             vs_normal,
             fog_color,
             gl_FragCoord.z / gl_FragCoord.w

@@ -85,6 +85,7 @@ pub fn render(
   set_sun(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.sun);
   set_ambient_light(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.sun);
   set_camera(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.camera);
+  set_eye_position(&mut rndr.shaders.terrain_shader.shader, &rndr.camera);
   rndr.terrain_buffers.draw(&mut rndr.gl);
 
   rndr.shaders.mob_shader.shader.use_shader(&mut rndr.gl);

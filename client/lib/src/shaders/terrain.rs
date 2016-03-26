@@ -59,6 +59,7 @@ impl<'a> TerrainShader<'a> {
         }} sun;
 
         uniform vec3 ambient_light;
+        uniform vec3 eye_position;
 
         uniform samplerBuffer positions;
 
@@ -110,10 +111,7 @@ impl<'a> TerrainShader<'a> {
                         oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c         );
         }}
 
-        vec3 bump_map(vec3 v) {{
-          float shallowness = 4;
-          float frequency = 2;
-
+        vec3 bump_map(float shallowness, float frequency, vec3 v) {{
           vec3 seed = frequency * world_position + vec3(0x123411);
           float p0 = cnoise(seed);
           float d = 0.1;
@@ -131,6 +129,7 @@ impl<'a> TerrainShader<'a> {
           vec4 base_color;
 
           vec3 normal = vs_normal;
+          float shininess = 100000000;
 
           if (material == 1) {{
             float grass_amount =
@@ -145,9 +144,13 @@ impl<'a> TerrainShader<'a> {
             base_color = vec4(leaves(), 1);
           }} else if (material == 4) {{
             base_color = vec4(stone(), 1);
-            normal = bump_map(normal);
+            normal = bump_map(4, 2, normal);
+          }} else if (material == 5) {{
+            base_color = vec4(0, 0, 0, 1);
+            shininess = 40;
           }} else {{
             base_color = vec4(0.5, 0, 0.5, 0.5);
+            shininess = 1;
           }}
 
           vec4 fog_color = vec4(sun.intensity, 1);
@@ -155,8 +158,10 @@ impl<'a> TerrainShader<'a> {
             world_fragment(
               sun.direction,
               sun.intensity,
+              normalize(world_position - eye_position),
               ambient_light,
               base_color,
+              shininess,
               normal,
               fog_color,
               gl_FragCoord.z / gl_FragCoord.w
