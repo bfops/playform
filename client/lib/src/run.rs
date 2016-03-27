@@ -2,7 +2,7 @@ use hound;
 use portaudio;
 use std;
 use std::io::Write;
-use std::sync::Mutex;
+use std::sync::{Mutex};
 use stopwatch;
 use thread_scoped;
 
@@ -45,13 +45,76 @@ impl Iterator for Track {
   }
 }
 
+struct TracksPlaying {
+  tracks: Vec<Track>,
+  ready: bool,
+  buffer: Vec<f32>,
+}
+
+unsafe impl Sync for TracksPlaying {}
+
+impl TracksPlaying {
+  pub fn new(buffer_len: usize) -> Self {
+    TracksPlaying {
+      tracks: Vec::new(),
+      ready: false,
+      buffer: std::iter::repeat(0.0).take(buffer_len).collect(),
+    }
+  }
+
+  pub fn push(&mut self, t: Track) {
+    self.tracks.push(t);
+  }
+
+  pub fn refresh_buffer(&mut self) {
+    if self.ready {
+      return
+    }
+
+    for x in &mut self.buffer {
+      *x = 0.0;
+    }
+
+    for track in &mut self.tracks {
+      for buffer in &mut self.buffer {
+        match track.next() {
+          None => break,
+          Some(x) => *buffer = *buffer + x,
+        }
+      }
+    }
+
+    let mut i = 0;
+    while i < self.tracks.len() {
+      if self.tracks[i].is_done() {
+        self.tracks.swap_remove(i);
+      } else {
+        i += 1;
+      }
+    }
+
+    self.ready = true;
+  }
+
+  #[allow(unused)]
+  pub fn with_buffer<F>(&mut self, f: F)
+    where F: FnOnce(&mut [f32])
+  {
+    if self.ready {
+      f(&mut self.buffer);
+      self.ready = false;
+    }
+  }
+}
+
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, server_url: &str) {
   let voxel_updates = Mutex::new(std::collections::VecDeque::new());
   let view_updates0 = Mutex::new(std::collections::VecDeque::new());
   let view_updates1 = Mutex::new(std::collections::VecDeque::new());
 
-  let tracks_playing: Mutex<Vec<Track>> = Mutex::new(Vec::new());
+  let buffer_size = 1 << 10;
+  let mut tracks_playing: TracksPlaying = TracksPlaying::new(buffer_size);
 
   let quit = Mutex::new(false);
   let quit = &quit;
@@ -77,55 +140,50 @@ pub fn run(listen_url: &str, server_url: &str) {
 
     let audio_thread = {
       unsafe {
-        thread_scoped::scoped(|| {
+        let tracks_playing: *mut TracksPlaying = std::mem::transmute(&mut tracks_playing);
+        let tracks_playing: &mut TracksPlaying = std::mem::transmute(tracks_playing);
+        thread_scoped::scoped(move || {
           let sample_rate = 44100.0;
           let channels = 2;
-          let buffer_size = 1 << 10;
 
           let portaudio = portaudio::PortAudio::new().unwrap();
           let params = portaudio.default_output_stream_params(channels).unwrap();
-          let settings = portaudio::OutputStreamSettings::new(params, sample_rate, buffer_size);
-          let mut stream = portaudio.open_blocking_stream(settings).unwrap();
-          stream.start().unwrap();
+          let settings = portaudio::OutputStreamSettings::new(params, sample_rate, buffer_size as u32);
 
-          while !*quit.lock().unwrap() {
-            let mut tracks_playing = tracks_playing.lock().unwrap();
-            stream.write(buffer_size, |buffer| {
+          let callback = {
+            let tracks_playing: *mut TracksPlaying = std::mem::transmute(&mut *tracks_playing);
+            let tracks_playing: &mut TracksPlaying = std::mem::transmute(tracks_playing);
+            move |portaudio::OutputStreamCallbackArgs { buffer, .. }| {
               for x in buffer.iter_mut() {
                 *x = 0.0;
               }
-
-              for track in tracks_playing.iter_mut() {
-                for buffer in buffer.iter_mut() {
-                  match track.next() {
-                    None => break,
-                    Some(x) => *buffer = *buffer + x,
-                  }
+              tracks_playing.with_buffer(|b| {
+                assert!(2 * b.len() == buffer.len());
+                for (i, x) in buffer.iter_mut().enumerate() {
+                  *x = b[i / 2];
                 }
-              }
-            })
-            .unwrap();
-
-            let mut i = 0;
-            while i < tracks_playing.len() {
-              if tracks_playing[i].is_done() {
-                tracks_playing.swap_remove(i);
-              } else {
-                i += 1;
-              }
+              });
+              portaudio::StreamCallbackResult::Continue
             }
+          };
 
+          let mut stream = portaudio.open_non_blocking_stream(settings, callback).unwrap();
+          stream.start().unwrap();
+
+          let ambient_track = load_ambient_track();
+          tracks_playing.push(ambient_track);
+
+          while !*quit.lock().unwrap() && stream.is_active() == Ok(true) {
+            tracks_playing.refresh_buffer();
             std::thread::sleep(std::time::Duration::from_millis(10));
           }
 
+          println!("done");
           stream.stop().unwrap();
           stream.close().unwrap();
         })
       }
     };
-
-    let ambient_track = load_ambient_track();
-    tracks_playing.lock().unwrap().push(ambient_track);
 
     let update_thread = {
       let client = &client;
@@ -224,7 +282,7 @@ fn load_ambient_track() -> Track {
   let data: Vec<f32> =
     reader.samples::<i16>()
     .map(|s| {
-      s.unwrap() as f32
+      s.unwrap() as f32 / 32768.0
     })
     .collect();
   Track::new(data)
