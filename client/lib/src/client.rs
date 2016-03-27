@@ -25,17 +25,11 @@ const MAX_LOAD_DISTANCE: i32 = 80;
 
 /// The main client state.
 pub struct T {
-  #[allow(missing_docs)]
   pub id: protocol::ClientId,
-  #[allow(missing_docs)]
   pub player_id: entity_id::T,
-  #[allow(missing_docs)]
   pub player_position: Mutex<Point3<f32>>,
-  #[allow(missing_docs)]
   pub load_position: Mutex<Option<Point3<f32>>>,
-  #[allow(missing_docs)]
   pub max_load_distance: i32,
-  #[allow(missing_docs)]
   pub surroundings_loader: Mutex<SurroundingsLoader>,
   pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
   /// A record of all the blocks that have been loaded.

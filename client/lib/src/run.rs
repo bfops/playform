@@ -1,3 +1,5 @@
+use hound;
+use portaudio;
 use std;
 use std::io::Write;
 use std::sync::Mutex;
@@ -12,11 +14,44 @@ use record_book;
 use update_thread::update_thread;
 use view_thread::view_thread;
 
+struct Track {
+  data: Vec<f32>,
+  idx: usize,
+}
+
+impl Track {
+  pub fn new(data: Vec<f32>) -> Self {
+    Track {
+      data: data,
+      idx: 0,
+    }
+  }
+
+  pub fn is_done(&self) -> bool {
+    self.idx >= self.data.len()
+  }
+}
+
+impl Iterator for Track {
+  type Item = f32;
+  fn next(&mut self) -> Option<f32> {
+    if self.is_done() {
+      None
+    } else {
+      let r = self.data[self.idx];
+      self.idx = self.idx + 1;
+      Some(r)
+    }
+  }
+}
+
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, server_url: &str) {
   let voxel_updates = Mutex::new(std::collections::VecDeque::new());
   let view_updates0 = Mutex::new(std::collections::VecDeque::new());
   let view_updates1 = Mutex::new(std::collections::VecDeque::new());
+
+  let tracks_playing: Mutex<Vec<Track>> = Mutex::new(Vec::new());
 
   let quit = Mutex::new(false);
   let quit = &quit;
@@ -39,6 +74,58 @@ pub fn run(listen_url: &str, server_url: &str) {
         })
       }
     };
+
+    let audio_thread = {
+      unsafe {
+        thread_scoped::scoped(|| {
+          let sample_rate = 44100.0;
+          let channels = 2;
+          let buffer_size = 1 << 10;
+
+          let portaudio = portaudio::PortAudio::new().unwrap();
+          let params = portaudio.default_output_stream_params(channels).unwrap();
+          let settings = portaudio::OutputStreamSettings::new(params, sample_rate, buffer_size);
+          let mut stream = portaudio.open_blocking_stream(settings).unwrap();
+          stream.start().unwrap();
+
+          while !*quit.lock().unwrap() {
+            let mut tracks_playing = tracks_playing.lock().unwrap();
+            stream.write(buffer_size, |buffer| {
+              for x in buffer.iter_mut() {
+                *x = 0.0;
+              }
+
+              for track in tracks_playing.iter_mut() {
+                for buffer in buffer.iter_mut() {
+                  match track.next() {
+                    None => break,
+                    Some(x) => *buffer = *buffer + x,
+                  }
+                }
+              }
+            })
+            .unwrap();
+
+            let mut i = 0;
+            while i < tracks_playing.len() {
+              if tracks_playing[i].is_done() {
+                tracks_playing.swap_remove(i);
+              } else {
+                i += 1;
+              }
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(10));
+          }
+
+          stream.stop().unwrap();
+          stream.close().unwrap();
+        })
+      }
+    };
+
+    let ambient_track = load_ambient_track();
+    tracks_playing.lock().unwrap().push(ambient_track);
 
     let update_thread = {
       let client = &client;
@@ -95,9 +182,11 @@ pub fn run(listen_url: &str, server_url: &str) {
     // View thread returned, so we got a quit event.
     *quit.lock().unwrap() = true;
 
+    audio_thread.join();
     monitor_thread.join();
 
     let stopwatch = update_thread.join();
+
     stopwatch.print();
   }
 }
@@ -128,4 +217,15 @@ fn connect_client(listen_url: &str, server: &server::T) -> client::T {
       },
     }
   }
+}
+
+fn load_ambient_track() -> Track {
+  let mut reader = hound::WavReader::open("Assets/rainforest_ambience-GlorySunz-1938133500.wav").unwrap();
+  let data: Vec<f32> =
+    reader.samples::<i16>()
+    .map(|s| {
+      s.unwrap() as f32
+    })
+    .collect();
+  Track::new(data)
 }

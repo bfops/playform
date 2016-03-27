@@ -23,12 +23,14 @@ extern crate cgmath;
 extern crate common;
 extern crate fnv;
 extern crate gl;
+extern crate hound;
 extern crate image;
 extern crate isosurface_extraction;
 #[macro_use]
 extern crate log;
 extern crate libc;
 extern crate num;
+extern crate portaudio;
 extern crate rand;
 extern crate sdl2;
 extern crate sdl2_sys;
