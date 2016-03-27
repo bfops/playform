@@ -61,6 +61,7 @@ pub fn run(listen_url: &str, server_url: &str) {
       let client = &client;
       let view_updates0 = &view_updates0;
       let view_updates1 = &view_updates1;
+      let audio_updates = &audio_updates;
       let voxel_updates = &voxel_updates;
       let server = server.clone();
       unsafe {
@@ -72,6 +73,7 @@ pub fn run(listen_url: &str, server_url: &str) {
             &mut || { voxel_updates.lock().unwrap().pop_front() },
             &mut |up| { view_updates0.lock().unwrap().push_back(up) },
             &mut |up| { view_updates1.lock().unwrap().push_back(up) },
+            &mut |up| { audio_updates.lock().unwrap().push_back(up) },
   	        &mut |up| { server.talk.tell(&up) },
             &mut |request_time, updates, reason| { voxel_updates.lock().unwrap().push_back((request_time, updates, reason)) },
           );

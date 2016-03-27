@@ -61,6 +61,14 @@ pub enum VoxelReason {
 }
 
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+/// Collision events. First ID is "collider", rest of IDs are collidee(s).
+#[allow(missing_docs)]
+pub enum Collision {
+  PlayerTerrain(entity_id::T, entity_id::T),
+  PlayerMisc(entity_id::T, entity_id::T),
+}
+
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 /// Messages the server sends to the client.
 pub enum ServerToClient {
   /// Provide the client a unique id to tag its messages.
@@ -70,15 +78,16 @@ pub enum ServerToClient {
 
   /// Complete an AddPlayer request.
   PlayerAdded(entity_id::T, Point3<f32>),
+
   /// Update a player's position.
   UpdatePlayer(entity_id::T, Aabb3<f32>),
-
   /// Update the client's view of a mob with a given mesh.
   UpdateMob(entity_id::T, Aabb3<f32>),
-
   /// The sun as a [0, 1) portion of its cycle.
   UpdateSun(f32),
 
   /// Provide a block of terrain to a client.
   Voxels(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, VoxelReason),
+  /// A collision happened.
+  Collision(Collision),
 }

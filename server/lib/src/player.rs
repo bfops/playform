@@ -19,6 +19,12 @@ use update_world::load_placeholders;
 const MAX_JUMP_FUEL: u32 = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;
 
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+pub enum Collision {
+  Terrain(entity_id::T),
+  Misc(entity_id::T),
+}
+
 // TODO: Add ObservablePlayer struct as a subset.
 pub struct T {
   pub position: Point3<f32>,
@@ -78,7 +84,8 @@ impl T {
     &mut self,
     physics: &Mutex<Physics>,
     v: Vector3<f32>,
-  ) {
+  ) -> (Aabb3<f32>, Vec<Collision>)
+  {
     let mut physics = physics.lock().unwrap();
     let physics = physics.deref_mut();
     let bounds = physics.bounds.get_mut(&self.entity_id).unwrap();
@@ -87,40 +94,43 @@ impl T {
         bounds.min.add_v(&v),
         bounds.max.add_v(&v),
       );
+
     let mut new_bounds = init_bounds;
+    let mut collisions = Vec::new();
+    let mut collided = false;
     // The height of the player's "step".
     let mut step_height = 0.0;
-    let mut collided = false;
-    {
-      loop {
-        match physics.terrain_octree.intersect(&new_bounds, None) {
-          None => {
-            if Physics::reinsert(&mut physics.misc_octree, self.entity_id, bounds, &new_bounds).is_some() {
-              collided = true;
-            } else {
-              self.position.add_self_v(&v);
-              self.position.add_self_v(&Vector3::new(0.0, step_height, 0.0));
-            }
-            break;
-          },
-          Some((collision_bounds, _)) => {
+    loop {
+      match physics.terrain_octree.intersect(&new_bounds, None) {
+        None => {
+          if let Some((_, id)) = Physics::reinsert(&mut physics.misc_octree, self.entity_id, bounds, &new_bounds) {
             collided = true;
-            // Step to the top of whatever we hit.
-            step_height = collision_bounds.max.y - init_bounds.min.y;
-            assert!(step_height > 0.0);
+            collisions.push(Collision::Misc(id));
+          } else {
+            self.position.add_self_v(&v);
+            self.position.add_self_v(&Vector3::new(0.0, step_height, 0.0));
+          }
+          break
+        },
+        Some((collision_bounds, id)) => {
+          collisions.push(Collision::Terrain(id));
+          collided = true;
 
-            if step_height > MAX_STEP_HEIGHT {
-              // Step is too big; we just ran into something.
-              break;
-            }
+          // Step to the top of whatever we hit.
+          step_height = collision_bounds.max.y - init_bounds.min.y;
+          assert!(step_height > 0.0);
 
-            new_bounds =
-              Aabb3::new(
-                init_bounds.min.add_v(&Vector3::new(0.0, step_height, 0.0)),
-                init_bounds.max.add_v(&Vector3::new(0.0, step_height, 0.0)),
-              );
-          },
-        }
+          if step_height > MAX_STEP_HEIGHT {
+            // Step is too big; we just ran into something.
+            break
+          }
+
+          new_bounds =
+            Aabb3::new(
+              init_bounds.min.add_v(&Vector3::new(0.0, step_height, 0.0)),
+              init_bounds.max.add_v(&Vector3::new(0.0, step_height, 0.0)),
+            );
+        },
       }
     }
 
@@ -135,13 +145,15 @@ impl T {
         self.jump_fuel = 0;
       }
     }
+
+    (*bounds, collisions)
   }
 
   pub fn update<RequestBlock>(
     &mut self,
     server: &server::T,
     request_block: &mut RequestBlock,
-  ) where
+  ) -> (Aabb3<f32>, Vec<Collision>) where
     RequestBlock: FnMut(update_gaia::Message),
   {
     let player_position =
@@ -200,14 +212,22 @@ impl T {
     }
 
     let delta_p = self.speed;
+    let mut new_bounds = *server.physics.lock().unwrap().bounds.get_mut(&self.entity_id).unwrap();
+    let mut collisions = Vec::new();
     if delta_p.x != 0.0 {
-      self.translate(&server.physics, Vector3::new(delta_p.x, 0.0, 0.0));
+      let (b, c) = self.translate(&server.physics, Vector3::new(delta_p.x, 0.0, 0.0));
+      new_bounds = b;
+      collisions.extend_from_slice(c.as_slice());
     }
     if delta_p.y != 0.0 {
-      self.translate(&server.physics, Vector3::new(0.0, delta_p.y, 0.0));
+      let (b, c) = self.translate(&server.physics, Vector3::new(0.0, delta_p.y, 0.0));
+      new_bounds = b;
+      collisions.extend_from_slice(c.as_slice());
     }
     if delta_p.z != 0.0 {
-      self.translate(&server.physics, Vector3::new(0.0, 0.0, delta_p.z));
+      let (b, c) = self.translate(&server.physics, Vector3::new(0.0, 0.0, delta_p.z));
+      new_bounds = b;
+      collisions.extend_from_slice(c.as_slice());
     }
 
     let y_axis = Vector3::new(0.0, 1.0, 0.0);
@@ -218,6 +238,8 @@ impl T {
     self.speed.add_self_v(&self.accel);
     // friction
     self.speed.mul_self_v(&Vector3::new(0.7, 0.99, 0.7 as f32));
+
+    (new_bounds, collisions)
   }
 
   /// Changes the player's acceleration by the given `da`.

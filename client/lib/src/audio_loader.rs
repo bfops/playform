@@ -5,14 +5,14 @@ use std;
 #[allow(unused)]
 pub enum SoundId {
   Rainforest,
-  Footstep,
+  Footstep(u8),
 }
 
 impl SoundId {
-  pub fn to_asset_path(&self) -> &std::path::Path {
+  pub fn to_asset_path(&self) -> String {
     match *self {
-      SoundId::Rainforest => std::path::Path::new("Assets/rainforest_ambience-GlorySunz-1938133500.wav"),
-      SoundId::Footstep   => std::path::Path::new("Assets/Walking_On_Gravel-SoundBible.wav"),
+      SoundId::Rainforest    => "Assets/rainforest_ambience-GlorySunz-1938133500.wav".to_owned(),
+      SoundId::Footstep(idx) => format!("Assets/Walking_On_Gravel-SoundBible{}.wav", idx),
     }
   }
 }
@@ -35,8 +35,8 @@ impl T {
   }
 }
 
-fn load_from_file(path: &std::path::Path) -> Vec<f32> {
-  let mut reader = hound::WavReader::open(path.to_str().unwrap()).unwrap();
+fn load_from_file(path: &str) -> Vec<f32> {
+  let mut reader = hound::WavReader::open(path).unwrap();
   reader.samples::<i16>()
   .map(|s| {
     s.unwrap() as f32 / 32768.0

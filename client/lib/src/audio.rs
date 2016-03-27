@@ -34,6 +34,9 @@ impl Iterator for Track {
     } else {
       let r = self.data[self.idx];
       self.idx = self.idx + 1;
+      if self.repeat && self.idx >= self.data.len() {
+        self.idx = 0;
+      }
       Some(r)
     }
   }

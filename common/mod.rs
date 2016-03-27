@@ -1,8 +1,10 @@
+//! Data structures and functions shared between server and client.
+
 #![deny(missing_docs)]
 #![deny(warnings)]
-#![allow(items_after_statements)]
 
-//! Data structures and functions shared between server and client.
+#![allow(items_after_statements)]
+#![allow(enum_variant_names)]
 
 #![feature(box_syntax)]
 #![feature(fn_traits)]
