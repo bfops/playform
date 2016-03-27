@@ -48,7 +48,9 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
           return
         }
 
-        let position = (bounds.min.to_vec() + bounds.max.to_vec()) * cgmath::Vector3::new(0.5, 0.9, 0.5);
+        let position =
+          (bounds.min.to_vec() * cgmath::Vector3::new(0.5, 0.1, 0.5)) +
+          (bounds.max.to_vec() * cgmath::Vector3::new(0.5, 0.9, 0.5));
         let position = Point3::from_vec(&position);
 
         *client.player_position.lock().unwrap() = position;
