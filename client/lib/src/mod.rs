@@ -42,6 +42,8 @@ extern crate time;
 extern crate voxel_data;
 extern crate yaglw;
 
+mod audio;
+mod audio_thread;
 mod block_position;
 mod camera;
 mod client;
