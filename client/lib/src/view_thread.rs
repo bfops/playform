@@ -82,7 +82,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
     Vector2::new(w as i32, h as i32)
   };
 
-  let mut view = view::T::new(gl, window_size);
+  let mut view = view::new(gl, window_size);
 
   sdl.mouse().set_relative_mouse_mode(true);
 
