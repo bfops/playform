@@ -9,7 +9,7 @@ use common::protocol;
 use common::voxel;
 
 use lod;
-use server::Server;
+use server;
 use terrain_loader;
 use voxel_data;
 
@@ -26,7 +26,7 @@ pub enum Message {
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
 pub fn update_gaia(
-  server: &Server,
+  server: &server::T,
   update: Message,
 ) {
   stopwatch::time("update_gaia", move || {
@@ -63,7 +63,7 @@ pub fn update_gaia(
 
 #[inline(never)]
 fn load(
-  server: &Server,
+  server: &server::T,
   request_time: u64,
   voxel_bounds: Vec<voxel::bounds::T>,
   load_reason: LoadReason,

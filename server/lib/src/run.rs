@@ -10,7 +10,7 @@ use common::closure_series;
 use common::socket::ReceiveSocket;
 
 use client_recv_thread::apply_client_update;
-use server::Server;
+use server;
 use update_gaia;
 use update_gaia::update_gaia;
 use update_world::update_world;
@@ -22,7 +22,7 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
   let listen_socket = ReceiveSocket::new(listen_url.as_ref(), None);
   let listen_socket = Mutex::new(listen_socket);
 
-  let server = Server::new();
+  let server = server::new();
   let server = &server;
 
   let mut threads = Vec::new();
@@ -90,7 +90,7 @@ fn quit_upon(signal: &Mutex<bool>) -> closure_series::Closure {
 }
 
 fn consider_world_update<'a, ToGaia>(
-  server: &'a Server,
+  server: &'a server::T,
   mut to_gaia: ToGaia,
 ) -> closure_series::Closure<'a> where
   ToGaia: FnMut(update_gaia::Message) + 'a,
@@ -110,7 +110,7 @@ fn consider_world_update<'a, ToGaia>(
 
 fn network_listen<'a, ToGaia>(
   socket: &'a Mutex<ReceiveSocket>,
-  server: &'a Server,
+  server: &'a server::T,
   mut to_gaia: ToGaia,
 ) -> closure_series::Closure<'a> where
   ToGaia: FnMut(update_gaia::Message) + 'a,
@@ -128,7 +128,7 @@ fn network_listen<'a, ToGaia>(
 }
 
 fn consider_gaia_update<'a, Get>(
-  server: &'a Server,
+  server: &'a server::T,
   mut get_update: Get,
 ) -> closure_series::Closure<'a> where
   Get: FnMut() -> Option<update_gaia::Message> + 'a,

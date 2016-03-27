@@ -12,7 +12,7 @@ use common::voxel;
 
 use lod;
 use physics::Physics;
-use server::Server;
+use server;
 use update_gaia;
 use update_world::load_placeholders;
 
@@ -139,7 +139,7 @@ impl T {
 
   pub fn update<RequestBlock>(
     &mut self,
-    server: &Server,
+    server: &server::T,
     request_block: &mut RequestBlock,
   ) where
     RequestBlock: FnMut(update_gaia::Message),

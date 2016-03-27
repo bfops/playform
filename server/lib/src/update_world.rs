@@ -8,13 +8,13 @@ use common::voxel;
 
 use lod;
 use mob;
-use server::Server;
+use server;
 use update_gaia;
 
 // TODO: Consider removing the IntervalTimer.
 
 pub fn update_world<RequestBlock>(
-  server: &Server,
+  server: &server::T,
   request_block: &mut RequestBlock,
 ) where
   RequestBlock: FnMut(update_gaia::Message),
@@ -84,7 +84,7 @@ pub fn update_world<RequestBlock>(
 }
 
 fn translate_mob(
-  server: &Server,
+  server: &server::T,
   mob: &mut mob::Mob,
   delta_p: &Vector3<f32>,
 ) {
@@ -110,7 +110,7 @@ fn translate_mob(
 
 pub fn load_placeholders<RequestBlock>(
   owner: lod::OwnerId,
-  server: &Server,
+  server: &server::T,
   request_block: &mut RequestBlock,
   pos: &voxel::bounds::T,
   load_type: LoadType,

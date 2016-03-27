@@ -14,7 +14,8 @@ use common::socket::SendSocket;
 use common::voxel;
 
 use player;
-use server::{Client, Server};
+use server;
+use server::Client;
 use terrain;
 use voxel_data;
 use update_gaia;
@@ -25,7 +26,7 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
 }
 
 fn cast(
-  server: &Server,
+  server: &server::T,
   player_id: entity_id::T,
 ) -> Option<voxel::bounds::T> {
   let ray;
@@ -47,7 +48,7 @@ fn cast(
 }
 
 pub fn apply_client_update<UpdateGaia>(
-  server: &Server,
+  server: &server::T,
   update_gaia: &mut UpdateGaia,
   update: protocol::ClientToServer,
 ) where
