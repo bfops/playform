@@ -50,7 +50,7 @@ pub fn audio_thread(
   stream.close().unwrap();
 }
 
-fn load_ambient_track() -> audio::Track {
+fn load_ambient_track() -> Box<audio::Track> {
   let mut reader = hound::WavReader::open("Assets/rainforest_ambience-GlorySunz-1938133500.wav").unwrap();
   let data: Vec<f32> =
     reader.samples::<i16>()
@@ -58,5 +58,5 @@ fn load_ambient_track() -> audio::Track {
       s.unwrap() as f32 / 32768.0
     })
     .collect();
-  audio::Track::new(data)
+  Box::new(audio::LoopTrack::new(data, 0))
 }
