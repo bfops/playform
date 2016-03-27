@@ -1,4 +1,5 @@
-use cgmath::{Aabb3, Point, Point3, Vector};
+use cgmath;
+use cgmath::{Aabb3, Point, Point3};
 use stopwatch;
 use time;
 
@@ -14,10 +15,6 @@ use view_update::ClientToView;
 pub const TRIANGLES_PER_BOX: u32 = 12;
 pub const VERTICES_PER_TRIANGLE: u32 = 3;
 pub const TRIANGLE_VERTICES_PER_BOX: u32 = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
-
-fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
-  bounds.min.add_v(&bounds.max.to_vec()).mul_s(0.5)
-}
 
 pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
   client: &client::T,
@@ -51,7 +48,8 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
           return
         }
 
-        let position = center(&bounds);
+        let position = (bounds.min.to_vec() + bounds.max.to_vec()) * cgmath::Vector3::new(0.5, 0.9, 0.5);
+        let position = Point3::from_vec(&position);
 
         *client.player_position.lock().unwrap() = position;
         update_view(ClientToView::MoveCamera(position));
