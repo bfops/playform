@@ -85,7 +85,7 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueBlockUp
         if let protocol::Collision::PlayerTerrain(..) = collision_type {
           let player_position = *client.player_position.lock().unwrap();
           let mut last_footstep = client.last_footstep.lock().unwrap();
-          if player_position.sub_p(&*last_footstep).length() >= 8.0 {
+          if player_position.sub_p(&*last_footstep).length() >= 4.0 {
             *last_footstep = player_position;
             let idx = client.rng.lock().unwrap().gen_range(1, 17 + 1);
             update_audio(audio_thread::Message::PlayOneShot(audio_loader::SoundId::Footstep(idx)));

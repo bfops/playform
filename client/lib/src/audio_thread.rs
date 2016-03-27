@@ -22,10 +22,10 @@ pub fn audio_thread<RecvMessage>(
   let channels = 2;
   let buffer_size = 1 << 10;
 
-  let mut tracks_playing = audio::TracksPlaying::new(buffer_size);
+  let mut tracks_playing = audio::TracksPlaying::new(channels * buffer_size);
 
   let portaudio = portaudio::PortAudio::new().unwrap();
-  let params = portaudio.default_output_stream_params(channels).unwrap();
+  let params = portaudio.default_output_stream_params(channels as i32).unwrap();
   let settings = portaudio::OutputStreamSettings::new(params, sample_rate, buffer_size as u32);
 
   let callback = {
@@ -36,9 +36,9 @@ pub fn audio_thread<RecvMessage>(
         *x = 0.0;
       }
       tracks_playing.with_buffer(|b| {
-        assert!(2 * b.len() == buffer.len());
+        assert!(b.len() == buffer.len());
         for (i, x) in buffer.iter_mut().enumerate() {
-          *x = b[i / 2];
+          *x = b[i];
         }
       });
       portaudio::StreamCallbackResult::Continue
