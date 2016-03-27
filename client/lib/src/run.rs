@@ -6,6 +6,7 @@ use thread_scoped;
 
 use common::protocol;
 
+use audio_loader;
 use audio_thread;
 use client;
 use server;
@@ -18,6 +19,7 @@ pub fn run(listen_url: &str, server_url: &str) {
   let voxel_updates = Mutex::new(std::collections::VecDeque::new());
   let view_updates0 = Mutex::new(std::collections::VecDeque::new());
   let view_updates1 = Mutex::new(std::collections::VecDeque::new());
+  let audio_updates = Mutex::new(std::collections::VecDeque::new());
 
   let quit = Mutex::new(false);
   let quit = &quit;
@@ -42,12 +44,18 @@ pub fn run(listen_url: &str, server_url: &str) {
     };
 
     let audio_thread = {
+      let audio_updates = &audio_updates;
       unsafe {
         thread_scoped::scoped(move || {
-          audio_thread::audio_thread(quit);
+          audio_thread::audio_thread(
+            quit,
+            &mut || { audio_updates.lock().unwrap().pop_front() },
+          );
         })
       }
     };
+
+    audio_updates.lock().unwrap().push_back(audio_thread::Message::PlayLoop(audio_loader::SoundId::Rainforest));
 
     let update_thread = {
       let client = &client;

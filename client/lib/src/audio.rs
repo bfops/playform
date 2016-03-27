@@ -1,28 +1,33 @@
 use std;
 
-pub trait Track {
-  // Can't use Iterator: annoying errors.
-  fn next(&mut self) -> Option<f32>;
-  fn is_done(&self) -> bool;
-}
-
 #[allow(unused)]
-pub struct OneShotTrack {
+pub struct Track {
+  // TODO: Make this a ref.
   data: Vec<f32>,
   idx: usize,
+  repeat: bool,
 }
 
-impl OneShotTrack {
+impl Track {
   #[allow(unused)]
-  pub fn new(data: Vec<f32>) -> Self {
-    OneShotTrack {
+  pub fn new(data: Vec<f32>, repeat: bool) -> Self {
+    Track {
       data: data,
       idx: 0,
+      repeat: repeat,
     }
   }
 }
 
-impl Track for OneShotTrack {
+impl Track {
+  pub fn is_done(&self) -> bool {
+    !self.repeat && (self.idx >= self.data.len())
+  }
+}
+
+impl Iterator for Track {
+  type Item = f32;
+
   fn next(&mut self) -> Option<f32> {
     if self.is_done() {
       None
@@ -32,44 +37,10 @@ impl Track for OneShotTrack {
       Some(r)
     }
   }
-
-  fn is_done(&self) -> bool {
-    self.idx >= self.data.len()
-  }
-}
-
-pub struct LoopTrack {
-  data: Vec<f32>,
-  idx: usize,
-}
-
-impl LoopTrack {
-  pub fn new(data: Vec<f32>, start: usize) -> Self {
-    assert!(!data.is_empty());
-    LoopTrack {
-      data: data,
-      idx: start,
-    }
-  }
-}
-
-impl Track for LoopTrack {
-  fn next(&mut self) -> Option<f32> {
-    let r = self.data[self.idx];
-    self.idx = self.idx + 1;
-    if self.idx >= self.data.len() {
-      self.idx = 0;
-    }
-    Some(r)
-  }
-
-  fn is_done(&self) -> bool {
-    false
-  }
 }
 
 pub struct TracksPlaying {
-  tracks: Vec<Box<Track>>,
+  tracks: Vec<Track>,
   ready: bool,
   buffer: Vec<f32>,
 }
@@ -85,7 +56,7 @@ impl TracksPlaying {
     }
   }
 
-  pub fn push(&mut self, t: Box<Track>) {
+  pub fn push(&mut self, t: Track) {
     self.tracks.push(t);
   }
 

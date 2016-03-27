@@ -1,13 +1,23 @@
-use hound;
 use portaudio;
 use std;
 use std::sync::{Mutex};
+use time;
 
 use audio;
+use audio_loader;
 
-pub fn audio_thread(
+#[allow(unused)]
+pub enum Message {
+  PlayLoop(audio_loader::SoundId),
+  PlayOneShot(audio_loader::SoundId),
+}
+
+pub fn audio_thread<RecvMessage>(
   quit: &Mutex<bool>,
-) {
+  recv_message: &mut RecvMessage,
+) where
+  RecvMessage: FnMut() -> Option<Message>,
+{
   let sample_rate = 44100.0;
   let channels = 2;
   let buffer_size = 1 << 10;
@@ -38,25 +48,34 @@ pub fn audio_thread(
   let mut stream = portaudio.open_non_blocking_stream(settings, callback).unwrap();
   stream.start().unwrap();
 
-  let ambient_track = load_ambient_track();
-  tracks_playing.push(ambient_track);
+  let mut audio_loader = audio_loader::new();
 
   while !*quit.lock().unwrap() && stream.is_active() == Ok(true) {
+    let start = time::precise_time_ns();
+    let mut i = 0;
+    while let Some(up) = recv_message() {
+      match up {
+        Message::PlayLoop(id) => {
+          tracks_playing.push(audio::Track::new(audio_loader.load(id).clone(), true))
+        },
+        Message::PlayOneShot(id) => {
+          tracks_playing.push(audio::Track::new(audio_loader.load(id).clone(), false))
+        },
+      }
+
+      if i > 10 {
+        i -= 10;
+        if time::precise_time_ns() - start >= 1_000_000 {
+          break
+        }
+      }
+      i += 1;
+    }
+
     tracks_playing.refresh_buffer();
-    std::thread::sleep(std::time::Duration::from_millis(10));
+    std::thread::sleep(std::time::Duration::from_millis(1));
   }
 
   stream.stop().unwrap();
   stream.close().unwrap();
-}
-
-fn load_ambient_track() -> Box<audio::Track> {
-  let mut reader = hound::WavReader::open("Assets/rainforest_ambience-GlorySunz-1938133500.wav").unwrap();
-  let data: Vec<f32> =
-    reader.samples::<i16>()
-    .map(|s| {
-      s.unwrap() as f32 / 32768.0
-    })
-    .collect();
-  Box::new(audio::LoopTrack::new(data, 0))
 }

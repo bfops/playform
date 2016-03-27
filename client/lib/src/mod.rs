@@ -17,6 +17,7 @@
 #![allow(too_many_arguments)]
 #![allow(let_and_return)]
 #![allow(many_single_char_names)]
+#![allow(enum_variant_names)]
 
 extern crate bincode;
 extern crate cgmath;
@@ -43,6 +44,7 @@ extern crate voxel_data;
 extern crate yaglw;
 
 mod audio;
+mod audio_loader;
 mod audio_thread;
 mod block_position;
 mod camera;
