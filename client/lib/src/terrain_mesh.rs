@@ -182,7 +182,7 @@ fn place_grass<T, Rng: rand::Rng>(
          (v[1].sub_p(&v[0]).length())
     .max((v[2].sub_p(&v[1]).length())
     .max((v[0].sub_p(&v[2]).length())));
-  let scale = cgmath::Vector3::new(1.0, 0.5, 1.0) * cgmath::Vector3::from_value(scale);
+  let scale = cgmath::Vector3::new(1.4, 0.4, 1.4) * cgmath::Vector3::from_value(scale);
 
   let normal = normal.normalize();
 
