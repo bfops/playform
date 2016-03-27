@@ -14,7 +14,7 @@ use init_mobs::init_mobs;
 use lod;
 use mob;
 use physics::Physics;
-use player::Player;
+use player;
 use sun::Sun;
 use terrain_loader;
 
@@ -39,7 +39,7 @@ impl Client {
 
 // TODO: Audit for s/Mutex/RwLock.
 pub struct Server {
-  pub players: Mutex<HashMap<entity_id::T, Player>>,
+  pub players: Mutex<HashMap<entity_id::T, player::T>>,
   pub mobs: Mutex<HashMap<entity_id::T, mob::Mob>>,
 
   pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,

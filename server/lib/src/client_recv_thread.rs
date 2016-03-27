@@ -13,7 +13,7 @@ use common::protocol;
 use common::socket::SendSocket;
 use common::voxel;
 
-use player::Player;
+use player;
 use server::{Client, Server};
 use terrain;
 use voxel_data;
@@ -76,7 +76,7 @@ pub fn apply_client_update<UpdateGaia>(
       },
       protocol::ClientToServer::AddPlayer(client_id) => {
         let mut player =
-          Player::new(
+          player::T::new(
             id_allocator::allocate(&server.id_allocator),
             &server.owner_allocator,
           );

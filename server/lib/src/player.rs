@@ -20,7 +20,7 @@ const MAX_JUMP_FUEL: u32 = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;
 
 // TODO: Add ObservablePlayer struct as a subset.
-pub struct Player {
+pub struct T {
   pub position: Point3<f32>,
   // speed; units are world coordinates
   pub speed: Vector3<f32>,
@@ -46,14 +46,14 @@ pub struct Player {
   solid_owner: lod::OwnerId,
 }
 
-impl Player {
+impl T {
   pub fn new(
     entity_id: entity_id::T,
     owner_allocator: &Mutex<id_allocator::T<lod::OwnerId>>,
-  ) -> Player {
+  ) -> T {
     let surroundings_owner = id_allocator::allocate(owner_allocator);
     let solid_owner = id_allocator::allocate(owner_allocator);
-    Player {
+    T {
       position: Point3::new(0.0, 0.0, 0.0),
       speed: Vector3::new(0.0, 0.0, 0.0),
       accel: Vector3::new(0.0, -0.1, 0.0),
