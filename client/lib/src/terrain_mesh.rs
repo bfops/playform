@@ -184,6 +184,15 @@ fn place_grass<T, Rng: rand::Rng>(
     .max((v[0].sub_p(&v[2]).length())));
   let scale = cgmath::Vector3::new(1.4, 0.4, 1.4) * cgmath::Vector3::from_value(scale);
 
+  let middle = Point::from_vec(to_middle);
+  let shift =
+    (rng.next_f32() + 1.0) *
+         (v[1].sub_p(&middle).length())
+    .min((v[2].sub_p(&middle).length())
+    .min((v[0].sub_p(&middle).length())));
+  let shift_angle = rng.next_f32() * 2.0 * f32::consts::PI;
+  let shift = cgmath::Matrix3::from_axis_angle(&y, cgmath::rad(shift_angle)).mul_v(&cgmath::Vector3::new(shift, 0.0, 0.0));
+
   let normal = normal.normalize();
 
   let rotate_normal_basis: cgmath::Basis3<f32> = cgmath::Rotation::between_vectors(&y, &normal);
@@ -232,7 +241,9 @@ fn place_grass<T, Rng: rand::Rng>(
   scale_mat[1][1] = scale[1];
   scale_mat[2][2] = scale[2];
 
-  let model = From::from(translate * rotate_normal * skew * rotate_model * scale_mat);
+  let shift_mat = cgmath::Matrix4::from_translation(&shift);
+
+  let model = From::from(translate * rotate_normal * shift_mat * skew * rotate_model * scale_mat);
 
   let billboard_indices = [
     rng.gen_range(0, 9),

@@ -17,6 +17,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
       #version 330 core
 
       uniform mat4 projection_matrix;
+      uniform vec3 eye_position;
 
       in vec3 vertex_position;
       in vec2 texture_position;
@@ -52,7 +53,14 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
         vs_texture_position = texture_position;
         vs_tex_id = float(tex_id[gl_VertexID / 6]);
         vs_normal = normal;
-        gl_Position = adjust_depth_precision(projection_matrix * model_matrix * vec4(vertex_position, 1.0));
+        vec4 root = model_matrix * vec4(0, 0, 0, 1);
+        float scale = exp(-length(vec3(root / root.w) - eye_position) / 64);
+        gl_Position =
+          adjust_depth_precision(
+            projection_matrix *
+            model_matrix *
+            vec4(scale * vertex_position, 1)
+          );
       }}"#,
       ::shaders::adjust_depth_precision::as_string(near, far),
     )),

@@ -1,12 +1,21 @@
 //! Draw the view.
 
-use camera::set_camera;
+use camera::{Camera, set_camera};
 use cgmath;
 use light::{set_sun, set_ambient_light};
 use gl;
 use std;
 use time;
 use view;
+use yaglw;
+
+fn set_eye_position(shader: &mut yaglw::shader::Shader, camera: &Camera) {
+  unsafe {
+    let uniform = shader.get_uniform_location("eye_position");
+    let ptr = std::mem::transmute(&camera.position);
+    gl::Uniform3fv(uniform, 1, ptr);
+  }
+}
 
 fn draw_backdrop(
   rndr: &mut view::T,
@@ -17,13 +26,10 @@ fn draw_backdrop(
     gl::BindVertexArray(rndr.empty_gl_array.gl_id);
   }
 
+  set_sun(&mut rndr.shaders.sky.shader, &mut rndr.gl, &rndr.sun);
+  set_eye_position(&mut rndr.shaders.sky.shader, &rndr.camera);
+
   unsafe {
-    set_sun(&mut rndr.shaders.sky.shader, &mut rndr.gl, &rndr.sun);
-
-    let eye_uniform = rndr.shaders.sky.shader.get_uniform_location("eye_position");
-    let ptr = std::mem::transmute(&rndr.camera.position);
-    gl::Uniform3fv(eye_uniform, 1, ptr);
-
     let time_ms_uniform = rndr.shaders.sky.shader.get_uniform_location("time_ms");
     gl::Uniform1f(time_ms_uniform, (time::precise_time_ns() / 1_000_000) as f32);
 
@@ -48,6 +54,7 @@ fn draw_grass_billboards(
 ) {
   rndr.shaders.grass_billboard.shader.use_shader(&mut rndr.gl);
   set_camera(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.camera);
+  set_eye_position(&mut rndr.shaders.grass_billboard.shader, &rndr.camera);
   set_sun(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.sun);
   set_ambient_light(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.sun);
   let alpha_threshold_uniform =
