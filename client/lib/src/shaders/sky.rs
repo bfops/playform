@@ -60,9 +60,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
 
         float cloud_noise(vec3 seed) {{
           float f = cnoise(seed + time_ms / 8000);
-          f = sign(f) * pow(abs(f), 0.8);
-          // to [0, 1]
-          f = f / 2 + 0.5;
+          f = 1 / (1 + exp(-f*2));
           return f;
         }}
 
@@ -87,7 +85,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
             }} else {{
               vec3 seed = (eye_position + dist * direction + offsets[i]) / 1000 * vec3(1, 4, 1);
               float f = cloud_noise(seed) * cloud_noise(seed + vec3(-10, -103, 1));
-              f = pow(f, 3);
+              f = pow(f, 2);
               alpha += f * (1 - fog_density(dist / 32));
             }}
           }}
