@@ -5,6 +5,7 @@
 #![allow(similar_names)]
 #![allow(type_complexity)]
 #![allow(unneeded_field_pattern)]
+#![allow(derive_hash_xor_eq)]
 
 #![deny(missing_docs)]
 #![deny(warnings)]
@@ -28,6 +29,8 @@ extern crate time;
 extern crate voxel_data;
 extern crate num;
 
+mod cache_mosaic;
+
 pub mod biome;
 pub mod tree;
 
@@ -41,7 +44,7 @@ use common::voxel;
 /// This struct contains and lazily generates the world's terrain.
 #[allow(missing_docs)]
 pub struct T {
-  pub mosaic: Mutex<Box<voxel::mosaic::T<voxel::Material> + Send>>,
+  pub mosaic: Mutex<cache_mosaic::T<voxel::Material>>,
   pub voxels: Mutex<voxel::tree::T>,
 }
 
@@ -49,7 +52,7 @@ impl T {
   #[allow(missing_docs)]
   pub fn new(terrain_seed: Seed) -> T {
     T {
-      mosaic: Mutex::new(Box::new(biome::demo::new(terrain_seed))),
+      mosaic: Mutex::new(cache_mosaic::new(Box::new(biome::demo::new(terrain_seed)))),
       voxels: Mutex::new(voxel::tree::new()),
     }
   }
