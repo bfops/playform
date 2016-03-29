@@ -63,12 +63,12 @@ impl T {
 }
 
 impl voxel::field::T for T {
-  fn density(&self, p: &Point3<f32>) -> f32 {
+  fn density(&mut self, p: &Point3<f32>) -> f32 {
     let (d, _) = self.mat_density(p);
     d
   }
 
-  fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
+  fn normal(&mut self, p: &Point3<f32>) -> Vector3<f32> {
     // Use density differential in each dimension as an approximation of the normal.
 
     let delta = 0.01;
@@ -95,7 +95,7 @@ impl voxel::field::T for T {
 }
 
 impl voxel::mosaic::T<voxel::Material> for T {
-  fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
+  fn material(&mut self, p: &Point3<f32>) -> Option<voxel::Material> {
     let (d, mat) = self.mat_density(p);
     Some(
       if d >= 0.0 {

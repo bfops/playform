@@ -36,10 +36,10 @@ pub fn update_gaia(
           load(server, request_time, voxel_bounds, load_reason);
         });
       },
-      Message::Brush(brush) => {
+      Message::Brush(mut brush) => {
         let mut updates = Vec::new();
         server.terrain_loader.terrain.brush(
-          &brush,
+          &mut brush,
           |block, bounds| {
             trace!("update bounds {:?}", bounds);
             updates.push((*bounds, *block));

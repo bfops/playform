@@ -18,7 +18,7 @@ pub fn new(seed: Seed) -> T {
 }
 
 impl voxel::field::T for T {
-  fn density(&self, p: &Point3<f32>) -> f32 {
+  fn density(&mut self, p: &Point3<f32>) -> f32 {
     let freq = |f: f64| {
       perlin3(&self.seed, &[(p.x as f64) * f, (p.y as f64) * f, (p.z as f64) * f])
     };
@@ -29,7 +29,7 @@ impl voxel::field::T for T {
     d as f32
   }
 
-  fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
+  fn normal(&mut self, p: &Point3<f32>) -> Vector3<f32> {
     // Use density differential in each dimension as an approximation of the normal.
 
     let delta = 0.01;
@@ -56,7 +56,7 @@ impl voxel::field::T for T {
 }
 
 impl voxel::mosaic::T<voxel::Material> for T {
-  fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
+  fn material(&mut self, p: &Point3<f32>) -> Option<voxel::Material> {
     Some(
       if voxel::field::T::density(self, p) >= 0.0 {
         voxel::Material::Stone

@@ -41,7 +41,7 @@ use common::voxel;
 /// This struct contains and lazily generates the world's terrain.
 #[allow(missing_docs)]
 pub struct T {
-  pub mosaic: Box<voxel::mosaic::T<voxel::Material> + Sync>,
+  pub mosaic: Mutex<Box<voxel::mosaic::T<voxel::Material> + Send>>,
   pub voxels: Mutex<voxel::tree::T>,
 }
 
@@ -49,7 +49,7 @@ impl T {
   #[allow(missing_docs)]
   pub fn new(terrain_seed: Seed) -> T {
     T {
-      mosaic: Box::new(biome::demo::new(terrain_seed)),
+      mosaic: Mutex::new(Box::new(biome::demo::new(terrain_seed))),
       voxels: Mutex::new(voxel::tree::new()),
     }
   }
@@ -68,7 +68,8 @@ impl T {
     let branches = branches.force_branches();
     match branches.data {
       None => {
-        let voxel = voxel::unwrap(voxel::of_field(&self.mosaic, bounds));
+        let mut mosaic = self.mosaic.lock().unwrap();
+        let voxel = voxel::unwrap(voxel::of_field(&mut *mosaic, bounds));
         f(&voxel);
         branches.data = Some(voxel);
       },
@@ -81,7 +82,7 @@ impl T {
   /// Apply a voxel brush to the terrain.
   pub fn brush<VoxelChanged, Mosaic>(
     &self,
-    brush: &voxel::brush::T<Mosaic>,
+    brush: &mut voxel::brush::T<Mosaic>,
     mut voxel_changed: VoxelChanged,
   ) where
     VoxelChanged: FnMut(&voxel::T, &voxel::bounds::T),
@@ -95,7 +96,8 @@ impl T {
         if bounds.lg_size > 3 {
           None
         } else {
-          Some(voxel::unwrap(voxel::of_field(&self.mosaic, bounds)))
+          let mut mosaic = self.mosaic.lock().unwrap();
+          Some(voxel::unwrap(voxel::of_field(&mut *mosaic, bounds)))
         }
       },
       &mut voxel_changed,
