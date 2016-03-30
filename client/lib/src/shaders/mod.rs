@@ -43,8 +43,8 @@ impl<'a> Shaders<'a> {
   #[allow(missing_docs)]
   pub fn new<'b>(gl: &'b mut GLContext, window_size: Vector2<i32>, near: f32, far: f32) -> Self where 'a: 'b {
     let terrain_shader = self::terrain::TerrainShader::new(gl, near, far);
-    let mob_shader = self::color::ColorShader::new(gl);
-    let mut hud_color_shader = self::color::ColorShader::new(gl);
+    let mob_shader = self::color::ColorShader::new(gl, near, far);
+    let mut hud_color_shader = self::color::ColorShader::new(gl, 0.0, 1.0);
     let texture_shader = self::texture::TextureShader::new(gl);
     let grass_billboard = self::grass_billboard::new(gl, near, far);
     let sky = self::sky::new(gl);
