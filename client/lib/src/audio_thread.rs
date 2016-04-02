@@ -30,7 +30,7 @@ pub fn audio_thread<RecvMessage>(
 
   let callback = {
     let tracks_playing: *mut audio::TracksPlaying = unsafe { std::mem::transmute(&mut tracks_playing) };
-    let tracks_playing: &mut audio::TracksPlaying = unsafe { std::mem::transmute(tracks_playing) };
+    let tracks_playing: &mut audio::TracksPlaying = unsafe { &mut *tracks_playing };
     move |portaudio::OutputStreamCallbackArgs { buffer, .. }| {
       for x in buffer.iter_mut() {
         *x = 0.0;

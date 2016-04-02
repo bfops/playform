@@ -5,6 +5,7 @@
 
 #![allow(items_after_statements)]
 #![allow(enum_variant_names)]
+#![allow(doc_markdown)]
 
 #![feature(box_syntax)]
 #![feature(fn_traits)]

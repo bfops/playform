@@ -18,6 +18,7 @@
 #![allow(let_and_return)]
 #![allow(many_single_char_names)]
 #![allow(enum_variant_names)]
+#![allow(doc_markdown)]
 
 extern crate bincode;
 extern crate cgmath;
