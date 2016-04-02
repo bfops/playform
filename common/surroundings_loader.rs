@@ -56,7 +56,7 @@ pub enum LoadType {
   Update,
 }
 
-/// Iteratively load point3 in cube-shaped layers around the some point.
+/// Iteratively load points cube-shaped layers around the some point.
 /// That point can be updated with calls to `update`.
 /// What "load" exactly means depends on the closures provided.
 pub struct SurroundingsLoader {
