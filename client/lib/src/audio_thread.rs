@@ -1,7 +1,6 @@
 use portaudio;
 use std;
 use std::sync::{Mutex};
-use time;
 
 use audio;
 use audio_loader;
@@ -51,9 +50,7 @@ pub fn audio_thread<RecvMessage>(
   let mut audio_loader = audio_loader::new();
 
   while !*quit.lock().unwrap() && stream.is_active() == Ok(true) {
-    let start = time::precise_time_ns();
-    let mut i = 0;
-    while let Some(up) = recv_message() {
+    if let Some(up) = recv_message() {
       match up {
         Message::PlayLoop(id) => {
           tracks_playing.push(audio::Track::new(audio_loader.load(id).clone(), true))
@@ -62,18 +59,11 @@ pub fn audio_thread<RecvMessage>(
           tracks_playing.push(audio::Track::new(audio_loader.load(id).clone(), false))
         },
       }
-
-      if i > 10 {
-        i -= 10;
-        if time::precise_time_ns() - start >= 1_000_000 {
-          break
-        }
-      }
-      i += 1;
+    } else {
+      std::thread::sleep(std::time::Duration::from_millis(1));
     }
 
     tracks_playing.refresh_buffer();
-    std::thread::sleep(std::time::Duration::from_millis(1));
   }
 
   stream.stop().unwrap();

@@ -1,4 +1,5 @@
 use std;
+use std::sync::atomic;
 
 #[allow(unused)]
 pub struct Track {
@@ -44,7 +45,7 @@ impl Iterator for Track {
 
 pub struct TracksPlaying {
   tracks: Vec<Track>,
-  ready: bool,
+  ready: atomic::AtomicBool,
   buffer: Vec<f32>,
 }
 
@@ -54,7 +55,7 @@ impl TracksPlaying {
   pub fn new(buffer_len: usize) -> Self {
     TracksPlaying {
       tracks: Vec::new(),
-      ready: false,
+      ready: atomic::AtomicBool::new(false),
       buffer: std::iter::repeat(0.0).take(buffer_len).collect(),
     }
   }
@@ -64,7 +65,7 @@ impl TracksPlaying {
   }
 
   pub fn refresh_buffer(&mut self) {
-    if self.ready {
+    if self.ready.load(atomic::Ordering::Acquire) {
       return
     }
 
@@ -90,16 +91,16 @@ impl TracksPlaying {
       }
     }
 
-    self.ready = true;
+    self.ready.store(true, atomic::Ordering::Release);
   }
 
   #[allow(unused)]
   pub fn with_buffer<F>(&mut self, f: F)
     where F: FnOnce(&mut [f32])
   {
-    if self.ready {
+    if self.ready.load(atomic::Ordering::Acquire) {
       f(&mut self.buffer);
-      self.ready = false;
+      self.ready.store(false, atomic::Ordering::Release);
     }
   }
 }
