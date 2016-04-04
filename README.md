@@ -2,12 +2,12 @@
 
 ## Overview
 
-A voxel sandbox project in Rust, inspired in part by [Voxel Farm](http://procworld.blogspot.com/) and Minecraft. I try to keep a dev blog [here](http://playformdev.blogspot.com/).
+An interactive, modifiable voxel sandbox project in Rust, inspired in part by [Voxel Farm](http://procworld.blogspot.com/) and Minecraft. I try to keep a dev blog [here](http://playformdev.blogspot.com/).
 
 It's very much a WIP. Hopefully as the Rust ecosystem grows (and, in a perfect world, when Rust gets a story for linking with C++),
 the hackiest parts of Playform can be outsourced to other libraries (physics and graphics APIs, threading, networking).
 
-Some picture things:
+Some picture things (perpetually outdated):
 
 ![screenshot 5](/../screenshots/screenshots/screenshot5.png?raw=true)
 ![screenshot 1](/../screenshots/screenshots/screenshot1.png?raw=true)
