@@ -142,8 +142,8 @@ fn update_surroundings<UpdateView, UpdateServer>(
                 for id in &mesh_fragment.ids {
                   update_view(view_update::RemoveTerrain(*id));
                 }
-                for id in &block.grass_ids {
-                  update_view(ClientToView::RemoveGrass(*id));
+                for id in &mesh_fragment.grass_ids {
+                  update_view(view_update::RemoveGrass(*id));
                 }
               });
           })

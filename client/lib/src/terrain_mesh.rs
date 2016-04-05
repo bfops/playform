@@ -3,7 +3,6 @@
 use cgmath;
 use cgmath::{Point, Point3, Vector3, Vector, EuclideanVector, Matrix, Rotation, Aabb, Aabb3};
 use isosurface_extraction::dual_contouring;
-use num::iter::range_inclusive;
 use rand;
 use rand::Rng;
 use std::f32;
@@ -255,7 +254,6 @@ pub fn generate<Rng: rand::Rng>(
       trace!("low {:?}", low);
       trace!("high {:?}", high);
 
-<<<<<<< HEAD
       trace!("edge: {:?} {:?}", edge.direction, low);
 
       try!(dual_contouring::edge::extract(
@@ -280,7 +278,7 @@ pub fn generate<Rng: rand::Rng>(
           block2.ids.push(id);
           block2.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
 
-          if polygon.material == voxel::Material::Terrain && lod <= lod::T(1) {
+          if polygon.material == voxel::Material::Terrain && edge.lg_size <= LG_SAMPLE_SIZE[1] {
             for grass in place_grass(&polygon, rng) {
               let id = id_allocator::allocate(id_allocator);
               block2.grass.push(grass);

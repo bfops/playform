@@ -58,7 +58,8 @@ pub fn load_edge<UpdateView>(
 {
   debug!("generate {:?}", edge);
   let voxels = client.voxels.lock().unwrap();
-  let mesh_fragment = try!(terrain_mesh::generate(&voxels, edge, &client.id_allocator));
+  let mut rng = client.rng.lock().unwrap();
+  let mesh_fragment = try!(terrain_mesh::generate(&voxels, edge, &client.id_allocator, &mut *rng));
 
   let mut updates = Vec::new();
 

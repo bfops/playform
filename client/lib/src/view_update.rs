@@ -6,8 +6,6 @@ use stopwatch;
 use common::entity_id;
 
 use light;
-use light::{set_sun, set_ambient_light};
-use lod;
 use mob_buffers::VERTICES_PER_MOB;
 use player_buffers::VERTICES_PER_PLAYER;
 use terrain_mesh;
