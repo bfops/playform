@@ -29,4 +29,3 @@ git = "https://github.com/bfops/rust-voxel-data"
 
 [dependencies.isosurface-extraction]
 git = "https://github.com/bfops/rust-isosurface-extraction"
-rev = "011313c5e8b7eb0c40669fcca382942d71f64757"

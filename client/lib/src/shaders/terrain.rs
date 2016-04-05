@@ -12,9 +12,9 @@ pub struct TerrainShader<'a> {
 
 impl<'a> TerrainShader<'a> {
   #[allow(missing_docs)]
-  pub fn new<'b>(gl: &'b GLContext) -> Self where 'a: 'b {
+  pub fn new<'b>(gl: &'b GLContext, near: f32, far: f32) -> Self where 'a: 'b {
     let components = vec!(
-      (gl::VERTEX_SHADER, "
+      (gl::VERTEX_SHADER, format!(r#"
         #version 330 core
 
         uniform mat4 projection_matrix;
@@ -24,10 +24,13 @@ impl<'a> TerrainShader<'a> {
         uniform isamplerBuffer materials;
 
         out vec3 world_position;
-        out vec3 normal;
+        out vec3 vs_normal;
         flat out int material;
 
-        void main() {
+        // include adjust_depth_precision
+        {}
+
+        void main() {{
           // Mutiply by 3 because there are 3 components for each normal vector.
           int position_id = gl_VertexID * 3;
           world_position.x = texelFetch(positions, position_id + 0).r;
@@ -35,16 +38,18 @@ impl<'a> TerrainShader<'a> {
           world_position.z = texelFetch(positions, position_id + 2).r;
 
           int normal_id = position_id;
-          normal.x = texelFetch(normals, normal_id + 0).r;
-          normal.y = texelFetch(normals, normal_id + 1).r;
-          normal.z = texelFetch(normals, normal_id + 2).r;
+          vs_normal.x = texelFetch(normals, normal_id + 0).r;
+          vs_normal.y = texelFetch(normals, normal_id + 1).r;
+          vs_normal.z = texelFetch(normals, normal_id + 2).r;
 
           int face_id = gl_VertexID / 3;
 
           material = texelFetch(materials, face_id).r;
 
-          gl_Position = projection_matrix * vec4(world_position, 1.0);
-        }".to_owned()),
+          gl_Position = adjust_depth_precision(projection_matrix * vec4(world_position, 1.0));
+        }}"#,
+        ::shaders::adjust_depth_precision::as_string(near, far),
+      )),
       (gl::FRAGMENT_SHADER, format!("
         #version 330 core
 
@@ -54,14 +59,21 @@ impl<'a> TerrainShader<'a> {
         }} sun;
 
         uniform vec3 ambient_light;
+        uniform vec3 eye_position;
 
         uniform samplerBuffer positions;
 
         in vec3 world_position;
-        in vec3 normal;
+        in vec3 vs_normal;
         flat in int material;
 
         out vec4 frag_color;
+
+        // depth fog
+        {}
+
+        // world fragment shading
+        {}
 
         // include cnoise
         {}
@@ -86,8 +98,38 @@ impl<'a> TerrainShader<'a> {
           {}
         }}
 
+        // http://www.neilmendoza.com/glsl-rotation-about-an-arbitrary-axis/
+        mat3 rotationMatrix(vec3 axis, float angle)
+        {{
+            axis = normalize(axis);
+            float s = sin(angle);
+            float c = cos(angle);
+            float oc = 1.0 - c;
+
+            return mat3(oc * axis.x * axis.x + c,           oc * axis.x * axis.y - axis.z * s,  oc * axis.z * axis.x + axis.y * s,
+                        oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,
+                        oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c         );
+        }}
+
+        vec3 bump_map(float shallowness, float frequency, vec3 v) {{
+          vec3 seed = frequency * world_position + vec3(0x123411);
+          float p0 = cnoise(seed);
+          float d = 0.1;
+          float px = cnoise(seed + vec3(d, 0, 0));
+          float py = cnoise(seed + vec3(0, d, 0));
+          float pz = cnoise(seed + vec3(0, 0, d));
+          vec3 r = normalize(vec3(px, py, pz) - vec3(p0));
+
+          vec3 axis = cross(vec3(0, 1, 0), r);
+          float c = dot(vec3(0, 1, 0), r);
+          return rotationMatrix(axis, acos(c) / shallowness) * v;
+        }}
+
         void main() {{
           vec4 base_color;
+
+          vec3 normal = vs_normal;
+          float shininess = 100000000;
 
           if (material == 1) {{
             float grass_amount =
@@ -102,23 +144,31 @@ impl<'a> TerrainShader<'a> {
             base_color = vec4(leaves(), 1);
           }} else if (material == 4) {{
             base_color = vec4(stone(), 1);
+            normal = bump_map(4, 2, normal);
+          }} else if (material == 5) {{
+            base_color = vec4(0, 0, 0, 1);
+            shininess = 40;
           }} else {{
             base_color = vec4(0.5, 0, 0.5, 0.5);
+            shininess = 1;
           }}
 
-          float brightness = dot(normal, sun.direction);
-          brightness = clamp(brightness, 0, 1);
-          vec3 lighting = brightness * sun.intensity + ambient_light;
-
-          float fog_factor = gl_FragCoord.z / gl_FragCoord.w / 768;
-          float fog_density = 1 - exp(-fog_factor);
-          vec3 fog_color = sun.intensity;
-          vec4 fog_component = vec4(fog_color, 1) * fog_density;
-          vec4 material_component =
-            vec4(clamp(lighting, 0, 1), 1) * base_color * vec4(1, 1, 1, 1 - fog_density);
-
-          frag_color = fog_component + material_component;
+          vec4 fog_color = vec4(sun.intensity, 1);
+          frag_color =
+            world_fragment(
+              sun.direction,
+              sun.intensity,
+              normalize(world_position - eye_position),
+              ambient_light,
+              base_color,
+              shininess,
+              normal,
+              fog_color,
+              gl_FragCoord.z / gl_FragCoord.w
+            );
         }}",
+        ::shaders::depth_fog::to_string(),
+        ::shaders::world_fragment::to_string(),
         ::shaders::noise::cnoise(),
         ::shaders::grass::grass(),
         ::shaders::dirt::dirt(),

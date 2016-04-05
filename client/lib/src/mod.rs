@@ -6,6 +6,7 @@
 
 #![feature(plugin)]
 #![feature(test)]
+#![feature(type_ascription)]
 #![feature(unboxed_closures)]
 
 #![plugin(clippy)]
@@ -13,17 +14,27 @@
 #![allow(mutex_atomic)]
 #![allow(match_ref_pats)]
 #![allow(match_same_arms)]
+#![allow(similar_names)]
+#![allow(too_many_arguments)]
+#![allow(let_and_return)]
+#![allow(many_single_char_names)]
+#![allow(enum_variant_names)]
+#![allow(doc_markdown)]
 
 extern crate bincode;
 extern crate cgmath;
 extern crate common;
 extern crate fnv;
 extern crate gl;
+extern crate hound;
+extern crate image;
 extern crate isosurface_extraction;
 #[macro_use]
 extern crate log;
 extern crate libc;
 extern crate num;
+extern crate portaudio;
+extern crate rand;
 extern crate sdl2;
 extern crate sdl2_sys;
 extern crate stopwatch;
@@ -34,6 +45,9 @@ extern crate time;
 extern crate voxel_data;
 extern crate yaglw;
 
+mod audio;
+mod audio_loader;
+mod audio_thread;
 mod block_position;
 mod camera;
 mod client;
@@ -52,6 +66,7 @@ mod run;
 mod server;
 mod server_update;
 mod shaders;
+mod grass_buffers;
 mod terrain_buffers;
 mod terrain_mesh;
 mod update_thread;

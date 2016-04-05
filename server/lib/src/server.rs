@@ -14,7 +14,7 @@ use init_mobs::init_mobs;
 use lod;
 use mob;
 use physics::Physics;
-use player::Player;
+use player;
 use sun::Sun;
 use terrain_loader;
 
@@ -38,8 +38,8 @@ impl Client {
 }
 
 // TODO: Audit for s/Mutex/RwLock.
-pub struct Server {
-  pub players: Mutex<HashMap<entity_id::T, Player>>,
+pub struct T {
+  pub players: Mutex<HashMap<entity_id::T, player::T>>,
   pub mobs: Mutex<HashMap<entity_id::T, mob::Mob>>,
 
   pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
@@ -56,51 +56,49 @@ pub struct Server {
   pub update_timer: Mutex<IntervalTimer>,
 }
 
-impl Server {
-  #[allow(missing_docs)]
-  pub fn new() -> Server {
-    let world_width: u32 = 1 << 11;
-    let world_width = world_width as f32;
-    let physics =
-      Physics::new(
-        Aabb3::new(
-          Point3 { x: -world_width, y: -512.0, z: -world_width },
-          Point3 { x: world_width, y: 512.0, z: world_width },
-        )
-      );
+#[allow(missing_docs)]
+pub fn new() -> T {
+  let world_width: u32 = 1 << 11;
+  let world_width = world_width as f32;
+  let physics =
+    Physics::new(
+      Aabb3::new(
+        Point3 { x: -world_width, y: -512.0, z: -world_width },
+        Point3 { x: world_width, y: 512.0, z: world_width },
+      )
+    );
 
-    let id_allocator = id_allocator::new();
-    let owner_allocator = Mutex::new(id_allocator::new());
+  let id_allocator = id_allocator::new();
+  let owner_allocator = Mutex::new(id_allocator::new());
 
-    let server = Server {
-      players: Mutex::new(HashMap::new()),
-      mobs: Mutex::new(HashMap::new()),
+  let server = T {
+    players: Mutex::new(HashMap::new()),
+    mobs: Mutex::new(HashMap::new()),
 
-      id_allocator: Mutex::new(id_allocator),
-      owner_allocator: owner_allocator,
-      client_allocator: Mutex::new(id_allocator::new()),
+    id_allocator: Mutex::new(id_allocator),
+    owner_allocator: owner_allocator,
+    client_allocator: Mutex::new(id_allocator::new()),
 
-      physics: Mutex::new(physics),
-      terrain_loader: terrain_loader::T::new(),
-      rng: {
-        let seed = [0];
-        let seed: &[usize] = &seed;
-        Mutex::new(rand::SeedableRng::from_seed(seed))
-      },
+    physics: Mutex::new(physics),
+    terrain_loader: terrain_loader::T::new(),
+    rng: {
+      let seed = [0];
+      let seed: &[usize] = &seed;
+      Mutex::new(rand::SeedableRng::from_seed(seed))
+    },
 
-      clients: Mutex::new(HashMap::new()),
-      sun: Mutex::new(Sun::new(SUN_TICK_NS)),
+    clients: Mutex::new(HashMap::new()),
+    sun: Mutex::new(Sun::new(SUN_TICK_NS)),
 
-      update_timer: {
-        let now = time::precise_time_ns();
-        let nanoseconds_per_second = 1000000000;
-        Mutex::new(
-          IntervalTimer::new(nanoseconds_per_second / UPDATES_PER_SECOND, now)
-        )
-      }
-    };
+    update_timer: {
+      let now = time::precise_time_ns();
+      let nanoseconds_per_second = 1000000000;
+      Mutex::new(
+        IntervalTimer::new(nanoseconds_per_second / UPDATES_PER_SECOND, now)
+      )
+    }
+  };
 
-    init_mobs(&server);
-    server
-  }
+  init_mobs(&server);
+  server
 }

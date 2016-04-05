@@ -3,11 +3,11 @@
 use cgmath::Point3;
 use stopwatch;
 
-use common::color::Color3;
 use common::entity_id;
 
 use light;
 use light::{set_sun, set_ambient_light};
+use lod;
 use mob_buffers::VERTICES_PER_MOB;
 use player_buffers::VERTICES_PER_PLAYER;
 use terrain_mesh;
@@ -28,15 +28,13 @@ pub enum T {
 
   /// Update the sun.
   SetSun(light::Sun),
-  /// Update the ambient light.
-  SetAmbientLight(Color3<f32>),
-  /// Update the GL clear color.
-  SetClearColor(Color3<f32>),
 
   /// Add a terrain block to the view.
   AddBlock(terrain_mesh::T),
   /// Remove a terrain entity.
   RemoveTerrain(entity_id::T),
+  /// Remove a grass billboard.
+  RemoveGrass(entity_id::T),
   /// Treat a series of updates as an atomic operation.
   Atomic(Vec<T>),
 }
@@ -56,36 +54,34 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
       view.player_buffers.insert(&mut view.gl, id, &triangles);
     },
     T::SetSun(sun) => {
-      set_sun(
-        &mut view.shaders.terrain_shader.shader,
-        &mut view.gl,
-        &sun,
-      );
-    },
-    T::SetAmbientLight(color) => {
-      set_ambient_light(
-        &mut view.shaders.terrain_shader.shader,
-        &mut view.gl,
-        color,
-      );
-    },
-    T::SetClearColor(color) => {
-      view.gl.set_background_color(color.r, color.g, color.b, 1.0);
+      match view.input_mode {
+        view::InputMode::Sun => {},
+        _ => {
+          view.sun = sun;
+        },
+      }
     },
     T::AddBlock(block) => {
       stopwatch::time("add_block", || {
         view.terrain_buffers.push(
           &mut view.gl,
-
           block.vertex_coordinates.as_ref(),
           block.normals.as_ref(),
           block.ids.as_ref(),
           block.materials.as_ref(),
         );
+        view.grass_buffers.push(
+          &mut view.gl,
+          block.grass.as_ref(),
+          block.grass_ids.as_ref(),
+        );
       })
     },
     T::RemoveTerrain(id) => {
       view.terrain_buffers.swap_remove(&mut view.gl, id);
+    },
+    T::RemoveGrass(id) => {
+      view.grass_buffers.swap_remove(&mut view.gl, id);
     },
     T::Atomic(updates) => {
       for up in updates.into_iter() {

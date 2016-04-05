@@ -4,9 +4,9 @@ use common::entity_id;
 use common::surroundings_loader::SurroundingsLoader;
 
 use lod;
-use server::Server;
+use server;
 
-pub type Behavior = fn(&Server, &mut Mob);
+pub type Behavior = fn(&server::T, &mut Mob);
 
 pub struct Mob {
   pub position: Point3<f32>,

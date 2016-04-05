@@ -8,28 +8,43 @@ use common::voxel;
 
 use lod;
 use mob;
-use server::Server;
+use player;
+use server;
 use update_gaia;
 
 // TODO: Consider removing the IntervalTimer.
 
 pub fn update_world<RequestBlock>(
-  server: &Server,
+  server: &server::T,
   request_block: &mut RequestBlock,
 ) where
   RequestBlock: FnMut(update_gaia::Message),
 {
   stopwatch::time("update_world", || {
     stopwatch::time("update_world.player", || {
+      let mut updates = Vec::new();
+
       for (_, player) in server.players.lock().unwrap().iter_mut() {
-        player.update(server, request_block);
+        let (bounds, collisions) = player.update(server, request_block);
+        updates.push(protocol::ServerToClient::UpdatePlayer(player.entity_id, bounds));
+        updates.extend(
+          collisions.into_iter()
+          .map(|c| {
+            match c {
+              player::Collision::Terrain(id) => protocol::Collision::PlayerTerrain(player.entity_id, id),
+              player::Collision::Misc(id)    => protocol::Collision::PlayerMisc(player.entity_id, id),
+            }
+          })
+          .map(|c| {
+            protocol::ServerToClient::Collision(c)
+          })
+        );
       }
 
-      let players: Vec<_> = server.players.lock().unwrap().keys().cloned().collect();
-      for (_, client) in server.clients.lock().unwrap().iter_mut() {
-        for &id in &players {
-          let bounds = *server.physics.lock().unwrap().get_bounds(id).unwrap();
-          client.send(protocol::ServerToClient::UpdatePlayer(id, bounds));
+      let mut clients = server.clients.lock().unwrap();
+      for (_, client) in &mut *clients {
+        for update in &updates {
+          client.send(update.clone());
         }
       }
     });
@@ -84,7 +99,7 @@ pub fn update_world<RequestBlock>(
 }
 
 fn translate_mob(
-  server: &Server,
+  server: &server::T,
   mob: &mut mob::Mob,
   delta_p: &Vector3<f32>,
 ) {
@@ -110,7 +125,7 @@ fn translate_mob(
 
 pub fn load_placeholders<RequestBlock>(
   owner: lod::OwnerId,
-  server: &Server,
+  server: &server::T,
   request_block: &mut RequestBlock,
   pos: &voxel::bounds::T,
   load_type: LoadType,

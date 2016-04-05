@@ -1,134 +1,201 @@
 //! The state associated with perceiving the world state.
 
 use cgmath;
-use cgmath::Vector2;
+use gl;
+use gl::types::*;
+use image;
+use image::GenericImage;
 use std;
 use yaglw::gl_context::GLContext;
+use yaglw;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, DrawMode, VertexAttribData};
 use yaglw::texture::{TextureUnit};
 
-use common::id_allocator;
-
 use camera::Camera;
-use gl;
-use gl::types::*;
+use common::id_allocator;
+use light;
+use grass_buffers;
 use mob_buffers::MobBuffers;
 use player_buffers::PlayerBuffers;
 use shaders::Shaders;
 use terrain_buffers::TerrainBuffers;
 use vertex::{ColoredVertex};
 
+pub const FOV: f32 = std::f32::consts::FRAC_PI_3;
+
 const VERTICES_PER_TRIANGLE: usize = 3;
+
+pub enum InputMode {
+  Camera,
+  Sun,
+}
 
 /// The state associated with perceiving the world state.
 pub struct T<'a> {
   /// Current OpengL context.
   pub gl: GLContext,
-  #[allow(missing_docs)]
-  pub shaders: Shaders<'a>,
 
-  #[allow(missing_docs)]
+  pub shaders: Shaders<'a>,
+  pub empty_gl_array: yaglw::vertex_buffer::ArrayHandle<'a>,
+  /// A texture unit for misc use.
+  pub misc_texture_unit: TextureUnit,
   pub terrain_buffers: TerrainBuffers<'a>,
-  #[allow(missing_docs)]
+  pub grass_buffers: grass_buffers::T<'a>,
+  pub grass_texture: yaglw::texture::Texture2D<'a>,
   pub mob_buffers: MobBuffers<'a>,
-  #[allow(missing_docs)]
   pub player_buffers: PlayerBuffers<'a>,
   /// Hud triangles for non-text.
   pub hud_triangles: GLArray<'a, ColoredVertex>,
 
-  /// A texture unit for misc use.
-  pub misc_texture_unit: TextureUnit,
-
-  #[allow(missing_docs)]
+  pub sun: light::Sun,
   pub camera: Camera,
-
-  #[allow(missing_docs)]
+  pub window_size: cgmath::Vector2<i32>,
+  /// Whether to render HUD elements
   pub show_hud: bool,
+
+  /// Whether to render HUD elements
+  pub input_mode: InputMode,
 }
 
-impl<'a> T<'a> {
-  #[allow(missing_docs)]
-  pub fn new(mut gl: GLContext, window_size: Vector2<i32>) -> T<'a> {
-    let mut texture_unit_alloc = id_allocator::new();
+fn load_grass_texture<'a, 'b:'a>(
+  gl: &'a mut GLContext,
+) -> image::ImageResult<yaglw::texture::Texture2D<'b>> {
+  let grass_texture = yaglw::texture::Texture2D::new(&gl);
+  let fd = std::fs::File::open("Assets/Free_Vector_Grass.png").unwrap();
+  let image = try!(image::load(fd, image::ImageFormat::PNG));
+  let (w, h) = image.dimensions();
+  let colortype = image.color();
+  assert!(colortype == image::ColorType::RGBA(8));
 
-    let mut shaders = Shaders::new(&mut gl, window_size);
+  let mut pixels: Vec<u8> = Vec::with_capacity((w * h) as usize);
+  for y in 0 .. h {
+  for x in 0 .. w {
+    let y = h - y - 1;
+    let pixel = image.get_pixel(x, y);
+    pixels.extend_from_slice(&pixel.data);
+  }}
 
-    let terrain_buffers = TerrainBuffers::new(&mut gl);
-    terrain_buffers.bind_glsl_uniforms(
+  unsafe {
+    gl::BindTexture(gl::TEXTURE_2D, grass_texture.handle.gl_id);
+    let data = std::mem::transmute(pixels.as_ptr());
+    gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, w as i32, h as i32, 0, gl::RGBA, gl::UNSIGNED_BYTE, data);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+  }
+
+  Ok(grass_texture)
+}
+
+#[allow(missing_docs)]
+pub fn new<'a>(
+  mut gl: GLContext,
+  window_size: cgmath::Vector2<i32>,
+) -> T<'a> {
+  let mut texture_unit_alloc = id_allocator::new();
+
+  let near = 0.1;
+  let far = 2048.0;
+  let mut shaders = Shaders::new(&mut gl, window_size, near, far);
+
+  let terrain_buffers = TerrainBuffers::new(&mut gl);
+  terrain_buffers.bind_glsl_uniforms(
+    &mut gl,
+    &mut texture_unit_alloc,
+    &mut shaders.terrain_shader,
+  );
+
+  let mob_buffers = MobBuffers::new(&mut gl, &shaders.mob_shader);
+  let player_buffers = PlayerBuffers::new(&mut gl, &shaders.mob_shader);
+
+  let buffer = GLBuffer::new(&mut gl, 16 * VERTICES_PER_TRIANGLE);
+  let hud_triangles = {
+    GLArray::new(
       &mut gl,
-      &mut texture_unit_alloc,
-      &mut shaders.terrain_shader,
-    );
+      &shaders.hud_color_shader.shader,
+      &[
+        VertexAttribData { name: "position", size: 3, unit: GLType::Float, divisor: 0 },
+        VertexAttribData { name: "in_color", size: 4, unit: GLType::Float, divisor: 0 },
+      ],
+      DrawMode::Triangles,
+      buffer,
+    )
+  };
 
-    let mob_buffers = MobBuffers::new(&mut gl, &shaders.mob_shader);
-    let player_buffers = PlayerBuffers::new(&mut gl, &shaders.mob_shader);
+  let misc_texture_unit = texture_unit_alloc.allocate();
 
-    let buffer = GLBuffer::new(&mut gl, 16 * VERTICES_PER_TRIANGLE);
-    let hud_triangles = {
-      GLArray::new(
-        &mut gl,
-        &shaders.hud_color_shader.shader,
-        &[
-          VertexAttribData { name: "position", size: 3, unit: GLType::Float },
-          VertexAttribData { name: "in_color", size: 4, unit: GLType::Float },
-        ],
-        DrawMode::Triangles,
-        buffer,
-      )
-    };
+  unsafe {
+    gl::FrontFace(gl::CCW);
+    gl::CullFace(gl::BACK);
+    gl::Enable(gl::CULL_FACE);
 
-    let misc_texture_unit = texture_unit_alloc.allocate();
+    gl::Enable(gl::BLEND);
+    gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
 
-    unsafe {
-      gl::FrontFace(gl::CCW);
-      gl::CullFace(gl::BACK);
-      gl::Enable(gl::CULL_FACE);
+    gl::Enable(gl::LINE_SMOOTH);
+    gl::LineWidth(2.5);
 
-      gl::Enable(gl::BLEND);
-      gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+    gl::Enable(gl::DEPTH_TEST);
+    gl::DepthFunc(gl::LESS);
+    gl::ClearDepth(1.0);
+  }
 
-      gl::Enable(gl::LINE_SMOOTH);
-      gl::LineWidth(2.5);
+  unsafe {
+    gl::ActiveTexture(misc_texture_unit.gl_id());
+  }
 
-      gl::Enable(gl::DEPTH_TEST);
-      gl::DepthFunc(gl::LESS);
-      gl::ClearDepth(1.0);
-    }
+  let texture_in =
+    shaders.texture_shader.shader.get_uniform_location("texture_in");
+  shaders.texture_shader.shader.use_shader(&mut gl);
+  unsafe {
+    gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
+  }
 
-    unsafe {
-      gl::ActiveTexture(misc_texture_unit.gl_id());
-    }
+  let texture_in =
+    shaders.grass_billboard.shader.get_uniform_location("texture_in");
+  shaders.grass_billboard.shader.use_shader(&mut gl);
+  unsafe {
+    gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
+  }
 
-    let texture_in =
-      shaders.hud_texture_shader.shader.get_uniform_location("texture_in");
-    shaders.hud_texture_shader.shader.use_shader(&mut gl);
-    unsafe {
-      gl::Uniform1i(texture_in, misc_texture_unit.glsl_id as GLint);
-    }
+  let grass_buffers = grass_buffers::new(&mut gl, &shaders.grass_billboard.shader);
+  let grass_texture = load_grass_texture(&mut gl).unwrap();
 
-    T {
-      gl: gl,
-      shaders: shaders,
+  let empty_gl_array = yaglw::vertex_buffer::ArrayHandle::new(&gl);
 
-      terrain_buffers: terrain_buffers,
-      mob_buffers: mob_buffers,
-      player_buffers: player_buffers,
-      hud_triangles: hud_triangles,
+  T {
+    gl: gl,
+    shaders: shaders,
 
-      misc_texture_unit: misc_texture_unit,
+    terrain_buffers: terrain_buffers,
+    grass_buffers: grass_buffers,
+    grass_texture: grass_texture,
+    mob_buffers: mob_buffers,
+    player_buffers: player_buffers,
+    hud_triangles: hud_triangles,
 
-      camera: {
-        let fovy = cgmath::rad(std::f32::consts::PI / 3.0);
-        let aspect = window_size.x as f32 / window_size.y as f32;
-        let mut camera = Camera::unit();
-        // Initialize the projection matrix.
-        camera.fov = cgmath::perspective(fovy, aspect, 0.1, 2048.0);
-        // TODO: This should use player rotation from the server.
-        camera.rotate_lateral(std::f32::consts::PI / 2.0);
-        camera
+    empty_gl_array: empty_gl_array,
+    misc_texture_unit: misc_texture_unit,
+
+    window_size: window_size,
+
+    camera: {
+      let fovy = cgmath::rad(FOV);
+      let aspect = window_size.x as f32 / window_size.y as f32;
+      let mut camera = Camera::unit();
+      // Initialize the projection matrix.
+      camera.fov = cgmath::perspective(fovy, aspect, near, far);
+      // TODO: This should use player rotation from the server.
+      camera.rotate_lateral(std::f32::consts::PI / 2.0);
+      camera
+    },
+
+    sun:
+      light::Sun {
+        progression: 0.0,
+        rotation: 0.0,
       },
 
-      show_hud: true,
-    }
+    show_hud: true,
+    input_mode: InputMode::Camera,
   }
 }

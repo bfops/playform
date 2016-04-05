@@ -5,6 +5,7 @@ use gl;
 use sdl2;
 use sdl2::event::Event;
 use sdl2::video;
+use sdl2_sys;
 use stopwatch;
 use time;
 use yaglw::gl_context::GLContext;
@@ -53,10 +54,10 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   let mut window =
     video.window(
       "Playform",
-      1200, 1024,
+      0, 0,
     );
 
-  let window = window.position(0, 0);
+  let window = window.fullscreen_desktop();
   let window = window.opengl();
 
   let window = window.build().unwrap();
@@ -82,7 +83,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
     Vector2::new(w as i32, h as i32)
   };
 
-  let mut view = view::T::new(gl, window_size);
+  let mut view = view::new(gl, window_size);
 
   sdl.mouse().set_relative_mouse_mode(true);
 
@@ -126,6 +127,10 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
               );
             },
           }
+        }
+
+        if window.window_flags() & (sdl2_sys::video::SDL_WindowFlags::SDL_WINDOW_MOUSE_FOCUS as u32) != 0 {
+          sdl.mouse().warp_mouse_in_window(&window, window_size.x / 2, window_size.y / 2);
         }
 
         stopwatch::time("apply_view_updates", || {

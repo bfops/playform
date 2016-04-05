@@ -21,13 +21,13 @@ mod pillar {
   unsafe impl Send for T {}
 
   impl field::T for T {
-    fn density(&self, p: &Point3<f32>) -> f32 {
+    fn density(&mut self, p: &Point3<f32>) -> f32 {
       let mut p = *p;
       p.y = 0.0;
       self.radius*self.radius - p.to_vec().length2()
     }
 
-    fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
+    fn normal(&mut self, p: &Point3<f32>) -> Vector3<f32> {
       let mut p = *p;
       p.y = 0.0;
       p.to_vec().normalize()
@@ -138,17 +138,17 @@ pub fn new<Rng>(
 }
 
 impl field::T for T {
-  fn density(&self, p: &Point3<f32>) -> f32 {
-    field::T::density(&self.union, p)
+  fn density(&mut self, p: &Point3<f32>) -> f32 {
+    field::T::density(&mut self.union, p)
   }
 
-  fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
-    field::T::normal(&self.union, p)
+  fn normal(&mut self, p: &Point3<f32>) -> Vector3<f32> {
+    field::T::normal(&mut self.union, p)
   }
 }
 
 impl mosaic::T<voxel::Material> for T {
-  fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
-    mosaic::T::material(&self.union, p)
+  fn material(&mut self, p: &Point3<f32>) -> Option<voxel::Material> {
+    mosaic::T::material(&mut self.union, p)
   }
 }

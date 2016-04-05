@@ -68,6 +68,9 @@ pub fn load_edge<UpdateView>(
     for id in &mesh_fragment.ids {
       updates.push(view_update::RemoveTerrain(*id));
     }
+    for id in &mesh_fragment.grass_ids {
+      updates.push(view_update::RemoveGrass(*id));
+    }
   }
 
   if !mesh_fragment.ids.is_empty() {

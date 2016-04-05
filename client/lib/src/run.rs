@@ -1,11 +1,13 @@
 use std;
 use std::io::Write;
-use std::sync::Mutex;
+use std::sync::{Mutex};
 use stopwatch;
 use thread_scoped;
 
 use common::protocol;
 
+use audio_loader;
+use audio_thread;
 use client;
 use server;
 use record_book;
@@ -17,6 +19,7 @@ pub fn run(listen_url: &str, server_url: &str) {
   let voxel_updates = Mutex::new(std::collections::VecDeque::new());
   let view_updates0 = Mutex::new(std::collections::VecDeque::new());
   let view_updates1 = Mutex::new(std::collections::VecDeque::new());
+  let audio_updates = Mutex::new(std::collections::VecDeque::new());
 
   let quit = Mutex::new(false);
   let quit = &quit;
@@ -40,10 +43,25 @@ pub fn run(listen_url: &str, server_url: &str) {
       }
     };
 
+    let audio_thread = {
+      let audio_updates = &audio_updates;
+      unsafe {
+        thread_scoped::scoped(move || {
+          audio_thread::audio_thread(
+            quit,
+            &mut || { audio_updates.lock().unwrap().pop_front() },
+          );
+        })
+      }
+    };
+
+    audio_updates.lock().unwrap().push_back(audio_thread::Message::PlayLoop(audio_loader::SoundId::Rainforest));
+
     let update_thread = {
       let client = &client;
       let view_updates0 = &view_updates0;
       let view_updates1 = &view_updates1;
+      let audio_updates = &audio_updates;
       let voxel_updates = &voxel_updates;
       let server = server.clone();
       unsafe {
@@ -55,6 +73,7 @@ pub fn run(listen_url: &str, server_url: &str) {
             &mut || { voxel_updates.lock().unwrap().pop_front() },
             &mut |up| { view_updates0.lock().unwrap().push_back(up) },
             &mut |up| { view_updates1.lock().unwrap().push_back(up) },
+            &mut |up| { audio_updates.lock().unwrap().push_back(up) },
   	        &mut |up| { server.talk.tell(&up) },
             &mut |request_time, updates, reason| { voxel_updates.lock().unwrap().push_back((request_time, updates, reason)) },
           );
@@ -95,9 +114,11 @@ pub fn run(listen_url: &str, server_url: &str) {
     // View thread returned, so we got a quit event.
     *quit.lock().unwrap() = true;
 
+    audio_thread.join();
     monitor_thread.join();
 
     let stopwatch = update_thread.join();
+
     stopwatch.print();
   }
 }

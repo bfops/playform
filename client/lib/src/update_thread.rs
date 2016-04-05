@@ -7,6 +7,7 @@ use common::protocol;
 use common::surroundings_loader;
 use common::surroundings_loader::LoadType;
 
+use audio_thread;
 use block_position;
 use client;
 use edge;
@@ -19,13 +20,14 @@ use voxel;
 
 const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
 
-pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, UpdateServer, EnqueueBlockUpdates>(
+pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, UpdateAudio, UpdateServer, EnqueueBlockUpdates>(
   quit: &Mutex<bool>,
   client: &client::T,
   recv_server: &mut RecvServer,
   recv_voxel_updates: &mut RecvVoxelUpdates,
   update_view0: &mut UpdateView0,
   update_view1: &mut UpdateView1,
+  update_audio: &mut UpdateAudio,
   update_server: &mut UpdateServer,
   enqueue_block_updates: &mut EnqueueBlockUpdates,
 ) where
@@ -33,6 +35,7 @@ pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, Upd
   RecvVoxelUpdates: FnMut() -> Option<(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)>,
   UpdateView0: FnMut(view_update::T),
   UpdateView1: FnMut(view_update::T),
+  UpdateAudio: FnMut(audio_thread::Message),
   UpdateServer: FnMut(protocol::ClientToServer),
   EnqueueBlockUpdates: FnMut(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {
@@ -43,7 +46,7 @@ pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, Upd
     } else {
       stopwatch::time("update_iteration", || {
         stopwatch::time("process_server_updates", || {
-          process_server_updates(client, recv_server, update_view0, update_server, enqueue_block_updates);
+          process_server_updates(client, recv_server, update_view0, update_audio, update_server, enqueue_block_updates);
         });
 
         stopwatch::time("update_surroundings", || {
@@ -77,7 +80,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
   let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
   let mut updates = surroundings_loader.updates(load_position.as_pnt()) ;
   loop {
-    if*client.outstanding_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
+    if *client.outstanding_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
       trace!("update loop breaking");
       break;
     }
@@ -130,7 +133,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
         let mut loaded_edges = client.loaded_edges.lock().unwrap();
         for edge in block_position.edges(new_lod) {
           stopwatch::time("update_thread.unload", || {
-            // The block removal code is duplicated elsewhere.
+            // The block removal code is duplicated in load_terrain.
 
             loaded_edges
               .remove(&edge)
@@ -138,6 +141,9 @@ fn update_surroundings<UpdateView, UpdateServer>(
               .map(|mesh_fragment| {
                 for id in &mesh_fragment.ids {
                   update_view(view_update::RemoveTerrain(*id));
+                }
+                for id in &block.grass_ids {
+                  update_view(ClientToView::RemoveGrass(*id));
                 }
               });
           })
@@ -272,15 +278,17 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
 }
 
 #[inline(never)]
-fn process_server_updates<RecvServer, UpdateView, UpdateServer, EnqueueBlockUpdates>(
+fn process_server_updates<RecvServer, UpdateView, UpdateAudio, UpdateServer, EnqueueBlockUpdates>(
   client: &client::T,
   recv_server: &mut RecvServer,
   update_view: &mut UpdateView,
+  update_audio: &mut UpdateAudio,
   update_server: &mut UpdateServer,
   enqueue_block_updates: &mut EnqueueBlockUpdates,
 ) where
   RecvServer: FnMut() -> Option<protocol::ServerToClient>,
   UpdateView: FnMut(view_update::T),
+  UpdateAudio: FnMut(audio_thread::Message),
   UpdateServer: FnMut(protocol::ClientToServer),
   EnqueueBlockUpdates: FnMut(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {
@@ -290,6 +298,7 @@ fn process_server_updates<RecvServer, UpdateView, UpdateServer, EnqueueBlockUpda
     apply_server_update(
       client,
       update_view,
+      update_audio,
       update_server,
       enqueue_block_updates,
       up,

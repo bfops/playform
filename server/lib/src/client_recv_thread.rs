@@ -13,8 +13,9 @@ use common::protocol;
 use common::socket::SendSocket;
 use common::voxel;
 
-use player::Player;
-use server::{Client, Server};
+use player;
+use server;
+use server::Client;
 use terrain;
 use voxel_data;
 use update_gaia;
@@ -25,7 +26,7 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
 }
 
 fn cast(
-  server: &Server,
+  server: &server::T,
   player_id: entity_id::T,
 ) -> Option<voxel::bounds::T> {
   let ray;
@@ -47,7 +48,7 @@ fn cast(
 }
 
 pub fn apply_client_update<UpdateGaia>(
-  server: &Server,
+  server: &server::T,
   update_gaia: &mut UpdateGaia,
   update: protocol::ClientToServer,
 ) where
@@ -76,7 +77,7 @@ pub fn apply_client_update<UpdateGaia>(
       },
       protocol::ClientToServer::AddPlayer(client_id) => {
         let mut player =
-          Player::new(
+          player::T::new(
             id_allocator::allocate(&server.id_allocator),
             &server.owner_allocator,
           );
@@ -210,7 +211,7 @@ pub fn apply_client_update<UpdateGaia>(
                   radius: r,
                 },
               },
-              material: voxel::Material::Empty,
+              material: voxel::Material::Marble,
             };
           let r = sphere.field.field.radius + 1.0;
           let brush =

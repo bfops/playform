@@ -1,5 +1,6 @@
 use common::interval_timer::IntervalTimer;
 use time;
+use std;
 
 pub struct Sun {
   // The sun as portions of a 65536-degree circle.
@@ -24,7 +25,7 @@ impl Sun {
       return None;
     }
 
-    self.position += ticks as u16;
+    self.position = (std::num::Wrapping(self.position) + std::num::Wrapping(ticks as u16)).0;
 
     // Fraction completed of a full cycle.
     let fraction = (self.position as f32) / 65536.0;

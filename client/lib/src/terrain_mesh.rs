@@ -1,7 +1,11 @@
 //! Data structure for a small block of terrain.
 
-use cgmath::{Point, Point3, Vector3, Aabb, Aabb3};
+use cgmath;
+use cgmath::{Point, Point3, Vector3, Vector, EuclideanVector, Matrix, Rotation, Aabb, Aabb3};
 use isosurface_extraction::dual_contouring;
+use num::iter::range_inclusive;
+use rand;
+use rand::Rng;
 use std::f32;
 use std::sync::{Arc, Mutex};
 use stopwatch;
@@ -123,10 +127,109 @@ mod voxel_storage {
   }
 }
 
-pub fn generate(
+fn place_grass<T, Rng: rand::Rng>(
+  polygon: &dual_contouring::polygon::T<T>,
+  rng: &mut Rng,
+) -> Vec<Grass> {
+  let v = &polygon.vertices;
+  let normal = v[1].sub_p(&v[0]).cross(&v[2].sub_p(&v[0]));
+  let to_middle =
+    &v[0].to_vec()
+    .add_v(&v[1].to_vec())
+    .add_v(&v[2].to_vec())
+    .div_s(3.0)
+  ;
+
+  let y = cgmath::Vector3::new(0.0, 1.0, 0.0);
+  let z = cgmath::Vector3::new(0.0, 0.0, 1.0);
+
+  let scale =
+    (rng.next_f32() + 1.0) *
+         (v[1].sub_p(&v[0]).length())
+    .max((v[2].sub_p(&v[1]).length())
+    .max((v[0].sub_p(&v[2]).length())));
+  let scale = cgmath::Vector3::new(1.4, 0.4, 1.4) * cgmath::Vector3::from_value(scale);
+
+  let middle = Point::from_vec(to_middle);
+  let shift =
+    (rng.next_f32() + 1.0) *
+         (v[1].sub_p(&middle).length())
+    .min((v[2].sub_p(&middle).length())
+    .min((v[0].sub_p(&middle).length())));
+  let shift_angle = rng.next_f32() * 2.0 * f32::consts::PI;
+  let shift = cgmath::Matrix3::from_axis_angle(&y, cgmath::rad(shift_angle)).mul_v(&cgmath::Vector3::new(shift, 0.0, 0.0));
+
+  let normal = normal.normalize();
+
+  let rotate_normal_basis: cgmath::Basis3<f32> = cgmath::Rotation::between_vectors(&y, &normal);
+  let rotate_normal: cgmath::Matrix3<f32> = From::from(rotate_normal_basis);
+
+  // The direction the grass will point.
+  // This is roughly straight up, perturbed randomly and squeezed into valid directions.
+  let up = {
+    let altitude = (rng.next_f32()  * 2.0 - 1.0) * f32::consts::PI / 8.0;
+    let altitude: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(&z, cgmath::rad(altitude));
+    let azimuth = rng.next_f32() * 2.0 * f32::consts::PI;
+    let azimuth: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(&y, cgmath::rad(azimuth));
+    let up = (rotate_normal * azimuth * altitude).mul_v(&y);
+
+    let axis = normal.cross(&y).normalize();
+    let dot = up.y;
+    // Smoothly compress the y vector to be within 90 degrees of the normal.
+    let c = (dot - 1.0).exp().acos();
+    let rotate_normal = cgmath::Matrix3::from_axis_angle(&axis, cgmath::rad(c));
+    rotate_normal.mul_v(&up)
+  };
+
+  // model space skew transformation to make the grass point in the right direction after rotation
+  let skew = {
+    // `up` in model space
+    let up = rotate_normal_basis.invert().as_ref().mul_v(&up);
+    // dot with y
+    let d = up.y;
+    let skewness = (1.0 - d*d).sqrt();
+    let mut skew = cgmath::Matrix4::from_value(1.0);
+    skew[1][0] = up.x * skewness;
+    skew[1][1] = d;
+    skew[1][2] = up.z * skewness;
+    skew
+  };
+
+  let rotate_normal: cgmath::Matrix4<f32> = From::from(rotate_normal);
+
+  let rotate_model: cgmath::Quaternion<f32> = cgmath::Rotation3::from_axis_angle(&y, cgmath::rad(2.0 * f32::consts::PI * rng.next_f32()));
+  let rotate_model: cgmath::Matrix4<f32> = From::from(rotate_model);
+
+  let translate = cgmath::Matrix4::from_translation(&to_middle);
+
+  let mut scale_mat = cgmath::Matrix4::from_value(1.0);
+  scale_mat[0][0] = scale[0];
+  scale_mat[1][1] = scale[1];
+  scale_mat[2][2] = scale[2];
+
+  let shift_mat = cgmath::Matrix4::from_translation(&shift);
+
+  let model = From::from(translate * rotate_normal * shift_mat * skew * rotate_model * scale_mat);
+
+  let billboard_indices = [
+    rng.gen_range(0, 9),
+    rng.gen_range(0, 9),
+    rng.gen_range(0, 9),
+  ];
+  vec!(
+    Grass {
+      model_matrix: model,
+      normal: normal,
+      tex_ids: billboard_indices,
+    }
+  )
+}
+
+pub fn generate<Rng: rand::Rng>(
   voxels: &voxel::tree::T,
   edge: &edge::T,
   id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
+  rng: &mut Rng,
 ) -> Result<T, ()>
 {
   stopwatch::time("terrain_mesh::generate", || {
@@ -152,6 +255,7 @@ pub fn generate(
       trace!("low {:?}", low);
       trace!("high {:?}", high);
 
+<<<<<<< HEAD
       trace!("edge: {:?} {:?}", edge.direction, low);
 
       try!(dual_contouring::edge::extract(
@@ -169,11 +273,20 @@ pub fn generate(
         &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
           let id = id_allocator::allocate(id_allocator);
 
-          block2.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
+          let v = &polygon.vertices;
+          block2.vertex_coordinates.push(tri(v[0], v[1], v[2]));
           block2.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
           block2.materials.push(polygon.material as i32);
           block2.ids.push(id);
-          block2.bounds.push((id, make_bounds(&polygon.vertices[0], &polygon.vertices[1], &polygon.vertices[2])));
+          block2.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
+
+          if polygon.material == voxel::Material::Terrain && lod <= lod::T(1) {
+            for grass in place_grass(&polygon, rng) {
+              let id = id_allocator::allocate(id_allocator);
+              block2.grass.push(grass);
+              block2.grass_ids.push(id);
+            }
+          }
         }
       ));
     }
@@ -181,7 +294,14 @@ pub fn generate(
   })
 }
 
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone)]
+pub struct Grass {
+  pub model_matrix: cgmath::Matrix4<f32>,
+  pub normal: cgmath::Vector3<f32>,
+  pub tex_ids: [u32; 3],
+}
+
+#[derive(Debug, Clone)]
 /// A small continguous chunk of terrain.
 pub struct T2 {
   // These Vecs must all be ordered the same way; each entry is the next triangle.
@@ -197,6 +317,9 @@ pub struct T2 {
   // TODO: Change this back to a HashMap once initial capacity is zero for those.
   /// Per-triangle bounding boxes.
   pub bounds: Vec<(entity_id::T, Aabb3<f32>)>,
+
+  pub grass: Vec<Grass>,
+  pub grass_ids: Vec<entity_id::T>,
 }
 
 pub type T = Arc<T2>;
@@ -210,5 +333,8 @@ pub fn empty() -> T {
     ids: Vec::new(),
     materials: Vec::new(),
     bounds: Vec::new(),
+
+    grass: Vec::new(),
+    grass_ids: Vec::new(),
   })
 }

@@ -2,6 +2,8 @@
 
 use cgmath::Point3;
 use num::iter::range_inclusive;
+use rand;
+use rand::{Rng, SeedableRng};
 use std::sync::Mutex;
 
 use common::entity_id;
@@ -22,17 +24,12 @@ const MAX_LOAD_DISTANCE: i32 = 1 << 6;
 
 /// The main client state.
 pub struct T {
-  #[allow(missing_docs)]
   pub id: protocol::ClientId,
-  #[allow(missing_docs)]
   pub player_id: entity_id::T,
-  #[allow(missing_docs)]
   pub player_position: Mutex<Point3<f32>>,
-  #[allow(missing_docs)]
+  pub last_footstep: Mutex<Point3<f32>>,
   pub load_position: Mutex<Option<Point3<f32>>>,
-  #[allow(missing_docs)]
   pub max_load_distance: i32,
-  #[allow(missing_docs)]
   pub surroundings_loader: Mutex<SurroundingsLoader>,
   pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
   /// The set of currently loaded edges.
@@ -42,6 +39,7 @@ pub struct T {
   pub voxels: Mutex<voxel::tree::T>,
   /// The number of terrain requests that are outstanding,
   pub outstanding_terrain_requests: Mutex<u32>,
+  pub rng: Mutex<rand::XorShiftRng>,
 }
 
 #[allow(missing_docs)]
@@ -62,10 +60,18 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     )
   };
 
+  let mut rng: rand::XorShiftRng = rand::SeedableRng::from_seed([1, 2, 3, 4]);
+  let s1 = rng.next_u32();
+  let s2 = rng.next_u32();
+  let s3 = rng.next_u32();
+  let s4 = rng.next_u32();
+  rng.reseed([s1, s2, s3, s4]);
+
   T {
     id: client_id,
     player_id: player_id,
     player_position: Mutex::new(position),
+    last_footstep: Mutex::new(position),
     load_position: Mutex::new(None),
     max_load_distance: load_distance,
     surroundings_loader: Mutex::new(surroundings_loader),
@@ -73,6 +79,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     loaded_edges: Mutex::new(loaded_edges::new()),
     voxels: Mutex::new(voxel::tree::new()),
     outstanding_terrain_requests: Mutex::new(0),
+    rng: Mutex::new(rng),
   }
 }
 

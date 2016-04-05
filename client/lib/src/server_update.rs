@@ -1,13 +1,15 @@
-use cgmath::{Aabb3, Point, Point3, Vector, Vector3};
-use std::f32;
-use std::f32::consts::PI;
+use cgmath;
+use cgmath::{Aabb3, Point, Point3, EuclideanVector};
+use rand::Rng;
 use stopwatch;
 use time;
 
-use common::color::{Color3, Color4};
+use common::color::Color4;
 use common::protocol;
 use common::voxel;
 
+use audio_loader;
+use audio_thread;
 use client;
 use light;
 use vertex::ColoredVertex;
@@ -17,18 +19,16 @@ pub const TRIANGLES_PER_BOX: u32 = 12;
 pub const VERTICES_PER_TRIANGLE: u32 = 3;
 pub const TRIANGLE_VERTICES_PER_BOX: u32 = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
 
-fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
-  bounds.min.add_v(&bounds.max.to_vec()).mul_s(0.5)
-}
-
-pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
+pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueBlockUpdates>(
   client: &client::T,
   update_view: &mut UpdateView,
+  update_audio: &mut UpdateAudio,
   update_server: &mut UpdateServer,
   enqueue_block_updates: &mut EnqueueBlockUpdates,
   update: protocol::ServerToClient,
 ) where
   UpdateView: FnMut(view_update::T),
+  UpdateAudio: FnMut(audio_thread::Message),
   UpdateServer: FnMut(protocol::ClientToServer),
   EnqueueBlockUpdates: FnMut(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {
@@ -53,7 +53,10 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
           return
         }
 
-        let position = center(&bounds);
+        let position =
+          (bounds.min.to_vec() * cgmath::Vector3::new(0.5, 0.1, 0.5)) +
+          (bounds.max.to_vec() * cgmath::Vector3::new(0.5, 0.9, 0.5));
+        let position = Point3::from_vec(&position);
 
         *client.player_position.lock().unwrap() = position;
         update_view(view_update::MoveCamera(position));
@@ -63,35 +66,12 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
         update_view(view_update::UpdateMob(id, mesh));
       },
       protocol::ServerToClient::UpdateSun(fraction) => {
-        // Convert to radians.
-        let angle = fraction * 2.0 * PI;
-        let (s, c) = angle.sin_cos();
-
-        let sun_color =
-          Color3::of_rgb(
-            c.abs(),
-            (s + 1.0) / 2.0,
-            (s * 0.75 + 0.25).abs(),
-          );
-
         update_view(view_update::SetSun(
           light::Sun {
-            direction: Vector3::new(c, s, 0.0),
-            intensity: sun_color,
+            progression: fraction,
+            rotation: 0.0,
           }
         ));
-
-        let ambient_light = f32::max(0.4, s / 2.0);
-
-        update_view(view_update::SetAmbientLight(
-          Color3::of_rgb(
-            sun_color.r * ambient_light,
-            sun_color.g * ambient_light,
-            sun_color.b * ambient_light,
-          ),
-        ));
-
-        update_view(view_update::SetClearColor(sun_color));
       },
       protocol::ServerToClient::Voxels(request_time, voxels, reason) => {
         match request_time {
@@ -101,6 +81,17 @@ pub fn apply_server_update<UpdateView, UpdateServer, EnqueueBlockUpdates>(
 
         enqueue_block_updates(request_time, voxels, reason);
       },
+      protocol::ServerToClient::Collision(collision_type) => {
+        if let protocol::Collision::PlayerTerrain(..) = collision_type {
+          let player_position = *client.player_position.lock().unwrap();
+          let mut last_footstep = client.last_footstep.lock().unwrap();
+          if player_position.sub_p(&*last_footstep).length() >= 4.0 {
+            *last_footstep = player_position;
+            let idx = client.rng.lock().unwrap().gen_range(1, 17 + 1);
+            update_audio(audio_thread::Message::PlayOneShot(audio_loader::SoundId::Footstep(idx)));
+          }
+        }
+      }
     }
   })
 }

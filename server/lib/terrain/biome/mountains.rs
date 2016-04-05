@@ -34,7 +34,7 @@ pub fn new(seed: Seed) -> T {
 }
 
 impl voxel::field::T for T {
-  fn density(&self, p: &Point3<f32>) -> f32 {
+  fn density(&mut self, p: &Point3<f32>) -> f32 {
     let height = self.height.apply(&self.seed, &[p.x as f64, p.z as f64]);
     let height = height as f32;
     let heightmap_density = height - p.y;
@@ -46,7 +46,7 @@ impl voxel::field::T for T {
     heightmap_density + feature_density
   }
 
-  fn normal(&self, p: &Point3<f32>) -> Vector3<f32> {
+  fn normal(&mut self, p: &Point3<f32>) -> Vector3<f32> {
     // Use density differential in each dimension as an approximation of the normal.
 
     let delta = 0.01;
@@ -73,7 +73,7 @@ impl voxel::field::T for T {
 }
 
 impl voxel::mosaic::T<voxel::Material> for T {
-  fn material(&self, p: &Point3<f32>) -> Option<voxel::Material> {
+  fn material(&mut self, p: &Point3<f32>) -> Option<voxel::Material> {
     Some(
       if voxel::field::T::density(self, p) >= 0.0 {
         voxel::Material::Stone

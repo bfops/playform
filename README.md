@@ -2,16 +2,14 @@
 
 ## Overview
 
-Playform aspires to be an open-world sandbox game written in Rust, taking
-inspiration from [Voxel Farm](http://procworld.blogspot.com/) and Minecraft. The "dev blog" is at [here](http://playformdev.blogspot.com/).
+An interactive, modifiable voxel sandbox project in Rust, inspired in part by [Voxel Farm](http://procworld.blogspot.com/) and Minecraft. I try to keep a dev blog [here](http://playformdev.blogspot.com/).
 
-It's very much a WIP. Hopefully as the Rust ecosystem improves (and, in a perfect world, when Rust gets a story for linking with C++),
+It's very much a WIP. Hopefully as the Rust ecosystem grows (and, in a perfect world, when Rust gets a story for linking with C++),
 the hackiest parts of Playform can be outsourced to other libraries (physics and graphics APIs, threading, networking).
 
-Help is great! PRs and [issues](https://github.com/bfops/playform/issues) are appreciated.
+Some picture things (perpetually outdated):
 
-Some picture things:
-
+![screenshot 5](/../screenshots/screenshots/screenshot5.png?raw=true)
 ![screenshot 1](/../screenshots/screenshots/screenshot1.png?raw=true)
 ![screenshot 2](/../screenshots/screenshots/screenshot2.png?raw=true)
 ![screenshot 3](/../screenshots/screenshots/screenshot3.png?raw=true)
@@ -21,36 +19,36 @@ Some picture things:
 
 Make sure you have:
 
-  * The **nightly build** of the Rust compiler and cargo.
+  * A **nightly** build of the Rust compiler and cargo (if it doesn't build on latest, file an issue)
   * OpenGL 3.3+
-  * libpng
   * SDL2
   * SDL2\_ttf
   * libnanomsg
+  * portaudio
 
 Playform has a separate server and client, which can be built and run in `server/bin` and `client/bin`,
 but there's also a server+client (singleplayer) bundled binary that builds in the root directory.
 
-`cargo build` and `cargo run` take an optional `--release` parameter for release builds.
-Performance is pretty abysmal in debug builds.
-
-## Performance
-
-It's not great. It would be great to get Playform running well on a variety of PCs, but I only have mine.
+`cargo build --release` and `cargo run --release` are pretty much required to run Playform with reasonable performance.
 
 ## How to play
 
   * Move: WASD
   * Jump: Space
   * Look around: Mouse
-  * Tree tool: Left mouse button
+  * Tree tool: Left mouse button (this is slow)
   * Dig tool: Right mouse button
   * Toggle HUD: H
 
 One mob spawns that will play "tag" with you: tag it and it will chase you until it tags you back. If you get too far away from it, it'll probably get lost and fall through the planet. It's a little needy.
 
-## If things don't work
+## License & Credit
 
-If things are broken, like compile errors, problems getting it to start, crashes, etc.
-please consider opening an issue! If you can take the time to do it in a non-optimized
-build with `RUST_BACKTRACE=1` and `RUST_LOG=debug` set, it would be much appreciated.
+I'm not the most familiar with licensing. If I've done something wrong, let me know. My intent is that Playform itself is MIT licensed (see the LICENSE file).
+It includes some code that can be easily found online, and that code usually comes with links to the online source.
+
+Some of the Assets are not mine, and I don't own the rights to them. In particular, thanks to:
+
+  * [http://vector.me/browse/104477/free\_vector\_grass](http://vector.me/browse/104477/free_vector_grass) for the textures used for the grass billboards
+  * [http://soundbible.com/1818-Rainforest-Ambience.html](http://soundbible.com/1818-Rainforest-Ambience.html) for the awesome ambient sound
+  * [http://soundbible.com/1432-Walking-On-Gravel.html](http://soundbible.com/1432-Walking-On-Gravel.html) for the footstep sounds

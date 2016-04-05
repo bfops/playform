@@ -5,7 +5,7 @@ use common::id_allocator;
 use common::surroundings_loader::SurroundingsLoader;
 
 use mob;
-use server::Server;
+use server;
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
   bounds.min.add_v(&bounds.max.to_vec()).mul_s(0.5)
@@ -15,10 +15,10 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
 // The goal should be to prevent coder error causing deadlock.
 
 pub fn init_mobs(
-  server: &Server,
+  server: &server::T,
 ) {
-  fn mob_behavior(world: &Server, mob: &mut mob::Mob) {
-    fn to_player(world: &Server, mob: &mob::Mob) -> Option<Vector3<f32>> {
+  fn mob_behavior(world: &server::T, mob: &mut mob::Mob) {
+    fn to_player(world: &server::T, mob: &mob::Mob) -> Option<Vector3<f32>> {
       let mob_posn = center(world.physics.lock().unwrap().get_bounds(mob.entity_id).unwrap());
 
       let players: Vec<entity_id::T> = world.players.lock().unwrap().keys().cloned().collect();
@@ -51,7 +51,7 @@ pub fn init_mobs(
       }
     }
 
-    fn wait_for_distance(world: &Server, mob: &mut mob::Mob) {
+    fn wait_for_distance(world: &server::T, mob: &mut mob::Mob) {
       match to_player(world, mob) {
         None => { mob.behavior = mob_behavior },
         Some(to_player) => {
@@ -62,7 +62,7 @@ pub fn init_mobs(
       }
     }
 
-    fn follow_player(world: &Server, mob: &mut mob::Mob) {
+    fn follow_player(world: &server::T, mob: &mut mob::Mob) {
       match to_player(world, mob) {
         None => { mob.behavior = mob_behavior },
         Some(to_player) => {
@@ -76,7 +76,7 @@ pub fn init_mobs(
       }
     }
 
-    fn wait_to_reset(world: &Server, mob: &mut mob::Mob) {
+    fn wait_to_reset(world: &server::T, mob: &mut mob::Mob) {
       match to_player(world, mob) {
         None => { mob.behavior = mob_behavior },
         Some(to_player) => {
@@ -97,7 +97,7 @@ pub fn init_mobs(
 }
 
 fn add_mob(
-  server: &Server,
+  server: &server::T,
   low_corner: Point3<f32>,
   behavior: mob::Behavior,
 ) {

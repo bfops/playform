@@ -14,14 +14,22 @@ cgmath = "0.3.*"
 clippy = "*"
 fnv = "*"
 gl = "0.5.*"
+hound = "*"
 libc = "*"
 log = "*"
 num = "*"
+portaudio = "*"
+rand = "*"
 rustc-serialize = "*"
 sdl2 = "0.9.*"
 sdl2-sys = "0.6.*"
 thread-scoped = "*"
 time = "*"
+
+[dependencies.image]
+version = "*"
+default-features = false
+features = ["png_codec"]
 
 [dependencies.playform-common]
 path = "../../common"
@@ -35,7 +43,6 @@ git = "https://github.com/bfops/rust-voxel-data"
 
 [dependencies.isosurface-extraction]
 git = "https://github.com/bfops/rust-isosurface-extraction"
-rev = "011313c5e8b7eb0c40669fcca382942d71f64757"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"

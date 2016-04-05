@@ -1,6 +1,6 @@
 //! Vertex data structures.
 
-use cgmath::{Point2,Point3,Vector2,Vector3};
+use cgmath::{Point2,Point3,Vector2};
 #[cfg(test)]
 use std::mem;
 
@@ -36,31 +36,15 @@ impl ColoredVertex {
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, RustcEncodable, RustcDecodable)]
 /// A point in the world with corresponding texture data.
 ///
 /// The texture position is [0, 1].
 pub struct TextureVertex {
   /// The position of this vertex in the world.
-  pub world_position:  Vector3<f32>,
+  pub world_position:  Point3<f32>,
 
   /// The position of this vertex on a texture. The range of valid values
   /// in each dimension is [0, 1].
   pub texture_position: Vector2<f32>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-/// A point in the world with corresponding texture and normal data.
-///
-/// The texture position is [0, 1].
-pub struct ServerTextureVertex {
-  /// The position of this vertex in the world.
-  pub world_position:  Vector3<f32>,
-
-  /// The position of this vertex on a texture. The range of valid values
-  /// in each dimension is [0, 1].
-  pub texture_position: Vector2<f32>,
-
-  /// The normal vector for this vertex. We assume the length is 1.
-  pub normal: Vector3<f32>,
 }
