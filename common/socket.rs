@@ -42,7 +42,7 @@ impl SendSocket {
 
 impl Drop for SendSocket {
   fn drop(&mut self) {
-    self.endpoint.shutdown().unwrap();
+    self.endpoint.shutdown().unwrap_or(());
   }
 }
 
@@ -94,6 +94,6 @@ impl ReceiveSocket {
 
 impl Drop for ReceiveSocket {
   fn drop(&mut self) {
-    self.endpoint.shutdown().unwrap();
+    self.endpoint.shutdown().unwrap_or(());
   }
 }
