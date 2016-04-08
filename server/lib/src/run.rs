@@ -6,6 +6,7 @@ use stopwatch;
 use thread_scoped;
 use time;
 
+use common;
 use common::closure_series;
 use common::socket::ReceiveSocket;
 
@@ -117,8 +118,9 @@ fn network_listen<'a, ToGaia>(
 {
   box move || {
     match socket.lock().unwrap().try_read() {
-      None => closure_series::Continue,
-      Some(up) => {
+      common::socket::Result::Empty => closure_series::Continue,
+      common::socket::Result::Terminating => closure_series::Quit,
+      common::socket::Result::Success(up) => {
         let up = bincode::rustc_serialize::decode(up.as_ref()).unwrap();
         apply_client_update(server, &mut to_gaia, up);
         closure_series::Restart
