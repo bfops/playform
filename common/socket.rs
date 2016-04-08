@@ -42,8 +42,15 @@ impl SendSocket {
 
 impl Drop for SendSocket {
   fn drop(&mut self) {
-    self.endpoint.shutdown().unwrap();
+    self.endpoint.shutdown().unwrap_or(());
   }
+}
+
+#[allow(missing_docs)]
+pub enum Result<T> {
+  Success(T),
+  Empty,
+  Terminating,
 }
 
 /// A receive-only socket.
@@ -66,20 +73,24 @@ impl ReceiveSocket {
   }
 
   /// Block until a message can be fetched from this socket.
-  pub fn read(&mut self) -> Vec<u8> {
+  pub fn read(&mut self) -> Option<Vec<u8>> {
     let mut msg = Vec::new();
-    self.socket.read_to_end(&mut msg).unwrap();
-    msg
+    if self.socket.read_to_end(&mut msg).is_ok() {
+      Some(msg)
+    } else {
+      None
+    }
   }
 
   /// Try to read a message from this socket.
-  pub fn try_read(&mut self) -> Option<Vec<u8>> {
+  pub fn try_read(&mut self) -> Result<Vec<u8>> {
     let mut msg = Vec::new();
     let result = self.socket.nb_read_to_end(&mut msg);
     match result {
-      Ok(_) => Some(msg),
-      Err(Error::TryAgain) => None,
-      _ => {
+      Ok(_) => Result::Success(msg),
+      Err(Error::TryAgain) => Result::Empty,
+      Err(Error::Terminating) => Result::Terminating,
+      Err(_) => {
         result.unwrap();
         unreachable!()
       }
@@ -94,6 +105,6 @@ impl ReceiveSocket {
 
 impl Drop for ReceiveSocket {
   fn drop(&mut self) {
-    self.endpoint.shutdown().unwrap();
+    self.endpoint.shutdown().unwrap_or(());
   }
 }

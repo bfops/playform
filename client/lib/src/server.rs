@@ -71,12 +71,14 @@ pub fn new(
     std::thread::spawn(move || {
       let mut listen_socket =
         ReceiveSocket::new(
-          listen_url.clone().as_ref(), 
+          listen_url.clone().as_ref(),
           Some(std::time::Duration::from_secs(30)),
         );
       loop {
-        let msg = listen_socket.read();
-        recv_send.send(msg).unwrap();
+        match listen_socket.read() {
+          None => break,
+          Some(msg) => recv_send.send(msg).unwrap(),
+        }
       }
     })
   };
@@ -86,12 +88,17 @@ pub fn new(
     std::thread::spawn(move || {
       let mut talk_socket =
         SendSocket::new(
-          server_url.as_ref(), 
+          server_url.as_ref(),
           Some(std::time::Duration::from_secs(30)),
         );
       loop {
-        let msg: Vec<u8> = send_recv.recv().unwrap();
-        talk_socket.write(msg.as_ref()).unwrap();
+        match send_recv.recv() {
+          Err(_) => break,
+          Ok(msg) => {
+            let msg: Vec<u8> = msg;
+            talk_socket.write(msg.as_ref()).unwrap();
+          },
+        }
       }
     })
   };

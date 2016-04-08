@@ -211,7 +211,7 @@ pub fn apply_client_update<UpdateGaia>(
                   radius: r,
                 },
               },
-              material: voxel::Material::Marble,
+              material: voxel::Material::Empty,
             };
           let r = sphere.field.field.radius + 1.0;
           let brush =
