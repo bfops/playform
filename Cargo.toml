@@ -20,7 +20,7 @@ name = "playform"
 path = "src/mod.rs"
 
 [dependencies]
-clippy = "0.0.61"
+clippy = "0.0.63"
 env_logger= "*"
 log = "*"
 nanomsg = "*"
