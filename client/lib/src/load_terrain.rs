@@ -94,15 +94,17 @@ pub fn load_voxel<UpdateBlock>(
 
   // Has a new voxel been loaded? (in contrast to changing an existing voxel)
   let new_voxel_loaded;
-  {
-    let voxel = Some(voxel);
-    let branch = voxels.get_mut_or_create(bounds);
-    let old_voxel = &mut branch.force_branches().data;
-    new_voxel_loaded = old_voxel.is_none();
-    if *old_voxel == voxel {
-      return
-    }
-    *old_voxel = voxel;
+  match voxels.entry(bounds) {
+    Vacant(entry) => {
+      new_voxel_loaded = true;
+      entry.insert(voxel);
+    },
+    Occupied(mut entry) => {
+      new_voxel_loaded = false;
+      if entry.insert(voxel) == voxel {
+        return
+      }
+    },
   }
 
   trace!("voxel bounds {:?}", bounds);
