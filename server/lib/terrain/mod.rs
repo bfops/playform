@@ -45,7 +45,7 @@ use common::voxel;
 #[allow(missing_docs)]
 pub struct T {
   pub mosaic: Mutex<cache_mosaic::T<voxel::Material>>,
-  pub voxels: Mutex<voxel::tree::T>,
+  pub voxels: Mutex<voxel::storage::T>,
 }
 
 impl T {
@@ -53,7 +53,7 @@ impl T {
   pub fn new(terrain_seed: Seed) -> T {
     T {
       mosaic: Mutex::new(cache_mosaic::new(Box::new(biome::demo::new(terrain_seed)))),
-      voxels: Mutex::new(voxel::tree::new()),
+      voxels: Mutex::new(voxel::storage::new()),
     }
   }
 
@@ -67,19 +67,14 @@ impl T {
     F: FnMut(&voxel::T)
   {
     let mut voxels = self.voxels.lock().unwrap();
-    let branches = voxels.get_mut_or_create(bounds);
-    let branches = branches.force_branches();
-    match branches.data {
-      None => {
-        let mut mosaic = self.mosaic.lock().unwrap();
-        let voxel = voxel::unwrap(voxel::of_field(&mut *mosaic, bounds));
-        f(&voxel);
-        branches.data = Some(voxel);
-      },
-      Some(ref data) => {
-        f(data);
-      },
-    }
+    let mosaic = &self.mosaic;
+    f(
+      voxels.entry(bounds)
+        .or_insert_with(|| {
+          let mut mosaic = mosaic.lock().unwrap();
+          voxel::unwrap(voxel::of_field(&mut *mosaic, bounds))
+        })
+    )
   }
 
   /// Apply a voxel brush to the terrain.
