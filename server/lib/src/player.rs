@@ -244,7 +244,7 @@ impl T {
 
   /// Changes the player's acceleration by the given `da`.
   pub fn walk(&mut self, da: Vector3<f32>) {
-    self.walk_accel.add_self_v(&da.mul_s(0.2));
+    self.walk_accel.add_self_v(&da.mul_s(0.1));
   }
 
   /// Rotate the player around the y axis, by `r` radians. Positive is counterclockwise.
