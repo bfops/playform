@@ -1,19 +1,20 @@
 //! Datatype for storing voxel data.
 
 use cgmath;
+use fnv;
 use std;
 
 use ::voxel;
 
-type ByPosition<T> = std::collections::HashMap<cgmath::Point3<i32>, T>;
+type ByPosition<T> = std::collections::HashMap<cgmath::Point3<i32>, T, std::hash::BuildHasherDefault<fnv::FnvHasher>>;
 // TODO: lg_size should be i32.
-type ByLgSize<T> = std::collections::HashMap<i16, T>;
+type ByLgSize<T> = std::collections::HashMap<i16, T, std::hash::BuildHasherDefault<fnv::FnvHasher>>;
 
 /// Type returned by `entry`.
 pub type Entry<'a> = std::collections::hash_map::Entry<'a, cgmath::Point3<i32>, voxel::T>;
 
 /// Voxel storage data type. This is backed by HashMaps, not an SVO, so it's a lot more compact and cache-friendly.
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone)]
 pub struct T {
   voxels: ByLgSize<ByPosition<voxel::T>>,
 }
@@ -24,7 +25,7 @@ impl T {
   }
 
   fn by_lg_size_or_insert(&mut self, lg_size: i16) -> &mut ByPosition<voxel::T> {
-    self.voxels.entry(lg_size).or_insert_with(std::collections::HashMap::new)
+    self.voxels.entry(lg_size).or_insert_with(|| std::collections::HashMap::with_hasher(Default::default()))
   }
 
   /// Get an entry for in-place manipulation.
@@ -68,6 +69,6 @@ impl T {
 #[allow(missing_docs)]
 pub fn new() -> T {
   T {
-    voxels: std::collections::HashMap::new(),
+    voxels: std::collections::HashMap::with_hasher(Default::default()),
   }
 }
