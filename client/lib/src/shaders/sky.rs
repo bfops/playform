@@ -59,9 +59,13 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
         }}
 
         float cloud_noise(vec3 seed) {{
-          float f = cnoise(seed + time_ms / 8000);
-          f = 1 / (1 + exp(-f*2));
+          float f = cnoise(seed + vec3(0, time_ms / 8000, 0));
           return f;
+        }}
+
+        float cloud_density(vec3 seed) {{
+          float f = (2.0*cloud_noise(seed / 2) + cloud_noise(seed) + 0.5*cloud_noise(2.0 * seed) + 0.25*cloud_noise(4.0*seed)) / 3.75;
+          return (f + 1) / 2;
         }}
 
         void main() {{
@@ -84,14 +88,18 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
               continue;
             }} else {{
               vec3 seed = (eye_position + dist * direction + offsets[i]) / 1000 * vec3(1, 4, 1);
-              float f = cloud_noise(seed) * cloud_noise(seed + vec3(-10, -103, 1));
-              f = pow(f, 2);
-              alpha += f * (1 - fog_density(dist / 32));
+              float f = cloud_density(seed);
+              alpha += f * (1 - fog_density(dist / 64));
             }}
           }}
+          alpha = alpha / HEIGHTS;
 
-          alpha = min(alpha, 1);
-          c = mix(c, vec3(1, 1, 1), alpha);
+          float min_cloud = 0.4;
+          float max_cloud = 0.8;
+          alpha = (alpha - min_cloud) / (max_cloud - min_cloud);
+          alpha = min(max(alpha, 0), 1);
+          vec3 cloud_color = mix(vec3(0.4), vec3(1), (exp(1 - alpha) - 1) / exp(1));
+          c = mix(c, cloud_color, alpha);
 
           frag_color = min(vec4(c, 1), vec4(1));
         }}"#,
