@@ -64,23 +64,24 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
         }}
 
         float cloud_density(vec3 seed) {{
-          float f = (2.0*cloud_noise(seed / 2) + cloud_noise(seed) + 0.5*cloud_noise(2.0 * seed) + 0.25*cloud_noise(4.0*seed)) / 3.75;
-          return (f + 1) / 2;
+          float d = (2.0*cloud_noise(seed / 2) + cloud_noise(seed) + 0.5*cloud_noise(2.0 * seed) + 0.25*cloud_noise(4.0*seed)) / 3.75;
+          d = (d + 1) / 2;
+          float min_cloud = 0.4;
+          float max_cloud = 0.8;
+          d = (d - min_cloud) / (max_cloud - min_cloud);
+          d = min(max(d, 0), 1);
+          return d;
         }}
 
         void main() {{
-          vec3 c = sun.intensity;
-
           vec3 direction = pixel_direction(gl_FragCoord.xy);
 
           const int HEIGHTS = 2;
           float heights[HEIGHTS] = float[](150, 1000);
           vec3 offsets[HEIGHTS] = vec3[](vec3(12,553,239), vec3(-10, 103, 10004));
 
-          float sunniness = exp(64 * (dot(sun.direction, direction) - cos(sun_angular_radius)));
-          c = mix(c, vec3(1), sunniness);
-
-          float alpha = 0;
+          vec3 c = vec3(0);
+          float alpha = 1;
           for (int i = 0; i < HEIGHTS; ++i) {{
             float cloud_height = heights[i];
             float dist = (cloud_height - eye_position.y) / direction.y;
@@ -88,18 +89,18 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
               continue;
             }} else {{
               vec3 seed = (eye_position + dist * direction + offsets[i]) / 1000 * vec3(1, 4, 1);
-              float f = cloud_density(seed);
-              alpha += f * (1 - fog_density(dist / 64));
+
+              float depth_alpha = fog_density(dist / 64);
+              float density = cloud_density(seed);
+              float cloud_alpha = density * (1 - depth_alpha);
+              c += alpha * cloud_alpha * vec3(mix(0.4, 1, (exp(1 - density) - 1) / (exp(1) - 1)));
+              alpha *= (1 - cloud_alpha);
             }}
           }}
-          alpha = alpha / HEIGHTS;
 
-          float min_cloud = 0.4;
-          float max_cloud = 0.8;
-          alpha = (alpha - min_cloud) / (max_cloud - min_cloud);
-          alpha = min(max(alpha, 0), 1);
-          vec3 cloud_color = mix(vec3(0.4), vec3(1), (exp(1 - alpha) - 1) / exp(1));
-          c = mix(c, cloud_color, alpha);
+          float sunniness = exp(64 * (dot(sun.direction, direction) - cos(sun_angular_radius)));
+          vec3 infinity_color = mix(sun.intensity, vec3(1), sunniness);
+          c += alpha * infinity_color;
 
           frag_color = min(vec4(c, 1), vec4(1));
         }}"#,
