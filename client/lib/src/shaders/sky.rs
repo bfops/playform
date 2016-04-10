@@ -66,10 +66,6 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
         float cloud_density(vec3 seed) {{
           float d = (2.0*cloud_noise(seed / 2) + cloud_noise(seed) + 0.5*cloud_noise(2.0 * seed) + 0.25*cloud_noise(4.0*seed)) / 3.75;
           d = (d + 1) / 2;
-          float min_cloud = 0.4;
-          float max_cloud = 0.8;
-          d = (d - min_cloud) / (max_cloud - min_cloud);
-          d = min(max(d, 0), 1);
           return d;
         }}
 
@@ -90,10 +86,20 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
             }} else {{
               vec3 seed = (eye_position + dist * direction + offsets[i]) / 1000 * vec3(1, 4, 1);
 
-              float depth_alpha = fog_density(dist / 64);
+              float depth_alpha = fog_density(dist / 16);
+
               float density = cloud_density(seed);
-              float cloud_alpha = density * (1 - depth_alpha);
-              c += alpha * cloud_alpha * vec3(mix(0.4, 1, (exp(1 - density) - 1) / (exp(1) - 1)));
+
+              float cloud_alpha = density;
+              float min_cloud = 0.4;
+              float max_cloud = 0.8;
+              cloud_alpha = (cloud_alpha - min_cloud) / (max_cloud - min_cloud);
+              cloud_alpha = min(max(cloud_alpha, 0), 1);
+              cloud_alpha *= (1 - depth_alpha);
+
+              float lightness = pow(max(density - cloud_density(seed + 10 * sun.direction), 0), 1.0) * (1 - density);
+              vec3 cloud_color = vec3(mix(0.4, 1, lightness));
+              c += alpha * cloud_alpha * cloud_color;
               alpha *= (1 - cloud_alpha);
             }}
           }}
