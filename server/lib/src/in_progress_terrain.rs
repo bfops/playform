@@ -1,8 +1,8 @@
 use cgmath::{Aabb3};
-use std::collections::hash_map::{HashMap, Entry};
 use std::sync::Mutex;
 
 use common::entity_id;
+use common::fnv_map;
 use common::id_allocator;
 use common::voxel;
 
@@ -10,13 +10,13 @@ use physics::Physics;
 
 // TODO: Rename this to something more memorable.
 pub struct T {
-  pub blocks: HashMap<voxel::bounds::T, entity_id::T>,
+  pub blocks: fnv_map::T<voxel::bounds::T, entity_id::T>,
 }
 
 impl T {
   pub fn new() -> T {
     T {
-      blocks: HashMap::new(),
+      blocks: fnv_map::new(),
     }
   }
 
@@ -28,11 +28,11 @@ impl T {
     block_position: &voxel::bounds::T,
   ) -> bool {
     match self.blocks.entry(*block_position) {
-      Entry::Occupied(_) => {
+      fnv_map::Entry::Occupied(_) => {
         warn!("Re-inserting {:?}", block_position);
         false
       },
-      Entry::Vacant(entry) => {
+      fnv_map::Entry::Vacant(entry) => {
         let id = id_allocator::allocate(id_allocator);
         entry.insert(id);
 

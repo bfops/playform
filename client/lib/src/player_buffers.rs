@@ -1,12 +1,12 @@
 //! Data structures and functions to load/unload/maintain mob data in VRAM.
 
-use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, VertexAttribData};
 use yaglw::vertex_buffer::{DrawMode, GLType};
 use yaglw::gl_context::GLContext;
 
 use common::entity_id;
+use common::fnv_map;
 
 use vertex::ColoredVertex;
 use shaders::color::ColorShader;
@@ -15,7 +15,7 @@ pub const VERTICES_PER_PLAYER: usize = 36;
 
 /// This data structure keeps tracks of mob data in VRAM.
 pub struct PlayerBuffers<'a> {
-  id_to_index: HashMap<entity_id::T, usize>,
+  id_to_index: fnv_map::T<entity_id::T, usize>,
   index_to_id: Vec<entity_id::T>,
 
   triangles: GLArray<'a, ColoredVertex>,
@@ -31,7 +31,7 @@ impl<'a> PlayerBuffers<'a> {
   {
     let buffer = GLBuffer::new(gl, 32 * VERTICES_PER_PLAYER);
     PlayerBuffers {
-      id_to_index: HashMap::new(),
+      id_to_index: fnv_map::new(),
       index_to_id: Vec::new(),
 
       triangles: GLArray::new(

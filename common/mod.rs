@@ -33,6 +33,8 @@ pub mod closure_series;
 pub mod color;
 pub mod cube_shell;
 pub mod entity_id;
+pub mod fnv_map;
+pub mod fnv_set;
 pub mod id_allocator;
 pub mod interval_timer;
 pub mod protocol;

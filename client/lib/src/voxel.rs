@@ -8,13 +8,12 @@ pub mod bounds {
   pub use common::voxel::bounds::*;
 
   pub mod set {
-    use fnv::FnvHasher;
-    use std;
+    use common::fnv_set;
 
-    pub type T = std::collections::HashSet<super::T, std::hash::BuildHasherDefault<FnvHasher>>;
+    pub type T = fnv_set::T<super::T>;
 
     pub fn new() -> T {
-      std::collections::HashSet::with_hasher(Default::default())
+      fnv_set::new()
     }
   }
 }

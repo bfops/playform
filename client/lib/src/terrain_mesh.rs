@@ -312,7 +312,7 @@ pub struct T2 {
   pub ids: Vec<entity_id::T>,
   /// Material IDs for each triangle.
   pub materials: Vec<i32>,
-  // TODO: Change this back to a HashMap once initial capacity is zero for those.
+  // TODO: Change this back to a hashmap once initial capacity is zero for those.
   /// Per-triangle bounding boxes.
   pub bounds: Vec<(entity_id::T, Aabb3<f32>)>,
 
