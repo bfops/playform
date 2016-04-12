@@ -1,10 +1,9 @@
 //! Structs for keeping track of terrain level of detail.
 
 use std::cmp::Ordering;
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
 use std::ops::Add;
 
+use common::fnv_map;
 use common::voxel;
 
 pub use self::T::*;
@@ -37,14 +36,14 @@ impl Ord for T {
 
 /// Data structure to keep track of a position's owners, requested LODs, and current T.
 pub struct Map {
-  loaded: HashMap<voxel::bounds::T, BlockLoadState>,
+  loaded: fnv_map::T<voxel::bounds::T, BlockLoadState>,
 }
 
 impl Map {
   #[allow(missing_docs)]
   pub fn new() -> Map {
     Map {
-      loaded: HashMap::new(),
+      loaded: fnv_map::new(),
     }
   }
 
@@ -72,7 +71,7 @@ impl Map {
     owner: OwnerId,
   ) -> (Option<T>, Option<LODChange>) {
     match self.loaded.entry(position) {
-      Entry::Vacant(entry) => {
+      fnv_map::Entry::Vacant(entry) => {
         entry.insert(BlockLoadState {
           owner_lods: vec!((owner, lod)),
           loaded_lod: lod,
@@ -86,7 +85,7 @@ impl Map {
           }),
         )
       },
-      Entry::Occupied(mut entry) => {
+      fnv_map::Entry::Occupied(mut entry) => {
         let block_load_state = entry.get_mut();
 
         let prev_lod;
@@ -134,8 +133,8 @@ impl Map {
     owner: OwnerId,
   ) -> (Option<T>, Option<LODChange>) {
     match self.loaded.entry(position) {
-      Entry::Vacant(_) => (None, None),
-      Entry::Occupied(mut entry) => {
+      fnv_map::Entry::Vacant(_) => (None, None),
+      fnv_map::Entry::Occupied(mut entry) => {
         let mut remove = false;
         let r = {
           let mut r = || {
@@ -222,7 +221,7 @@ impl Add<u32> for OwnerId {
 
 struct BlockLoadState {
   /// The T indexes requested by each owner of this block.
-  // TODO: Change this back to a HashMap once initial capacity is zero for those.
+  // TODO: Change this back to a hashmap once initial capacity is zero for those.
   pub owner_lods: Vec<(OwnerId, T)>,
   pub loaded_lod: T,
 }

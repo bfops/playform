@@ -3,9 +3,9 @@
 use gl;
 use gl::types::*;
 use cgmath::{Point3, Vector3};
-use std::collections::HashMap;
 
 use common::entity_id;
+use common::fnv_map;
 use common::id_allocator;
 
 use shaders::terrain::TerrainShader;
@@ -26,7 +26,7 @@ pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
 pub struct TerrainBuffers<'a> {
-  id_to_index: HashMap<entity_id::T, usize>,
+  id_to_index: fnv_map::T<entity_id::T, usize>,
   index_to_id: Vec<entity_id::T>,
 
   // TODO: Use yaglw's ArrayHandle.
@@ -58,7 +58,7 @@ impl<'a> TerrainBuffers<'a> {
     'a: 'b,
   {
     TerrainBuffers {
-      id_to_index: HashMap::new(),
+      id_to_index: fnv_map::new(),
       index_to_id: Vec::new(),
       empty_array: unsafe {
         let mut empty_array = 0;

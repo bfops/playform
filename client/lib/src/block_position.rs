@@ -13,25 +13,23 @@ use terrain_mesh;
 pub struct T(Point3<i32>);
 
 pub mod map {
-  use fnv::FnvHasher;
-  use std;
+  use common::fnv_map;
 
-  pub type T<V> = std::collections::HashMap<super::T, V, std::hash::BuildHasherDefault<FnvHasher>>;
+  pub type T<V> = fnv_map::T<super::T, V>;
 
   pub fn new<V>() -> T<V> {
-    std::collections::HashMap::with_hasher(Default::default())
+    fnv_map::new()
   }
 }
 
 pub mod set {
-  use fnv::FnvHasher;
-  use std;
+  use common::fnv_set;
 
-  pub type T = std::collections::HashSet<super::T, std::hash::BuildHasherDefault<FnvHasher>>;
+  pub type T = fnv_set::T<super::T>;
 
   #[allow(dead_code)]
   pub fn new() -> T {
-    std::collections::HashSet::with_hasher(Default::default())
+    fnv_set::new()
   }
 }
 
@@ -41,24 +39,22 @@ pub mod with_lod {
   pub type T = (super::T, lod::T);
 
   pub mod set {
-    use fnv::FnvHasher;
-    use std;
+    use common::fnv_set;
 
-    pub type T = std::collections::HashSet<super::T, std::hash::BuildHasherDefault<FnvHasher>>;
+    pub type T = fnv_set::T<super::T>;
 
     pub fn new() -> T {
-      std::collections::HashSet::with_hasher(Default::default())
+      fnv_set::new()
     }
   }
 
   pub mod map {
-    use fnv::FnvHasher;
-    use std;
+    use common::fnv_map;
 
-    pub type T<V> = std::collections::HashMap<super::T, V, std::hash::BuildHasherDefault<FnvHasher>>;
+    pub type T<V> = fnv_map::T<super::T, V>;
 
     pub fn new<V>() -> T<V> {
-      std::collections::HashMap::with_hasher(Default::default())
+      fnv_map::new()
     }
   }
 }
