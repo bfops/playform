@@ -24,7 +24,6 @@
 extern crate bincode;
 extern crate cgmath;
 extern crate common;
-extern crate fnv;
 extern crate gl;
 extern crate hound;
 extern crate image;

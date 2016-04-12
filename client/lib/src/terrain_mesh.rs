@@ -92,7 +92,7 @@ mod voxel_storage {
   use common::voxel;
 
   pub struct T<'a> {
-    pub voxels: &'a voxel::storage::T,
+    pub voxels: &'a voxel::storage::T<voxel::T>,
   }
 
   fn get_voxel<'a>(this: &mut T<'a>, bounds: &voxel::bounds::T) -> Option<&'a voxel::T> {
@@ -225,7 +225,7 @@ fn place_grass<T, Rng: rand::Rng>(
 }
 
 pub fn generate<Rng: rand::Rng>(
-  voxels: &voxel::storage::T,
+  voxels: &voxel::storage::T<voxel::T>,
   edge: &edge::T,
   id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
   rng: &mut Rng,

@@ -36,7 +36,7 @@ pub struct T {
   pub loaded_edges: Mutex<loaded_edges::T<terrain_mesh::T>>,
   /// The voxels we have cached from the server.
   // TODO: Should probably remove from this at some point.
-  pub voxels: Mutex<voxel::storage::T>,
+  pub voxels: Mutex<voxel::storage::T<voxel::T>>,
   /// The number of terrain requests that are outstanding,
   pub outstanding_terrain_requests: Mutex<u32>,
   pub rng: Mutex<rand::XorShiftRng>,

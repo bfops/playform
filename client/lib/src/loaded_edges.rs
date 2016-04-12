@@ -1,19 +1,21 @@
 use std;
 use cgmath::Vector3;
-use voxel_data as voxel;
+
+use common::fnv_map;
+use common::voxel;
 
 use edge;
 
-pub struct T<Edge> {
-  edges: Vector3<voxel::tree::T<(edge::T, Edge)>>,
+pub struct T<V> {
+  edges: Vector3<voxel::storage::T<(edge::T, V)>>,
 }
 
 fn bounds(edge: &edge::T) -> voxel::bounds::T {
   voxel::bounds::new(edge.low_corner.x, edge.low_corner.y, edge.low_corner.z, edge.lg_size)
 }
 
-impl<Edge> T<Edge> {
-  fn tree(&self, direction: edge::Direction) -> &voxel::tree::T<(edge::T, Edge)> {
+impl<V> T<V> {
+  fn tree(&self, direction: edge::Direction) -> &voxel::storage::T<(edge::T, V)> {
     match direction {
       edge::Direction::X => &self.edges.x,
       edge::Direction::Y => &self.edges.y,
@@ -21,7 +23,7 @@ impl<Edge> T<Edge> {
     }
   }
 
-  fn tree_mut(&mut self, direction: edge::Direction) -> &mut voxel::tree::T<(edge::T, Edge)> {
+  fn tree_mut(&mut self, direction: edge::Direction) -> &mut voxel::storage::T<(edge::T, V)> {
     match direction {
       edge::Direction::X => &mut self.edges.x,
       edge::Direction::Y => &mut self.edges.y,
@@ -29,33 +31,25 @@ impl<Edge> T<Edge> {
     }
   }
 
-  pub fn insert(&mut self, edge: &edge::T, edge_data: Edge) -> Vec<Edge> {
+  pub fn insert(&mut self, edge: &edge::T, edge_data: V) -> Vec<V> {
     let mut removed = Vec::new();
     for collision in self.find_collisions(&edge) {
       removed.push(self.remove(&collision).unwrap());
     }
 
     let bounds = bounds(&edge);
-    self.tree_mut(edge.direction)
-      .get_mut_or_create(&bounds)
-      .force_branches()
-      .data = Some((*edge, edge_data));
+    match self.tree_mut(edge.direction).entry(&bounds) {
+      fnv_map::Entry::Occupied(mut entry) => entry.insert((*edge, edge_data)),
+      fnv_map::Entry::Vacant(mut entry)   => entry.insert((*edge, edge_data)),
+    }
 
     removed
   }
 
-  pub fn remove(&mut self, edge: &edge::T) -> Option<Edge> {
+  pub fn remove(&mut self, edge: &edge::T) -> Option<V> {
     let mut edges = self.tree_mut(edge.direction);
     let bounds = bounds(&edge);
-
-    match edges.get_mut_pointer(&bounds) {
-      Some(&mut voxel::tree::Inner::Branches(ref mut branches)) => {
-        let mut r = None;
-        std::mem::swap(&mut branches.data, &mut r);
-        r.map(|(_, d)| d)
-      },
-      _ => None,
-    }
+    edges.remove(&bounds).map(|(_, v)| v)
   }
 
   pub fn contains_key(&self, edge: &edge::T) -> bool {
@@ -66,8 +60,8 @@ impl<Edge> T<Edge> {
   }
 
   pub fn find_collisions(&self, edge: &edge::T) -> Vec<edge::T> {
-    fn all<Edge>(collisions: &mut Vec<edge::T>, branches: &voxel::tree::Inner<(edge::T, Edge)>) {
-      if let &voxel::tree::Inner::Branches(ref branches) = branches {
+    fn all<V>(collisions: &mut Vec<edge::T>, branches: &voxel::storage::Inner<(edge::T, V)>) {
+      if let &voxel::storage::Inner::Branches(ref branches) = branches {
         if let Some((edge, _)) = branches.data {
           collisions.push(edge);
         }
@@ -82,16 +76,16 @@ impl<Edge> T<Edge> {
 
     let bounds = bounds(edge);
     let edges = self.tree(edge.direction);
-    let mut traversal = voxel::tree::traversal::to_voxel(&edges, &bounds);
+    let mut traversal = voxel::storage::traversal::to_voxel(&edges, &bounds);
     let mut edges = &edges.contents;
     loop {
       match traversal.next(edges) {
-        voxel::tree::traversal::Step::Last(branches) => {
+        voxel::storage::traversal::Step::Last(branches) => {
           all(&mut collisions, branches);
           break;
         },
-        voxel::tree::traversal::Step::Step(branches) => {
-          if let &voxel::tree::Inner::Branches(ref branches) = branches {
+        voxel::storage::traversal::Step::Step(branches) => {
+          if let &voxel::storage::Inner::Branches(ref branches) = branches {
             if let Some((edge, _)) = branches.data {
               collisions.push(edge);
             }
@@ -107,13 +101,13 @@ impl<Edge> T<Edge> {
   }
 }
 
-pub fn new<Edge>() -> T<Edge> {
+pub fn new<V>() -> T<V> {
   T {
     edges:
       Vector3::new(
-        voxel::tree::new(),
-        voxel::tree::new(),
-        voxel::tree::new(),
+        voxel::storage::new(),
+        voxel::storage::new(),
+        voxel::storage::new(),
       ),
   }
 }

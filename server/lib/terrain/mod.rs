@@ -45,7 +45,7 @@ use common::voxel;
 #[allow(missing_docs)]
 pub struct T {
   pub mosaic: Mutex<cache_mosaic::T<voxel::Material>>,
-  pub voxels: Mutex<voxel::storage::T>,
+  pub voxels: Mutex<voxel::storage::T<voxel::T>>,
 }
 
 impl T {
