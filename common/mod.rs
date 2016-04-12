@@ -17,6 +17,7 @@
 #![allow(type_complexity)]
 
 extern crate cgmath;
+extern crate fnv;
 extern crate isosurface_extraction;
 #[macro_use]
 extern crate log;

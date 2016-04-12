@@ -36,7 +36,7 @@ pub struct T {
   pub loaded_edges: Mutex<loaded_edges::T<terrain_mesh::T>>,
   /// The voxels we have cached from the server.
   // TODO: Should probably remove from this at some point.
-  pub voxels: Mutex<voxel::tree::T>,
+  pub voxels: Mutex<voxel::storage::T>,
   /// The number of terrain requests that are outstanding,
   pub outstanding_terrain_requests: Mutex<u32>,
   pub rng: Mutex<rand::XorShiftRng>,
@@ -77,7 +77,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     surroundings_loader: Mutex::new(surroundings_loader),
     id_allocator: Mutex::new(id_allocator::new()),
     loaded_edges: Mutex::new(loaded_edges::new()),
-    voxels: Mutex::new(voxel::tree::new()),
+    voxels: Mutex::new(voxel::storage::new()),
     outstanding_terrain_requests: Mutex::new(0),
     rng: Mutex::new(rng),
   }

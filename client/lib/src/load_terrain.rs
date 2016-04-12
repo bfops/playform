@@ -1,5 +1,6 @@
 use cgmath::{Point3, Point};
 use num;
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use common::voxel;
 
@@ -20,14 +21,15 @@ pub fn load_voxel<Edge>(
 {
   let mut voxels = client.voxels.lock().unwrap();
 
-  {
-    let voxel = Some(*voxel);
-    let branch = voxels.get_mut_or_create(bounds);
-    let old_voxel = &mut branch.force_branches().data;
-    if *old_voxel == voxel {
-      return
-    }
-    *old_voxel = voxel;
+  match voxels.entry(bounds) {
+    Vacant(entry) => {
+      entry.insert(*voxel);
+    },
+    Occupied(mut entry) => {
+      if entry.insert(*voxel) == *voxel {
+        return
+      }
+    },
   }
 
   trace!("voxel bounds {:?}", bounds);

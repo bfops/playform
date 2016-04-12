@@ -3,6 +3,8 @@
 use isosurface_extraction;
 use voxel_data;
 
+pub mod storage;
+
 pub use voxel_data::bounds;
 pub use voxel_data::impls::surface_vertex::T::*;
 pub use voxel_data::impls::surface_vertex::of_field;
@@ -21,19 +23,6 @@ pub enum Material {
   Leaves = 3,
   Stone = 4,
   Marble = 5,
-}
-
-#[allow(missing_docs)]
-pub mod tree {
-  use voxel_data;
-
-  pub type T = voxel_data::tree::T<super::T>;
-  pub type Inner = voxel_data::tree::Inner<super::T>;
-  pub type Branches = voxel_data::tree::Branches<super::T>;
-
-  pub fn new() -> T {
-    voxel_data::tree::new()
-  }
 }
 
 #[allow(missing_docs)]
