@@ -1,12 +1,14 @@
 use cgmath::{Aabb3, Point, Vector, Vector3};
-use octree::Octree;
+
 use common::entity_id;
-use std::collections::HashMap;
+use common::fnv_map;
+
+use octree::Octree;
 
 pub struct Physics {
   pub terrain_octree: Octree<entity_id::T>,
   pub misc_octree: Octree<entity_id::T>,
-  pub bounds: HashMap<entity_id::T, Aabb3<f32>>,
+  pub bounds: fnv_map::T<entity_id::T, Aabb3<f32>>,
 }
 
 impl Physics {
@@ -14,7 +16,7 @@ impl Physics {
     Physics {
       terrain_octree: Octree::new(&world_bounds),
       misc_octree: Octree::new(&world_bounds),
-      bounds: HashMap::new(),
+      bounds: fnv_map::new(),
     }
   }
 

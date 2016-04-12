@@ -1,11 +1,11 @@
 use cgmath::{Aabb3, Point3};
 use rand;
-use std::collections::HashMap;
 use std::sync::Mutex;
 use time;
 
 use common::protocol;
 use common::entity_id;
+use common::fnv_map;
 use common::id_allocator;
 use common::interval_timer::IntervalTimer;
 use common::socket::SendSocket;
@@ -39,8 +39,8 @@ impl Client {
 
 // TODO: Audit for s/Mutex/RwLock.
 pub struct T {
-  pub players: Mutex<HashMap<entity_id::T, player::T>>,
-  pub mobs: Mutex<HashMap<entity_id::T, mob::Mob>>,
+  pub players: Mutex<fnv_map::T<entity_id::T, player::T>>,
+  pub mobs: Mutex<fnv_map::T<entity_id::T, mob::Mob>>,
 
   pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
   pub owner_allocator: Mutex<id_allocator::T<lod::OwnerId>>,
@@ -50,7 +50,7 @@ pub struct T {
   pub terrain_loader: terrain_loader::T,
   pub rng: Mutex<rand::StdRng>,
 
-  pub clients: Mutex<HashMap<protocol::ClientId, Client>>,
+  pub clients: Mutex<fnv_map::T<protocol::ClientId, Client>>,
 
   pub sun: Mutex<Sun>,
   pub update_timer: Mutex<IntervalTimer>,
@@ -72,8 +72,8 @@ pub fn new() -> T {
   let owner_allocator = Mutex::new(id_allocator::new());
 
   let server = T {
-    players: Mutex::new(HashMap::new()),
-    mobs: Mutex::new(HashMap::new()),
+    players: Mutex::new(fnv_map::new()),
+    mobs: Mutex::new(fnv_map::new()),
 
     id_allocator: Mutex::new(id_allocator),
     owner_allocator: owner_allocator,
@@ -87,7 +87,7 @@ pub fn new() -> T {
       Mutex::new(rand::SeedableRng::from_seed(seed))
     },
 
-    clients: Mutex::new(HashMap::new()),
+    clients: Mutex::new(fnv_map::new()),
     sun: Mutex::new(Sun::new(SUN_TICK_NS)),
 
     update_timer: {

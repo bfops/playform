@@ -1,5 +1,6 @@
 use hound;
-use std;
+
+use common::fnv_map;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(unused)]
@@ -18,12 +19,12 @@ impl SoundId {
 }
 
 pub struct T {
-  loaded: std::collections::HashMap<SoundId, Vec<f32>>,
+  loaded: fnv_map::T<SoundId, Vec<f32>>,
 }
 
 pub fn new() -> T {
   T {
-    loaded: std::collections::HashMap::new(),
+    loaded: fnv_map::new(),
   }
 }
 

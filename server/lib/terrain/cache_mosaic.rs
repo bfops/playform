@@ -1,6 +1,7 @@
 use cgmath;
 use std;
 
+use common::fnv_map;
 use common::voxel;
 
 #[derive(PartialEq)]
@@ -17,7 +18,7 @@ impl std::hash::Hash for Key {
   }
 }
 
-type Cache<X> = std::collections::HashMap<Key, X>;
+type Cache<X> = fnv_map::T<Key, X>;
 
 pub struct T<Material> {
   mosaic: Box<voxel::mosaic::T<Material> + Send>,
@@ -30,10 +31,10 @@ pub struct T<Material> {
 pub fn new<Material>(mosaic: Box<voxel::mosaic::T<Material> + Send>) -> T<Material> {
   T {
     mosaic: mosaic,
-    cache_field_density: std::collections::HashMap::new(),
-    cache_field_normal: std::collections::HashMap::new(),
-    cache_mosaic_density: std::collections::HashMap::new(),
-    cache_mosaic_material: std::collections::HashMap::new(),
+    cache_field_density: fnv_map::new(),
+    cache_field_normal: fnv_map::new(),
+    cache_mosaic_density: fnv_map::new(),
+    cache_mosaic_material: fnv_map::new(),
   }
 }
 

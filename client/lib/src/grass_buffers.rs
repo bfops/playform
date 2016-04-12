@@ -2,12 +2,12 @@ use cgmath;
 use cgmath::{Vector, Point, Matrix};
 use gl;
 use std;
-use std::collections::HashMap;
 use std::f32;
 use yaglw;
 use yaglw::gl_context::GLContext;
 
 use common::entity_id;
+use common::fnv_map;
 
 use terrain_mesh;
 use vertex;
@@ -19,7 +19,7 @@ pub const TUFT_BUDGET: usize = BYTE_BUDGET / TUFT_COST;
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
 pub struct T<'a> {
-  id_to_index: HashMap<entity_id::T, usize>,
+  id_to_index: fnv_map::T<entity_id::T, usize>,
   index_to_id: Vec<entity_id::T>,
 
   gl_array: yaglw::vertex_buffer::ArrayHandle<'a>,
@@ -147,7 +147,7 @@ pub fn new<'a, 'b:'a>(
   assert!(attrib_span == std::mem::size_of::<terrain_mesh::Grass>() as u32);
 
   T {
-    id_to_index: HashMap::new(),
+    id_to_index: fnv_map::new(),
     index_to_id: Vec::new(),
 
     gl_array: gl_array,
