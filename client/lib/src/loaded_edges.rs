@@ -1,5 +1,5 @@
-use std;
-use cgmath::Vector3;
+use cgmath::{Point3, Vector3, Point};
+use stopwatch;
 
 use common::fnv_map;
 use common::voxel;
@@ -7,7 +7,7 @@ use common::voxel;
 use edge;
 
 pub struct T<V> {
-  edges: Vector3<voxel::storage::T<(edge::T, V)>>,
+  edges: Vector3<voxel::storage::T<V>>,
 }
 
 fn bounds(edge: &edge::T) -> voxel::bounds::T {
@@ -15,7 +15,7 @@ fn bounds(edge: &edge::T) -> voxel::bounds::T {
 }
 
 impl<V> T<V> {
-  fn tree(&self, direction: edge::Direction) -> &voxel::storage::T<(edge::T, V)> {
+  fn tree(&self, direction: edge::Direction) -> &voxel::storage::T<V> {
     match direction {
       edge::Direction::X => &self.edges.x,
       edge::Direction::Y => &self.edges.y,
@@ -23,7 +23,7 @@ impl<V> T<V> {
     }
   }
 
-  fn tree_mut(&mut self, direction: edge::Direction) -> &mut voxel::storage::T<(edge::T, V)> {
+  fn tree_mut(&mut self, direction: edge::Direction) -> &mut voxel::storage::T<V> {
     match direction {
       edge::Direction::X => &mut self.edges.x,
       edge::Direction::Y => &mut self.edges.y,
@@ -39,8 +39,12 @@ impl<V> T<V> {
 
     let bounds = bounds(&edge);
     match self.tree_mut(edge.direction).entry(&bounds) {
-      fnv_map::Entry::Occupied(mut entry) => entry.insert((*edge, edge_data)),
-      fnv_map::Entry::Vacant(mut entry)   => entry.insert((*edge, edge_data)),
+      fnv_map::Entry::Occupied(mut entry) => {
+        entry.insert(edge_data);
+      },
+      fnv_map::Entry::Vacant(entry) => {
+        entry.insert(edge_data);
+      },
     }
 
     removed
@@ -49,7 +53,7 @@ impl<V> T<V> {
   pub fn remove(&mut self, edge: &edge::T) -> Option<V> {
     let mut edges = self.tree_mut(edge.direction);
     let bounds = bounds(&edge);
-    edges.remove(&bounds).map(|(_, v)| v)
+    edges.remove(&bounds)
   }
 
   pub fn contains_key(&self, edge: &edge::T) -> bool {
@@ -60,40 +64,54 @@ impl<V> T<V> {
   }
 
   pub fn find_collisions(&self, edge: &edge::T) -> Vec<edge::T> {
-    fn all<V>(collisions: &mut Vec<edge::T>, branches: &voxel::storage::Inner<(edge::T, V)>) {
-      if let &voxel::storage::Inner::Branches(ref branches) = branches {
-        if let Some((edge, _)) = branches.data {
-          collisions.push(edge);
-        }
-
-        for branches in branches.as_flat_array() {
-          all(collisions, branches);
-        }
-      }
-    }
+    let bounds = bounds(&edge);
 
     let mut collisions = Vec::new();
 
-    let bounds = bounds(edge);
-    let edges = self.tree(edge.direction);
-    let mut traversal = voxel::storage::traversal::to_voxel(&edges, &bounds);
-    let mut edges = &edges.contents;
-    loop {
-      match traversal.next(edges) {
-        voxel::storage::traversal::Step::Last(branches) => {
-          all(&mut collisions, branches);
-          break;
-        },
-        voxel::storage::traversal::Step::Step(branches) => {
-          if let &voxel::storage::Inner::Branches(ref branches) = branches {
-            if let Some((edge, _)) = branches.data {
-              collisions.push(edge);
+    {
+      let mut check_collision = |lg_size, by_position: &voxel::storage::ByPosition<V>, point| {
+        let b =
+          stopwatch::time("loaded_edges::find_collision::get", || {
+            by_position.get(&point).is_some()
+          });
+        if b {
+          collisions.push(
+            edge::T {
+              low_corner: point,
+              lg_size: lg_size,
+              direction: edge.direction,
             }
-            edges = branches;
-          } else {
-            break;
-          }
-        },
+          );
+        }
+      };
+
+      for &(lg_size, ref by_position) in &self.tree(edge.direction).by_lg_size {
+        let lg_ratio = bounds.lg_size - lg_size;
+        if lg_ratio < 0 {
+          let lg_ratio = -lg_ratio;
+          check_collision(
+            lg_size,
+            by_position,
+            Point3::new(
+              bounds.x >> lg_ratio,
+              bounds.y >> lg_ratio,
+              bounds.z >> lg_ratio,
+            ),
+          );
+        } else {
+          let count = 1 << lg_ratio;
+          let point =
+            Point3::new(
+              bounds.x << lg_ratio,
+              bounds.y << lg_ratio,
+              bounds.z << lg_ratio,
+            );
+          for dx in 0..count {
+          for dy in 0..count {
+          for dz in 0..count {
+            check_collision(lg_size, by_position, point.add_v(&Vector3::new(dx, dy, dz)));
+          }}}
+        }
       }
     }
 

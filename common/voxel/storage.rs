@@ -1,13 +1,16 @@
 //! Datatype for storing voxel data.
 
 use cgmath;
+use std;
 
 use ::voxel::bounds;
 use ::fnv_map;
 
-type ByPosition<T> = fnv_map::T<cgmath::Point3<i32>, T>;
+#[allow(missing_docs)]
+pub type ByPosition<T> = fnv_map::T<cgmath::Point3<i32>, T>;
+#[allow(missing_docs)]
 // TODO: lg_size should be i32.
-type ByLgSize<T> = fnv_map::T<i16, T>;
+pub type ByLgSize<T> = Vec<(i16, T)>;
 
 /// Type returned by `entry`.
 pub type Entry<'a, V> = fnv_map::Entry<'a, cgmath::Point3<i32>, V>;
@@ -15,20 +18,41 @@ pub type Entry<'a, V> = fnv_map::Entry<'a, cgmath::Point3<i32>, V>;
 /// Voxel storage data type. This is backed by HashMaps, not an SVO, so it's a lot more compact and cache-friendly.
 #[derive(Debug, Clone)]
 pub struct T<V> {
-  voxels: ByLgSize<ByPosition<V>>,
+  #[allow(missing_docs)]
+  pub by_lg_size: ByLgSize<ByPosition<V>>,
 }
 
 impl<V> T<V> {
   fn by_lg_size(&self, lg_size: i16) -> Option<&ByPosition<V>> {
-    self.voxels.get(&lg_size)
+    self.by_lg_size.iter()
+      .filter(|&&(l, _)| l == lg_size)
+      .map(|&(_, ref v)| v)
+      .next()
   }
 
   fn by_lg_size_mut(&mut self, lg_size: i16) -> Option<&mut ByPosition<V>> {
-    self.voxels.get_mut(&lg_size)
+    self.by_lg_size.iter_mut()
+      .filter(|&&mut (l, _)| l == lg_size)
+      .map(|&mut (_, ref mut v)| v)
+      .next()
   }
 
   fn by_lg_size_or_insert(&mut self, lg_size: i16) -> &mut ByPosition<V> {
-    self.voxels.entry(lg_size).or_insert_with(fnv_map::new)
+    let posn =
+      self.by_lg_size.iter()
+        .take_while(|&&(l, _)| l < lg_size)
+        .count();
+
+    let len = self.by_lg_size.len();
+    if posn == len || self.by_lg_size[posn].0 != lg_size {
+      let mut next = (lg_size, fnv_map::new());
+      for cur in &mut self.by_lg_size[posn .. len] {
+        std::mem::swap(cur, &mut next);
+      }
+      self.by_lg_size.push(next);
+    }
+
+    &mut self.by_lg_size[posn].1
   }
 
   /// Get an entry for in-place manipulation.
@@ -78,6 +102,6 @@ impl<V> T<V> {
 #[allow(missing_docs)]
 pub fn new<V>() -> T<V> {
   T {
-    voxels: fnv_map::new(),
+    by_lg_size: Vec::new(),
   }
 }
