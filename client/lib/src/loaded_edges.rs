@@ -72,7 +72,7 @@ impl<V> T<V> {
       let mut check_collision = |lg_size, by_position: &voxel::storage::ByPosition<V>, point| {
         let b =
           stopwatch::time("loaded_edges::find_collision::get", || {
-            by_position.get(&point).is_some()
+            by_position.get(&voxel::storage::Key(point)).is_some()
           });
         if b {
           collisions.push(
