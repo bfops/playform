@@ -1,21 +1,21 @@
-use cgmath::{Point3, Vector3, Point};
-use stopwatch;
-
-use common::fnv_map;
-use common::voxel;
+use std;
+use cgmath::Vector3;
+use voxel_data as voxel;
 
 use edge;
 
-pub struct T<V> {
-  edges: Vector3<voxel::storage::T<V>>,
+pub struct T<Edge> {
+  edges: Vector3<voxel::tree::T<(edge::T, Edge)>>,
 }
 
 fn bounds(edge: &edge::T) -> voxel::bounds::T {
   voxel::bounds::new(edge.low_corner.x, edge.low_corner.y, edge.low_corner.z, edge.lg_size)
 }
 
-impl<V> T<V> {
-  fn tree(&self, direction: edge::Direction) -> &voxel::storage::T<V> {
+// Maintain the invariant that colliding edges can't exist simultaneously in the set.
+// TODO: Check this occasionally.
+impl<Edge> T<Edge> {
+  fn tree(&self, direction: edge::Direction) -> &voxel::tree::T<(edge::T, Edge)> {
     match direction {
       edge::Direction::X => &self.edges.x,
       edge::Direction::Y => &self.edges.y,
@@ -23,7 +23,7 @@ impl<V> T<V> {
     }
   }
 
-  fn tree_mut(&mut self, direction: edge::Direction) -> &mut voxel::storage::T<V> {
+  fn tree_mut(&mut self, direction: edge::Direction) -> &mut voxel::tree::T<(edge::T, Edge)> {
     match direction {
       edge::Direction::X => &mut self.edges.x,
       edge::Direction::Y => &mut self.edges.y,
@@ -31,29 +31,33 @@ impl<V> T<V> {
     }
   }
 
-  pub fn insert(&mut self, edge: &edge::T, edge_data: V) -> Vec<V> {
+  pub fn insert(&mut self, edge: &edge::T, edge_data: Edge) -> Vec<Edge> {
     let mut removed = Vec::new();
     for collision in self.find_collisions(&edge) {
       removed.push(self.remove(&collision).unwrap());
     }
 
     let bounds = bounds(&edge);
-    match self.tree_mut(edge.direction).entry(&bounds) {
-      fnv_map::Entry::Occupied(mut entry) => {
-        entry.insert(edge_data);
-      },
-      fnv_map::Entry::Vacant(entry) => {
-        entry.insert(edge_data);
-      },
-    }
+    self.tree_mut(edge.direction)
+      .get_mut_or_create(&bounds)
+      .force_branches()
+      .data = Some((*edge, edge_data));
 
     removed
   }
 
-  pub fn remove(&mut self, edge: &edge::T) -> Option<V> {
+  pub fn remove(&mut self, edge: &edge::T) -> Option<Edge> {
     let mut edges = self.tree_mut(edge.direction);
     let bounds = bounds(&edge);
-    edges.remove(&bounds)
+
+    match edges.get_mut_pointer(&bounds) {
+      Some(&mut voxel::tree::Inner::Branches(ref mut branches)) => {
+        let mut r = None;
+        std::mem::swap(&mut branches.data, &mut r);
+        r.map(|(_, d)| d)
+      },
+      _ => None,
+    }
   }
 
   pub fn contains_key(&self, edge: &edge::T) -> bool {
@@ -64,54 +68,45 @@ impl<V> T<V> {
   }
 
   pub fn find_collisions(&self, edge: &edge::T) -> Vec<edge::T> {
-    let bounds = bounds(&edge);
+    fn all<Edge>(collisions: &mut Vec<edge::T>, branches: &voxel::tree::Inner<(edge::T, Edge)>) {
+      if let &voxel::tree::Inner::Branches(ref branches) = branches {
+        // Invariant: Colliding edges don't exist in the set simultaneously.
+        // If we find an edge, we don't need to descend.
+        if let Some((edge, _)) = branches.data {
+          collisions.push(edge);
+        } else {
+          for branches in branches.as_flat_array() {
+            all(collisions, branches);
+          }
+        }
+      }
+    }
 
     let mut collisions = Vec::new();
 
-    {
-      let mut check_collision = |lg_size, by_position: &voxel::storage::ByPosition<V>, point| {
-        let b =
-          stopwatch::time("loaded_edges::find_collision::get", || {
-            by_position.get(&point).is_some()
-          });
-        if b {
-          collisions.push(
-            edge::T {
-              low_corner: point,
-              lg_size: lg_size,
-              direction: edge.direction,
+    let bounds = bounds(edge);
+    let edges = self.tree(edge.direction);
+    let mut traversal = voxel::tree::traversal::to_voxel(&edges, &bounds);
+    let mut edges = &edges.contents;
+    loop {
+      match traversal.next(edges) {
+        voxel::tree::traversal::Step::Last(branches) => {
+          all(&mut collisions, branches);
+          break;
+        },
+        voxel::tree::traversal::Step::Step(branches) => {
+          if let &voxel::tree::Inner::Branches(ref branches) = branches {
+            // Invariant: Colliding edges don't exist in the set simultaneously.
+            // If we find an edge, we don't need to continue.
+            if let Some((edge, _)) = branches.data {
+              collisions.push(edge);
+              break;
             }
-          );
-        }
-      };
-
-      for &(lg_size, ref by_position) in &self.tree(edge.direction).by_lg_size {
-        let lg_ratio = bounds.lg_size - lg_size;
-        if lg_ratio < 0 {
-          let lg_ratio = -lg_ratio;
-          check_collision(
-            lg_size,
-            by_position,
-            Point3::new(
-              bounds.x >> lg_ratio,
-              bounds.y >> lg_ratio,
-              bounds.z >> lg_ratio,
-            ),
-          );
-        } else {
-          let count = 1 << lg_ratio;
-          let point =
-            Point3::new(
-              bounds.x << lg_ratio,
-              bounds.y << lg_ratio,
-              bounds.z << lg_ratio,
-            );
-          for dx in 0..count {
-          for dy in 0..count {
-          for dz in 0..count {
-            check_collision(lg_size, by_position, point.add_v(&Vector3::new(dx, dy, dz)));
-          }}}
-        }
+            edges = branches;
+          } else {
+            break;
+          }
+        },
       }
     }
 
@@ -119,13 +114,13 @@ impl<V> T<V> {
   }
 }
 
-pub fn new<V>() -> T<V> {
+pub fn new<Edge>() -> T<Edge> {
   T {
     edges:
       Vector3::new(
-        voxel::storage::new(),
-        voxel::storage::new(),
-        voxel::storage::new(),
+        voxel::tree::new(),
+        voxel::tree::new(),
+        voxel::tree::new(),
       ),
   }
 }
