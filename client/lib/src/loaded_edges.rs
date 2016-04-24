@@ -12,6 +12,8 @@ fn bounds(edge: &edge::T) -> voxel::bounds::T {
   voxel::bounds::new(edge.low_corner.x, edge.low_corner.y, edge.low_corner.z, edge.lg_size)
 }
 
+// Maintain the invariant that colliding edges can't exist simultaneously in the set.
+// TODO: Check this occasionally.
 impl<Edge> T<Edge> {
   fn tree(&self, direction: edge::Direction) -> &voxel::tree::T<(edge::T, Edge)> {
     match direction {
@@ -68,12 +70,14 @@ impl<Edge> T<Edge> {
   pub fn find_collisions(&self, edge: &edge::T) -> Vec<edge::T> {
     fn all<Edge>(collisions: &mut Vec<edge::T>, branches: &voxel::tree::Inner<(edge::T, Edge)>) {
       if let &voxel::tree::Inner::Branches(ref branches) = branches {
+        // Invariant: Colliding edges don't exist in the set simultaneously.
+        // If we find an edge, we don't need to descend.
         if let Some((edge, _)) = branches.data {
           collisions.push(edge);
-        }
-
-        for branches in branches.as_flat_array() {
-          all(collisions, branches);
+        } else {
+          for branches in branches.as_flat_array() {
+            all(collisions, branches);
+          }
         }
       }
     }
@@ -92,8 +96,11 @@ impl<Edge> T<Edge> {
         },
         voxel::tree::traversal::Step::Step(branches) => {
           if let &voxel::tree::Inner::Branches(ref branches) = branches {
+            // Invariant: Colliding edges don't exist in the set simultaneously.
+            // If we find an edge, we don't need to continue.
             if let Some((edge, _)) = branches.data {
               collisions.push(edge);
+              break;
             }
             edges = branches;
           } else {
