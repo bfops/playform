@@ -31,6 +31,7 @@ impl<Edge> T<Edge> {
     }
   }
 
+  #[inline(never)]
   pub fn insert(&mut self, edge: &edge::T, edge_data: Edge) -> Vec<Edge> {
     let mut removed = Vec::new();
     for collision in self.find_collisions(&edge) {
