@@ -14,6 +14,8 @@ fn bounds(edge: &edge::T) -> voxel::bounds::T {
   voxel::bounds::new(edge.low_corner.x, edge.low_corner.y, edge.low_corner.z, edge.lg_size)
 }
 
+// Maintain the invariant that colliding edges can't exist simultaneously in the set.
+// TODO: Check this occasionally.
 impl<V> T<V> {
   fn tree(&self, direction: edge::Direction) -> &voxel::storage::T<V> {
     match direction {
@@ -31,6 +33,7 @@ impl<V> T<V> {
     }
   }
 
+  #[inline(never)]
   pub fn insert(&mut self, edge: &edge::T, edge_data: V) -> Vec<V> {
     let mut removed = Vec::new();
     for collision in self.find_collisions(&edge) {
@@ -83,21 +86,26 @@ impl<V> T<V> {
             }
           );
         }
+        b
       };
 
       for &(lg_size, ref by_position) in &self.tree(edge.direction).by_lg_size {
         let lg_ratio = bounds.lg_size - lg_size;
         if lg_ratio < 0 {
           let lg_ratio = -lg_ratio;
-          check_collision(
-            lg_size,
-            by_position,
-            Point3::new(
-              bounds.x >> lg_ratio,
-              bounds.y >> lg_ratio,
-              bounds.z >> lg_ratio,
-            ),
-          );
+          let found_collision =
+            check_collision(
+              lg_size,
+              by_position,
+              Point3::new(
+                bounds.x >> lg_ratio,
+                bounds.y >> lg_ratio,
+                bounds.z >> lg_ratio,
+              ),
+            );
+          if found_collision {
+            break
+          }
         } else {
           let count = 1 << lg_ratio;
           let point =

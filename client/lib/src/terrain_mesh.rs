@@ -224,6 +224,7 @@ fn place_grass<T, Rng: rand::Rng>(
   )
 }
 
+#[inline(never)]
 pub fn generate<Rng: rand::Rng>(
   voxels: &voxel::storage::T<voxel::T>,
   edge: &edge::T,
