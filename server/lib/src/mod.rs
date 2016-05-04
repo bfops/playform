@@ -8,7 +8,6 @@
 #![allow(collapsible_if)]
 #![allow(match_same_arms)]
 #![allow(new_without_default)]
-#![allow(similar_names)]
 #![allow(doc_markdown)]
 
 #![deny(missing_docs)]
