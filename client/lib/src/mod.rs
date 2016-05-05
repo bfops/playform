@@ -13,7 +13,6 @@
 #![allow(mutex_atomic)]
 #![allow(match_ref_pats)]
 #![allow(match_same_arms)]
-#![allow(similar_names)]
 #![allow(too_many_arguments)]
 #![allow(let_and_return)]
 #![allow(many_single_char_names)]

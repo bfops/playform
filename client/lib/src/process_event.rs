@@ -14,6 +14,7 @@ use client;
 use view;
 
 #[allow(missing_docs)]
+#[allow(similar_names)]
 pub fn process_event<UpdateServer>(
   update_server: &mut UpdateServer,
   view: &mut view::T,

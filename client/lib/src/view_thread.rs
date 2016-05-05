@@ -42,7 +42,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   UpdateServer: FnMut(protocol::ClientToServer),
 {
   let sdl = sdl2::init().unwrap();
-  let _event = sdl.event().unwrap();
+  let _sdl_event = sdl.event().unwrap();
   let video = sdl.video().unwrap();
   let gl_attr = video.gl_attr();
 
