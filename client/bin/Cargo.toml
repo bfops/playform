@@ -16,7 +16,6 @@ path = "./mod.rs"
 clippy = "*"
 env_logger= "*"
 log = "*"
-time = "*"
 
 [dependencies.client-lib]
 path = "../lib"

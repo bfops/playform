@@ -18,7 +18,6 @@ num = "*"
 rand = "*"
 rustc-serialize = "*"
 thread-scoped = "*"
-time = "*"
 
 [dependencies.playform-common]
 path = "../../common"

@@ -13,7 +13,6 @@ cgmath = "0.3.*"
 clippy = "*"
 log = "*"
 rand = "*"
-time = "*"
 noise = "0.1.5"
 num = "*"
 
