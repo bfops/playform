@@ -5,7 +5,6 @@ use cgmath::{Point, Point3, Vector3, Vector, EuclideanVector, Matrix, Rotation, 
 use isosurface_extraction::dual_contouring;
 use num::iter::range_inclusive;
 use rand;
-use rand::Rng;
 use std::f32;
 use std::sync::{Arc, Mutex};
 use stopwatch;

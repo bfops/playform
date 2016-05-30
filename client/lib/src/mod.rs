@@ -9,7 +9,6 @@
 #![feature(unboxed_closures)]
 
 #![plugin(clippy)]
-
 #![allow(mutex_atomic)]
 #![allow(match_ref_pats)]
 #![allow(match_same_arms)]
@@ -18,6 +17,8 @@
 #![allow(many_single_char_names)]
 #![allow(enum_variant_names)]
 #![allow(doc_markdown)]
+#![allow(assign_op_pattern)]
+#![allow(needless_borrow)]
 
 extern crate bincode;
 extern crate cgmath;

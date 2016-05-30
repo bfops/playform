@@ -1,7 +1,7 @@
 //! A tree is comprised of a cylindrical trunk, a spherical bunch of leaves, and a spherical
 //! rounding to the bottom of the trunk.
 
-use cgmath::{Point, Point3, Vector, Vector3, EuclideanVector, Rotation};
+use cgmath::{Point, Point3, Vector3, EuclideanVector, Rotation};
 use rand;
 use voxel_data;
 use voxel_data::field;

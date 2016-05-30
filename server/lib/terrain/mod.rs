@@ -35,7 +35,6 @@ pub mod tree;
 
 pub use noise::Seed;
 
-use cgmath::Aabb;
 use std::sync::Mutex;
 
 use common::voxel;

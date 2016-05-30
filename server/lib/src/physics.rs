@@ -1,4 +1,4 @@
-use cgmath::{Aabb3, Point, Vector, Vector3};
+use cgmath::{Aabb3, Point, Vector3};
 
 use common::entity_id;
 use common::fnv_map;

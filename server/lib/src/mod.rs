@@ -1,15 +1,4 @@
 //! This crate contains server-only components of Playform.
-
-#![allow(let_and_return)]
-#![allow(match_ref_pats)]
-#![allow(mutex_atomic)]
-#![allow(type_complexity)]
-#![allow(items_after_statements)]
-#![allow(collapsible_if)]
-#![allow(match_same_arms)]
-#![allow(new_without_default)]
-#![allow(doc_markdown)]
-
 #![deny(missing_docs)]
 #![deny(warnings)]
 
@@ -19,6 +8,20 @@
 #![feature(unboxed_closures)]
 
 #![plugin(clippy)]
+#![allow(let_and_return)]
+#![allow(match_ref_pats)]
+#![allow(mutex_atomic)]
+#![allow(type_complexity)]
+#![allow(items_after_statements)]
+#![allow(collapsible_if)]
+#![allow(match_same_arms)]
+#![allow(new_without_default)]
+#![allow(doc_markdown)]
+#![allow(needless_borrow)]
+#![allow(assign_op_pattern)]
+#![allow(new_without_default_derive)]
+
+#![allow(mutex_atomic)]
 
 extern crate bincode;
 extern crate cgmath;
