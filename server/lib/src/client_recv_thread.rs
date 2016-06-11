@@ -21,6 +21,8 @@ use voxel_data;
 use update_gaia;
 use update_gaia::LoadReason;
 
+fn dont_inline<T>(t: T) {}
+
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
   bounds.min.add_v(&bounds.max.to_vec()).mul_s(1.0 / 2.0)
 }
@@ -65,15 +67,12 @@ pub fn apply_client_update<UpdateGaia>(
           };
 
         let client_id = id_allocator::allocate(&server.client_allocator);
-        client.send(protocol::ServerToClient::LeaseId(client_id));
+        dont_inline(protocol::ServerToClient::LeaseId(client_id));
 
         server.clients.lock().unwrap().insert(client_id, client);
       },
       protocol::ClientToServer::Ping(client_id) => {
-        server.clients.lock().unwrap()
-          .get_mut(&client_id)
-          .unwrap()
-          .send(protocol::ServerToClient::Ping);
+        dont_inline(protocol::ServerToClient::Ping);
       },
       protocol::ClientToServer::AddPlayer(client_id) => {
         let mut player =
@@ -98,7 +97,7 @@ pub fn apply_client_update<UpdateGaia>(
 
         let mut clients = server.clients.lock().unwrap();
         let client = clients.get_mut(&client_id).unwrap();
-        client.send(
+        dont_inline(
           protocol::ServerToClient::PlayerAdded(id, pos)
         );
       },

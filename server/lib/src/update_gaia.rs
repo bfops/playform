@@ -17,12 +17,15 @@ use voxel_data;
 pub enum LoadReason {
   Local(lod::OwnerId),
   ForClient(protocol::ClientId),
+  Drop,
 }
 
 pub enum Message {
   Load(u64, Vec<voxel::bounds::T>, LoadReason),
   Brush(voxel_data::brush::T<Box<voxel_data::mosaic::T<common::voxel::Material> + Send>>),
 }
+
+fn dont_inline<T>(t: T) {}
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
 pub fn update_gaia(
@@ -48,7 +51,7 @@ pub fn update_gaia(
 
         let mut clients = server.clients.lock().unwrap();
         for (_, client) in clients.iter_mut() {
-          client.send(
+          dont_inline(
             protocol::ServerToClient::Voxels(
               None,
               updates.clone(),
@@ -115,13 +118,25 @@ fn load(
 
       let mut clients = server.clients.lock().unwrap();
       let client = clients.get_mut(&id).unwrap();
-      client.send(
+      dont_inline(
         protocol::ServerToClient::Voxels(
           Some(request_time),
           voxels,
           protocol::VoxelReason::Requested,
         )
       );
+    },
+    LoadReason::Drop => {
+      let mut voxels = Vec::new();
+      for voxel_bounds in voxel_bounds.into_iter() {
+        server.terrain_loader.terrain.load(
+          &voxel_bounds,
+          |voxel| {
+            voxels.push((voxel_bounds, *voxel));
+          },
+        );
+      }
+      debug!("{:?}", voxels);
     },
   }
 }

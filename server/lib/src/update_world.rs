@@ -14,6 +14,8 @@ use update_gaia;
 
 // TODO: Consider removing the IntervalTimer.
 
+fn dont_inline<T>(t: T) {}
+
 pub fn update_world<RequestBlock>(
   server: &server::T,
   request_block: &mut RequestBlock,
@@ -44,7 +46,7 @@ pub fn update_world<RequestBlock>(
       let mut clients = server.clients.lock().unwrap();
       for (_, client) in &mut *clients {
         for update in &updates {
-          client.send(update.clone());
+          dont_inline(update.clone());
         }
       }
     });
@@ -92,7 +94,7 @@ pub fn update_world<RequestBlock>(
 
     server.sun.lock().unwrap().update().map(|fraction| {
       for (_, client) in server.clients.lock().unwrap().iter_mut() {
-        client.send(protocol::ServerToClient::UpdateSun(fraction));
+        dont_inline(protocol::ServerToClient::UpdateSun(fraction));
       }
     });
   });
@@ -117,7 +119,7 @@ fn translate_mob(
   mob.position.add_self_v(delta_p);
 
   for (_, client) in server.clients.lock().unwrap().iter_mut() {
-    client.send(
+    dont_inline(
       protocol::ServerToClient::UpdateMob(mob.entity_id, bounds),
     );
   }

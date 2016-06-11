@@ -22,6 +22,7 @@
 #![allow(new_without_default_derive)]
 
 #![allow(mutex_atomic)]
+#![allow(unused)]
 
 extern crate bincode;
 extern crate cgmath;
