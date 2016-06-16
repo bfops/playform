@@ -16,6 +16,7 @@ use update_gaia;
 
 fn dont_inline<T>(t: T) {}
 
+#[inline(never)]
 pub fn update_world<RequestBlock>(
   server: &server::T,
   request_block: &mut RequestBlock,

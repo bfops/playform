@@ -28,6 +28,7 @@ pub enum Message {
 fn dont_inline<T>(t: T) {}
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
+#[inline(never)]
 pub fn update_gaia(
   server: &server::T,
   update: Message,

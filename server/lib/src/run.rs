@@ -29,6 +29,7 @@ fn center(bounds: &cgmath::Aabb3<f32>) -> cgmath::Point3<f32> {
   bounds.min.add_v(&bounds.max.to_vec()).mul_s(1.0 / 2.0)
 }
 
+#[inline(never)]
 pub fn voxels_in(bounds: &cgmath::Aabb3<i32>, lg_size: i16) -> Vec<voxel::bounds::T> {
   let delta = bounds.max().sub_p(bounds.min());
 
@@ -68,8 +69,9 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
   let lod_thresholds = vec!(2, 16, 32);
   let lg_edge_samples = vec!(3, 2, 1, 0);
   let lg_sample_size: Vec<_> = lg_edge_samples.iter().map(|x| 3 - *x as i16).collect();
-  let gaia_updates: std::collections::VecDeque<_> =
-    common::surroundings_loader::SurroundingsLoader::new(80, lod_thresholds.clone())
+  let mut gaia_updates = common::surroundings_loader::SurroundingsLoader::new(80, lod_thresholds.clone());
+  let mut gaia_updates =
+    gaia_updates
     .updates(&cgmath::Point3::new(0, 64, 0))
     .map(|(p, _)| {
       let distance = std::cmp::min(std::cmp::min(p.x, p.y), p.z);
@@ -96,9 +98,7 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
         voxels_in(&bounds, lg_sample_size[lod]),
         update_gaia::LoadReason::Drop,
       )
-    })
-    .collect();
-  let total = gaia_updates.len();
+    });
   let gaia_updates = Mutex::new(gaia_updates);
 
   let server = server::new();
@@ -142,46 +142,56 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
     server.players.lock().unwrap().insert(id, player);
   }
 
+  let mut count = Mutex::new(0);
   let start = time::precise_time_ns() as f32;
 
-  let mut threads = Vec::new();
+  {
+    let mut threads = Vec::new();
 
-  unsafe {
-    threads.push(thread_scoped::scoped(|| {
-      while !*quit_signal.lock().unwrap() {
-        let len = gaia_updates.lock().unwrap().len();
-        info!("Outstanding gaia updates: {}", len);
-        let delta_t = (time::precise_time_ns() as f32 - start) / 1e9;
-        let delta_n = total - len;
-        let rate = delta_n as f32 / delta_t;
-        info!("Rate: {} Hz", rate);
-        info!("ETA: {} s", len as f32 / rate);
-        info!("ETA Total: {} m", total as f32 / rate / 60.0);
-        std::thread::sleep(std::time::Duration::from_secs(1));
-      }
+    unsafe {
+      threads.push(thread_scoped::scoped(|| {
+        while !*quit_signal.lock().unwrap() {
+          let delta_t = (time::precise_time_ns() as f32 - start) / 1e9;
+          let rate = *count.lock().unwrap() as f32 / delta_t;
+          info!("Rate: {} Hz", rate);
+          info!("Elapsed: {} s", delta_t);
+          std::thread::sleep(std::time::Duration::from_secs(1));
+        }
 
-      stopwatch::clone()
-    }))
-  }
+        stopwatch::clone()
+      }))
+    }
 
-  unsafe {
-    let server = &server;
-    let gaia_updates = &gaia_updates;
-    threads.push(thread_scoped::scoped(move || {
-      closure_series::new(vec!(
-        quit_upon(quit_signal, &gaia_updates),
-        consider_world_update(&server, |up| { gaia_updates.lock().unwrap().push_back(up) }),
-        consider_gaia_update(&server, || { gaia_updates.lock().unwrap().pop_front() } ),
-      ))
-      .until_quit();
+    unsafe {
+      let server       = &server;
+      let gaia_updates = &gaia_updates;
+      let count        = &count;
+      threads.push(thread_scoped::scoped(move || {
+        closure_series::new(vec!(
+          //consider_world_update(&server, |up| { gaia_updates.lock().unwrap().push_back(up) }),
+          consider_gaia_update(&server, || {
+            match gaia_updates.lock().unwrap().next()  {
+              None => {
+                *quit_signal.lock().unwrap() = true;
+                None
+              },
+              Some(x) => {
+                *count.lock().unwrap() += 1;
+                Some(x)
+              },
+            }
+          })
+        ))
+        .until_quit();
 
-      stopwatch::clone()
-    }));
-  }
+        stopwatch::clone()
+      }));
+    }
 
-  for thread in threads.into_iter() {
-    let stopwatch = thread.join();
-    stopwatch.print();
+    for thread in threads.into_iter() {
+      let stopwatch = thread.join();
+      stopwatch.print();
+    }
   }
 
   println!("Saving terrain to {}", terrain_path.to_str().unwrap());
@@ -190,17 +200,6 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
   });
 
   stopwatch::clone().print();
-}
-
-fn quit_upon<'a, T>(quit_signal: &'a Mutex<bool>, queue: &'a Mutex<std::collections::VecDeque<T>>) -> closure_series::Closure<'a> {
-  box move || {
-    if queue.lock().unwrap().is_empty() {
-      *quit_signal.lock().unwrap() = true;
-      closure_series::Quit
-    } else {
-      closure_series::Continue
-    }
-  }
 }
 
 fn consider_world_update<'a, ToGaia>(
