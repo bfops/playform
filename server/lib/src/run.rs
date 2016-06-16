@@ -1,6 +1,6 @@
 use bincode;
 use cgmath;
-use cgmath::Point;
+use cgmath::{Aabb, Point};
 use std;
 use std::convert::AsRef;
 use std::sync::Mutex;
@@ -12,6 +12,7 @@ use common;
 use common::id_allocator;
 use common::closure_series;
 use common::socket::ReceiveSocket;
+use common::voxel;
 
 use client_recv_thread::apply_client_update;
 use player;
@@ -28,6 +29,40 @@ fn center(bounds: &cgmath::Aabb3<f32>) -> cgmath::Point3<f32> {
   bounds.min.add_v(&bounds.max.to_vec()).mul_s(1.0 / 2.0)
 }
 
+pub fn voxels_in(bounds: &cgmath::Aabb3<i32>, lg_size: i16) -> Vec<voxel::bounds::T> {
+  let delta = bounds.max().sub_p(bounds.min());
+
+  // assert that lg_size samples fit neatly into the bounds.
+  let mod_size = (1 << lg_size) - 1;
+  assert!(bounds.min().x & mod_size == 0);
+  assert!(bounds.min().y & mod_size == 0);
+  assert!(bounds.min().z & mod_size == 0);
+  assert!(bounds.max().x & mod_size == 0);
+  assert!(bounds.max().y & mod_size == 0);
+  assert!(bounds.max().z & mod_size == 0);
+
+  let x_len = delta.x >> lg_size;
+  let y_len = delta.y >> lg_size;
+  let z_len = delta.z >> lg_size;
+
+  let x_off = bounds.min().x >> lg_size;
+  let y_off = bounds.min().y >> lg_size;
+  let z_off = bounds.min().z >> lg_size;
+
+  let mut voxels =
+    Vec::with_capacity(x_len as usize + y_len as usize + z_len as usize);
+
+  for dx in 0 .. x_len {
+  for dy in 0 .. y_len {
+  for dz in 0 .. z_len {
+    let x = x_off + dx;
+    let y = y_off + dy;
+    let z = z_off + dz;
+    voxels.push(voxel::bounds::new(x, y, z, lg_size));
+  }}}
+  voxels
+}
+
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
   let lod_thresholds = vec!(2, 16, 32);
@@ -42,13 +77,28 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
       while lod < lod_thresholds.len() && distance >= lod_thresholds[lod] {
         lod += 1;
       }
+      let voxel_size = 1 << lg_sample_size[lod];
+      let bounds =
+        cgmath::Aabb3::new(
+          cgmath::Point3::new(
+            p.x << 3,
+            p.y << 3,
+            p.z << 3,
+          ),
+          cgmath::Point3::new(
+            (p.x + 1) << 3,
+            (p.y + 1) << 3,
+            (p.z + 1) << 3,
+          ),
+        );
       update_gaia::Message::Load(
         0,
-        vec!(common::voxel::bounds::new(p.x, p.y, p.z, lg_sample_size[lod])),
+        voxels_in(&bounds, lg_sample_size[lod]),
         update_gaia::LoadReason::Drop,
       )
     })
     .collect();
+  let total = gaia_updates.len();
   let gaia_updates = Mutex::new(gaia_updates);
 
   let server = server::new();
@@ -92,12 +142,21 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
     server.players.lock().unwrap().insert(id, player);
   }
 
+  let start = time::precise_time_ns() as f32;
+
   let mut threads = Vec::new();
 
   unsafe {
     threads.push(thread_scoped::scoped(|| {
       while !*quit_signal.lock().unwrap() {
-        info!("Outstanding gaia updates: {}", gaia_updates.lock().unwrap().len());
+        let len = gaia_updates.lock().unwrap().len();
+        info!("Outstanding gaia updates: {}", len);
+        let delta_t = (time::precise_time_ns() as f32 - start) / 1e9;
+        let delta_n = total - len;
+        let rate = delta_n as f32 / delta_t;
+        info!("Rate: {} Hz", rate);
+        info!("ETA: {} s", len as f32 / rate);
+        info!("ETA Total: {} m", total as f32 / rate / 60.0);
         std::thread::sleep(std::time::Duration::from_secs(1));
       }
 
