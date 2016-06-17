@@ -31,15 +31,15 @@ fn main() {
   let quit_signal = Mutex::new(false);
 
   unsafe {
-    let _server_thread =
+    let server_thread =
       thread_scoped::scoped(|| {
         server_lib::run(server_url.borrow(), &quit_signal);
       });
 
     client_lib::run(listen_url.borrow(), server_url.borrow());
-
     *quit_signal.lock().unwrap() = true;
-    // Close all sockets.
+    server_thread.join();
+
     nanomsg::Socket::terminate();
   }
 }
