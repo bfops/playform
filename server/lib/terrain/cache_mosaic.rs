@@ -5,7 +5,7 @@ use common::fnv_map;
 use common::voxel;
 
 #[derive(PartialEq)]
-struct Key(cgmath::Point3<f32>);
+pub struct Key(cgmath::Point3<f32>);
 
 impl Eq for Key {}
 
@@ -18,14 +18,14 @@ impl std::hash::Hash for Key {
   }
 }
 
-type Cache<X> = fnv_map::T<Key, X>;
+pub type Cache<X> = fnv_map::T<Key, X>;
 
 pub struct T<Material> {
-  mosaic: Box<voxel::mosaic::T<Material> + Send>,
-  cache_field_density: Cache<f32>,
-  cache_field_normal: Cache<cgmath::Vector3<f32>>,
-  cache_mosaic_density: Cache<f32>,
-  cache_mosaic_material: Cache<Option<Material>>,
+  pub mosaic: Box<voxel::mosaic::T<Material> + Send>,
+  pub cache_field_density: Cache<f32>,
+  pub cache_field_normal: Cache<cgmath::Vector3<f32>>,
+  pub cache_mosaic_density: Cache<f32>,
+  pub cache_mosaic_material: Cache<Option<Material>>,
 }
 
 pub fn new<Material>(mosaic: Box<voxel::mosaic::T<Material> + Send>) -> T<Material> {

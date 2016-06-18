@@ -40,6 +40,7 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
   unsafe {
     threads.push(thread_scoped::scoped(|| {
       while !*quit_signal.lock().unwrap() {
+        info!("Cache entries: {}", server.terrain_loader.terrain.mosaic.lock().unwrap().cache_mosaic_density.len());
         info!("Outstanding gaia updates: {}", gaia_updates.lock().unwrap().len());
         std::thread::sleep(std::time::Duration::from_secs(1));
       }
