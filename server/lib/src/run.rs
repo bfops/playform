@@ -11,7 +11,6 @@ use time;
 use common;
 use common::id_allocator;
 use common::closure_series;
-use common::socket::ReceiveSocket;
 use common::voxel;
 
 use client_recv_thread::apply_client_update;

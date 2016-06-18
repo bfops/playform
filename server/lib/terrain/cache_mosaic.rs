@@ -22,11 +22,11 @@ impl std::hash::Hash for Key {
 pub type Cache<T> = lru_cache::LruCache<Key, T, std::hash::BuildHasherDefault<fnv::FnvHasher>>;
 
 pub struct T<Material> {
-  pub mosaic          : Box<voxel::mosaic::T<Material> + Send>,
-  pub density         : Cache<f32>,
-  pub normal          : Cache<cgmath::Vector3<f32>>,
-  pub mosaic_density  : Cache<f32>,
-  pub mosaic_material : Cache<Option<Material>>,
+  pub mosaic                : Box<voxel::mosaic::T<Material> + Send>,
+  pub cache_field_density   : Cache<f32>,
+  pub cache_field_normal    : Cache<cgmath::Vector3<f32>>,
+  pub cache_mosaic_density  : Cache<f32>,
+  pub cache_mosaic_material : Cache<Option<Material>>,
 }
 
 pub fn new<Material>(mosaic: Box<voxel::mosaic::T<Material> + Send>) -> T<Material> {

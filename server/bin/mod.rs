@@ -8,6 +8,9 @@
 #![allow(mutex_atomic)]
 #![allow(or_fun_call)]
 
+#![feature(alloc_system)]
+extern crate alloc_system;
+
 extern crate env_logger;
 extern crate nanomsg;
 #[macro_use]
