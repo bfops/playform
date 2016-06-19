@@ -22,18 +22,18 @@ impl std::hash::Hash for Key {
 pub type Cache<T> = lru_cache::LruCache<Key, T, std::hash::BuildHasherDefault<fnv::FnvHasher>>;
 
 pub struct T<Material> {
-  pub mosaic                : Box<voxel::mosaic::T<Material> + Send>,
-  pub cache_field_density   : Cache<f32>,
-  pub cache_field_normal    : Cache<cgmath::Vector3<f32>>,
-  pub cache_mosaic_density  : Cache<f32>,
-  pub cache_mosaic_material : Cache<Option<Material>>,
+  pub mosaic          : Box<voxel::mosaic::T<Material> + Send>,
+  pub field_density   : Cache<f32>,
+  pub field_normal    : Cache<cgmath::Vector3<f32>>,
+  pub mosaic_density  : Cache<f32>,
+  pub mosaic_material : Cache<Option<Material>>,
 }
 
 pub fn new<Material>(mosaic: Box<voxel::mosaic::T<Material> + Send>) -> T<Material> {
   T {
     mosaic          : mosaic,
-    density         : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
-    normal          : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
+    field_density   : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
+    field_normal    : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
     mosaic_density  : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
     mosaic_material : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
   }
@@ -55,7 +55,7 @@ impl<Material> voxel::field::T for T<Material> {
   fn density(&mut self, p: &cgmath::Point3<f32>) -> f32 {
     let mosaic = &mut self.mosaic;
     get_or_init(
-      &mut self.density,
+      &mut self.field_density,
       Key(*p),
       || voxel::field::T::density(mosaic, p),
     )
@@ -64,7 +64,7 @@ impl<Material> voxel::field::T for T<Material> {
   fn normal(&mut self, p: &cgmath::Point3<f32>) -> cgmath::Vector3<f32> {
     let mosaic = &mut self.mosaic;
     get_or_init(
-      &mut self.normal,
+      &mut self.field_normal,
       Key(*p),
       || voxel::field::T::normal(mosaic, p),
     )
