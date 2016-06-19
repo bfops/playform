@@ -1,10 +1,11 @@
 use cgmath;
+use fnv;
+use lru_cache;
 use std;
 
-use common::fnv_map;
 use common::voxel;
 
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Key(cgmath::Point3<f32>);
 
 impl Eq for Key {}
@@ -18,55 +19,74 @@ impl std::hash::Hash for Key {
   }
 }
 
-pub type Cache<X> = fnv_map::T<Key, X>;
+pub type Cache<T> = lru_cache::LruCache<Key, T, std::hash::BuildHasherDefault<fnv::FnvHasher>>;
 
 pub struct T<Material> {
-  pub mosaic: Box<voxel::mosaic::T<Material> + Send>,
-  pub cache_field_density: Cache<f32>,
-  pub cache_field_normal: Cache<cgmath::Vector3<f32>>,
-  pub cache_mosaic_density: Cache<f32>,
-  pub cache_mosaic_material: Cache<Option<Material>>,
+  pub mosaic          : Box<voxel::mosaic::T<Material> + Send>,
+  pub density         : Cache<f32>,
+  pub normal          : Cache<cgmath::Vector3<f32>>,
+  pub mosaic_density  : Cache<f32>,
+  pub mosaic_material : Cache<Option<Material>>,
 }
 
 pub fn new<Material>(mosaic: Box<voxel::mosaic::T<Material> + Send>) -> T<Material> {
   T {
-    mosaic: mosaic,
-    cache_field_density: fnv_map::new(),
-    cache_field_normal: fnv_map::new(),
-    cache_mosaic_density: fnv_map::new(),
-    cache_mosaic_material: fnv_map::new(),
+    mosaic          : mosaic,
+    density         : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
+    normal          : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
+    mosaic_density  : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
+    mosaic_material : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
   }
+}
+
+fn get_or_init<T: Clone, F>(cache: &mut Cache<T>, k: Key, f: F) -> T where
+  F: FnOnce() -> T
+{
+  if let Some(x) = cache.get_mut(&k) {
+    return x.clone()
+  }
+
+  let x = f();
+  cache.insert(k, x.clone());
+  x
 }
 
 impl<Material> voxel::field::T for T<Material> {
   fn density(&mut self, p: &cgmath::Point3<f32>) -> f32 {
     let mosaic = &mut self.mosaic;
-    *self.cache_field_density
-      .entry(Key(*p))
-      .or_insert_with(|| voxel::field::T::density(mosaic, p))
+    get_or_init(
+      &mut self.density,
+      Key(*p),
+      || voxel::field::T::density(mosaic, p),
+    )
   }
 
   fn normal(&mut self, p: &cgmath::Point3<f32>) -> cgmath::Vector3<f32> {
     let mosaic = &mut self.mosaic;
-    *self.cache_field_normal
-      .entry(Key(*p))
-      .or_insert_with(|| voxel::field::T::normal(mosaic, p))
+    get_or_init(
+      &mut self.normal,
+      Key(*p),
+      || voxel::field::T::normal(mosaic, p),
+    )
   }
 }
 
 impl<Material> voxel::mosaic::T<Material> for T<Material> where Material: Clone {
   fn density(&mut self, p: &cgmath::Point3<f32>) -> f32 {
     let mosaic = &mut self.mosaic;
-    *self.cache_mosaic_density
-      .entry(Key(*p))
-      .or_insert_with(|| voxel::mosaic::T::density(mosaic, p))
+    get_or_init(
+      &mut self.mosaic_density,
+      Key(*p),
+      || voxel::mosaic::T::density(mosaic, p),
+    )
   }
 
   fn material(&mut self, p: &cgmath::Point3<f32>) -> Option<Material> {
     let mosaic = &mut self.mosaic;
-    self.cache_mosaic_material
-      .entry(Key(*p))
-      .or_insert_with(|| voxel::mosaic::T::material(mosaic, p))
-      .clone()
+    get_or_init(
+      &mut self.mosaic_material,
+      Key(*p),
+      || voxel::mosaic::T::material(mosaic, p),
+    )
   }
 }

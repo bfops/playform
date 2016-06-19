@@ -18,8 +18,10 @@
 
 extern crate cgmath;
 extern crate common;
+extern crate fnv;
 #[macro_use]
 extern crate log;
+extern crate lru_cache;
 extern crate noise;
 extern crate rand;
 extern crate stopwatch;
