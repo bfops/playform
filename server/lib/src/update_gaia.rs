@@ -138,6 +138,7 @@ fn load(
         );
       }
       debug!("{:?}", voxels);
+      dont_inline(voxels);
     },
   }
 }
