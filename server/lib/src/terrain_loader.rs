@@ -154,15 +154,10 @@ impl T {
     block_position: &voxel::bounds::T,
     owner: lod::OwnerId,
   ) {
-    let (_, mlod_change) =
-      self.lod_map.lock().unwrap().remove(*block_position, owner);
-
     let lod_change;
-    match mlod_change {
-      None => {
-        return;
-      },
-      Some(c) => lod_change = c,
+    match self.lod_map.lock().unwrap().remove(*block_position, owner) {
+      (_, None) => return,
+      (_, Some(c)) => lod_change = c,
     }
 
     lod_change.loaded.map(|loaded_lod| {

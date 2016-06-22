@@ -1,4 +1,4 @@
-use cgmath::{Aabb, Aabb3, Point3};
+use cgmath::{Aabb3, Point3};
 use std::fmt::Debug;
 use std::ptr;
 

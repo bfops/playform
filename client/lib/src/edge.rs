@@ -1,4 +1,4 @@
-use cgmath::{Aabb, Point3, Vector3, Point};
+use cgmath::{Point3, Vector3, Point};
 
 use voxel;
 

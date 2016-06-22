@@ -1,10 +1,9 @@
 //! Data structure for a small block of terrain.
 
 use cgmath;
-use cgmath::{Point, Point3, Vector3, Vector, EuclideanVector, Matrix, Rotation, Aabb, Aabb3};
+use cgmath::{Point, Point3, Vector3, Vector, EuclideanVector, Matrix, Rotation, Aabb3};
 use isosurface_extraction::dual_contouring;
 use rand;
-use rand::Rng;
 use std::f32;
 use std::sync::{Arc, Mutex};
 use stopwatch;
@@ -69,20 +68,20 @@ fn make_bounds(
   v2: &Point3<f32>,
   v3: &Point3<f32>,
 ) -> Aabb3<f32> {
-  let minx = f32::min(v1.x, f32::min(v2.x, v3.x));
-  let maxx = f32::max(v1.x, f32::max(v2.x, v3.x));
+  let min_x = f32::min(v1.x, f32::min(v2.x, v3.x));
+  let max_x = f32::max(v1.x, f32::max(v2.x, v3.x));
 
-  let miny = f32::min(v1.y, f32::min(v2.y, v3.y));
-  let maxy = f32::max(v1.y, f32::max(v2.y, v3.y));
+  let min_y = f32::min(v1.y, f32::min(v2.y, v3.y));
+  let max_y = f32::max(v1.y, f32::max(v2.y, v3.y));
 
-  let minz = f32::min(v1.z, f32::min(v2.z, v3.z));
-  let maxz = f32::max(v1.z, f32::max(v2.z, v3.z));
+  let min_z = f32::min(v1.z, f32::min(v2.z, v3.z));
+  let max_z = f32::max(v1.z, f32::max(v2.z, v3.z));
 
   Aabb3::new(
     // TODO: Remove this - 1.0. It's a temporary hack until voxel collisions work,
     // to avoid zero-height Aabb3s.
-    Point3::new(minx, miny - 1.0, minz),
-    Point3::new(maxx, maxy, maxz),
+    Point3::new(min_x, min_y - 1.0, min_z),
+    Point3::new(max_x, max_y, max_z),
   )
 }
 

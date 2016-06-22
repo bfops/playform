@@ -16,6 +16,10 @@ use update_gaia;
 use update_gaia::update_gaia;
 use update_world::update_world;
 
+mod terrain {
+  pub use ::terrain::*;
+}
+
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
   let gaia_updates = Mutex::new(std::collections::VecDeque::new());
@@ -25,6 +29,11 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
 
   let server = server::new();
   let server = &server;
+
+  let terrain_path = std::path::Path::new("default.terrain");
+
+  println!("Loading terrain from {}", terrain_path.to_str().unwrap());
+  load_terrain(&server.terrain_loader.terrain, &terrain_path);
 
   let mut threads = Vec::new();
 
@@ -73,6 +82,11 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
     let stopwatch = thread.join();
     stopwatch.print();
   }
+
+  println!("Saving terrain to {}", terrain_path.to_str().unwrap());
+  stopwatch::time("save_terrain", || {
+    save_terrain(&server.terrain_loader.terrain, &terrain_path);
+  });
 
   stopwatch::clone().print();
 }
@@ -141,4 +155,38 @@ fn consider_gaia_update<'a, Get>(
       None => closure_series::Continue,
     }
   }
+}
+
+fn load_terrain(terrain: &terrain::T, path: &std::path::Path) {
+  let mut file =
+    match std::fs::File::open(path) {
+      Err(err) => {
+        warn!("Error opening terrain file: {:?}", err);
+        return
+      },
+      Ok(file) => file,
+    };
+  let loaded =
+    bincode::rustc_serialize::decode_from(
+      &mut file,
+      bincode::SizeLimit::Infinite,
+    );
+  let loaded =
+    match loaded {
+      Ok(loaded) => loaded,
+      Err(err) => {
+        warn!("Error loading terrain: {:?}", err);
+        return
+      },
+    };
+  *terrain.voxels.lock().unwrap() = loaded;
+}
+
+fn save_terrain(terrain: &terrain::T, path: &std::path::Path) {
+  let mut file = std::fs::File::create(path).unwrap();
+  bincode::rustc_serialize::encode_into(
+    &*terrain.voxels.lock().unwrap(),
+    &mut file,
+    bincode::SizeLimit::Infinite,
+  ).unwrap();
 }

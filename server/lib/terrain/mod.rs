@@ -2,7 +2,6 @@
 
 #![allow(let_and_return)]
 #![allow(match_ref_pats)]
-#![allow(similar_names)]
 #![allow(type_complexity)]
 #![allow(unneeded_field_pattern)]
 #![allow(derive_hash_xor_eq)]
@@ -19,8 +18,10 @@
 
 extern crate cgmath;
 extern crate common;
+extern crate fnv;
 #[macro_use]
 extern crate log;
+extern crate lru_cache;
 extern crate noise;
 extern crate rand;
 extern crate stopwatch;
@@ -36,7 +37,6 @@ pub mod tree;
 
 pub use noise::Seed;
 
-use cgmath::Aabb;
 use std::sync::Mutex;
 
 use common::voxel;
