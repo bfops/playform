@@ -4,8 +4,8 @@ use cgmath::{Aabb3, Vector2, Vector3, Point3};
 use std::default::Default;
 use std::ops::Add;
 
+use chunk;
 use entity_id;
-use voxel;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 /// Unique client ID.
@@ -44,7 +44,8 @@ pub enum ClientToServer {
   /// [Try to] stop a jump for the player.
   StopJump(entity_id::T),
   /// Ask the server to send a block of terrain.
-  RequestVoxels(u64, ClientId, Vec<voxel::bounds::T>),
+  #[allow(missing_docs)]
+  RequestChunk { request_time: u64, client_id: ClientId, position: chunk::Position },
   /// Brush-remove where the player's looking.
   Add(entity_id::T),
   /// Brush-add at where the player's looking.
@@ -87,7 +88,8 @@ pub enum ServerToClient {
   UpdateSun(f32),
 
   /// Provide a block of terrain to a client.
-  Voxels(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, VoxelReason),
+  #[allow(missing_docs)]
+  Chunk { request_time: Option<u64>, chunk_position: chunk::Position, chunk: chunk::T, reason: VoxelReason },
   /// A collision happened.
   Collision(Collision),
 }

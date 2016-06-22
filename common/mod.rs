@@ -29,6 +29,7 @@ extern crate test;
 extern crate time;
 extern crate voxel_data;
 
+pub mod chunk;
 pub mod closure_series;
 pub mod color;
 pub mod cube_shell;

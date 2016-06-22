@@ -68,6 +68,7 @@ mod server_update;
 mod shaders;
 mod grass_buffers;
 mod terrain_buffers;
+mod terrain_loader;
 mod terrain_mesh;
 mod update_thread;
 mod vertex;
