@@ -15,7 +15,7 @@ use vertex::ColoredVertex;
 use view;
 
 /// Messages from the client to the view.
-pub enum ClientToView {
+pub enum T {
   /// Set the camera location.
   MoveCamera(Point3<f32>),
 
@@ -34,24 +34,26 @@ pub enum ClientToView {
   /// Remove a grass billboard.
   RemoveGrass(entity_id::T),
   /// Treat a series of updates as an atomic operation.
-  Atomic(Vec<ClientToView>),
+  Atomic(Vec<T>),
 }
 
-unsafe impl Send for ClientToView {}
+unsafe impl Send for T {}
+
+pub use self::T::*;
 
 #[allow(missing_docs)]
-pub fn apply_client_to_view(view: &mut view::T, up: ClientToView) {
+pub fn apply_client_to_view(view: &mut view::T, up: T) {
   match up {
-    ClientToView::MoveCamera(position) => {
+    T::MoveCamera(position) => {
       view.camera.translate_to(position);
     },
-    ClientToView::UpdateMob(id, triangles) => {
+    T::UpdateMob(id, triangles) => {
       view.mob_buffers.insert(&mut view.gl, id, &triangles);
     },
-    ClientToView::UpdatePlayer(id, triangles) => {
+    T::UpdatePlayer(id, triangles) => {
       view.player_buffers.insert(&mut view.gl, id, &triangles);
     },
-    ClientToView::SetSun(sun) => {
+    T::SetSun(sun) => {
       match view.input_mode {
         view::InputMode::Sun => {},
         _ => {
@@ -59,7 +61,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: ClientToView) {
         },
       }
     },
-    ClientToView::AddBlock(_, block, _) => {
+    T::AddBlock(_, block, _) => {
       stopwatch::time("add_block", || {
         view.terrain_buffers.push(
           &mut view.gl,
@@ -75,13 +77,13 @@ pub fn apply_client_to_view(view: &mut view::T, up: ClientToView) {
         );
       })
     },
-    ClientToView::RemoveTerrain(id) => {
+    T::RemoveTerrain(id) => {
       view.terrain_buffers.swap_remove(&mut view.gl, id);
     },
-    ClientToView::RemoveGrass(id) => {
+    T::RemoveGrass(id) => {
       view.grass_buffers.swap_remove(&mut view.gl, id);
     },
-    ClientToView::Atomic(updates) => {
+    T::Atomic(updates) => {
       for up in updates.into_iter() {
         apply_client_to_view(view, up);
       }

@@ -9,7 +9,7 @@ use block_position;
 use client;
 use lod;
 use terrain_mesh;
-use view_update::ClientToView;
+use view_update;
 
 #[inline(never)]
 fn updated_block_positions(
@@ -170,7 +170,7 @@ pub fn load_block<UpdateView>(
   block_position: &block_position::T,
   lod: lod::T,
 ) where
-  UpdateView: FnMut(ClientToView),
+  UpdateView: FnMut(view_update::T),
 {
   debug!("generate {:?} at {:?}", block_position, lod);
   let voxels = client.voxels.lock().unwrap();
@@ -190,10 +190,10 @@ pub fn load_block<UpdateView>(
 
         let &(ref prev_block, _) = entry.get();
         for id in &prev_block.grass_ids {
-          updates.push(ClientToView::RemoveGrass(*id));
+          updates.push(view_update::RemoveGrass(*id));
         }
         for &id in &prev_block.ids {
-          updates.push(ClientToView::RemoveTerrain(id));
+          updates.push(view_update::RemoveTerrain(id));
         }
       }
       entry.insert((mesh_block.clone(), lod));
@@ -201,10 +201,10 @@ pub fn load_block<UpdateView>(
   };
 
   if !mesh_block.ids.is_empty() {
-    updates.push(ClientToView::AddBlock(*block_position, mesh_block, lod));
+    updates.push(view_update::AddBlock(*block_position, mesh_block, lod));
   }
 
-  update_view(ClientToView::Atomic(updates));
+  update_view(view_update::Atomic(updates));
 }
 
 pub fn lod_index(distance: i32) -> lod::T {

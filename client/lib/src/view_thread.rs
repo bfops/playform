@@ -18,7 +18,8 @@ use hud::make_hud;
 use process_event::process_event;
 use render::render;
 use view;
-use view_update::{ClientToView, apply_client_to_view};
+use view_update;
+use view_update::{apply_client_to_view};
 
 pub const FRAMES_PER_SECOND: u64 = 30;
 
@@ -37,8 +38,8 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   recv1: &mut Recv1,
   update_server: &mut UpdateServer,
 ) where
-  Recv0: FnMut() -> Option<ClientToView>,
-  Recv1: FnMut() -> Option<ClientToView>,
+  Recv0: FnMut() -> Option<view_update::T>,
+  Recv1: FnMut() -> Option<view_update::T>,
   UpdateServer: FnMut(protocol::ClientToServer),
 {
   let sdl = sdl2::init().unwrap();
