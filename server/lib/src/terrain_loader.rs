@@ -1,7 +1,6 @@
 use cgmath::{Aabb3};
 use std::sync::Mutex;
 use stopwatch;
-use time;
 
 use common::entity_id;
 use common::fnv_map;
@@ -13,7 +12,6 @@ use lod;
 use physics::Physics;
 use terrain;
 use update_gaia;
-use update_gaia::LoadReason;
 
 // TODO: Consider factoring this logic such that what to load is separated from how it's loaded.
 
@@ -21,19 +19,19 @@ use update_gaia::LoadReason;
 /// Each terrain::TerrainBlock can be owned by a set of owners, each of which can independently request LODs.
 /// The maximum lod::T requested is the one that is actually loaded.
 pub struct T {
-  pub terrain: terrain::T,
-  pub in_progress_terrain: Mutex<in_progress_terrain::T>,
-  pub lod_map: Mutex<lod::Map>,
-  pub loaded: Mutex<fnv_map::T<voxel::bounds::T, Vec<entity_id::T>>>,
+  pub terrain             : terrain::T,
+  pub in_progress_terrain : Mutex<in_progress_terrain::T>,
+  pub lod_map             : Mutex<lod::Map>,
+  pub loaded              : Mutex<fnv_map::T<voxel::bounds::T, Vec<entity_id::T>>>,
 }
 
 impl T {
   pub fn new() -> T {
     T {
-      terrain: terrain::T::new(terrain::Seed::new(0)),
-      in_progress_terrain: Mutex::new(in_progress_terrain::T::new()),
-      lod_map: Mutex::new(lod::Map::new()),
-      loaded: Mutex::new(fnv_map::new()),
+      terrain             : terrain::T::new(terrain::Seed::new(0)),
+      in_progress_terrain : Mutex::new(in_progress_terrain::T::new()),
+      lod_map             : Mutex::new(lod::Map::new()),
+      loaded              : Mutex::new(fnv_map::new()),
     }
   }
 
@@ -41,19 +39,19 @@ impl T {
 
   pub fn load<LoadBlock>(
     &self,
-    id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
-    physics: &Mutex<Physics>,
-    block_position: &voxel::bounds::T,
-    new_lod: lod::T,
-    owner: lod::OwnerId,
-    load_block: &mut LoadBlock,
+    id_allocator : &Mutex<id_allocator::T<entity_id::T>>,
+    physics      : &Mutex<Physics>,
+    position     : &voxel::bounds::T,
+    new_lod      : lod::T,
+    owner        : lod::OwnerId,
+    load_block   : &mut LoadBlock,
   ) where LoadBlock: FnMut(update_gaia::Message)
   {
     let prev_lod;
     let max_lod_changed: bool;
     let mut lod_map = self.lod_map.lock().unwrap();
     let mut in_progress_terrain = self.in_progress_terrain.lock().unwrap();
-    match lod_map.get(block_position, owner) {
+    match lod_map.get(position, owner) {
       Some((Some(prev), lods)) => {
         prev_lod = Some(prev);
         if new_lod == prev {
@@ -78,25 +76,28 @@ impl T {
 
     if !max_lod_changed {
       // Maximum lod::T is unchanged.
-      let (_, change) = lod_map.insert(*block_position, new_lod, owner);
+      let (_, change) = lod_map.insert(*position, new_lod, owner);
       assert!(change.is_none());
       return;
     }
 
     match new_lod {
       lod::Placeholder => {
-        let (_, change) = lod_map.insert(*block_position, new_lod, owner);
+        let (_, change) = lod_map.insert(*position, new_lod, owner);
         let change = change.unwrap();
         assert!(change.loaded == None);
         assert!(prev_lod == None);
         assert!(change.desired == Some(lod::Placeholder));
-        in_progress_terrain.insert(id_allocator, physics, block_position);
+        in_progress_terrain.insert(id_allocator, physics, position);
       },
       lod::Full => {
         let mut generate_block = || {
-          debug!("{:?} requested from gaia", block_position);
+          debug!("{:?} requested from gaia", position);
           load_block(
-            update_gaia::Message::Load(time::precise_time_ns(), vec!(*block_position), LoadReason::Local(owner))
+            update_gaia::Message::LoadVoxel {
+              bounds      : *position,
+              destination : update_gaia::LoadDestination::Local(owner),
+            }
           );
         };
         generate_block();
@@ -104,14 +105,14 @@ impl T {
     };
   }
 
-  pub fn insert_block(
-    block: &LoadedTerrain,
-    position: &voxel::bounds::T,
-    owner: lod::OwnerId,
-    physics: &Mutex<Physics>,
-    lod_map: &mut lod::Map,
-    in_progress_terrain: &mut in_progress_terrain::T,
-    loaded: &mut fnv_map::T<voxel::bounds::T, Vec<entity_id::T>>,
+  pub fn insert_voxel(
+    block               : &LoadedTerrain,
+    position            : &voxel::bounds::T,
+    owner               : lod::OwnerId,
+    physics             : &Mutex<Physics>,
+    lod_map             : &mut lod::Map,
+    in_progress_terrain : &mut in_progress_terrain::T,
+    loaded              : &mut fnv_map::T<voxel::bounds::T, Vec<entity_id::T>>,
   ) {
     let lod = lod::Full;
     let (_, change) = lod_map.insert(*position, lod, owner);

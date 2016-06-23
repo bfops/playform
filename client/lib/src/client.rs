@@ -6,7 +6,9 @@ use rand;
 use rand::{Rng, SeedableRng};
 use std::sync::Mutex;
 
+use common::chunk;
 use common::entity_id;
+use common::fnv_set;
 use common::id_allocator;
 use common::protocol;
 use common::surroundings_loader::SurroundingsLoader;
@@ -38,7 +40,7 @@ pub struct T {
   // TODO: Should probably remove from this at some point.
   pub voxels: Mutex<voxel::tree::T>,
   /// The number of terrain requests that are outstanding,
-  pub outstanding_terrain_requests: Mutex<u32>,
+  pub outstanding_terrain_requests: Mutex<fnv_set::T<chunk::Position>>,
   pub rng: Mutex<rand::XorShiftRng>,
 }
 

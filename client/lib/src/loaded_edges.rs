@@ -39,10 +39,8 @@ impl<Edge> T<Edge> {
     }
 
     let bounds = bounds(&edge);
-    self.tree_mut(edge.direction)
-      .get_mut_or_create(&bounds)
-      .force_branches()
-      .data = Some((*edge, edge_data));
+    let location = self.tree_mut(edge.direction).get_mut_or_create(&bounds);
+    location.data = Some((*edge, edge_data));
 
     removed
   }
@@ -52,9 +50,9 @@ impl<Edge> T<Edge> {
     let bounds = bounds(&edge);
 
     match edges.get_mut_pointer(&bounds) {
-      Some(&mut voxel::tree::Inner::Branches(ref mut branches)) => {
+      Some(node) => {
         let mut r = None;
-        std::mem::swap(&mut branches.data, &mut r);
+        std::mem::swap(&mut node.data, &mut r);
         r.map(|(_, d)| d)
       },
       _ => None,
@@ -69,16 +67,14 @@ impl<Edge> T<Edge> {
   }
 
   pub fn find_collisions(&self, edge: &edge::T) -> Vec<edge::T> {
-    fn all<Edge>(collisions: &mut Vec<edge::T>, branches: &voxel::tree::Inner<(edge::T, Edge)>) {
-      if let &voxel::tree::Inner::Branches(ref branches) = branches {
-        // Invariant: Colliding edges don't exist in the set simultaneously.
-        // If we find an edge, we don't need to descend.
-        if let Some((edge, _)) = branches.data {
-          collisions.push(edge);
-        } else {
-          for branches in branches.as_flat_array() {
-            all(collisions, branches);
-          }
+    fn all<Edge>(collisions: &mut Vec<edge::T>, node: &voxel::tree::Node<(edge::T, Edge)>) {
+      // Invariant: Colliding edges don't exist in the set simultaneously.
+      // If we find an edge, we don't need to descend.
+      if let Some((edge, _)) = node.data {
+        collisions.push(edge);
+      } else if let voxel::tree::Inner::Branches(ref branches) = node.next {
+        for branches in branches.as_flat_array() {
+          all(collisions, branches);
         }
       }
     }
@@ -95,14 +91,14 @@ impl<Edge> T<Edge> {
           all(&mut collisions, branches);
           break;
         },
-        voxel::tree::traversal::Step::Step(branches) => {
-          if let &voxel::tree::Inner::Branches(ref branches) = branches {
+        voxel::tree::traversal::Step::Step(node) => {
+          if let Some((edge, _)) = node.data {
+            collisions.push(edge);
+            break;
+          }
+          if let voxel::tree::Inner::Branches(ref branches) = node.next {
             // Invariant: Colliding edges don't exist in the set simultaneously.
             // If we find an edge, we don't need to continue.
-            if let Some((edge, _)) = branches.data {
-              collisions.push(edge);
-              break;
-            }
             edges = branches;
           } else {
             break;

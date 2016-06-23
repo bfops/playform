@@ -12,7 +12,7 @@ use audio_loader;
 use audio_thread;
 use client;
 use light;
-use terrain_update;
+use terrain_loader;
 use vertex::ColoredVertex;
 use view_update;
 
@@ -20,18 +20,18 @@ pub const TRIANGLES_PER_BOX: u32 = 12;
 pub const VERTICES_PER_TRIANGLE: u32 = 3;
 pub const TRIANGLE_VERTICES_PER_BOX: u32 = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
 
-pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrainUpdates>(
-  client                  : &client::T,
-  update_view             : &mut UpdateView,
-  update_audio            : &mut UpdateAudio,
-  update_server           : &mut UpdateServer,
-  enqueue_terrain_update : &mut EnqueueTerrainUpdates,
-  update                  : protocol::ServerToClient,
+pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrainUpdate>(
+  client                 : &client::T,
+  update_view            : &mut UpdateView,
+  update_audio           : &mut UpdateAudio,
+  update_server          : &mut UpdateServer,
+  enqueue_terrain_update : &mut EnqueueTerrainUpdate,
+  update                 : protocol::ServerToClient,
 ) where
-  UpdateView            : FnMut(view_update::T),
-  UpdateAudio           : FnMut(audio_thread::Message),
-  UpdateServer          : FnMut(protocol::ClientToServer),
-  EnqueueTerrainUpdates : FnMut(terrain_update::T),
+  UpdateView           : FnMut(view_update::T),
+  UpdateAudio          : FnMut(audio_thread::Message),
+  UpdateServer         : FnMut(protocol::ClientToServer),
+  EnqueueTerrainUpdate : FnMut(terrain_loader::Message),
 {
   stopwatch::time("apply_server_update", move || {
     match update {
@@ -74,18 +74,13 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrain
           }
         ));
       },
-      protocol::ServerToClient::Chunk { request_time, chunk_position, chunk, reason } => {
-        match request_time {
-          None => {},
-          Some(request_time) => debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - request_time),
-        }
+      protocol::ServerToClient::Chunk { requested_at, chunk } => {
+        debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - requested_at);
 
         enqueue_terrain_update(
-          terrain_update::T {
-            request_time   : request_time,
-            chunk_position : chunk_position,
+          terrain_loader::Message::Chunk {
+            requested_at   : requested_at,
             chunk          : chunk,
-            reason         : reason,
           }
         );
       },

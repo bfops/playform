@@ -16,6 +16,7 @@ use view_thread::view_thread;
 
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, server_url: &str) {
+  let terrain_updates = Mutex::new(std::collections::VecDeque::new());
   let view_updates0 = Mutex::new(std::collections::VecDeque::new());
   let view_updates1 = Mutex::new(std::collections::VecDeque::new());
   let audio_updates = Mutex::new(std::collections::VecDeque::new());

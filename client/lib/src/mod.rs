@@ -50,6 +50,7 @@ mod audio_loader;
 mod audio_thread;
 mod block_position;
 mod camera;
+mod chunk;
 mod client;
 mod edge;
 mod hud;

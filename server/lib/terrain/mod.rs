@@ -59,25 +59,22 @@ impl T {
 
   /// Load the block of terrain at a given position.
   // TODO: Allow this to be performed in such a way that self is only briefly locked.
-  pub fn load<F>(
+  pub fn load(
     &self,
     bounds: &voxel::bounds::T,
-    mut f: F
-  ) where
-    F: FnMut(&voxel::T)
-  {
+  ) -> voxel::T {
     let mut voxels = self.voxels.lock().unwrap();
-    let branches = voxels.get_mut_or_create(bounds);
-    let branches = branches.force_branches();
-    match branches.data {
+    let node = voxels.get_mut_or_create(bounds);
+    match node.data {
       None => {
         let mut mosaic = self.mosaic.lock().unwrap();
         let voxel = voxel::unwrap(voxel::of_field(&mut *mosaic, bounds));
-        f(&voxel);
-        branches.data = Some(voxel);
+        let r = voxel;
+        node.data = Some(voxel);
+        r
       },
-      Some(ref data) => {
-        f(data);
+      Some(data) => {
+        data
       },
     }
   }

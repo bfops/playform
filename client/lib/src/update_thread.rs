@@ -1,8 +1,10 @@
+use cgmath;
 use cgmath::Point;
 use std::sync::Mutex;
 use stopwatch;
 use time;
 
+use common::chunk;
 use common::protocol;
 use common::surroundings_loader;
 use common::surroundings_loader::LoadType;
@@ -15,32 +17,32 @@ use load_terrain;
 use load_terrain::lod_index;
 use record_book;
 use server_update::apply_server_update;
+use terrain_loader;
 use terrain_mesh;
-use terrain_update;
 use view_update;
-use view_update::ClientToView;
+use view_update::T;
 use voxel;
 
 const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
 
 pub fn update_thread<RecvServer, RecvTerrainUpdate, UpdateView0, UpdateView1, UpdateAudio, UpdateServer, EnqueueTerrainUpdate>(
-  quit                  : &Mutex<bool>,
-  client                : &client::T,
-  recv_server           : &mut RecvServer,
+  quit                   : &Mutex<bool>,
+  client                 : &client::T,
+  recv_server            : &mut RecvServer,
   recv_terrain_update    : &mut RecvTerrainUpdate,
-  update_view0          : &mut UpdateView0,
-  update_view1          : &mut UpdateView1,
-  update_audio          : &mut UpdateAudio,
-  update_server         : &mut UpdateServer,
+  update_view0           : &mut UpdateView0,
+  update_view1           : &mut UpdateView1,
+  update_audio           : &mut UpdateAudio,
+  update_server          : &mut UpdateServer,
   enqueue_terrain_update : &mut EnqueueTerrainUpdate,
 ) where
   RecvServer          : FnMut() -> Option<protocol::ServerToClient>,
-  RecvTerrainUpdate   : FnMut() -> Option<terrain_update::T>,
+  RecvTerrainUpdate   : FnMut() -> Option<terrain_loader::Message>,
   UpdateView0         : FnMut(view_update::T),
   UpdateView1         : FnMut(view_update::T),
   UpdateAudio         : FnMut(audio_thread::Message),
   UpdateServer        : FnMut(protocol::ClientToServer),
-  EnqueueTerrainUpdate : FnMut(terrain_update::T),
+  EnqueueTerrainUpdate : FnMut(terrain_loader::Message),
 {
   'update_loop: loop {
     let should_quit = *quit.lock().unwrap();
@@ -66,12 +68,12 @@ pub fn update_thread<RecvServer, RecvTerrainUpdate, UpdateView0, UpdateView1, Up
 
 #[inline(never)]
 fn update_surroundings<UpdateView, UpdateServer>(
-  client: &client::T,
-  update_view: &mut UpdateView,
-  update_server: &mut UpdateServer,
+  client        : &client::T,
+  update_view   : &mut UpdateView,
+  update_server : &mut UpdateServer,
 ) where
-  UpdateView: FnMut(view_update::T),
-  UpdateServer: FnMut(protocol::ClientToServer),
+  UpdateView   : FnMut(view_update::T),
+  UpdateServer : FnMut(protocol::ClientToServer),
 {
   let start = time::precise_time_ns();
   let mut i = 0;
@@ -105,7 +107,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
         block_position.as_pnt(),
       );
     let new_lod = lod_index(distance);
-    let mut requested_voxels = voxel::bounds::set::new();
+    let mut requested_chunks = voxel::bounds::set::new();
     match load_type {
       LoadType::Load => {
         for edge in block_position.edges(new_lod) {
@@ -115,7 +117,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
               debug!("Not re-loading {:?} at {:?}", block_position, new_lod);
             } else {
               let mut request_voxel = |voxel| {
-                requested_voxels.insert(voxel);
+                requested_chunks.insert(voxel);
               };
               load_or_request_edge(client, &mut request_voxel, update_view, &edge);
             }
@@ -126,7 +128,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
         for edge in block_position.edges(new_lod) {
           stopwatch::time("update_thread.update_block", || {
             let mut request_voxel = |voxel| {
-              requested_voxels.insert(voxel);
+              requested_chunks.insert(voxel);
             };
             load_or_request_edge(client, &mut request_voxel, update_view, &edge);
           })
@@ -154,13 +156,13 @@ fn update_surroundings<UpdateView, UpdateServer>(
       },
     }
 
-    if !requested_voxels.is_empty() {
+    for chunk in requested_chunks {
       update_server(
-        protocol::ClientToServer::RequestVoxels(
-          time::precise_time_ns(),
-          client.id,
-          requested_voxels.into_iter().collect(),
-        )
+        protocol::ClientToServer::RequestChunk {
+          requested_at : time::precise_time_ns(),
+          client_id    : client.id,
+          chunk        : chunk,
+        }
       );
       *client.outstanding_terrain_requests.lock().unwrap() += 1;
     }
@@ -219,16 +221,19 @@ fn process_voxel_updates<RecvTerrainUpdate, UpdateView>(
   recv_terrain_update: &mut RecvTerrainUpdate,
   update_view: &mut UpdateView,
 ) where
-  RecvTerrainUpdate: FnMut() -> Option<terrain_update::T>,
+  RecvTerrainUpdate: FnMut() -> Option<terrain_loader::Message>,
   UpdateView: FnMut(view_update::T),
 {
   let start = time::precise_time_ns();
-  while let Some(terrain_update::T { request_time, chunk_position, chunk, reason }) = recv_terrain_update() {
+  while let Some(terrain_loader::Message::Chunk { request_time, chunk, reason }) = recv_terrain_update() {
     let mut update_blocks = block_position::with_lod::set::new();
     let response_time = time::precise_time_ns();
+    let lg_factor = chunk::LG_WIDTH - chunk.position.lg_voxel_size;
     let origin =
       cgmath::Point3::new(
-        chunk_position.x << (chunk::LG_WIDTH -
+        chunk.position.x << lg_factor,
+        chunk.position.y << lg_factor,
+        chunk.position.z << lg_factor,
       );
     for (bounds, voxel) in chunk.voxels() {
       trace!("Got voxel at {:?}", bounds);
@@ -242,12 +247,11 @@ fn process_voxel_updates<RecvTerrainUpdate, UpdateView>(
 
     stopwatch::time("process_voxel_update", || {
       let mut update_edges = edge::set::new();
-      for (bounds, voxel) in voxel_updates {
-        trace!("Got voxel at {:?}", bounds);
-        load_terrain::load_voxel(
+      for chunk in chunk {
+        load_terrain::load_chunk(
           client,
-          &voxel,
-          &bounds,
+          voxel,
+          bounds,
           |edge| { update_edges.insert(edge); },
         );
       }
@@ -307,7 +311,7 @@ fn process_server_updates<RecvServer, UpdateView, UpdateAudio, UpdateServer, Enq
   UpdateView: FnMut(view_update::T),
   UpdateAudio: FnMut(audio_thread::Message),
   UpdateServer: FnMut(protocol::ClientToServer),
-  EnqueueTerrainUpdate: FnMut(terrain_update::T),
+  EnqueueTerrainUpdate: FnMut(terrain_loader::Message),
 {
   let start = time::precise_time_ns();
   let mut i = 0;
