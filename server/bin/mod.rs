@@ -35,5 +35,29 @@ fn main() {
 
   let quit_signal = Mutex::new(false);
 
+  let _quit_thread =
+    unsafe {
+      let quit_signal = &quit_signal;
+      thread_scoped::scoped(move || {
+        wait_for_quit(quit_signal);
+      })
+    };
+
   server_lib::run(listen_url.borrow(), &quit_signal);
+
+  nanomsg::Socket::terminate();
+}
+
+fn wait_for_quit(quit_signal: &Mutex<bool>) {
+  while !*quit_signal.lock().unwrap() {
+    let mut line = String::new();
+    std::io::stdin().read_line(&mut line).unwrap();
+
+    if line == "quit\n" {
+      println!("Quitting");
+      *quit_signal.lock().unwrap() = true;
+    } else {
+      println!("Unrecognized command: {:?}", line);
+    }
+  }
 }

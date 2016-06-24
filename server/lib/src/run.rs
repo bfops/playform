@@ -7,6 +7,7 @@ use std::sync::Mutex;
 use stopwatch;
 use thread_scoped;
 use time;
+use voxel_data;
 
 use common;
 use common::id_allocator;
@@ -168,6 +169,7 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
       threads.push(thread_scoped::scoped(move || {
         closure_series::new(vec!(
           //consider_world_update(&server, |up| { gaia_updates.lock().unwrap().push_back(up) }),
+          quit_upon(&quit_signal),
           consider_gaia_update(&server, || {
             match gaia_updates.lock().unwrap().next()  {
               None => {
@@ -192,6 +194,13 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
       stopwatch.print();
     }
   }
+
+  trace!("Voxel takes {} bytes", std::mem::size_of::<voxel::T>());
+
+  println!(
+    "Terrain is using {} MB",
+    tree_ram_usage(&server.terrain_loader.terrain.voxels.lock().unwrap()) as f32 / (1 << 20) as f32,
+  );
 
   println!("Saving terrain to {}", terrain_path.to_str().unwrap());
   stopwatch::time("save_terrain", || {
@@ -237,6 +246,16 @@ fn consider_gaia_update<'a, Get>(
   }
 }
 
+fn quit_upon(signal: &Mutex<bool>) -> closure_series::Closure {
+  box move || {
+    if *signal.lock().unwrap() {
+      closure_series::Quit
+    } else {
+      closure_series::Continue
+    }
+  }
+}
+
 fn load_terrain(terrain: &terrain::T, path: &std::path::Path) {
   let mut file =
     match std::fs::File::open(path) {
@@ -269,4 +288,22 @@ fn save_terrain(terrain: &terrain::T, path: &std::path::Path) {
     &mut file,
     bincode::SizeLimit::Infinite,
   ).unwrap();
+}
+
+fn tree_ram_usage(tree: &voxel::tree::T) -> usize {
+  fn tree_ram_usage_inner(branches: &voxel::tree::Branches, size: &mut usize) {
+    *size += std::mem::size_of_val(branches);
+    for inner in branches.as_flat_array() {
+      match inner {
+        &voxel_data::tree::Inner::Empty => {},
+        &voxel_data::tree::Inner::Branches(ref branches) => {
+          tree_ram_usage_inner(branches, size);
+        },
+      }
+    }
+  }
+
+  let mut r = 0;
+  tree_ram_usage_inner(&tree.contents, &mut r);
+  r
 }
