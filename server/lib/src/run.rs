@@ -293,10 +293,10 @@ fn save_terrain(terrain: &terrain::T, path: &std::path::Path) {
 fn tree_ram_usage(tree: &voxel::tree::T) -> usize {
   fn tree_ram_usage_inner(branches: &voxel::tree::Branches, size: &mut usize) {
     *size += std::mem::size_of_val(branches);
-    for inner in branches.as_flat_array() {
-      match inner {
-        &voxel_data::tree::Inner::Empty => {},
-        &voxel_data::tree::Inner::Branches(ref branches) => {
+    for node in branches.as_flat_array() {
+      match node.next {
+        voxel_data::tree::Inner::Empty => {},
+        voxel_data::tree::Inner::Branches(ref branches) => {
           tree_ram_usage_inner(branches, size);
         },
       }
