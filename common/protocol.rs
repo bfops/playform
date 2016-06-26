@@ -44,7 +44,14 @@ pub enum ClientToServer {
   /// [Try to] stop a jump for the player.
   StopJump(entity_id::T),
   /// Ask the server to send a block of terrain.
-  RequestVoxels(u64, ClientId, Vec<voxel::bounds::T>),
+  RequestVoxels {
+    /// The time, in nanoseconds, when the voxels were requested.
+    requested_at : u64,
+    /// The ID of the requesting client.
+    client_id    : ClientId,
+    /// The bounds of the voxels to fetch.
+    voxels       : Vec<voxel::bounds::T>,
+  },
   /// Brush-remove where the player's looking.
   Add(entity_id::T),
   /// Brush-add at where the player's looking.
@@ -87,7 +94,14 @@ pub enum ServerToClient {
   UpdateSun(f32),
 
   /// Provide a block of terrain to a client.
-  Voxels(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, VoxelReason),
+  Voxels {
+    /// The time, in nanoseconds, when the voxels were requested, if they were requested.
+    requested_at : Option<u64>,
+    /// The voxels requested, and their associated bounds.
+    voxels       : Vec<(voxel::bounds::T, voxel::T)>,
+    /// The reason the voxels are being sent.
+    reason       : VoxelReason,
+  },
   /// A collision happened.
   Collision(Collision),
 }

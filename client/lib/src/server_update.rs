@@ -73,13 +73,13 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueBlockUp
           }
         ));
       },
-      protocol::ServerToClient::Voxels(request_time, voxels, reason) => {
-        match request_time {
+      protocol::ServerToClient::Voxels { requested_at, voxels, reason } => {
+        match requested_at {
           None => {},
           Some(request_time) => debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - request_time),
         }
 
-        enqueue_block_updates(request_time, voxels, reason);
+        enqueue_block_updates(requested_at, voxels, reason);
       },
       protocol::ServerToClient::Collision(collision_type) => {
         if let protocol::Collision::PlayerTerrain(..) = collision_type {

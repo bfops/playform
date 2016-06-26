@@ -49,11 +49,11 @@ pub fn update_gaia(
         let mut clients = server.clients.lock().unwrap();
         for (_, client) in clients.iter_mut() {
           client.send(
-            protocol::ServerToClient::Voxels(
-              None,
-              updates.clone(),
-              protocol::VoxelReason::Updated,
-            )
+            protocol::ServerToClient::Voxels {
+              requested_at : None,
+              voxels       : updates.clone(),
+              reason       : protocol::VoxelReason::Updated,
+            }
           );
         }
       },
@@ -116,11 +116,11 @@ fn load(
       let mut clients = server.clients.lock().unwrap();
       let client = clients.get_mut(&id).unwrap();
       client.send(
-        protocol::ServerToClient::Voxels(
-          Some(request_time),
-          voxels,
-          protocol::VoxelReason::Requested,
-        )
+        protocol::ServerToClient::Voxels {
+          requested_at : Some(request_time),
+          voxels       : voxels,
+          reason       : protocol::VoxelReason::Requested,
+        }
       );
     },
   }
