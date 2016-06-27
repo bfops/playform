@@ -21,6 +21,7 @@ use view_update;
 
 const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
 
+#[allow(missing_docs)]
 pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, UpdateAudio, UpdateServer, EnqueueBlockUpdates>(
   quit: &Mutex<bool>,
   client: &client::T,
@@ -105,7 +106,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
     match load_type {
       LoadType::Load => {
         stopwatch::time("update_thread.load_block", || {
-          info!("Loading distance {}", distance);
+          trace!("Loading distance {}", distance);
           let new_lod = lod_index(distance);
           let lod_change =
             client.loaded_blocks

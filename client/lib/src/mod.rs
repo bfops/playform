@@ -44,32 +44,59 @@ extern crate time;
 extern crate voxel_data;
 extern crate yaglw;
 
-mod audio;
-mod audio_loader;
-mod audio_thread;
-mod block_position;
-mod camera;
-mod client;
-mod hud;
-mod light;
-mod load_terrain;
-mod lod;
-mod mob_buffers;
-mod player_buffers;
-mod process_event;
-mod record_book;
-mod render;
-mod run;
-mod server;
-mod server_update;
-mod shaders;
-mod grass_buffers;
-mod terrain_buffers;
-mod terrain_mesh;
-mod update_thread;
-mod vertex;
-mod view;
-mod view_thread;
-mod view_update;
+#[allow(missing_docs)]
+pub mod audio;
+#[allow(missing_docs)]
+pub mod audio_loader;
+#[allow(missing_docs)]
+pub mod audio_thread;
+#[allow(missing_docs)]
+pub mod block_position;
+#[allow(missing_docs)]
+pub mod camera;
+#[allow(missing_docs)]
+pub mod client;
+#[allow(missing_docs)]
+pub mod hud;
+#[allow(missing_docs)]
+pub mod light;
+#[allow(missing_docs)]
+pub mod load_terrain;
+#[allow(missing_docs)]
+pub mod lod;
+#[allow(missing_docs)]
+pub mod mob_buffers;
+#[allow(missing_docs)]
+pub mod player_buffers;
+#[allow(missing_docs)]
+pub mod process_event;
+#[allow(missing_docs)]
+pub mod record_book;
+#[allow(missing_docs)]
+pub mod render;
+#[allow(missing_docs)]
+pub mod run;
+#[allow(missing_docs)]
+pub mod server;
+#[allow(missing_docs)]
+pub mod server_update;
+#[allow(missing_docs)]
+pub mod shaders;
+#[allow(missing_docs)]
+pub mod grass_buffers;
+#[allow(missing_docs)]
+pub mod terrain_buffers;
+#[allow(missing_docs)]
+pub mod terrain_mesh;
+#[allow(missing_docs)]
+pub mod update_thread;
+#[allow(missing_docs)]
+pub mod vertex;
+#[allow(missing_docs)]
+pub mod view;
+#[allow(missing_docs)]
+pub mod view_thread;
+#[allow(missing_docs)]
+pub mod view_update;
 
 pub use run::run;

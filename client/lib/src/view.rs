@@ -21,10 +21,12 @@ use shaders::Shaders;
 use terrain_buffers::TerrainBuffers;
 use vertex::{ColoredVertex};
 
+/// FOV in radians
 pub const FOV: f32 = std::f32::consts::FRAC_PI_3;
 
 const VERTICES_PER_TRIANGLE: usize = 3;
 
+#[allow(missing_docs)]
 pub enum InputMode {
   Camera,
   Sun,
@@ -35,20 +37,30 @@ pub struct T<'a> {
   /// Current OpengL context.
   pub gl: GLContext,
 
+  #[allow(missing_docs)]
   pub shaders: Shaders<'a>,
+  #[allow(missing_docs)]
   pub empty_gl_array: yaglw::vertex_buffer::ArrayHandle<'a>,
   /// A texture unit for misc use.
   pub misc_texture_unit: TextureUnit,
+  /// The OpenGL buffers for terrain render data
   pub terrain_buffers: TerrainBuffers<'a>,
+  /// The OpenGL buffers for grass render data
   pub grass_buffers: grass_buffers::T<'a>,
+  /// The OpenGL texture to sample for grass
   pub grass_texture: yaglw::texture::Texture2D<'a>,
+  /// OpenGL buffers for mob render data
   pub mob_buffers: MobBuffers<'a>,
+  /// OpenGL buffers for player render data
   pub player_buffers: PlayerBuffers<'a>,
   /// Hud triangles for non-text.
   pub hud_triangles: GLArray<'a, ColoredVertex>,
 
+  #[allow(missing_docs)]
   pub sun: light::Sun,
+  #[allow(missing_docs)]
   pub camera: Camera,
+  #[allow(missing_docs)]
   pub window_size: cgmath::Vector2<i32>,
   /// Whether to render HUD elements
   pub show_hud: bool,

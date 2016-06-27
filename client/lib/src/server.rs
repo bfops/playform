@@ -2,6 +2,7 @@ use std;
 
 use common::socket::{SendSocket, ReceiveSocket};
 
+#[allow(missing_docs)]
 pub mod send {
   use std::sync::mpsc::Sender;
 
@@ -20,6 +21,7 @@ pub mod send {
   }
 }
 
+#[allow(missing_docs)]
 pub mod recv {
   use bincode;
   use std;

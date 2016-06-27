@@ -96,8 +96,8 @@ pub fn load_voxel<UpdateBlock>(
   let new_voxel_loaded;
   {
     let voxel = Some(voxel);
-    let branch = voxels.get_mut_or_create(bounds);
-    let old_voxel = &mut branch.force_branches().data;
+    let node = voxels.get_mut_or_create(bounds);
+    let old_voxel = &mut node.data;
     new_voxel_loaded = old_voxel.is_none();
     if *old_voxel == voxel {
       return

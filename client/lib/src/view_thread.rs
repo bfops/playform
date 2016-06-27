@@ -21,9 +21,12 @@ use view;
 use view_update;
 use view_update::{apply_client_to_view};
 
+#[allow(missing_docs)]
 pub const FRAMES_PER_SECOND: u64 = 30;
 
+#[allow(missing_docs)]
 pub const GL_MAJOR_VERSION: u8 = 3;
+#[allow(missing_docs)]
 pub const GL_MINOR_VERSION: u8 = 3;
 
 enum ViewIteration {
