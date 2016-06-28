@@ -152,7 +152,9 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
       threads.push(thread_scoped::scoped(|| {
         while !*quit_signal.lock().unwrap() {
           let delta_t = (time::precise_time_ns() as f32 - start) / 1e9;
-          let rate = *count.lock().unwrap() as f32 / delta_t;
+          let count = *count.lock().unwrap();
+          let rate = count as f32 / delta_t;
+          info!("Count: {} chunks", count);
           info!("Rate: {} Hz", rate);
           info!("Elapsed: {} s", delta_t);
           std::thread::sleep(std::time::Duration::from_secs(1));
