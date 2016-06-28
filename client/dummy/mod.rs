@@ -18,14 +18,12 @@ extern crate time;
 extern crate common;
 extern crate client_lib;
 
-use std::io::Write;
 use std::sync::{Mutex};
 
 use common::protocol;
 
 use client_lib::client;
 use client_lib::server;
-use client_lib::record_book;
 use client_lib::update_thread::update_thread;
 
 #[allow(missing_docs)]
@@ -90,6 +88,7 @@ pub fn run(listen_url: &str, server_url: &str) {
   *quit.lock().unwrap() = true;
 
   monitor_thread.join();
+  update_thread.join();
 }
 
 fn connect_client(listen_url: &str, server: &server::T) -> client::T {
