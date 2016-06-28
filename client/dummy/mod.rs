@@ -34,7 +34,7 @@ pub fn run(listen_url: &str, server_url: &str) {
   let server = server::new(&server_url, &listen_url);
 
   let client = connect_client(&listen_url, &server);
-  *client.load_position.lock().unwrap() = Some(cgmath::Point3::new(0.0, 64.0, 0.0));
+  *client.load_position.lock().unwrap() = Some(cgmath::Point3::new(0.0, 512.0, 0.0));
   let client = &client;
 
   let loaded_count = Mutex::new(0);
