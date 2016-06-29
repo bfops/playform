@@ -25,24 +25,23 @@ const MAX_LOAD_DISTANCE: i32 = 80;
 
 /// The main client state.
 pub struct T {
-  pub id: protocol::ClientId,
-  pub player_id: entity_id::T,
-  pub player_position: Mutex<Point3<f32>>,
-  pub last_footstep: Mutex<Point3<f32>>,
-  pub load_position: Mutex<Option<Point3<f32>>>,
-  pub max_load_distance: i32,
-  pub surroundings_loader: Mutex<SurroundingsLoader>,
-  pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
+  pub id                                                             :  protocol::ClientId,
+  pub player_id                                                      :  entity_id::T,
+  pub player_position                                                :  Mutex<Point3<f32>>,
+  pub last_footstep                                                  :  Mutex<Point3<f32>>,
+  pub load_position                                                  :  Mutex<Option<Point3<f32>>>,
+  pub max_load_distance                                              :  i32,
+  pub surroundings_loader                                            :  Mutex<SurroundingsLoader>,
+  pub id_allocator                                                   :  Mutex<id_allocator::T<entity_id::T>>,
   /// A record of all the blocks that have been loaded.
-  pub loaded_blocks: Mutex<block_position::map::T<(terrain_mesh::T, lod::T)>>,
+  pub loaded_blocks                                                  :  Mutex<block_position::map::T<(terrain_mesh::T, lod::T)>>,
   /// Map each block to the number of voxels inside it that we have.
-  pub block_voxels_loaded: Mutex<block_position::with_lod::map::T<u32>>,
+  pub block_voxels_loaded                                            :  Mutex<block_position::with_lod::map::T<u32>>,
   /// The voxels we have cached from the server.
-  // TODO: Should probably remove from this at some point.
-  pub voxels: Mutex<voxel::tree::T>,
+  pub voxels                                                         :  Mutex<voxel::tree::T>,
   /// The number of terrain requests that are outstanding,
-  pub outstanding_terrain_requests: Mutex<u32>,
-  pub rng: Mutex<rand::XorShiftRng>,
+  pub outstanding_terrain_requests                                   :  Mutex<u32>,
+  pub rng                                                            :  Mutex<rand::XorShiftRng>,
 }
 
 #[allow(missing_docs)]

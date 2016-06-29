@@ -4,19 +4,31 @@ use common::socket::{SendSocket, ReceiveSocket};
 
 #[allow(missing_docs)]
 pub mod send {
+  use std;
   use std::sync::mpsc::Sender;
 
   use common::protocol;
 
   #[derive(Clone)]
-  pub struct T (pub Sender<Vec<u8>>);
+  pub struct T {
+    pub sender     : Sender<Vec<u8>>,
+    pub bytes_sent : std::sync::Arc<std::sync::Mutex<u64>>,
+  }
+
+  pub fn new(sender: Sender<Vec<u8>>) -> T {
+    T {
+      sender     : sender,
+      bytes_sent : std::sync::Arc::new(std::sync::Mutex::new(0)),
+    }
+  }
 
   impl T {
     pub fn tell(&self, msg: &protocol::ClientToServer) {
       use bincode::rustc_serialize::encode;
       use bincode::SizeLimit;
       let msg = encode(msg, SizeLimit::Infinite).unwrap();
-      self.0.send(msg).unwrap();
+      *self.bytes_sent.lock().unwrap() += msg.len() as u64;
+      self.sender.send(msg).unwrap();
     }
   }
 }
@@ -54,8 +66,8 @@ pub mod recv {
 
 #[derive(Clone)]
 pub struct T {
-  pub talk: send::T,
-  pub listen: recv::T,
+  pub talk   : send::T,
+  pub listen : recv::T,
 }
 
 unsafe impl Send for T {}
@@ -79,7 +91,9 @@ pub fn new(
       loop {
         match listen_socket.read() {
           None => break,
-          Some(msg) => recv_send.send(msg).unwrap(),
+          Some(msg) => {
+            recv_send.send(msg).unwrap()
+          },
         }
       }
     })
@@ -106,7 +120,7 @@ pub fn new(
   };
 
   T {
-    talk: send::T (send_send),
+    talk: send::new(send_send),
     listen: recv::T (std::sync::Arc::new(recv_recv)),
   }
 }
