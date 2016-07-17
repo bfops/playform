@@ -1,9 +1,9 @@
 use cgmath::{Point3, Point};
 use num;
 
-use common::chunk;
 use common::voxel;
 
+use chunk;
 use client;
 use edge;
 use lod;
@@ -59,31 +59,12 @@ pub fn load_chunk<TouchEdge>(
 {
   let mut voxels = client.voxels.lock().unwrap();
 
-  {
-    let voxel = Some(*voxel);
-    let branch = voxels.get_mut_or_create(bounds);
-    let old_voxel = &mut branch.force_branches().data;
-    if *old_voxel == voxel {
-      return
-    }
-    *old_voxel = voxel;
+  for (bounds, voxel) in chunk.voxels() {
+    voxels.get_mut_or_create(&bounds).data = Some(voxel);
   }
 
-  trace!("voxel bounds {:?}", bounds);
-
-  for direction in &[edge::Direction::X, edge::Direction::Y, edge::Direction::Z] {
-    let p0 = Point3::new(bounds.x, bounds.y, bounds.z);
-    let (v1, v2) = direction.perpendicular();
-    let (v1, v2) = (v1.to_vec(), v2.to_vec());
-    for p in &[p0, p0.add_v(&-direction.to_vec()), p0.add_v(&v1), p0.add_v(&v1).add_v(&v2), p0.add_v(&v2)] {
-      touch_edge(
-        edge::T {
-          low_corner: *p,
-          direction: *direction,
-          lg_size: bounds.lg_size,
-        }
-      );
-    }
+  for edge in chunk::edges(&chunk.position) {
+    touch_edge(edge);
   }
 }
 

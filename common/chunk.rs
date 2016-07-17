@@ -10,7 +10,7 @@ pub const WIDTH: u32 = 1 << LG_WIDTH;
 /// Base-2 log of the chunk width
 pub const LG_WIDTH: u16 = 5;
 
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
 #[allow(missing_docs)]
 pub struct Position {
   pub coords        : cgmath::Point3<i32>,

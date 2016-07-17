@@ -7,12 +7,17 @@ use edge;
 pub use common::chunk::*;
 
 pub fn containing(voxel: &voxel::bounds::T) -> Position {
-  let lg_ratio = LG_WIDTH - voxel.lg_size;
-  Position::new(
-    voxel.x >> lg_ratio,
-    voxel.y >> lg_ratio,
-    voxel.z >> lg_ratio,
-  )
+  let lg_ratio = LG_WIDTH as i16 - voxel.lg_size;
+  assert!(lg_ratio > 0);
+  Position {
+    coords :
+      cgmath::Point3::new(
+        voxel.x >> lg_ratio,
+        voxel.y >> lg_ratio,
+        voxel.z >> lg_ratio,
+      ),
+    lg_voxel_size: voxel.lg_size,
+  }
 }
 
 pub struct Edges<'a> {
