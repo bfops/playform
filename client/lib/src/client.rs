@@ -15,8 +15,9 @@ use common::surroundings_loader::SurroundingsLoader;
 use common::voxel;
 
 use loaded_edges;
-use terrain_mesh;
 use terrain_buffers;
+use terrain_loader;
+use terrain_mesh;
 
 /// The distances at which LOD switches.
 pub const LOD_THRESHOLDS: [i32; terrain_mesh::LOD_COUNT-1] = [2, 16, 32];
@@ -40,6 +41,7 @@ pub struct T {
   pub voxels                   : Mutex<voxel::tree::T>,
   /// The terrain requests that are pending,
   pub pending_terrain_requests : Mutex<fnv_set::T<chunk::Position>>,
+  pub terrain_loader           : Mutex<terrain_loader::T>,
   pub rng                      : Mutex<rand::XorShiftRng>,
 }
 
@@ -80,6 +82,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     loaded_edges             : Mutex::new(loaded_edges::new()),
     voxels                   : Mutex::new(voxel::tree::new()),
     pending_terrain_requests : Mutex::new(fnv_set::new()),
+    terrain_loader           : Mutex::new(terrain_loader::new()),
     rng                      : Mutex::new(rng),
   }
 }

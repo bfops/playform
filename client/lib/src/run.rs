@@ -16,7 +16,6 @@ use view_thread::view_thread;
 
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, server_url: &str) {
-  let terrain_updates = Mutex::new(std::collections::VecDeque::new());
   let view_updates0 = Mutex::new(std::collections::VecDeque::new());
   let view_updates1 = Mutex::new(std::collections::VecDeque::new());
   let audio_updates = Mutex::new(std::collections::VecDeque::new());
@@ -34,7 +33,7 @@ pub fn run(listen_url: &str, server_url: &str) {
       unsafe {
         thread_scoped::scoped(|| {
           while !*quit.lock().unwrap() {
-            info!("Outstanding voxel updates: {}", terrain_updates.lock().unwrap().len());
+            info!("Outstanding voxel updates: {}", client.terrain_loader.lock().unwrap().queued_updates());
             info!("Outstanding view0 updates: {}", view_updates0.lock().unwrap().len());
             info!("Outstanding view1 updates: {}", view_updates1.lock().unwrap().len());
             std::thread::sleep(std::time::Duration::from_secs(1));
@@ -62,7 +61,6 @@ pub fn run(listen_url: &str, server_url: &str) {
       let view_updates0 = &view_updates0;
       let view_updates1 = &view_updates1;
       let audio_updates = &audio_updates;
-      let terrain_updates = &terrain_updates;
       let server = server.clone();
       unsafe {
         thread_scoped::scoped(move || {
@@ -70,12 +68,11 @@ pub fn run(listen_url: &str, server_url: &str) {
             quit,
             client,
             &mut || { server.listen.try() },
-            &mut || { terrain_updates.lock().unwrap().pop_front() },
             &mut |up| { view_updates0.lock().unwrap().push_back(up) },
             &mut |up| { view_updates1.lock().unwrap().push_back(up) },
             &mut |up| { audio_updates.lock().unwrap().push_back(up) },
   	        &mut |up| { server.talk.tell(&up) },
-            &mut |update| { terrain_updates.lock().unwrap().push_back(update) },
+            &mut |update| { client.terrain_loader.lock().unwrap().enqueue(update) },
           );
 
           let mut recorded = record_book::thread_local::clone();

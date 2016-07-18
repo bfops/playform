@@ -34,7 +34,18 @@ pub struct T {
   in_progress : Option<InProgress>,
 }
 
+pub fn new() -> T {
+  T {
+    queue       : std::collections::VecDeque::new(),
+    in_progress : None,
+  }
+}
+
 impl T {
+  pub fn queued_update_count(&self) -> usize {
+    self.queue.len()
+  }
+
   pub fn enqueue(&mut self, msg: Message) {
     self.queue.push_back(msg);
   }
@@ -44,7 +55,7 @@ impl T {
     voxels       : &mut voxel::tree::T,
     rng          : &mut Rng,
     id_allocator : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
-    loaded_edges : &mut loaded_edges::T<terrain_mesh::T>,
+    loaded_edges : &std::sync::Mutex<loaded_edges::T<terrain_mesh::T>>,
     update_view  : &mut UpdateView,
   ) where
     UpdateView : FnMut(view_update::T),
@@ -94,12 +105,13 @@ impl T {
   }
 }
 
-fn load_edge<Rng, UpdateView>(
+#[inline(never)]
+pub fn load_edge<Rng, UpdateView>(
   chunk        : &chunk::T,
-  voxels       : &mut voxel::tree::T,
+  voxels       : &voxel::tree::T,
   rng          : &mut Rng,
   id_allocator : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
-  loaded_edges : &mut loaded_edges::T<terrain_mesh::T>,
+  loaded_edges : &std::sync::Mutex<loaded_edges::T<terrain_mesh::T>>,
   update_view  : &mut UpdateView,
   edge         : &edge::T,
 ) -> Result<(), ()> where
@@ -109,7 +121,7 @@ fn load_edge<Rng, UpdateView>(
   let mut updates = Vec::new();
 
   let mesh_fragment = try!(terrain_mesh::generate(voxels, edge, id_allocator, rng));
-  let unload_fragments = loaded_edges.insert(&edge, mesh_fragment.clone());
+  let unload_fragments = loaded_edges.lock().unwrap().insert(&edge, mesh_fragment.clone());
 
   for mesh_fragment in unload_fragments {
     for id in &mesh_fragment.ids {

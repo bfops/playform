@@ -68,42 +68,6 @@ pub fn load_chunk<TouchEdge>(
   }
 }
 
-#[inline(never)]
-pub fn load_edge<UpdateView>(
-  client: &client::T,
-  update_view: &mut UpdateView,
-  edge: &edge::T,
-) -> Result<(), ()> where
-  UpdateView: FnMut(view_update::T),
-{
-  debug!("generate {:?}", edge);
-  let voxels = client.voxels.lock().unwrap();
-  let mut rng = client.rng.lock().unwrap();
-  let mesh_fragment = try!(terrain_mesh::generate(&voxels, edge, &client.id_allocator, &mut *rng));
-
-  let mut updates = Vec::new();
-
-  let unload_fragments = client.loaded_edges.lock().unwrap().insert(&edge, mesh_fragment.clone());
-
-  for mesh_fragment in unload_fragments {
-    for id in &mesh_fragment.ids {
-      updates.push(view_update::RemoveTerrain(*id));
-    }
-    for id in &mesh_fragment.grass_ids {
-      updates.push(view_update::RemoveGrass(*id));
-    }
-  }
-
-  if !mesh_fragment.ids.is_empty() {
-    updates.push(view_update::AddBlock(mesh_fragment));
-  }
-
-  update_view(view_update::Atomic(updates));
-
-  debug!("generate success!");
-  Ok(())
-}
-
 pub fn lod_index(distance: i32) -> lod::T {
   assert!(distance >= 0);
   let mut lod = 0;
