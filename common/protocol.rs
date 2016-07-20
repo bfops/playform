@@ -62,7 +62,10 @@ pub enum ClientToServer {
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 pub enum VoxelReason {
   /// The client asked for it.
-  Requested,
+  Requested {
+    /// The time, in nanoseconds, when the voxels were requested.
+    at: u64,
+  },
   /// The block has been updated.
   Updated,
 }
@@ -95,12 +98,10 @@ pub enum ServerToClient {
 
   /// Provide a block of terrain to a client.
   Voxels {
-    /// The time, in nanoseconds, when the voxels were requested, if they were requested.
-    requested_at : Option<u64>,
     /// The voxels requested, and their associated bounds.
-    voxels       : Vec<(voxel::bounds::T, voxel::T)>,
+    voxels : Vec<(voxel::bounds::T, voxel::T)>,
     /// The reason the voxels are being sent.
-    reason       : VoxelReason,
+    reason : VoxelReason,
   },
   /// A collision happened.
   Collision(Collision),

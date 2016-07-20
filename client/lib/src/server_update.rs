@@ -30,7 +30,7 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueBlockUp
   UpdateView: FnMut(view_update::T),
   UpdateAudio: FnMut(audio_thread::Message),
   UpdateServer: FnMut(protocol::ClientToServer),
-  EnqueueBlockUpdates: FnMut(Option<u64>, Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
+  EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {
   stopwatch::time("apply_server_update", move || {
     match update {
@@ -73,13 +73,15 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueBlockUp
           }
         ));
       },
-      protocol::ServerToClient::Voxels { requested_at, voxels, reason } => {
-        match requested_at {
-          None => {},
-          Some(request_time) => debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - request_time),
+      protocol::ServerToClient::Voxels { voxels, reason } => {
+        match reason {
+          protocol::VoxelReason::Updated => {},
+          protocol::VoxelReason::Requested { at } => {
+            debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - at);
+          },
         }
 
-        enqueue_block_updates(requested_at, voxels, reason);
+        enqueue_block_updates(voxels, reason);
       },
       protocol::ServerToClient::Collision(collision_type) => {
         if let protocol::Collision::PlayerTerrain(..) = collision_type {

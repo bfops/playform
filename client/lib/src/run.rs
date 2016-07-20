@@ -75,7 +75,7 @@ pub fn run(listen_url: &str, server_url: &str) {
             &mut |up| { view_updates1.lock().unwrap().push_back(up) },
             &mut |up| { audio_updates.lock().unwrap().push_back(up) },
   	        &mut |up| { server.talk.tell(&up) },
-            &mut |request_time, updates, reason| { voxel_updates.lock().unwrap().push_back((request_time, updates, reason)) },
+            &mut |updates, reason| { voxel_updates.lock().unwrap().push_back((updates, reason)) },
           );
 
           let mut recorded = record_book::thread_local::clone();

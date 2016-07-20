@@ -50,9 +50,8 @@ pub fn update_gaia(
         for (_, client) in clients.iter_mut() {
           client.send(
             protocol::ServerToClient::Voxels {
-              requested_at : None,
-              voxels       : updates.clone(),
-              reason       : protocol::VoxelReason::Updated,
+              voxels : updates.clone(),
+              reason : protocol::VoxelReason::Updated,
             }
           );
         }
@@ -117,9 +116,8 @@ fn load(
       let client = clients.get_mut(&id).unwrap();
       client.send(
         protocol::ServerToClient::Voxels {
-          requested_at : Some(request_time),
-          voxels       : voxels,
-          reason       : protocol::VoxelReason::Requested,
+          voxels : voxels,
+          reason : protocol::VoxelReason::Requested { at: request_time },
         }
       );
     },
