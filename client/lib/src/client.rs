@@ -12,7 +12,7 @@ use common::protocol;
 use common::surroundings_loader::SurroundingsLoader;
 use common::voxel;
 
-use block_position;
+use chunk_position;
 use lod;
 use terrain_mesh;
 use terrain_buffers;
@@ -33,10 +33,10 @@ pub struct T {
   pub max_load_distance                                              :  i32,
   pub surroundings_loader                                            :  Mutex<SurroundingsLoader>,
   pub id_allocator                                                   :  Mutex<id_allocator::T<entity_id::T>>,
-  /// A record of all the blocks that have been loaded.
-  pub loaded_blocks                                                  :  Mutex<block_position::map::T<(terrain_mesh::T, lod::T)>>,
-  /// Map each block to the number of voxels inside it that we have.
-  pub block_voxels_loaded                                            :  Mutex<block_position::with_lod::map::T<u32>>,
+  /// A record of all the chunks that have been loaded.
+  pub loaded_chunks                                                  :  Mutex<chunk_position::map::T<(terrain_mesh::T, lod::T)>>,
+  /// Map each chunk to the number of voxels inside it that we have.
+  pub chunk_voxels_loaded                                            :  Mutex<chunk_position::with_lod::map::T<u32>>,
   /// The voxels we have cached from the server.
   pub voxels                                                         :  Mutex<voxel::tree::T>,
   /// The number of terrain requests that are outstanding,
@@ -78,8 +78,8 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     max_load_distance: load_distance,
     surroundings_loader: Mutex::new(surroundings_loader),
     id_allocator: Mutex::new(id_allocator::new()),
-    loaded_blocks: Mutex::new(block_position::map::new()),
-    block_voxels_loaded: Mutex::new(block_position::with_lod::map::new()),
+    loaded_chunks: Mutex::new(chunk_position::map::new()),
+    chunk_voxels_loaded: Mutex::new(chunk_position::with_lod::map::new()),
     voxels: Mutex::new(voxel::tree::new()),
     outstanding_terrain_requests: Mutex::new(0),
     rng: Mutex::new(rng),
@@ -95,11 +95,11 @@ fn load_distance(mut polygon_budget: i32) -> i32 {
   let mut prev_threshold = 0;
   let mut prev_square = 0;
   for (&threshold, &quality) in LOD_THRESHOLDS.iter().zip(terrain_mesh::EDGE_SAMPLES.iter()) {
-    let polygons_per_block = (quality * quality * 4) as i32;
+    let polygons_per_chunk = (quality * quality * 4) as i32;
     for i in range_inclusive(prev_threshold, threshold) {
       let i = 2 * i + 1;
       let square = i * i;
-      let polygons_in_layer = (square - prev_square) * polygons_per_block;
+      let polygons_in_layer = (square - prev_square) * polygons_per_chunk;
       polygon_budget -= polygons_in_layer;
       if polygon_budget < 0 {
         break;
@@ -116,8 +116,8 @@ fn load_distance(mut polygon_budget: i32) -> i32 {
     let square = width * width;
     // The "to infinity and beyond" quality.
     let quality = terrain_mesh::EDGE_SAMPLES[LOD_THRESHOLDS.len()];
-    let polygons_per_block = (quality * quality * 4) as i32;
-    let polygons_in_layer = (square - prev_square) * polygons_per_block;
+    let polygons_per_chunk = (quality * quality * 4) as i32;
+    let polygons_in_layer = (square - prev_square) * polygons_per_chunk;
     polygon_budget -= polygons_in_layer;
 
     if polygon_budget < 0 {

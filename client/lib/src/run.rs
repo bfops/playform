@@ -79,19 +79,19 @@ pub fn run(listen_url: &str, server_url: &str) {
           );
 
           let mut recorded = record_book::thread_local::clone();
-          recorded.block_loads.sort_by(|x, y| x.loaded_at.cmp(&y.loaded_at));
+          recorded.chunk_loads.sort_by(|x, y| x.loaded_at.cmp(&y.loaded_at));
 
-          let mut file = std::fs::File::create("block_loads.out").unwrap();
+          let mut file = std::fs::File::create("chunk_loads.out").unwrap();
 
           file.write_all(b"records = [").unwrap();
-          for (i, record) in recorded.block_loads.iter().enumerate() {
+          for (i, record) in recorded.chunk_loads.iter().enumerate() {
             if i > 0 {
               file.write_all(b", ").unwrap();
             }
             file.write_fmt(format_args!("[{}; {}; {}; {}]", record.requested_at, record.responded_at, record.processed_at, record.loaded_at)).unwrap();
           }
           file.write_all(b"];\n").unwrap();
-          file.write_fmt(format_args!("plot([1:{}], records);", recorded.block_loads.len())).unwrap();
+          file.write_fmt(format_args!("plot([1:{}], records);", recorded.chunk_loads.len())).unwrap();
 
           stopwatch::clone()
         })

@@ -5,26 +5,26 @@ use std::collections::hash_map::Entry::{Vacant, Occupied};
 use common::surroundings_loader;
 use common::voxel;
 
-use block_position;
+use chunk_position;
 use client;
 use lod;
 use terrain_mesh;
 use view_update;
 
 #[inline(never)]
-fn updated_block_positions(
+fn updated_chunk_positions(
   voxel: &voxel::bounds::T,
-) -> Vec<block_position::T>
+) -> Vec<chunk_position::T>
 {
-  let block = block_position::containing_voxel(voxel);
+  let chunk = chunk_position::containing_voxel(voxel);
 
   macro_rules! tweak(($dim:ident) => {{
     let mut new_voxel = voxel.clone();
     new_voxel.$dim += 1;
-    if block_position::containing_voxel(&new_voxel) == block {
+    if chunk_position::containing_voxel(&new_voxel) == chunk {
       let mut new_voxel = voxel.clone();
       new_voxel.$dim -= 1;
-      if block_position::containing_voxel(&new_voxel) == block {
+      if chunk_position::containing_voxel(&new_voxel) == chunk {
         0
       } else {
         -1
@@ -41,56 +41,56 @@ fn updated_block_positions(
       tweak!(z),
     );
 
-  macro_rules! consider(($dim:ident, $block:expr, $next:expr) => {{
-    $next($block);
+  macro_rules! consider(($dim:ident, $chunk:expr, $next:expr) => {{
+    $next($chunk);
     if tweak.$dim != 0 {
-      let mut block = $block;
-      block.as_mut_pnt().$dim += tweak.$dim;
-      $next(block);
+      let mut chunk = $chunk;
+      chunk.as_mut_pnt().$dim += tweak.$dim;
+      $next(chunk);
     }
   }});
 
-  let mut blocks = Vec::new();
-  consider!(x, block, |block: block_position::T| {
-  consider!(y, block, |block: block_position::T| {
-  consider!(z, block, |block: block_position::T| {
-    blocks.push(block);
+  let mut chunks = Vec::new();
+  consider!(x, chunk, |chunk: chunk_position::T| {
+  consider!(y, chunk, |chunk: chunk_position::T| {
+  consider!(z, chunk, |chunk: chunk_position::T| {
+    chunks.push(chunk);
   })})});
 
-  blocks
+  chunks
 }
 
 pub fn all_voxels_loaded(
-  block_voxels_loaded: &block_position::with_lod::map::T<u32>,
-  block_position: block_position::T,
+  chunk_voxels_loaded: &chunk_position::with_lod::map::T<u32>,
+  chunk_position: chunk_position::T,
   lod: lod::T,
 ) -> bool {
-  let block_voxels_loaded =
-    match block_voxels_loaded.get(&(block_position, lod)) {
+  let chunk_voxels_loaded =
+    match chunk_voxels_loaded.get(&(chunk_position, lod)) {
       None => return false,
       Some(x) => x,
     };
 
   let edge_samples = terrain_mesh::EDGE_SAMPLES[lod.0 as usize] as u32 + 2;
   let samples = edge_samples * edge_samples * edge_samples;
-  assert!(*block_voxels_loaded <= samples, "{:?}", block_position);
-  *block_voxels_loaded == samples
+  assert!(*chunk_voxels_loaded <= samples, "{:?}", chunk_position);
+  *chunk_voxels_loaded == samples
 }
 
 #[inline(never)]
-pub fn load_voxel<UpdateBlock>(
+pub fn load_voxel<UpdateChunk>(
   client: &client::T,
   voxel: voxel::T,
   bounds: &voxel::bounds::T,
-  mut update_block: UpdateBlock,
+  mut update_chunk: UpdateChunk,
 ) where
-  UpdateBlock: FnMut(block_position::T, lod::T),
+  UpdateChunk: FnMut(chunk_position::T, lod::T),
 {
   let player_position =
-    block_position::of_world_position(&client.player_position.lock().unwrap());
+    chunk_position::of_world_position(&client.player_position.lock().unwrap());
 
   let mut voxels = client.voxels.lock().unwrap();
-  let mut block_voxels_loaded = client.block_voxels_loaded.lock().unwrap();
+  let mut chunk_voxels_loaded = client.chunk_voxels_loaded.lock().unwrap();
 
   // Has a new voxel been loaded? (in contrast to changing an existing voxel)
   let new_voxel_loaded;
@@ -107,7 +107,7 @@ pub fn load_voxel<UpdateBlock>(
 
   trace!("voxel bounds {:?}", bounds);
 
-  // The LOD of the blocks that should be updated.
+  // The LOD of the chunks that should be updated.
   // This doesn't necessarily match the LOD they're loaded at.
   let mut updated_lod = None;
   for lod in 0..terrain_mesh::LOD_COUNT as u32 {
@@ -120,22 +120,22 @@ pub fn load_voxel<UpdateBlock>(
     }
   }
 
-  for block_position in updated_block_positions(&bounds).into_iter() {
-    trace!("block_position {:?}", block_position);
+  for chunk_position in updated_chunk_positions(&bounds).into_iter() {
+    trace!("chunk_position {:?}", chunk_position);
     if new_voxel_loaded {
       match updated_lod {
         None => {}
         Some(updated_lod) => {
-          let block_voxels_loaded =
-            block_voxels_loaded.entry((block_position, updated_lod))
+          let chunk_voxels_loaded =
+            chunk_voxels_loaded.entry((chunk_position, updated_lod))
             .or_insert_with(|| 0);
-          trace!("{:?} gets {:?}", block_position, bounds);
-          *block_voxels_loaded += 1;
+          trace!("{:?} gets {:?}", chunk_position, bounds);
+          *chunk_voxels_loaded += 1;
         },
       }
     }
 
-    let distance = surroundings_loader::distance_between(player_position.as_pnt(), &block_position.as_pnt());
+    let distance = surroundings_loader::distance_between(player_position.as_pnt(), &chunk_position.as_pnt());
 
     if distance > client.max_load_distance {
       debug!(
@@ -157,51 +157,51 @@ pub fn load_voxel<UpdateBlock>(
       continue;
     }
 
-    if all_voxels_loaded(&block_voxels_loaded, block_position, lod) {
-      update_block(block_position, lod);
+    if all_voxels_loaded(&chunk_voxels_loaded, chunk_position, lod) {
+      update_chunk(chunk_position, lod);
     }
   }
 }
 
 #[inline(never)]
-pub fn load_block<UpdateView>(
+pub fn load_chunk<UpdateView>(
   client: &client::T,
   update_view: &mut UpdateView,
-  block_position: &block_position::T,
+  chunk_position: &chunk_position::T,
   lod: lod::T,
 ) where
   UpdateView: FnMut(view_update::T),
 {
-  debug!("generate {:?} at {:?}", block_position, lod);
+  debug!("generate {:?} at {:?}", chunk_position, lod);
   let voxels = client.voxels.lock().unwrap();
   let mut rng = client.rng.lock().unwrap();
-  let mesh_block = terrain_mesh::generate(&voxels, &block_position, lod, &client.id_allocator, &mut *rng);
+  let mesh_chunk = terrain_mesh::generate(&voxels, &chunk_position, lod, &client.id_allocator, &mut *rng);
 
   let mut updates = Vec::new();
 
   // TODO: Rc instead of clone.
-  match client.loaded_blocks.lock().unwrap().entry(*block_position) {
+  match client.loaded_chunks.lock().unwrap().entry(*chunk_position) {
     Vacant(entry) => {
-      entry.insert((mesh_block.clone(), lod));
+      entry.insert((mesh_chunk.clone(), lod));
     },
     Occupied(mut entry) => {
       {
-        // The mesh_block removal code is duplicated in update_thread.
+        // The mesh_chunk removal code is duplicated in update_thread.
 
-        let &(ref prev_block, _) = entry.get();
-        for id in &prev_block.grass_ids {
+        let &(ref prev_chunk, _) = entry.get();
+        for id in &prev_chunk.grass_ids {
           updates.push(view_update::RemoveGrass(*id));
         }
-        for &id in &prev_block.ids {
+        for &id in &prev_chunk.ids {
           updates.push(view_update::RemoveTerrain(id));
         }
       }
-      entry.insert((mesh_block.clone(), lod));
+      entry.insert((mesh_chunk.clone(), lod));
     },
   };
 
-  if !mesh_block.ids.is_empty() {
-    updates.push(view_update::AddBlock(*block_position, mesh_block, lod));
+  if !mesh_chunk.ids.is_empty() {
+    updates.push(view_update::AddChunk(*chunk_position, mesh_chunk, lod));
   }
 
   update_view(view_update::Atomic(updates));

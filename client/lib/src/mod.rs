@@ -52,9 +52,9 @@ pub mod audio_loader;
 #[allow(missing_docs)]
 pub mod audio_thread;
 #[allow(missing_docs)]
-pub mod block_position;
-#[allow(missing_docs)]
 pub mod camera;
+#[allow(missing_docs)]
+pub mod chunk_position;
 #[allow(missing_docs)]
 pub mod client;
 #[allow(missing_docs)]

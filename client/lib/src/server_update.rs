@@ -19,18 +19,18 @@ pub const TRIANGLES_PER_BOX: u32 = 12;
 pub const VERTICES_PER_TRIANGLE: u32 = 3;
 pub const TRIANGLE_VERTICES_PER_BOX: u32 = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
 
-pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueBlockUpdates>(
+pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueChunkUpdates>(
   client: &client::T,
   update_view: &mut UpdateView,
   update_audio: &mut UpdateAudio,
   update_server: &mut UpdateServer,
-  enqueue_block_updates: &mut EnqueueBlockUpdates,
+  enqueue_block_updates: &mut EnqueueChunkUpdates,
   update: protocol::ServerToClient,
 ) where
   UpdateView: FnMut(view_update::T),
   UpdateAudio: FnMut(audio_thread::Message),
   UpdateServer: FnMut(protocol::ClientToServer),
-  EnqueueBlockUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
+  EnqueueChunkUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
 {
   stopwatch::time("apply_server_update", move || {
     match update {

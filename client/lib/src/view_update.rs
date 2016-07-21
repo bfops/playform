@@ -5,7 +5,7 @@ use stopwatch;
 
 use common::entity_id;
 
-use block_position;
+use chunk_position;
 use light;
 use lod;
 use mob_buffers::VERTICES_PER_MOB;
@@ -27,8 +27,8 @@ pub enum T {
   /// Update the sun.
   SetSun(light::Sun),
 
-  /// Add a terrain block to the view.
-  AddBlock(block_position::T, terrain_mesh::T, lod::T),
+  /// Add a terrain chunk to the view.
+  AddChunk(chunk_position::T, terrain_mesh::T, lod::T),
   /// Remove a terrain entity.
   RemoveTerrain(entity_id::T),
   /// Remove a grass billboard.
@@ -61,19 +61,19 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
         },
       }
     },
-    T::AddBlock(_, block, _) => {
-      stopwatch::time("add_block", || {
+    T::AddChunk(_, chunk, _) => {
+      stopwatch::time("add_chunk", || {
         view.terrain_buffers.push(
           &mut view.gl,
-          block.vertex_coordinates.as_ref(),
-          block.normals.as_ref(),
-          block.ids.as_ref(),
-          block.materials.as_ref(),
+          chunk.vertex_coordinates.as_ref(),
+          chunk.normals.as_ref(),
+          chunk.ids.as_ref(),
+          chunk.materials.as_ref(),
         );
         view.grass_buffers.push(
           &mut view.gl,
-          block.grass.as_ref(),
-          block.grass_ids.as_ref(),
+          chunk.grass.as_ref(),
+          chunk.grass_ids.as_ref(),
         );
       })
     },
