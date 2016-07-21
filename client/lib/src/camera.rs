@@ -5,7 +5,6 @@ use gl::types::*;
 use cgmath;
 use cgmath::{Matrix, Matrix3, Matrix4, Vector3, Point, Point3};
 use std::f32::consts::PI;
-use std::mem;
 use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 
@@ -104,7 +103,7 @@ pub fn set_camera(shader: &mut Shader, gl: &mut GLContext, c: &Camera) {
   shader.use_shader(gl);
   unsafe {
     let val = c.projection_matrix();
-    let ptr = mem::transmute(&val);
+    let ptr = &val as *const _ as *const _;
     gl::UniformMatrix4fv(projection_matrix, 1, 0, ptr);
   }
 }

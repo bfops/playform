@@ -5,7 +5,6 @@
 #![allow(type_complexity)]
 #![allow(unneeded_field_pattern)]
 #![allow(derive_hash_xor_eq)]
-#![allow(useless_transmute)]
 
 #![deny(missing_docs)]
 #![deny(warnings)]
