@@ -9,7 +9,7 @@ use std::sync::Mutex;
 use common::entity_id;
 use common::id_allocator;
 use common::protocol;
-use common::surroundings_loader::SurroundingsLoader;
+use common::surroundings_loader;
 use common::voxel;
 
 use chunk_position;
@@ -25,23 +25,23 @@ const MAX_LOAD_DISTANCE: i32 = 80;
 
 /// The main client state.
 pub struct T {
-  pub id                                                             :  protocol::ClientId,
-  pub player_id                                                      :  entity_id::T,
-  pub player_position                                                :  Mutex<Point3<f32>>,
-  pub last_footstep                                                  :  Mutex<Point3<f32>>,
-  pub load_position                                                  :  Mutex<Option<Point3<f32>>>,
-  pub max_load_distance                                              :  i32,
-  pub surroundings_loader                                            :  Mutex<SurroundingsLoader>,
-  pub id_allocator                                                   :  Mutex<id_allocator::T<entity_id::T>>,
+  pub id                       :  protocol::ClientId,
+  pub player_id                :  entity_id::T,
+  pub player_position          :  Mutex<Point3<f32>>,
+  pub last_footstep            :  Mutex<Point3<f32>>,
+  pub load_position            :  Mutex<Option<Point3<f32>>>,
+  pub max_load_distance        :  i32,
+  pub surroundings_loader      :  Mutex<surroundings_loader::T>,
+  pub id_allocator             :  Mutex<id_allocator::T<entity_id::T>>,
   /// A record of all the chunks that have been loaded.
-  pub loaded_chunks                                                  :  Mutex<chunk_position::map::T<(terrain_mesh::T, lod::T)>>,
+  pub loaded_chunks            :  Mutex<chunk_position::map::T<(terrain_mesh::T, lod::T)>>,
   /// Map each chunk to the number of voxels inside it that we have.
-  pub chunk_voxels_loaded                                            :  Mutex<chunk_position::with_lod::map::T<u32>>,
+  pub chunk_voxels_loaded      :  Mutex<chunk_position::with_lod::map::T<u32>>,
   /// The voxels we have cached from the server.
-  pub voxels                                                         :  Mutex<voxel::tree::T>,
+  pub voxels                   :  Mutex<voxel::tree::T>,
   /// The number of terrain requests that are outstanding,
-  pub outstanding_terrain_requests                                   :  Mutex<u32>,
-  pub rng                                                            :  Mutex<rand::XorShiftRng>,
+  pub pending_terrain_requests :  Mutex<u32>,
+  pub rng                      :  Mutex<rand::XorShiftRng>,
 }
 
 #[allow(missing_docs)]
@@ -56,7 +56,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
   }
 
   let surroundings_loader = {
-    SurroundingsLoader::new(
+    surroundings_loader::new(
       load_distance,
       LOD_THRESHOLDS.iter().cloned().collect(),
     )
@@ -70,19 +70,19 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
   rng.reseed([s1, s2, s3, s4]);
 
   T {
-    id: client_id,
-    player_id: player_id,
-    player_position: Mutex::new(position),
-    last_footstep: Mutex::new(position),
-    load_position: Mutex::new(None),
-    max_load_distance: load_distance,
-    surroundings_loader: Mutex::new(surroundings_loader),
-    id_allocator: Mutex::new(id_allocator::new()),
-    loaded_chunks: Mutex::new(chunk_position::map::new()),
-    chunk_voxels_loaded: Mutex::new(chunk_position::with_lod::map::new()),
-    voxels: Mutex::new(voxel::tree::new()),
-    outstanding_terrain_requests: Mutex::new(0),
-    rng: Mutex::new(rng),
+    id                       : client_id,
+    player_id                : player_id,
+    player_position          : Mutex::new(position),
+    last_footstep            : Mutex::new(position),
+    load_position            : Mutex::new(None),
+    max_load_distance        : load_distance,
+    surroundings_loader      : Mutex::new(surroundings_loader),
+    id_allocator             : Mutex::new(id_allocator::new()),
+    loaded_chunks            : Mutex::new(chunk_position::map::new()),
+    chunk_voxels_loaded      : Mutex::new(chunk_position::with_lod::map::new()),
+    voxels                   : Mutex::new(voxel::tree::new()),
+    pending_terrain_requests : Mutex::new(0),
+    rng                      : Mutex::new(rng),
   }
 }
 

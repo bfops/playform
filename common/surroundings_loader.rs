@@ -47,7 +47,7 @@ mod surroundings_iter {
 }
 
 #[allow(missing_docs)]
-/// The type of message emitted by `SurroundingsLoader`. This stream of messages maintains
+/// The type of message emitted by `T`. This stream of messages maintains
 /// an owner's desired surroundings.
 pub enum LoadType {
   Load,
@@ -59,7 +59,7 @@ pub enum LoadType {
 /// Iteratively load points cube-shaped layers around the some point.
 /// That point can be updated with calls to `update`.
 /// What "load" exactly means depends on the closures provided.
-pub struct SurroundingsLoader {
+pub struct T {
   last_position: Option<Point3<i32>>,
 
   max_load_distance: i32,
@@ -70,25 +70,25 @@ pub struct SurroundingsLoader {
   lod_thresholds: Vec<i32>,
 }
 
-impl SurroundingsLoader {
-  #[allow(missing_docs)]
-  pub fn new(
-    max_load_distance: i32,
-    lod_thresholds: Vec<i32>,
-  ) -> SurroundingsLoader {
-    assert!(max_load_distance >= 0);
+#[allow(missing_docs)]
+pub fn new(
+  max_load_distance: i32,
+  lod_thresholds: Vec<i32>,
+) -> T {
+  assert!(max_load_distance >= 0);
 
-    SurroundingsLoader {
-      last_position: None,
+  T {
+    last_position: None,
 
-      to_load: None,
-      max_load_distance: max_load_distance,
+    to_load: None,
+    max_load_distance: max_load_distance,
 
-      to_recheck: VecDeque::new(),
-      lod_thresholds: lod_thresholds,
-    }
+    to_recheck: VecDeque::new(),
+    lod_thresholds: lod_thresholds,
   }
+}
 
+impl T {
   /// Update the center point around which we load, and load some more blocks.
   pub fn updates(&mut self, position: &Point3<i32>) -> Updates {
     let position_changed = self.last_position != Some(*position);
@@ -117,11 +117,11 @@ impl SurroundingsLoader {
   }
 }
 
-unsafe impl Send for SurroundingsLoader {}
+unsafe impl Send for T {}
 
-/// Iterator for the updates from a SurroundingsLoader.
+/// Iterator for the updates from a T.
 pub struct Updates<'a> {
-  loader: &'a mut SurroundingsLoader,
+  loader: &'a mut T,
   position: Point3<i32>,
 }
 

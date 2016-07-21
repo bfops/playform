@@ -2,7 +2,7 @@ use cgmath::{Aabb3, Point, Point3, EuclideanVector, Vector, Vector3};
 
 use common::entity_id;
 use common::id_allocator;
-use common::surroundings_loader::SurroundingsLoader;
+use common::surroundings_loader;
 
 use mob;
 use server;
@@ -111,7 +111,7 @@ fn add_mob(
       behavior: behavior,
       entity_id: entity_id,
       owner_id: id_allocator::allocate(&server.owner_allocator),
-      surroundings_loader: SurroundingsLoader::new(8, Vec::new()),
+      surroundings_loader: surroundings_loader::new(8, Vec::new()),
     };
 
   server.physics.lock().unwrap().insert_misc(entity_id, &bounds);

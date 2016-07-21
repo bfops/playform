@@ -72,7 +72,7 @@ pub fn run(listen_url: &str, server_url: &str) {
           &mut |_, reason| {
             if let common::protocol::VoxelReason::Requested { .. } = reason {
               *loaded_count.lock().unwrap() += 1;
-              *client.outstanding_terrain_requests.lock().unwrap() -= 1;
+              *client.pending_terrain_requests.lock().unwrap() -= 1;
             }
           },
         );

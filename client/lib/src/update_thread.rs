@@ -82,7 +82,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
   let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
   let mut updates = surroundings_loader.updates(load_position.as_pnt()) ;
   loop {
-    if *client.outstanding_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
+    if *client.pending_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
       trace!("update loop breaking");
       break;
     }
@@ -206,7 +206,7 @@ fn load_or_request_chunk<UpdateServer, UpdateView>(
           ),
       }
     );
-    *client.outstanding_terrain_requests.lock().unwrap() += 1;
+    *client.pending_terrain_requests.lock().unwrap() += 1;
   }
 }
 
@@ -249,8 +249,8 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
     match reason {
       protocol::VoxelReason::Updated => {},
       protocol::VoxelReason::Requested { at } => {
-        *client.outstanding_terrain_requests.lock().unwrap() -= 1;
-        debug!("Outstanding terrain requests: {}", *client.outstanding_terrain_requests.lock().unwrap());
+        *client.pending_terrain_requests.lock().unwrap() -= 1;
+        debug!("Outstanding terrain requests: {}", *client.pending_terrain_requests.lock().unwrap());
 
         record_book::thread_local::push_chunk_load(
           record_book::ChunkLoad {

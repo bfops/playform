@@ -7,7 +7,7 @@ use stopwatch;
 
 use common::entity_id;
 use common::id_allocator;
-use common::surroundings_loader::{SurroundingsLoader, LoadType};
+use common::surroundings_loader;
 use common::voxel;
 
 use lod;
@@ -45,10 +45,10 @@ pub struct T {
   // "pitch", in radians
   pub vertical_rotation: f32,
 
-  surroundings_loader: SurroundingsLoader,
+  surroundings_loader: surroundings_loader::T,
   surroundings_owner: lod::OwnerId,
   // Nearby blocks should be made solid if they aren't loaded yet.
-  solid_boundary: SurroundingsLoader,
+  solid_boundary: surroundings_loader::T,
   solid_owner: lod::OwnerId,
 }
 
@@ -60,20 +60,20 @@ impl T {
     let surroundings_owner = id_allocator::allocate(owner_allocator);
     let solid_owner = id_allocator::allocate(owner_allocator);
     T {
-      position: Point3::new(0.0, 0.0, 0.0),
-      speed: Vector3::new(0.0, 0.0, 0.0),
-      accel: Vector3::new(0.0, -0.1, 0.0),
-      walk_accel: Vector3::new(0.0, 0.0, 0.0),
-      jump_fuel: 0,
-      is_jumping: false,
-      entity_id: entity_id,
-      lateral_rotation: 0.0,
-      vertical_rotation: 0.0,
+      position            : Point3::new(0.0, 0.0, 0.0),
+      speed               : Vector3::new(0.0, 0.0, 0.0),
+      accel               : Vector3::new(0.0, -0.1, 0.0),
+      walk_accel          : Vector3::new(0.0, 0.0, 0.0),
+      jump_fuel           : 0,
+      is_jumping          : false,
+      entity_id           : entity_id,
+      lateral_rotation    : 0.0,
+      vertical_rotation   : 0.0,
 
-      surroundings_loader: SurroundingsLoader::new(8, Vec::new()),
-      solid_boundary:  SurroundingsLoader::new(8, Vec::new()),
-      surroundings_owner:  surroundings_owner,
-      solid_owner: solid_owner,
+      surroundings_loader : surroundings_loader::new(8, Vec::new()),
+      solid_boundary      : surroundings_loader::new(8, Vec::new()),
+      surroundings_owner  : surroundings_owner,
+      solid_owner         : solid_owner,
     }
   }
 
@@ -168,7 +168,7 @@ impl T {
       for (pos, load_type) in self.surroundings_loader.updates(&player_position) {
         let pos = voxel::bounds::new(pos.x, pos.y, pos.z, 0);
         match load_type {
-          LoadType::Load | LoadType::Update => {
+          surroundings_loader::LoadType::Load | surroundings_loader::LoadType::Update => {
             server.terrain_loader.load(
               &server.id_allocator,
               &server.physics,
@@ -178,7 +178,7 @@ impl T {
               request_block,
             );
           },
-          LoadType::Unload => {
+          surroundings_loader::LoadType::Unload => {
             server.terrain_loader.unload(
               &server.physics,
               &pos,
