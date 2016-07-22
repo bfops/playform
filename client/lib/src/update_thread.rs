@@ -120,7 +120,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
           }
         })
       },
-      LoadType::Update => {
+      LoadType::Downgrade => {
         stopwatch::time("update_thread.update_chunk", || {
           let new_lod = lod_index(distance);
           let lod_change =

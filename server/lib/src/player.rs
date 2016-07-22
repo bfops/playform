@@ -168,7 +168,7 @@ impl T {
       for (pos, load_type) in self.surroundings_loader.updates(&player_position) {
         let pos = voxel::bounds::new(pos.x, pos.y, pos.z, 0);
         match load_type {
-          surroundings_loader::LoadType::Load | surroundings_loader::LoadType::Update => {
+          surroundings_loader::LoadType::Load | surroundings_loader::LoadType::Downgrade => {
             server.terrain_loader.load(
               &server.id_allocator,
               &server.physics,

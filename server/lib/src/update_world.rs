@@ -133,7 +133,7 @@ pub fn load_placeholders<RequestBlock>(
   RequestBlock: FnMut(update_gaia::Message),
 {
   match load_type {
-    LoadType::Load | LoadType::Update => {
+    LoadType::Load | LoadType::Downgrade => {
       server.terrain_loader.load(
         &server.id_allocator,
         &server.physics,

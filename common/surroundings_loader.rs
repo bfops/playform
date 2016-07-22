@@ -53,7 +53,7 @@ pub enum LoadType {
   Load,
   Unload,
   /// Load only if already loaded
-  Update,
+  Downgrade,
 }
 
 /// Iteratively load points cube-shaped layers around the some point.
@@ -143,7 +143,7 @@ impl<'a> Iterator for Updates<'a> {
         if distance > self.loader.max_load_distance {
           Some((position, LoadType::Unload))
         } else {
-          Some((position, LoadType::Update))
+          Some((position, LoadType::Downgrade))
         }
       } else {
         self.loader.to_load.as_mut().unwrap().next()
