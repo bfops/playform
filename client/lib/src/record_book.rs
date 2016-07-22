@@ -27,13 +27,11 @@ pub mod thread_local {
 
   thread_local!(static THREAD_LOCAL: std::cell::RefCell<T> = std::cell::RefCell::new(new()));
 
-  pub fn push_chunk_load(x: ChunkLoad)
-  {
+  pub fn push_chunk_load(x: ChunkLoad) {
     THREAD_LOCAL.with(|t| t.borrow_mut().chunk_loads.push(x));
   }
 
-  pub fn clone() -> T
-  {
+  pub fn clone() -> T {
     THREAD_LOCAL.with(|t| t.borrow().clone())
   }
 }

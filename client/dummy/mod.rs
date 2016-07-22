@@ -64,13 +64,12 @@ pub fn run(listen_url: &str, server_url: &str) {
           quit,
           client,
           &mut || { server.listen.try() },
-          &mut || { None },
           &mut |_| { },
           &mut |_| { },
           &mut |_| { },
           &mut |up| { server.talk.tell(&up) },
-          &mut |_, reason| {
-            if let common::protocol::VoxelReason::Requested { .. } = reason {
+          &mut |msg| {
+            if let client_lib::terrain::Load::Voxels { request_time: Some(_), .. } = msg {
               *loaded_count.lock().unwrap() += 1;
               *client.pending_terrain_requests.lock().unwrap() -= 1;
             }

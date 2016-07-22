@@ -6,11 +6,11 @@ use time;
 
 use common::color::Color4;
 use common::protocol;
-use common::voxel;
 
 use audio_loader;
 use audio_thread;
 use client;
+use terrain;
 use vertex::ColoredVertex;
 use view;
 
@@ -18,18 +18,18 @@ pub const TRIANGLES_PER_BOX: u32 = 12;
 pub const VERTICES_PER_TRIANGLE: u32 = 3;
 pub const TRIANGLE_VERTICES_PER_BOX: u32 = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
 
-pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueChunkUpdates>(
-  client: &client::T,
-  update_view: &mut UpdateView,
-  update_audio: &mut UpdateAudio,
-  update_server: &mut UpdateServer,
-  enqueue_block_updates: &mut EnqueueChunkUpdates,
-  update: protocol::ServerToClient,
+pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrainLoad>(
+  client               : &client::T,
+  update_view          : &mut UpdateView,
+  update_audio         : &mut UpdateAudio,
+  update_server        : &mut UpdateServer,
+  enqueue_terrain_load : &mut EnqueueTerrainLoad,
+  update               : protocol::ServerToClient,
 ) where
-  UpdateView: FnMut(view::update::T),
-  UpdateAudio: FnMut(audio_thread::Message),
-  UpdateServer: FnMut(protocol::ClientToServer),
-  EnqueueChunkUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
+  UpdateView         : FnMut(view::update::T),
+  UpdateAudio        : FnMut(audio_thread::Message),
+  UpdateServer       : FnMut(protocol::ClientToServer),
+  EnqueueTerrainLoad : FnMut(terrain::Load),
 {
   stopwatch::time("apply_server_update", move || {
     match update {
@@ -73,14 +73,23 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueChunkUp
         ));
       },
       protocol::ServerToClient::Voxels { voxels, reason } => {
+        let request_time;
         match reason {
-          protocol::VoxelReason::Updated => {},
+          protocol::VoxelReason::Updated => {
+            request_time = None;
+          },
           protocol::VoxelReason::Requested { at } => {
+            request_time = Some(at);
             debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - at);
           },
         }
 
-        enqueue_block_updates(voxels, reason);
+        enqueue_terrain_load(
+          terrain::Load::Voxels {
+            voxels       : voxels,
+            request_time : request_time,
+          }
+        );
       },
       protocol::ServerToClient::Collision(collision_type) => {
         if let protocol::Collision::PlayerTerrain(..) = collision_type {

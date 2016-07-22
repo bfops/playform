@@ -57,8 +57,6 @@ pub mod client;
 #[allow(missing_docs)]
 pub mod hud;
 #[allow(missing_docs)]
-pub mod load_terrain;
-#[allow(missing_docs)]
 pub mod lod;
 #[allow(missing_docs)]
 pub mod process_event;
@@ -70,6 +68,8 @@ pub mod run;
 pub mod server;
 #[allow(missing_docs)]
 pub mod server_update;
+#[allow(missing_docs)]
+pub mod terrain;
 #[allow(missing_docs)]
 pub mod terrain_mesh;
 #[allow(missing_docs)]
