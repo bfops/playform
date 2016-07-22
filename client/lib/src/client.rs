@@ -15,7 +15,7 @@ use common::voxel;
 use chunk_position;
 use lod;
 use terrain_mesh;
-use terrain_buffers;
+use view;
 
 /// The distances at which LOD switches.
 pub const LOD_THRESHOLDS: [i32; terrain_mesh::LOD_COUNT-1] = [2, 16, 32];
@@ -46,7 +46,7 @@ pub struct T {
 
 #[allow(missing_docs)]
 pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Point3<f32>) -> T {
-  let mut load_distance = load_distance(terrain_buffers::POLYGON_BUDGET as i32);
+  let mut load_distance = load_distance(view::terrain_buffers::POLYGON_BUDGET as i32);
 
   if load_distance > MAX_LOAD_DISTANCE {
     info!("load_distance {} capped at {}", load_distance, MAX_LOAD_DISTANCE);

@@ -1,14 +1,15 @@
 //! Draw the view.
 
-use camera::{Camera, set_camera};
 use cgmath;
-use light::{set_sun, set_ambient_light};
 use gl;
 use time;
-use view;
 use yaglw;
 
-fn set_eye_position(shader: &mut yaglw::shader::Shader, camera: &Camera) {
+use view;
+use view::camera::{set_camera};
+use view::light::{set_sun, set_ambient_light};
+
+fn set_eye_position(shader: &mut yaglw::shader::Shader, camera: &view::camera::T) {
   unsafe {
     let uniform = shader.get_uniform_location("eye_position");
     let ptr = &camera.position as *const _ as *const _;

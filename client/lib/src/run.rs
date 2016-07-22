@@ -12,7 +12,7 @@ use client;
 use server;
 use record_book;
 use update_thread::update_thread;
-use view_thread::view_thread;
+use view::thread::view_thread;
 
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, server_url: &str) {

@@ -51,41 +51,25 @@ pub mod audio_loader;
 #[allow(missing_docs)]
 pub mod audio_thread;
 #[allow(missing_docs)]
-pub mod camera;
-#[allow(missing_docs)]
 pub mod chunk_position;
 #[allow(missing_docs)]
 pub mod client;
 #[allow(missing_docs)]
 pub mod hud;
 #[allow(missing_docs)]
-pub mod light;
-#[allow(missing_docs)]
 pub mod load_terrain;
 #[allow(missing_docs)]
 pub mod lod;
 #[allow(missing_docs)]
-pub mod mob_buffers;
-#[allow(missing_docs)]
-pub mod player_buffers;
-#[allow(missing_docs)]
 pub mod process_event;
 #[allow(missing_docs)]
 pub mod record_book;
-#[allow(missing_docs)]
-pub mod render;
 #[allow(missing_docs)]
 pub mod run;
 #[allow(missing_docs)]
 pub mod server;
 #[allow(missing_docs)]
 pub mod server_update;
-#[allow(missing_docs)]
-pub mod shaders;
-#[allow(missing_docs)]
-pub mod grass_buffers;
-#[allow(missing_docs)]
-pub mod terrain_buffers;
 #[allow(missing_docs)]
 pub mod terrain_mesh;
 #[allow(missing_docs)]
@@ -94,9 +78,5 @@ pub mod update_thread;
 pub mod vertex;
 #[allow(missing_docs)]
 pub mod view;
-#[allow(missing_docs)]
-pub mod view_thread;
-#[allow(missing_docs)]
-pub mod view_update;
 
 pub use run::run;

@@ -2,6 +2,8 @@ use gl;
 use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 
+use view::shaders;
+
 pub struct T<'a> {
   #[allow(missing_docs)]
   pub shader: Shader<'a>,
@@ -110,8 +112,8 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext) -> T<'b> {
 
           frag_color = min(vec4(c, 1), vec4(1));
         }}"#,
-        ::shaders::depth_fog::to_string(),
-        ::shaders::noise::cnoise(),
+        shaders::depth_fog::to_string(),
+        shaders::noise::cnoise(),
       )
     ),
   );

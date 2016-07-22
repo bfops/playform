@@ -1,6 +1,5 @@
 use cgmath::Point3;
 use num;
-use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 use common::surroundings_loader;
 use common::voxel;
@@ -9,7 +8,7 @@ use chunk_position;
 use client;
 use lod;
 use terrain_mesh;
-use view_update;
+use view;
 
 #[inline(never)]
 fn updated_chunk_positions(
@@ -170,7 +169,7 @@ pub fn load_chunk<UpdateView>(
   chunk_position: &chunk_position::T,
   lod: lod::T,
 ) where
-  UpdateView: FnMut(view_update::T),
+  UpdateView: FnMut(view::update::T),
 {
   debug!("generate {:?} at {:?}", chunk_position, lod);
   let voxels = client.voxels.lock().unwrap();
@@ -179,6 +178,7 @@ pub fn load_chunk<UpdateView>(
 
   let mut updates = Vec::new();
 
+  use std::collections::hash_map::Entry::{Vacant, Occupied};
   // TODO: Rc instead of clone.
   match client.loaded_chunks.lock().unwrap().entry(*chunk_position) {
     Vacant(entry) => {
@@ -190,10 +190,10 @@ pub fn load_chunk<UpdateView>(
 
         let &(ref prev_chunk, _) = entry.get();
         for id in &prev_chunk.grass_ids {
-          updates.push(view_update::RemoveGrass(*id));
+          updates.push(view::update::RemoveGrass(*id));
         }
         for &id in &prev_chunk.ids {
-          updates.push(view_update::RemoveTerrain(id));
+          updates.push(view::update::RemoveTerrain(id));
         }
       }
       entry.insert((mesh_chunk.clone(), lod));
@@ -201,10 +201,10 @@ pub fn load_chunk<UpdateView>(
   };
 
   if !mesh_chunk.ids.is_empty() {
-    updates.push(view_update::AddChunk(*chunk_position, mesh_chunk, lod));
+    updates.push(view::update::AddChunk(*chunk_position, mesh_chunk, lod));
   }
 
-  update_view(view_update::Atomic(updates));
+  update_view(view::update::Atomic(updates));
 }
 
 pub fn lod_index(distance: i32) -> lod::T {

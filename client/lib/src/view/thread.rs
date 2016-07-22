@@ -16,10 +16,8 @@ use common::protocol;
 use client;
 use hud::make_hud;
 use process_event::process_event;
-use render::render;
 use view;
-use view_update;
-use view_update::{apply_client_to_view};
+use view::update;
 
 #[allow(missing_docs)]
 pub const FRAMES_PER_SECOND: u64 = 30;
@@ -41,8 +39,8 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   recv1: &mut Recv1,
   update_server: &mut UpdateServer,
 ) where
-  Recv0: FnMut() -> Option<view_update::T>,
-  Recv1: FnMut() -> Option<view_update::T>,
+  Recv0: FnMut() -> Option<update::T>,
+  Recv1: FnMut() -> Option<update::T>,
   UpdateServer: FnMut(protocol::ClientToServer),
 {
   let sdl = sdl2::init().unwrap();
@@ -136,13 +134,13 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
           sdl.mouse().warp_mouse_in_window(&window, window_size.x / 2, window_size.y / 2);
         }
 
-        stopwatch::time("apply_view_updates", || {
+        stopwatch::time("apply_updates", || {
           let start = time::precise_time_ns();
           loop {
             if let Some(update) = recv0() {
-              apply_client_to_view(&mut view, update);
+              update::apply_client_to_view(&mut view, update);
             } else if let Some(update) = recv1() {
-              apply_client_to_view(&mut view, update);
+              update::apply_client_to_view(&mut view, update);
             } else {
               info!("Out of view updates");
               break
@@ -157,7 +155,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
         let renders = render_timer.update(time::precise_time_ns());
         if renders > 0 {
           stopwatch::time("render", || {
-            render(&mut view);
+            view::render::render(&mut view);
             // swap buffers
             window.gl_swap_window();
           });

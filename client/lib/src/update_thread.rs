@@ -17,7 +17,7 @@ use load_terrain::lod_index;
 use record_book;
 use server_update::apply_server_update;
 use terrain_mesh;
-use view_update;
+use view;
 
 const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
 
@@ -35,8 +35,8 @@ pub fn update_thread<RecvServer, RecvVoxelUpdates, UpdateView0, UpdateView1, Upd
 ) where
   RecvServer: FnMut() -> Option<protocol::ServerToClient>,
   RecvVoxelUpdates: FnMut() -> Option<(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)>,
-  UpdateView0: FnMut(view_update::T),
-  UpdateView1: FnMut(view_update::T),
+  UpdateView0: FnMut(view::update::T),
+  UpdateView1: FnMut(view::update::T),
   UpdateAudio: FnMut(audio_thread::Message),
   UpdateServer: FnMut(protocol::ClientToServer),
   EnqueueChunkUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
@@ -69,7 +69,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
   update_view: &mut UpdateView,
   update_server: &mut UpdateServer,
 ) where
-  UpdateView: FnMut(view_update::T),
+  UpdateView: FnMut(view::update::T),
   UpdateServer: FnMut(protocol::ClientToServer),
 {
   let start = time::precise_time_ns();
@@ -145,10 +145,10 @@ fn update_surroundings<UpdateView, UpdateServer>(
             // If it wasn't loaded, don't unload anything.
             .map(|(chunk, _)| {
               for id in &chunk.grass_ids {
-                update_view(view_update::RemoveGrass(*id));
+                update_view(view::update::RemoveGrass(*id));
               }
               for id in &chunk.ids {
-                update_view(view_update::RemoveTerrain(*id));
+                update_view(view::update::RemoveTerrain(*id));
               }
             });
         })
@@ -173,7 +173,7 @@ fn load_or_request_chunk<UpdateServer, UpdateView>(
   lod: lod::T,
 ) where
   UpdateServer: FnMut(protocol::ClientToServer),
-  UpdateView: FnMut(view_update::T),
+  UpdateView: FnMut(view::update::T),
 {
   if load_terrain::all_voxels_loaded(&client.chunk_voxels_loaded.lock().unwrap(), chunk_position, lod) {
     load_terrain::load_chunk(
@@ -217,7 +217,7 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
   update_view        : &mut UpdateView,
 ) where
   RecvVoxelUpdates: FnMut() -> Option<(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason)>,
-  UpdateView: FnMut(view_update::T),
+  UpdateView: FnMut(view::update::T),
 {
   let start = time::precise_time_ns();
   while let Some((voxel_updates, reason)) = recv_voxel_updates() {
@@ -279,7 +279,7 @@ fn process_server_updates<RecvServer, UpdateView, UpdateAudio, UpdateServer, Enq
   enqueue_chunk_updates : &mut EnqueueChunkUpdates,
 ) where
   RecvServer          : FnMut() -> Option<protocol::ServerToClient>,
-  UpdateView          : FnMut(view_update::T),
+  UpdateView          : FnMut(view::update::T),
   UpdateAudio         : FnMut(audio_thread::Message),
   UpdateServer        : FnMut(protocol::ClientToServer),
   EnqueueChunkUpdates : FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),

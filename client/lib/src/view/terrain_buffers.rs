@@ -3,16 +3,16 @@
 use gl;
 use gl::types::*;
 use cgmath::{Point3, Vector3};
+use yaglw::gl_context::GLContext;
+use yaglw::texture::BufferTexture;
+use yaglw::texture::TextureUnit;
 
 use common::entity_id;
 use common::fnv_map;
 use common::id_allocator;
 
-use shaders::terrain::TerrainShader;
+use view::shaders;
 use terrain_mesh::Triangle;
-use yaglw::gl_context::GLContext;
-use yaglw::texture::BufferTexture;
-use yaglw::texture::TextureUnit;
 
 const VERTICES_PER_TRIANGLE: u32 = 3;
 
@@ -25,7 +25,7 @@ pub const POLYGON_COST: usize = 100;
 pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
-pub struct TerrainBuffers<'a> {
+pub struct T<'a> {
   id_to_index: fnv_map::T<entity_id::T, usize>,
   index_to_id: Vec<entity_id::T>,
 
@@ -50,34 +50,34 @@ fn correct_size() {
   assert!(mem::size_of::<Vector3<GLfloat>>() == 3 * mem::size_of::<GLfloat>());
 }
 
-impl<'a> TerrainBuffers<'a> {
-  #[allow(missing_docs)]
-  pub fn new<'b>(
-    gl: &'b mut GLContext,
-  ) -> Self where
-    'a: 'b,
-  {
-    TerrainBuffers {
-      id_to_index: fnv_map::new(),
-      index_to_id: Vec::new(),
-      empty_array: unsafe {
-        let mut empty_array = 0;
-        gl::GenVertexArrays(1, &mut empty_array);
-        empty_array
-      },
-      length: 0,
-      vertex_positions: BufferTexture::new(gl, gl::R32F, POLYGON_BUDGET),
-      normals: BufferTexture::new(gl, gl::R32F, POLYGON_BUDGET),
-      materials: BufferTexture::new(gl, gl::R32UI, POLYGON_BUDGET),
-    }
+#[allow(missing_docs)]
+pub fn new<'a, 'b>(
+  gl: &'b mut GLContext,
+) -> T<'a> where
+  'a: 'b,
+{
+  T {
+    id_to_index: fnv_map::new(),
+    index_to_id: Vec::new(),
+    empty_array: unsafe {
+      let mut empty_array = 0;
+      gl::GenVertexArrays(1, &mut empty_array);
+      empty_array
+    },
+    length: 0,
+    vertex_positions: BufferTexture::new(gl, gl::R32F, POLYGON_BUDGET),
+    normals: BufferTexture::new(gl, gl::R32F, POLYGON_BUDGET),
+    materials: BufferTexture::new(gl, gl::R32UI, POLYGON_BUDGET),
   }
+}
 
+impl<'a> T<'a> {
   /// Set the values of `shader`'s uniforms to correspond to these terrain buffers.
   pub fn bind_glsl_uniforms(
     &self,
     gl: &mut GLContext,
     texture_unit_alloc: &mut id_allocator::T<TextureUnit>,
-    shader: &mut TerrainShader,
+    shader: &mut shaders::terrain::T,
   ) {
     shader.shader.use_shader(gl);
     let mut bind = |name, id| {

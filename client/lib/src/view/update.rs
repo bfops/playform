@@ -6,13 +6,13 @@ use stopwatch;
 use common::entity_id;
 
 use chunk_position;
-use light;
 use lod;
-use mob_buffers::VERTICES_PER_MOB;
-use player_buffers::VERTICES_PER_PLAYER;
 use terrain_mesh;
 use vertex::ColoredVertex;
 use view;
+use view::light;
+use view::mob_buffers::VERTICES_PER_MOB;
+use view::player_buffers::VERTICES_PER_PLAYER;
 
 /// Messages from the client to the view.
 pub enum T {

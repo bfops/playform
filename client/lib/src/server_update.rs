@@ -11,9 +11,8 @@ use common::voxel;
 use audio_loader;
 use audio_thread;
 use client;
-use light;
 use vertex::ColoredVertex;
-use view_update;
+use view;
 
 pub const TRIANGLES_PER_BOX: u32 = 12;
 pub const VERTICES_PER_TRIANGLE: u32 = 3;
@@ -27,7 +26,7 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueChunkUp
   enqueue_block_updates: &mut EnqueueChunkUpdates,
   update: protocol::ServerToClient,
 ) where
-  UpdateView: FnMut(view_update::T),
+  UpdateView: FnMut(view::update::T),
   UpdateAudio: FnMut(audio_thread::Message),
   UpdateServer: FnMut(protocol::ClientToServer),
   EnqueueChunkUpdates: FnMut(Vec<(voxel::bounds::T, voxel::T)>, protocol::VoxelReason),
@@ -45,7 +44,7 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueChunkUp
       },
       protocol::ServerToClient::UpdatePlayer(player_id, bounds) => {
         let mesh = to_triangles(&bounds, &Color4::of_rgba(0.0, 0.0, 1.0, 1.0));
-        update_view(view_update::UpdatePlayer(player_id, mesh));
+        update_view(view::update::UpdatePlayer(player_id, mesh));
 
         // We "lock" the client to client.player_id, so for updates to that player only,
         // there is more client-specific logic.
@@ -59,15 +58,15 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueChunkUp
         let position = Point3::from_vec(&position);
 
         *client.player_position.lock().unwrap() = position;
-        update_view(view_update::MoveCamera(position));
+        update_view(view::update::MoveCamera(position));
       },
       protocol::ServerToClient::UpdateMob(id, bounds) => {
         let mesh = to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0));
-        update_view(view_update::UpdateMob(id, mesh));
+        update_view(view::update::UpdateMob(id, mesh));
       },
       protocol::ServerToClient::UpdateSun(fraction) => {
-        update_view(view_update::SetSun(
-          light::Sun {
+        update_view(view::update::SetSun(
+          view::light::Sun {
             progression: fraction,
             rotation: 0.0,
           }

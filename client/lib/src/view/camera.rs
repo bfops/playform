@@ -8,8 +8,8 @@ use std::f32::consts::PI;
 use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 
-/// Camera representation as 3 distinct matrices, as well as a position + two rotations.
-pub struct Camera {
+/// T representation as 3 distinct matrices, as well as a position + two rotations.
+pub struct T {
   #[allow(missing_docs)]
   pub position: Point3<f32>,
   #[allow(missing_docs)]
@@ -27,23 +27,23 @@ pub struct Camera {
   pub fov: Matrix4<GLfloat>,
 }
 
-impl Camera {
-  /// This Camera sits at (0, 0, 0),
-  /// maps [-1, 1] in x horizontally,
-  /// maps [-1, 1] in y vertically,
-  /// and [0, -1] in z in depth.
-  pub fn unit() -> Camera {
-    Camera {
-      position: Point3::new(0.0, 0.0, 0.0),
-      lateral_rotation: 0.0,
-      vertical_rotation: 0.0,
+/// This T sits at (0, 0, 0),
+/// maps [-1, 1] in x horizontally,
+/// maps [-1, 1] in y vertically,
+/// and [0, -1] in z in depth.
+pub fn unit() -> T {
+  T {
+    position: Point3::new(0.0, 0.0, 0.0),
+    lateral_rotation: 0.0,
+    vertical_rotation: 0.0,
 
-      translation: Matrix4::identity(),
-      rotation: Matrix4::identity(),
-      fov: Matrix4::identity(),
-    }
+    translation: Matrix4::identity(),
+    rotation: Matrix4::identity(),
+    fov: Matrix4::identity(),
   }
+}
 
+impl T {
   #[allow(missing_docs)]
   pub fn projection_matrix(&self) -> Matrix4<GLfloat> {
     self.fov.mul_m(&self.rotation).mul_m(&self.translation)
@@ -98,7 +98,7 @@ impl Camera {
 }
 
 /// Set a shader's projection matrix to match that of a camera.
-pub fn set_camera(shader: &mut Shader, gl: &mut GLContext, c: &Camera) {
+pub fn set_camera(shader: &mut Shader, gl: &mut GLContext, c: &T) {
   let projection_matrix = shader.get_uniform_location("projection_matrix");
   shader.use_shader(gl);
   unsafe {
