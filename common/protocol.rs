@@ -45,14 +45,40 @@ pub enum ClientToServer {
   /// [Try to] stop a jump for the player.
   StopJump(entity_id::T),
   /// Ask the server to send a block of terrain.
+<<<<<<< HEAD
   #[allow(missing_docs)]
   RequestChunk { requested_at: u64, client_id: ClientId, position: chunk::Position },
+=======
+  RequestVoxels {
+    /// The time, in nanoseconds, when the voxels were requested.
+    requested_at : u64,
+    /// The ID of the requesting client.
+    client_id    : ClientId,
+    /// The bounds of the voxels to fetch.
+    voxels       : Vec<voxel::bounds::T>,
+  },
+>>>>>>> master
   /// Brush-remove where the player's looking.
   Add(entity_id::T),
   /// Brush-add at where the player's looking.
   Remove(entity_id::T),
 }
 
+<<<<<<< HEAD
+=======
+/// Why a block is being sent to a client.
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+pub enum VoxelReason {
+  /// The client asked for it.
+  Requested {
+    /// The time, in nanoseconds, when the voxels were requested.
+    at: u64,
+  },
+  /// The block has been updated.
+  Updated,
+}
+
+>>>>>>> master
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 /// Collision events. First ID is "collider", rest of IDs are collidee(s).
 #[allow(missing_docs)]
@@ -79,12 +105,22 @@ pub enum ServerToClient {
   /// The sun as a [0, 1) portion of its cycle.
   UpdateSun(f32),
 
+<<<<<<< HEAD
   /// Provide a chunk of terrain to a client.
   #[allow(missing_docs)]
   Chunk { requested_at: u64, chunk: chunk::T },
   /// Send voxel updates to the client.
   #[allow(missing_docs)]
   Voxels(Vec<(voxel::bounds::T, voxel::T)>),
+=======
+  /// Provide a block of terrain to a client.
+  Voxels {
+    /// The voxels requested, and their associated bounds.
+    voxels : Vec<(voxel::bounds::T, voxel::T)>,
+    /// The reason the voxels are being sent.
+    reason : VoxelReason,
+  },
+>>>>>>> master
   /// A collision happened.
   Collision(Collision),
 }

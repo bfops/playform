@@ -5,12 +5,20 @@ use stopwatch;
 
 use common::entity_id;
 
+<<<<<<< HEAD:client/lib/src/view_update.rs
 use light;
 use mob_buffers::VERTICES_PER_MOB;
 use player_buffers::VERTICES_PER_PLAYER;
+=======
+use chunk_position;
+use lod;
+>>>>>>> master:client/lib/src/view/update.rs
 use terrain_mesh;
 use vertex::ColoredVertex;
 use view;
+use view::light;
+use view::mob_buffers::VERTICES_PER_MOB;
+use view::player_buffers::VERTICES_PER_PLAYER;
 
 pub use self::T::*;
 
@@ -27,8 +35,13 @@ pub enum T {
   /// Update the sun.
   SetSun(light::Sun),
 
+<<<<<<< HEAD:client/lib/src/view_update.rs
   /// Add a terrain block to the view.
   AddBlock(terrain_mesh::T),
+=======
+  /// Add a terrain chunk to the view.
+  AddChunk(chunk_position::T, terrain_mesh::T, lod::T),
+>>>>>>> master:client/lib/src/view/update.rs
   /// Remove a terrain entity.
   RemoveTerrain(entity_id::T),
   /// Remove a grass billboard.
@@ -59,19 +72,24 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
         },
       }
     },
+<<<<<<< HEAD:client/lib/src/view_update.rs
     T::AddBlock(block) => {
       stopwatch::time("add_block", || {
+=======
+    T::AddChunk(_, chunk, _) => {
+      stopwatch::time("add_chunk", || {
+>>>>>>> master:client/lib/src/view/update.rs
         view.terrain_buffers.push(
           &mut view.gl,
-          block.vertex_coordinates.as_ref(),
-          block.normals.as_ref(),
-          block.ids.as_ref(),
-          block.materials.as_ref(),
+          chunk.vertex_coordinates.as_ref(),
+          chunk.normals.as_ref(),
+          chunk.ids.as_ref(),
+          chunk.materials.as_ref(),
         );
         view.grass_buffers.push(
           &mut view.gl,
-          block.grass.as_ref(),
-          block.grass_ids.as_ref(),
+          chunk.grass.as_ref(),
+          chunk.grass_ids.as_ref(),
         );
       })
     },

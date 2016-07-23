@@ -19,6 +19,7 @@ install:
 
 script:
   - ( cargo build --verbose )
+  - ( cargo build --verbose --features dummy-client )
   - ( cd client/bin && cargo build --verbose )
   - ( cd server/bin && cargo build --verbose )
   - ( cd common     && cargo test  --verbose )

@@ -1,5 +1,28 @@
 //! The state associated with perceiving the world state.
 
+#[allow(missing_docs)]
+pub mod camera;
+#[allow(missing_docs)]
+pub mod grass_buffers;
+#[allow(missing_docs)]
+pub mod light;
+#[allow(missing_docs)]
+pub mod mob_buffers;
+#[allow(missing_docs)]
+pub mod player_buffers;
+#[allow(missing_docs)]
+mod render;
+#[allow(missing_docs)]
+pub mod shaders;
+#[allow(missing_docs)]
+pub mod terrain_buffers;
+#[allow(missing_docs)]
+pub mod thread;
+#[allow(missing_docs)]
+pub mod update;
+
+pub use self::render::render;
+
 use cgmath;
 use gl;
 use gl::types::*;
@@ -11,20 +34,15 @@ use yaglw;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, DrawMode, VertexAttribData};
 use yaglw::texture::{TextureUnit};
 
-use camera::Camera;
 use common::id_allocator;
-use light;
-use grass_buffers;
-use mob_buffers::MobBuffers;
-use player_buffers::PlayerBuffers;
-use shaders::Shaders;
-use terrain_buffers::TerrainBuffers;
 use vertex::{ColoredVertex};
 
+/// FOV in radians
 pub const FOV: f32 = std::f32::consts::FRAC_PI_3;
 
 const VERTICES_PER_TRIANGLE: usize = 3;
 
+#[allow(missing_docs)]
 pub enum InputMode {
   Camera,
   Sun,
@@ -35,20 +53,30 @@ pub struct T<'a> {
   /// Current OpengL context.
   pub gl: GLContext,
 
-  pub shaders: Shaders<'a>,
+  #[allow(missing_docs)]
+  pub shaders: shaders::T<'a>,
+  #[allow(missing_docs)]
   pub empty_gl_array: yaglw::vertex_buffer::ArrayHandle<'a>,
   /// A texture unit for misc use.
   pub misc_texture_unit: TextureUnit,
-  pub terrain_buffers: TerrainBuffers<'a>,
+  /// The OpenGL buffers for terrain render data
+  pub terrain_buffers: terrain_buffers::T<'a>,
+  /// The OpenGL buffers for grass render data
   pub grass_buffers: grass_buffers::T<'a>,
+  /// The OpenGL texture to sample for grass
   pub grass_texture: yaglw::texture::Texture2D<'a>,
-  pub mob_buffers: MobBuffers<'a>,
-  pub player_buffers: PlayerBuffers<'a>,
+  /// OpenGL buffers for mob render data
+  pub mob_buffers: mob_buffers::T<'a>,
+  /// OpenGL buffers for player render data
+  pub player_buffers: player_buffers::T<'a>,
   /// Hud triangles for non-text.
   pub hud_triangles: GLArray<'a, ColoredVertex>,
 
+  #[allow(missing_docs)]
   pub sun: light::Sun,
-  pub camera: Camera,
+  #[allow(missing_docs)]
+  pub camera: camera::T,
+  #[allow(missing_docs)]
   pub window_size: cgmath::Vector2<i32>,
   /// Whether to render HUD elements
   pub show_hud: bool,
@@ -95,17 +123,17 @@ pub fn new<'a>(
 
   let near = 0.1;
   let far = 2048.0;
-  let mut shaders = Shaders::new(&mut gl, window_size, near, far);
+  let mut shaders = shaders::new(&mut gl, window_size, near, far);
 
-  let terrain_buffers = TerrainBuffers::new(&mut gl);
+  let terrain_buffers = terrain_buffers::new(&mut gl);
   terrain_buffers.bind_glsl_uniforms(
     &mut gl,
     &mut texture_unit_alloc,
     &mut shaders.terrain_shader,
   );
 
-  let mob_buffers = MobBuffers::new(&mut gl, &shaders.mob_shader);
-  let player_buffers = PlayerBuffers::new(&mut gl, &shaders.mob_shader);
+  let mob_buffers = mob_buffers::new(&mut gl, &shaders.mob_shader);
+  let player_buffers = player_buffers::new(&mut gl, &shaders.mob_shader);
 
   let buffer = GLBuffer::new(&mut gl, 16 * VERTICES_PER_TRIANGLE);
   let hud_triangles = {
@@ -181,7 +209,7 @@ pub fn new<'a>(
     camera: {
       let fovy = cgmath::rad(FOV);
       let aspect = window_size.x as f32 / window_size.y as f32;
-      let mut camera = Camera::unit();
+      let mut camera = camera::unit();
       // Initialize the projection matrix.
       camera.fov = cgmath::perspective(fovy, aspect, near, far);
       // TODO: This should use player rotation from the server.

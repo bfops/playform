@@ -2,6 +2,7 @@
 
 #![deny(missing_docs)]
 #![deny(warnings)]
+#![feature(stmt_expr_attributes)]
 
 #![feature(plugin)]
 #![plugin(clippy)]
@@ -17,6 +18,8 @@ extern crate log;
 extern crate thread_scoped;
 
 extern crate client_lib;
+#[cfg(feature = "dummy-client")]
+extern crate dummy_client_lib;
 extern crate server_lib;
 
 use std::borrow::Borrow;
@@ -36,6 +39,9 @@ fn main() {
         server_lib::run(server_url.borrow(), &quit_signal);
       });
 
+    #[cfg(feature = "dummy-client")]
+    dummy_client_lib::run(listen_url.borrow(), server_url.borrow());
+    #[cfg(not(feature = "dummy-client"))]
     client_lib::run(listen_url.borrow(), server_url.borrow());
     *quit_signal.lock().unwrap() = true;
     server_thread.join();

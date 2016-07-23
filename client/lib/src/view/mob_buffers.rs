@@ -9,44 +9,44 @@ use common::entity_id;
 use common::fnv_map;
 
 use vertex::ColoredVertex;
-use shaders::color::ColorShader;
+use view;
 
 pub const VERTICES_PER_MOB: usize = 36;
 
 /// This data structure keeps tracks of mob data in VRAM.
-pub struct MobBuffers<'a> {
+pub struct T<'a> {
   id_to_index: fnv_map::T<entity_id::T, usize>,
   index_to_id: Vec<entity_id::T>,
 
   triangles: GLArray<'a, ColoredVertex>,
 }
 
-impl<'a> MobBuffers<'a> {
-  #[allow(missing_docs)]
-  pub fn new<'b>(
-    gl: &'b mut GLContext,
-    shader: &ColorShader<'a>,
-  ) -> Self where
-    'a: 'b,
-  {
-    let buffer = GLBuffer::new(gl, 32 * VERTICES_PER_MOB);
-    MobBuffers {
-      id_to_index: fnv_map::new(),
-      index_to_id: Vec::new(),
+#[allow(missing_docs)]
+pub fn new<'a, 'b>(
+  gl: &'b mut GLContext,
+  shader: &view::shaders::color::T<'a>,
+) -> T<'a> where
+  'a: 'b,
+{
+  let buffer = GLBuffer::new(gl, 32 * VERTICES_PER_MOB);
+  T {
+    id_to_index: fnv_map::new(),
+    index_to_id: Vec::new(),
 
-      triangles: GLArray::new(
-        gl,
-        &shader.shader,
-        &[
-          VertexAttribData { name: "position", size: 3, unit: GLType::Float, divisor: 0 },
-          VertexAttribData { name: "in_color", size: 4, unit: GLType::Float, divisor: 0 },
-        ],
-        DrawMode::Triangles,
-        buffer,
-      ),
-    }
+    triangles: GLArray::new(
+      gl,
+      &shader.shader,
+      &[
+        VertexAttribData { name: "position", size: 3, unit: GLType::Float, divisor: 0 },
+        VertexAttribData { name: "in_color", size: 4, unit: GLType::Float, divisor: 0 },
+      ],
+      DrawMode::Triangles,
+      buffer,
+    ),
   }
+}
 
+impl<'a> T<'a> {
   /// Add a single mob into VRAM and return true.
   /// If the mob ID is already loaded, replace the existing mob and return false.
   pub fn insert(

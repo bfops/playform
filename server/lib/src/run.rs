@@ -5,6 +5,7 @@ use bincode;
 use stopwatch;
 use thread_scoped;
 use time;
+use voxel_data;
 
 use common;
 use common::closure_series;
@@ -82,6 +83,13 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
     let stopwatch = thread.join();
     stopwatch.print();
   }
+
+  info!("Voxel takes {} bytes", std::mem::size_of::<common::voxel::T>());
+
+  println!(
+    "Terrain is using {} MB",
+    tree_ram_usage(&server.terrain_loader.terrain.voxels.lock().unwrap()) as f32 / (1 << 20) as f32,
+  );
 
   println!("Saving terrain to {}", terrain_path.to_str().unwrap());
   stopwatch::time("save_terrain", || {
@@ -189,4 +197,22 @@ fn save_terrain(terrain: &terrain::T, path: &std::path::Path) {
     &mut file,
     bincode::SizeLimit::Infinite,
   ).unwrap();
+}
+
+fn tree_ram_usage(tree: &common::voxel::tree::T) -> usize {
+  fn tree_ram_usage_inner(branches: &common::voxel::tree::Branches, size: &mut usize) {
+    *size += std::mem::size_of_val(branches);
+    for node in branches.as_flat_array() {
+      match node.next {
+        voxel_data::tree::Inner::Empty => {},
+        voxel_data::tree::Inner::Branches(ref branches) => {
+          tree_ram_usage_inner(branches, size);
+        },
+      }
+    }
+  }
+
+  let mut r = 0;
+  tree_ram_usage_inner(&tree.contents, &mut r);
+  r
 }

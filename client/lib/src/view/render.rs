@@ -1,18 +1,18 @@
 //! Draw the view.
 
-use camera::{Camera, set_camera};
 use cgmath;
-use light::{set_sun, set_ambient_light};
 use gl;
-use std;
 use time;
-use view;
 use yaglw;
 
-fn set_eye_position(shader: &mut yaglw::shader::Shader, camera: &Camera) {
+use view;
+use view::camera::{set_camera};
+use view::light::{set_sun, set_ambient_light};
+
+fn set_eye_position(shader: &mut yaglw::shader::Shader, camera: &view::camera::T) {
   unsafe {
     let uniform = shader.get_uniform_location("eye_position");
-    let ptr = std::mem::transmute(&camera.position);
+    let ptr = &camera.position as *const _ as *const _;
     gl::Uniform3fv(uniform, 1, ptr);
   }
 }
@@ -35,12 +35,12 @@ fn draw_backdrop(
 
     let projection_uniform = rndr.shaders.sky.shader.get_uniform_location("projection_matrix");
     let projection_matrix = rndr.camera.projection_matrix();
-    let ptr = std::mem::transmute(&projection_matrix);
+    let ptr = &projection_matrix as *const _ as *const _;
     gl::UniformMatrix4fv(projection_uniform, 1, 0, ptr);
 
     let window_size_uniform = rndr.shaders.sky.shader.get_uniform_location("window_size");
     let window_size = cgmath::Vector2::new(rndr.window_size.x as f32, rndr.window_size.y as f32);
-    let ptr = std::mem::transmute(&window_size);
+    let ptr = &window_size as *const _ as *const _;
     gl::Uniform2fv(window_size_uniform, 1, ptr);
 
     gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);

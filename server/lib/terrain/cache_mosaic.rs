@@ -13,7 +13,7 @@ impl Eq for Key {}
 impl std::hash::Hash for Key {
   fn hash<H>(&self, state: &mut H) where H: std::hash::Hasher {
     unsafe {
-      let as_slice: *const cgmath::Point3<u32> = std::mem::transmute(self);
+      let as_slice: *const cgmath::Point3<u32> = self as *const _ as *const _;
       (*as_slice).hash(state)
     }
   }

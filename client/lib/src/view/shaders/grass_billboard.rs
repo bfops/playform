@@ -4,6 +4,8 @@ use gl;
 use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 
+use view::shaders;
+
 /// Draw textures using a projection matrix.
 pub struct T<'a> {
   #[allow(missing_docs)]
@@ -62,7 +64,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
             vec4(scale * vertex_position, 1)
           );
       }}"#,
-      ::shaders::adjust_depth_precision::as_string(near, far),
+      shaders::adjust_depth_precision::as_string(near, far),
     )),
     (gl::FRAGMENT_SHADER, format!("
       #version 330 core
@@ -114,8 +116,8 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
             gl_FragCoord.z / gl_FragCoord.w
           );
       }}",
-      ::shaders::depth_fog::to_string(),
-      ::shaders::world_fragment::to_string(),
+      shaders::depth_fog::to_string(),
+      shaders::world_fragment::to_string(),
     )),
   );
   T {

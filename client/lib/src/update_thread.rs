@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 use cgmath;
 use cgmath::Point;
+=======
+>>>>>>> master
 use std::sync::Mutex;
 use stopwatch;
 use time;
@@ -10,6 +13,7 @@ use common::surroundings_loader;
 use common::surroundings_loader::LoadType;
 
 use audio_thread;
+<<<<<<< HEAD
 use block_position;
 use chunk;
 use client;
@@ -23,6 +27,14 @@ use terrain_mesh;
 use view_update;
 use view_update::T;
 use voxel;
+=======
+use chunk_position;
+use client;
+use lod;
+use server_update::apply_server_update;
+use terrain;
+use view;
+>>>>>>> master
 
 const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
 
@@ -37,11 +49,19 @@ pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateSe
   enqueue_terrain_update : &mut EnqueueTerrainUpdate,
 ) where
   RecvServer           : FnMut() -> Option<protocol::ServerToClient>,
+<<<<<<< HEAD
   UpdateView0          : FnMut(view_update::T),
   UpdateView1          : FnMut(view_update::T),
   UpdateAudio          : FnMut(audio_thread::Message),
   UpdateServer         : FnMut(protocol::ClientToServer),
   EnqueueTerrainUpdate : FnMut(terrain_loader::Message),
+=======
+  UpdateView0          : FnMut(view::update::T),
+  UpdateView1          : FnMut(view::update::T),
+  UpdateAudio          : FnMut(audio_thread::Message),
+  UpdateServer         : FnMut(protocol::ClientToServer),
+  EnqueueTerrainUpdate : FnMut(terrain::Load),
+>>>>>>> master
 {
   'update_loop: loop {
     let should_quit = *quit.lock().unwrap();
@@ -71,7 +91,11 @@ fn update_surroundings<UpdateView, UpdateServer>(
   update_view   : &mut UpdateView,
   update_server : &mut UpdateServer,
 ) where
+<<<<<<< HEAD
   UpdateView   : FnMut(view_update::T),
+=======
+  UpdateView   : FnMut(view::update::T),
+>>>>>>> master
   UpdateServer : FnMut(protocol::ClientToServer),
 {
   let start = time::precise_time_ns();
@@ -80,35 +104,40 @@ fn update_surroundings<UpdateView, UpdateServer>(
     let load_position = *client.load_position.lock().unwrap();
     load_position.unwrap_or_else(|| *client.player_position.lock().unwrap())
   };
-  let load_position = block_position::of_world_position(&load_position);
+  let load_position = chunk_position::of_world_position(&load_position);
   let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
   let mut updates = surroundings_loader.updates(load_position.as_pnt()) ;
   loop {
+<<<<<<< HEAD
     if client.pending_terrain_requests.lock().unwrap().len() as u32 >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
+=======
+    if *client.pending_terrain_requests.lock().unwrap() >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
+>>>>>>> master
       trace!("update loop breaking");
       break;
     }
 
-    let block_position;
+    let chunk_position;
     let load_type;
     match updates.next() {
       None => break,
       Some((b, l)) => {
-        block_position = block_position::of_pnt(&b);
+        chunk_position = chunk_position::of_pnt(&b);
         load_type = l;
       },
     }
 
-    debug!("block surroundings");
+    debug!("chunk surroundings");
     let distance =
       surroundings_loader::distance_between(
         load_position.as_pnt(),
-        block_position.as_pnt(),
+        chunk_position.as_pnt(),
       );
     let new_lod = lod_index(distance);
     let mut requested_chunks: fnv_set::T<chunk::Position> = fnv_set::new();
     match load_type {
       LoadType::Load => {
+<<<<<<< HEAD
         for edge in block_position.edges(new_lod) {
           stopwatch::time("update_thread.load_edge", || {
             let already_loaded = client.loaded_edges.lock().unwrap().contains_key(&edge);
@@ -152,6 +181,35 @@ fn update_surroundings<UpdateView, UpdateServer>(
               });
           })
         }
+=======
+        stopwatch::time("update_thread.load_chunk", || {
+          trace!("Loading distance {}", distance);
+          let new_lod = client::lod_index(distance);
+          let load_state = client.terrain.lock().unwrap().load_state(&chunk_position);
+          if load_state == Some(new_lod) {
+            debug!("Not re-loading {:?} at {:?}", chunk_position, new_lod);
+          } else {
+            load_or_request_chunk(client, update_server, update_view, &chunk_position, new_lod);
+          }
+        })
+      },
+      LoadType::Downgrade => {
+        stopwatch::time("update_thread.update_chunk", || {
+          let new_lod = client::lod_index(distance);
+          let load_state = client.terrain.lock().unwrap().load_state(&chunk_position);
+          let is_downgrade = load_state.map(|lod| new_lod < lod) == Some(true);
+          if is_downgrade {
+            load_or_request_chunk(client, update_server, update_view, &chunk_position, new_lod);
+          } else {
+            trace!("Not updating {:?} at {:?}", chunk_position, new_lod);
+          }
+        })
+      },
+      LoadType::Unload => {
+        stopwatch::time("update_thread.unload", || {
+          client.terrain.lock().unwrap().unload(update_view, &chunk_position);
+        })
+>>>>>>> master
       },
     }
 
@@ -181,6 +239,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
   }
 }
 
+<<<<<<< HEAD
 fn process_voxel_updates<UpdateView>(
   client      : &client::T,
   update_view : &mut UpdateView,
@@ -231,6 +290,58 @@ fn load_or_request_edge<RequestVoxel, UpdateView>(
       }
     }
   }
+=======
+fn load_or_request_chunk<UpdateServer, UpdateView>(
+  client         : &client::T,
+  update_server  : &mut UpdateServer,
+  update_view    : &mut UpdateView,
+  chunk_position : &chunk_position::T,
+  lod            : lod::T,
+) where
+  UpdateServer: FnMut(protocol::ClientToServer),
+  UpdateView: FnMut(view::update::T),
+{
+  let mut terrain = client.terrain.lock().unwrap();
+  let rng = &mut *client.rng.lock().unwrap();
+  let r =
+    terrain.load_chunk(
+      &client.id_allocator,
+      &mut *rng,
+      update_view,
+      chunk_position,
+      lod,
+    );
+  match r {
+    Ok(()) => {},
+    Err(voxels) => {
+      update_server(
+        protocol::ClientToServer::RequestVoxels {
+          requested_at : time::precise_time_ns(),
+          client_id    : client.id,
+          voxels       : voxels,
+        }
+      );
+      *client.pending_terrain_requests.lock().unwrap() += 1;
+    },
+  }
+}
+
+#[inline(never)]
+fn process_voxel_updates<UpdateView>(
+  client      : &client::T,
+  update_view : &mut UpdateView,
+) where
+  UpdateView: FnMut(view::update::T),
+{
+  let terrain = &mut *client.terrain.lock().unwrap();
+  let rng = &mut *client.rng.lock().unwrap();
+  terrain.tick(
+    &client.id_allocator,
+    rng,
+    update_view,
+    &*client.player_position.lock().unwrap(),
+  );
+>>>>>>> master
 }
 
 #[inline(never)]
@@ -242,11 +353,19 @@ fn process_server_updates<RecvServer, UpdateView, UpdateAudio, UpdateServer, Enq
   update_server: &mut UpdateServer,
   enqueue_terrain_update: &mut EnqueueTerrainUpdate,
 ) where
+<<<<<<< HEAD
   RecvServer: FnMut() -> Option<protocol::ServerToClient>,
   UpdateView: FnMut(view_update::T),
   UpdateAudio: FnMut(audio_thread::Message),
   UpdateServer: FnMut(protocol::ClientToServer),
   EnqueueTerrainUpdate: FnMut(terrain_loader::Message),
+=======
+  RecvServer           : FnMut() -> Option<protocol::ServerToClient>,
+  UpdateView           : FnMut(view::update::T),
+  UpdateAudio          : FnMut(audio_thread::Message),
+  UpdateServer         : FnMut(protocol::ClientToServer),
+  EnqueueTerrainUpdate : FnMut(terrain::Load),
+>>>>>>> master
 {
   let start = time::precise_time_ns();
   let mut i = 0;

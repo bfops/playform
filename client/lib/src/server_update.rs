@@ -6,20 +6,24 @@ use time;
 
 use common::color::Color4;
 use common::protocol;
-use common::voxel;
 
 use audio_loader;
 use audio_thread;
 use client;
+<<<<<<< HEAD
 use light;
 use terrain_loader;
+=======
+use terrain;
+>>>>>>> master
 use vertex::ColoredVertex;
-use view_update;
+use view;
 
 pub const TRIANGLES_PER_BOX: u32 = 12;
 pub const VERTICES_PER_TRIANGLE: u32 = 3;
 pub const TRIANGLE_VERTICES_PER_BOX: u32 = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
 
+<<<<<<< HEAD
 pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrainUpdate>(
   client                 : &client::T,
   update_view            : &mut UpdateView,
@@ -32,6 +36,20 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrain
   UpdateAudio          : FnMut(audio_thread::Message),
   UpdateServer         : FnMut(protocol::ClientToServer),
   EnqueueTerrainUpdate : FnMut(terrain_loader::Message),
+=======
+pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrainLoad>(
+  client               : &client::T,
+  update_view          : &mut UpdateView,
+  update_audio         : &mut UpdateAudio,
+  update_server        : &mut UpdateServer,
+  enqueue_terrain_load : &mut EnqueueTerrainLoad,
+  update               : protocol::ServerToClient,
+) where
+  UpdateView         : FnMut(view::update::T),
+  UpdateAudio        : FnMut(audio_thread::Message),
+  UpdateServer       : FnMut(protocol::ClientToServer),
+  EnqueueTerrainLoad : FnMut(terrain::Load),
+>>>>>>> master
 {
   stopwatch::time("apply_server_update", move || {
     match update {
@@ -46,7 +64,7 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrain
       },
       protocol::ServerToClient::UpdatePlayer(player_id, bounds) => {
         let mesh = to_triangles(&bounds, &Color4::of_rgba(0.0, 0.0, 1.0, 1.0));
-        update_view(view_update::UpdatePlayer(player_id, mesh));
+        update_view(view::update::UpdatePlayer(player_id, mesh));
 
         // We "lock" the client to client.player_id, so for updates to that player only,
         // there is more client-specific logic.
@@ -60,20 +78,21 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrain
         let position = Point3::from_vec(&position);
 
         *client.player_position.lock().unwrap() = position;
-        update_view(view_update::MoveCamera(position));
+        update_view(view::update::MoveCamera(position));
       },
       protocol::ServerToClient::UpdateMob(id, bounds) => {
         let mesh = to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0));
-        update_view(view_update::UpdateMob(id, mesh));
+        update_view(view::update::UpdateMob(id, mesh));
       },
       protocol::ServerToClient::UpdateSun(fraction) => {
-        update_view(view_update::SetSun(
-          light::Sun {
+        update_view(view::update::SetSun(
+          view::light::Sun {
             progression: fraction,
             rotation: 0.0,
           }
         ));
       },
+<<<<<<< HEAD
       protocol::ServerToClient::Chunk { requested_at, chunk } => {
         debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - requested_at);
 
@@ -81,6 +100,24 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrain
           terrain_loader::Message::Chunk {
             requested_at   : requested_at,
             chunk          : chunk,
+=======
+      protocol::ServerToClient::Voxels { voxels, reason } => {
+        let request_time;
+        match reason {
+          protocol::VoxelReason::Updated => {
+            request_time = None;
+          },
+          protocol::VoxelReason::Requested { at } => {
+            request_time = Some(at);
+            debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - at);
+          },
+        }
+
+        enqueue_terrain_load(
+          terrain::Load::Voxels {
+            voxels       : voxels,
+            request_time : request_time,
+>>>>>>> master
           }
         );
       },

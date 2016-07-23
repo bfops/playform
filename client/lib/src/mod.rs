@@ -45,6 +45,7 @@ extern crate time;
 extern crate voxel_data;
 extern crate yaglw;
 
+<<<<<<< HEAD
 mod audio;
 mod audio_loader;
 mod audio_thread;
@@ -77,5 +78,41 @@ mod voxel;
 mod view;
 mod view_thread;
 mod view_update;
+=======
+#[allow(missing_docs)]
+pub mod audio;
+#[allow(missing_docs)]
+pub mod audio_loader;
+#[allow(missing_docs)]
+pub mod audio_thread;
+#[allow(missing_docs)]
+pub mod chunk_position;
+#[allow(missing_docs)]
+pub mod client;
+#[allow(missing_docs)]
+pub mod hud;
+#[allow(missing_docs)]
+pub mod lod;
+#[allow(missing_docs)]
+pub mod process_event;
+#[allow(missing_docs)]
+pub mod record_book;
+#[allow(missing_docs)]
+pub mod run;
+#[allow(missing_docs)]
+pub mod server;
+#[allow(missing_docs)]
+pub mod server_update;
+#[allow(missing_docs)]
+pub mod terrain;
+#[allow(missing_docs)]
+pub mod terrain_mesh;
+#[allow(missing_docs)]
+pub mod update_thread;
+#[allow(missing_docs)]
+pub mod vertex;
+#[allow(missing_docs)]
+pub mod view;
+>>>>>>> master
 
 pub use run::run;

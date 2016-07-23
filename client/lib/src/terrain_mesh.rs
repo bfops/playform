@@ -1,4 +1,4 @@
-//! Data structure for a small block of terrain.
+//! Data structure for a small chunk of terrain.
 
 use cgmath;
 use cgmath::{Point, Point3, Vector3, Vector, EuclideanVector, Matrix, Rotation, Aabb3};
@@ -13,21 +13,26 @@ use common::id_allocator;
 use common::voxel;
 // TODO: Move the server-only parts to the server, like BLOCK_WIDTH and sample_info.
 
+<<<<<<< HEAD
 use edge;
+=======
+use chunk_position;
+use lod;
+>>>>>>> master
 
 // TODO: terrain_mesh is now chunk-agnostic. Some/all of these values should be moved.
 /// Number of LODs
 pub const LOD_COUNT: usize = 4;
 /// lg(WIDTH)
 pub const LG_WIDTH: i16 = 3;
-/// The width of a block of terrain.
+/// The width of a chunk of terrain.
 pub const WIDTH: i32 = 1 << LG_WIDTH;
 
 /// lg(EDGE_SAMPLES)
 // NOTE: If there are duplicates here, weird invariants will fail.
 // Just remove the LODs if you don't want duplicates.
 pub const LG_EDGE_SAMPLES: [u16; LOD_COUNT] = [3, 2, 1, 0];
-/// The number of voxels along an axis within a block, indexed by LOD.
+/// The number of voxels along an axis within a chunk, indexed by LOD.
 pub const EDGE_SAMPLES: [u16; LOD_COUNT] = [
   1 << LG_EDGE_SAMPLES[0],
   1 << LG_EDGE_SAMPLES[1],
@@ -35,7 +40,7 @@ pub const EDGE_SAMPLES: [u16; LOD_COUNT] = [
   1 << LG_EDGE_SAMPLES[3],
 ];
 
-/// The width of a voxel within a block, indexed by LOD.
+/// The width of a voxel within a chunk, indexed by LOD.
 pub const LG_SAMPLE_SIZE: [i16; LOD_COUNT] = [
   LG_WIDTH - LG_EDGE_SAMPLES[0] as i16,
   LG_WIDTH - LG_EDGE_SAMPLES[1] as i16,
@@ -226,17 +231,29 @@ fn place_grass<T, Rng: rand::Rng>(
 #[inline(never)]
 pub fn generate<Rng: rand::Rng>(
   voxels: &voxel::tree::T,
+<<<<<<< HEAD
   edge: &edge::T,
+=======
+  chunk_position: &chunk_position::T,
+  lod: lod::T,
+>>>>>>> master
   id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
   rng: &mut Rng,
 ) -> Result<T, ()>
 {
   stopwatch::time("terrain_mesh::generate", || {
-    let mut block = empty();
+    let mut chunk = empty();
     {
-      let block2 = Arc::make_mut(&mut block);
+      let chunk2 = Arc::make_mut(&mut chunk);
 
+<<<<<<< HEAD
       let low = edge.low_corner;
+=======
+      let lg_edge_samples = LG_EDGE_SAMPLES[lod.0 as usize];
+      let lg_sample_size = LG_SAMPLE_SIZE[lod.0 as usize];
+
+      let low = *chunk_position.as_pnt();
+>>>>>>> master
       let high = low.add_v(&Vector3::new(1, 1, 1));
       let low =
         Point3::new(
@@ -254,6 +271,7 @@ pub fn generate<Rng: rand::Rng>(
       trace!("low {:?}", low);
       trace!("high {:?}", high);
 
+<<<<<<< HEAD
       trace!("edge: {:?} {:?}", edge.direction, low);
 
       try!(dual_contouring::edge::extract(
@@ -289,6 +307,68 @@ pub fn generate<Rng: rand::Rng>(
       ));
     }
     Ok(block)
+=======
+      {
+        let mut edges = |direction, low_x, high_x, low_y, high_y, low_z, high_z| {
+          for x in range_inclusive(low_x, high_x) {
+          for y in range_inclusive(low_y, high_y) {
+          for z in range_inclusive(low_z, high_z) {
+            trace!("edge: {:?} {:?}", direction, Point3::new(x, y, z));
+            let edge =
+              dual_contouring::edge::T {
+                low_corner: Point3::new(x, y, z),
+                direction: direction,
+                lg_size: lg_sample_size,
+              };
+
+            let _ =
+              dual_contouring::edge::extract(
+                &mut voxel_storage::T { voxels: voxels },
+                &edge,
+                &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
+                  let id = id_allocator::allocate(id_allocator);
+
+                  chunk2.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
+                  chunk2.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
+                  chunk2.materials.push(polygon.material as i32);
+                  chunk2.ids.push(id);
+                  let v = &polygon.vertices;
+                  chunk2.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
+
+                  if polygon.material == voxel::Material::Terrain && lod <= lod::T(1) {
+                    for grass in place_grass(&polygon, rng) {
+                      let id = id_allocator::allocate(id_allocator);
+                      chunk2.grass.push(grass);
+                      chunk2.grass_ids.push(id);
+                    }
+                  }
+                }
+              );
+          }}}
+        };
+
+        edges(
+          dual_contouring::edge::Direction::X,
+          low.x, high.x - 1,
+          low.y, high.y - 1,
+          low.z, high.z - 1,
+        );
+        edges(
+          dual_contouring::edge::Direction::Y,
+          low.x, high.x - 1,
+          low.y, high.y - 1,
+          low.z, high.z - 1,
+        );
+        edges(
+          dual_contouring::edge::Direction::Z,
+          low.x, high.x - 1,
+          low.y, high.y - 1,
+          low.z, high.z - 1,
+        );
+      }
+    }
+    chunk
+>>>>>>> master
   })
 }
 

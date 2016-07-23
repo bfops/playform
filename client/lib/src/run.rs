@@ -12,7 +12,7 @@ use client;
 use server;
 use record_book;
 use update_thread::update_thread;
-use view_thread::view_thread;
+use view::thread::view_thread;
 
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, server_url: &str) {
@@ -33,7 +33,11 @@ pub fn run(listen_url: &str, server_url: &str) {
       unsafe {
         thread_scoped::scoped(|| {
           while !*quit.lock().unwrap() {
+<<<<<<< HEAD
             info!("Outstanding voxel updates: {}", client.terrain_loader.lock().unwrap().queued_updates());
+=======
+            info!("Outstanding voxel updates: {}", client.terrain.lock().unwrap().queued_update_count());
+>>>>>>> master
             info!("Outstanding view0 updates: {}", view_updates0.lock().unwrap().len());
             info!("Outstanding view1 updates: {}", view_updates1.lock().unwrap().len());
             std::thread::sleep(std::time::Duration::from_secs(1));
@@ -72,23 +76,30 @@ pub fn run(listen_url: &str, server_url: &str) {
             &mut |up| { view_updates1.lock().unwrap().push_back(up) },
             &mut |up| { audio_updates.lock().unwrap().push_back(up) },
   	        &mut |up| { server.talk.tell(&up) },
+<<<<<<< HEAD
             &mut |update| { client.terrain_loader.lock().unwrap().enqueue(update) },
+=======
+            &mut |msg| {
+              *client.pending_terrain_requests.lock().unwrap() -= 1;
+              client.terrain.lock().unwrap().enqueue(msg);
+            },
+>>>>>>> master
           );
 
           let mut recorded = record_book::thread_local::clone();
-          recorded.block_loads.sort_by(|x, y| x.loaded_at.cmp(&y.loaded_at));
+          recorded.chunk_loads.sort_by(|x, y| x.loaded_at.cmp(&y.loaded_at));
 
-          let mut file = std::fs::File::create("block_loads.out").unwrap();
+          let mut file = std::fs::File::create("chunk_loads.out").unwrap();
 
           file.write_all(b"records = [").unwrap();
-          for (i, record) in recorded.block_loads.iter().enumerate() {
+          for (i, record) in recorded.chunk_loads.iter().enumerate() {
             if i > 0 {
               file.write_all(b", ").unwrap();
             }
             file.write_fmt(format_args!("[{}; {}; {}; {}]", record.requested_at, record.responded_at, record.processed_at, record.loaded_at)).unwrap();
           }
           file.write_all(b"];\n").unwrap();
-          file.write_fmt(format_args!("plot([1:{}], records);", recorded.block_loads.len())).unwrap();
+          file.write_fmt(format_args!("plot([1:{}], records);", recorded.chunk_loads.len())).unwrap();
 
           stopwatch::clone()
         })

@@ -1,0 +1,25 @@
+[package]
+
+name = "dummy-client-lib"
+version = "0.0.0"
+authors = []
+
+[lib]
+name = "dummy_client_lib"
+path = "./mod.rs"
+
+[dependencies]
+cgmath = "0.3.*"
+clippy = "*"
+log = "*"
+thread-scoped = "*"
+time = "*"
+
+[dependencies.client-lib]
+path = "../lib"
+
+[dependencies.playform-common]
+path = "../../common"
+
+[dependencies.stopwatch]
+git = "https://github.com/bfops/stopwatch-rs"

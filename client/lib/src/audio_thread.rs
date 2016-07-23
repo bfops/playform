@@ -28,7 +28,7 @@ pub fn audio_thread<RecvMessage>(
   let settings = portaudio::OutputStreamSettings::new(params, sample_rate, buffer_size as u32);
 
   let callback = {
-    let tracks_playing: *mut audio::TracksPlaying = unsafe { std::mem::transmute(&mut tracks_playing) };
+    let tracks_playing: *mut audio::TracksPlaying = &mut tracks_playing as *mut _ as *mut _;
     let tracks_playing: &mut audio::TracksPlaying = unsafe { &mut *tracks_playing };
     move |portaudio::OutputStreamCallbackArgs { buffer, .. }| {
       for x in buffer.iter_mut() {
