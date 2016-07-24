@@ -6,10 +6,10 @@ use edge;
 
 pub use common::chunk::*;
 
-pub fn containing(voxel: &voxel::bounds::T) -> Position {
+pub fn containing(voxel: &voxel::bounds::T) -> position::T {
   let lg_ratio = LG_WIDTH as i16 - voxel.lg_size;
   assert!(lg_ratio > 0);
-  Position {
+  position::T {
     coords :
       cgmath::Point3::new(
         voxel.x >> lg_ratio,
@@ -21,7 +21,7 @@ pub fn containing(voxel: &voxel::bounds::T) -> Position {
 }
 
 pub struct Edges<'a> {
-  chunk     : &'a Position,
+  chunk     : &'a position::T,
   current   : cgmath::Vector3<i32>,
   direction : edge::Direction,
   done      : bool,
@@ -29,7 +29,7 @@ pub struct Edges<'a> {
 
 impl<'a> Edges<'a> {
   #[allow(missing_docs)]
-  pub fn new<'b: 'a>(chunk: &'b Position) -> Self {
+  pub fn new<'b: 'a>(chunk: &'b position::T) -> Self {
     Edges {
       chunk     : chunk,
       current   : cgmath::Vector3::new(-1, 0, 0),
@@ -93,6 +93,6 @@ impl<'a> Iterator for Edges<'a> {
   }
 }
 
-pub fn edges<'a>(position: &'a Position) -> Edges<'a> {
+pub fn edges<'a>(position: &'a position::T) -> Edges<'a> {
   Edges::new(position)
 }

@@ -10,24 +10,29 @@ pub const WIDTH: u32 = 1 << LG_WIDTH;
 /// Base-2 log of the chunk width
 pub const LG_WIDTH: u16 = 5;
 
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
-#[allow(missing_docs)]
-pub struct Position {
-  pub coords        : cgmath::Point3<i32>,
-  pub lg_voxel_size : i16,
-}
+/// A position in "chunk coordinates".
+pub mod position {
+  use cgmath;
 
-impl Position {
-  /// Return an iterator for the bounds of the voxels in a chunk.
-  pub fn voxels(&self) -> VoxelBounds {
-    VoxelBounds::new(self)
+  #[derive(Debug, Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
+  #[allow(missing_docs)]
+  pub struct T {
+    pub coords        : cgmath::Point3<i32>,
+    pub lg_voxel_size : i16,
+  }
+
+  impl T {
+    /// Return an iterator for the bounds of the voxels in a chunk.
+    pub fn voxels(&self) -> super::VoxelBounds {
+      super::VoxelBounds::new(self)
+    }
   }
 }
 
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 #[allow(missing_docs)]
 pub struct T {
-  pub position : Position,
+  pub position : position::T,
   pub voxels   : Vec<voxel::T>,
 }
 
@@ -55,7 +60,7 @@ impl T {
 }
 
 /// Construct a chunk from a position and an initialization callback.
-pub fn of_callback<F>(p: &Position, mut f: F) -> T
+pub fn of_callback<F>(p: &position::T, mut f: F) -> T
   where F: FnMut(voxel::bounds::T) -> voxel::T
 {
   assert!(p.lg_voxel_size <= 0 || p.lg_voxel_size as u16 <= LG_WIDTH);
@@ -84,14 +89,14 @@ pub fn of_callback<F>(p: &Position, mut f: F) -> T
 
 /// An iterator for the bounds of the voxels inside a chunk.
 pub struct VoxelBounds<'a> {
-  chunk   : &'a Position,
+  chunk   : &'a position::T,
   current : cgmath::Point3<u8>,
   done    : bool,
 }
 
 impl<'a> VoxelBounds <'a> {
   #[allow(missing_docs)]
-  pub fn new<'b:'a>(chunk: &'b Position) -> Self {
+  pub fn new<'b:'a>(chunk: &'b position::T) -> Self {
     VoxelBounds {
       chunk         : chunk,
       current       : cgmath::Point3::new(0, 0, 0),

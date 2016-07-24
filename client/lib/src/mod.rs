@@ -45,40 +45,6 @@ extern crate time;
 extern crate voxel_data;
 extern crate yaglw;
 
-<<<<<<< HEAD
-mod audio;
-mod audio_loader;
-mod audio_thread;
-mod block_position;
-mod camera;
-mod chunk;
-mod client;
-mod edge;
-mod hud;
-mod light;
-mod load_terrain;
-mod loaded_edges;
-mod lod;
-mod mob_buffers;
-mod player_buffers;
-mod process_event;
-mod record_book;
-mod render;
-mod run;
-mod server;
-mod server_update;
-mod shaders;
-mod grass_buffers;
-mod terrain_buffers;
-mod terrain_loader;
-mod terrain_mesh;
-mod update_thread;
-mod vertex;
-mod voxel;
-mod view;
-mod view_thread;
-mod view_update;
-=======
 #[allow(missing_docs)]
 pub mod audio;
 #[allow(missing_docs)]
@@ -86,11 +52,15 @@ pub mod audio_loader;
 #[allow(missing_docs)]
 pub mod audio_thread;
 #[allow(missing_docs)]
-pub mod chunk_position;
+pub mod chunk;
 #[allow(missing_docs)]
 pub mod client;
 #[allow(missing_docs)]
+pub mod edge;
+#[allow(missing_docs)]
 pub mod hud;
+#[allow(missing_docs)]
+pub mod loaded_edges;
 #[allow(missing_docs)]
 pub mod lod;
 #[allow(missing_docs)]
@@ -112,7 +82,8 @@ pub mod update_thread;
 #[allow(missing_docs)]
 pub mod vertex;
 #[allow(missing_docs)]
+pub mod voxel;
+#[allow(missing_docs)]
 pub mod view;
->>>>>>> master
 
 pub use run::run;

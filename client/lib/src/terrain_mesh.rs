@@ -13,12 +13,9 @@ use common::id_allocator;
 use common::voxel;
 // TODO: Move the server-only parts to the server, like BLOCK_WIDTH and sample_info.
 
-<<<<<<< HEAD
+use chunk;
 use edge;
-=======
-use chunk_position;
 use lod;
->>>>>>> master
 
 // TODO: terrain_mesh is now chunk-agnostic. Some/all of these values should be moved.
 /// Number of LODs
@@ -231,29 +228,17 @@ fn place_grass<T, Rng: rand::Rng>(
 #[inline(never)]
 pub fn generate<Rng: rand::Rng>(
   voxels: &voxel::tree::T,
-<<<<<<< HEAD
   edge: &edge::T,
-=======
-  chunk_position: &chunk_position::T,
-  lod: lod::T,
->>>>>>> master
   id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
   rng: &mut Rng,
 ) -> Result<T, ()>
 {
   stopwatch::time("terrain_mesh::generate", || {
-    let mut chunk = empty();
+    let mut block = empty();
     {
-      let chunk2 = Arc::make_mut(&mut chunk);
+      let block2 = Arc::make_mut(&mut block);
 
-<<<<<<< HEAD
       let low = edge.low_corner;
-=======
-      let lg_edge_samples = LG_EDGE_SAMPLES[lod.0 as usize];
-      let lg_sample_size = LG_SAMPLE_SIZE[lod.0 as usize];
-
-      let low = *chunk_position.as_pnt();
->>>>>>> master
       let high = low.add_v(&Vector3::new(1, 1, 1));
       let low =
         Point3::new(
@@ -271,7 +256,6 @@ pub fn generate<Rng: rand::Rng>(
       trace!("low {:?}", low);
       trace!("high {:?}", high);
 
-<<<<<<< HEAD
       trace!("edge: {:?} {:?}", edge.direction, low);
 
       try!(dual_contouring::edge::extract(
@@ -307,68 +291,6 @@ pub fn generate<Rng: rand::Rng>(
       ));
     }
     Ok(block)
-=======
-      {
-        let mut edges = |direction, low_x, high_x, low_y, high_y, low_z, high_z| {
-          for x in range_inclusive(low_x, high_x) {
-          for y in range_inclusive(low_y, high_y) {
-          for z in range_inclusive(low_z, high_z) {
-            trace!("edge: {:?} {:?}", direction, Point3::new(x, y, z));
-            let edge =
-              dual_contouring::edge::T {
-                low_corner: Point3::new(x, y, z),
-                direction: direction,
-                lg_size: lg_sample_size,
-              };
-
-            let _ =
-              dual_contouring::edge::extract(
-                &mut voxel_storage::T { voxels: voxels },
-                &edge,
-                &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
-                  let id = id_allocator::allocate(id_allocator);
-
-                  chunk2.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
-                  chunk2.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
-                  chunk2.materials.push(polygon.material as i32);
-                  chunk2.ids.push(id);
-                  let v = &polygon.vertices;
-                  chunk2.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
-
-                  if polygon.material == voxel::Material::Terrain && lod <= lod::T(1) {
-                    for grass in place_grass(&polygon, rng) {
-                      let id = id_allocator::allocate(id_allocator);
-                      chunk2.grass.push(grass);
-                      chunk2.grass_ids.push(id);
-                    }
-                  }
-                }
-              );
-          }}}
-        };
-
-        edges(
-          dual_contouring::edge::Direction::X,
-          low.x, high.x - 1,
-          low.y, high.y - 1,
-          low.z, high.z - 1,
-        );
-        edges(
-          dual_contouring::edge::Direction::Y,
-          low.x, high.x - 1,
-          low.y, high.y - 1,
-          low.z, high.z - 1,
-        );
-        edges(
-          dual_contouring::edge::Direction::Z,
-          low.x, high.x - 1,
-          low.y, high.y - 1,
-          low.z, high.z - 1,
-        );
-      }
-    }
-    chunk
->>>>>>> master
   })
 }
 

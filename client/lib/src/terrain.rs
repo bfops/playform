@@ -8,8 +8,10 @@ use common::id_allocator;
 use common::surroundings_loader;
 use common::voxel;
 
-use chunk_position;
+use chunk;
 use client;
+use edge;
+use loaded_edges;
 use lod;
 use record_book;
 use terrain_mesh;
@@ -17,17 +19,18 @@ use view;
 
 #[derive(Debug, Clone)]
 pub enum Load {
+  Chunk {
+    chunk        : chunk::T,
+    requested_at : u64,
+  },
   Voxels {
-    voxels       : Vec<(voxel::bounds::T, voxel::T)>,
-    request_time : Option<u64>,
+    voxels : Vec<(voxel::bounds::T, voxel::T)>,
   },
 }
 
 pub struct T {
-  /// A record of all the chunks that have been loaded.
-  loaded_chunks       : chunk_position::map::T<(terrain_mesh::T, lod::T)>,
-  /// Map each chunk to the number of voxels inside it that we have.
-  chunk_voxels_loaded : chunk_position::with_lod::map::T<u32>,
+  /// The set of currently loaded edges.
+  loaded_edges        : loaded_edges::T<terrain_mesh::T>,
   /// The voxels we have cached from the server.
   voxels              : voxel::tree::T,
   max_load_distance   : i32,
@@ -36,16 +39,17 @@ pub struct T {
 
 pub fn new(max_load_distance: i32) -> T {
   T {
-    loaded_chunks       : chunk_position::map::new(),
-    chunk_voxels_loaded : chunk_position::with_lod::map::new(),
+    loaded_edges        : loaded_edges::new(),
     voxels              : voxel::tree::new(),
     max_load_distance   : max_load_distance,
     queue               : std::collections::VecDeque::new(),
   }
 }
 
+pub enum LoadResult { Success, VoxelsMissing }
+
 impl T {
-  pub fn load_state(&self, chunk_position: &chunk_position::T) -> Option<lod::T> {
+  pub fn load_state(&self, chunk_position: &chunk::position::T) -> Option<lod::T> {
     self.loaded_chunks
       .get(&chunk_position)
       .map(|&(_, lod)| lod)
@@ -61,7 +65,7 @@ impl T {
 
   fn all_voxels_loaded(
     &self,
-    chunk_position: chunk_position::T,
+    chunk_position: chunk::position::T,
     lod: lod::T,
   ) -> bool {
     let chunk_voxels_loaded =
@@ -89,14 +93,14 @@ impl T {
     let start = time::precise_time_ns();
     while let Some(msg) = self.queue.pop_front() {
       match msg {
-        Load::Voxels { voxels, request_time } => {
+        Load::Voxels { voxels, requested_at } => {
           self.load_voxels(
             id_allocator,
             rng,
             update_view,
             player_position,
             voxels,
-            request_time,
+            requested_at,
           );
         },
       }
@@ -113,7 +117,7 @@ impl T {
     id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
     rng            : &mut Rng,
     update_view    : &mut UpdateView,
-    chunk_position : &chunk_position::T,
+    chunk_position : &chunk::position::T,
     lod            : lod::T,
   ) where
     UpdateView : FnMut(view::update::T),
@@ -147,56 +151,36 @@ impl T {
     };
 
     if !mesh_chunk.ids.is_empty() {
-      updates.push(view::update::AddChunk(*chunk_position, mesh_chunk, lod));
+      updates.push(view::update::LoadMesh(mesh_chunk));
     }
 
     update_view(view::update::Atomic(updates));
   }
 
-  pub fn load_chunk<Rng, UpdateView>(
+  /// Generate view updates to load as much of a chunk as is possible.
+  pub fn try_load_chunk<Rng, UpdateView>(
     &mut self,
     id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
     rng            : &mut Rng,
     update_view    : &mut UpdateView,
-    chunk_position : &chunk_position::T,
+    chunk_position : &chunk::position::T,
     lod            : lod::T,
-  ) -> Result<(), Vec<voxel::bounds::T>> where
+  ) -> LoadResult where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
   {
-    let all_voxels_loaded =
-      self.all_voxels_loaded(
-        *chunk_position,
-        lod,
-      );
-    if all_voxels_loaded {
-      self.force_load_chunk(
-        id_allocator,
-        rng,
-        update_view,
-        chunk_position,
-        lod,
-      );
-      Ok(())
-    } else {
-      let voxel_size = 1 << terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
-      let voxels =
-        terrain_mesh::voxels_in(
-          &cgmath::Aabb3::new(
-            cgmath::Point3::new(
-              (chunk_position.as_pnt().x << terrain_mesh::LG_WIDTH) - voxel_size,
-              (chunk_position.as_pnt().y << terrain_mesh::LG_WIDTH) - voxel_size,
-              (chunk_position.as_pnt().z << terrain_mesh::LG_WIDTH) - voxel_size,
-            ),
-            cgmath::Point3::new(
-              ((chunk_position.as_pnt().x + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-              ((chunk_position.as_pnt().y + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-              ((chunk_position.as_pnt().z + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-            ),
-          ),
-          terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize],
-        );
-      Err(voxels)
+    let mut r = LoadResult::Success;
+    for edge in chunk_position.edges(lod) {
+      let already_loaded = self.loaded_edges.lock().unwrap().contains_key(&edge);
+      if already_loaded {
+        debug!("Not re-loading {:?} at {:?}", chunk_position, lod);
+        continue;
+      }
+
+      match self.load_edge(update_view, edge) {
+        Ok(()) => {},
+        Err(()) => r = LoadResult::VoxelsMissing,
+      }
     }
   }
 
@@ -208,9 +192,9 @@ impl T {
     bounds           : &voxel::bounds::T,
     mut update_chunk : UpdateChunk,
   ) where
-    UpdateChunk: FnMut(chunk_position::T, lod::T),
+    UpdateChunk: FnMut(chunk::position::T, lod::T),
   {
-    let player_position = chunk_position::of_world_position(player_position);
+    let player_position = chunk::position::T::of_world_position(player_position);
 
     // Has a new voxel been loaded? (or did we change an existing voxel)
     let new_voxel_loaded;
@@ -288,6 +272,43 @@ impl T {
   }
 
   #[inline(never)]
+  fn load_edge<Rng, UpdateView>(
+    &mut self,
+    id_allocator : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
+    rng          : &mut Rng,
+    update_view  : &mut UpdateView,
+    edge         : &edge::T,
+  ) -> Result<(), ()> where
+    UpdateView : FnMut(view::update::T),
+    Rng        : rand::Rng,
+  {
+    debug!("generate {:?}", edge);
+    let mesh_fragment = try!(terrain_mesh::generate(&self.voxels, edge, &id_allocator, rng));
+
+    let mut updates = Vec::new();
+
+    let unload_fragments = self.loaded_edges.insert(&edge, mesh_fragment.clone());
+
+    for mesh_fragment in unload_fragments {
+      for id in &mesh_fragment.ids {
+        updates.push(view::update::RemoveTerrain(*id));
+      }
+      for id in &mesh_fragment.grass_ids {
+        updates.push(view::update::RemoveGrass(*id));
+      }
+    }
+
+    if !mesh_fragment.ids.is_empty() {
+      updates.push(view::update::LoadMesh(mesh_fragment));
+    }
+
+    update_view(view::update::Atomic(updates));
+
+    debug!("generate success!");
+    Ok(())
+  }
+
+  #[inline(never)]
   fn load_voxels<Rng, UpdateView>(
     &mut self,
     id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
@@ -295,56 +316,18 @@ impl T {
     update_view     : &mut UpdateView,
     player_position : &cgmath::Point3<f32>,
     voxel_updates   : Vec<(voxel::bounds::T, voxel::T)>,
-    request_time    : Option<u64>,
+    requested_at    : Option<u64>,
   ) where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
   {
-    let mut update_chunks = chunk_position::with_lod::set::new();
-    let response_time = time::precise_time_ns();
-    for (bounds, voxel) in voxel_updates {
-      trace!("Got voxel at {:?}", bounds);
-      self.load_voxel(
-        player_position,
-        voxel,
-        &bounds,
-        |chunk, lod| { update_chunks.insert((chunk, lod)); },
-      );
-    }
-
-    let processed_time = time::precise_time_ns();
-    for (chunk, lod) in update_chunks.into_iter() {
-      let _ =
-        self.load_chunk(
-          id_allocator,
-          rng,
-          update_view,
-          &chunk,
-          lod,
-        );
-    }
-
-    let chunk_loaded = time::precise_time_ns();
-
-    match request_time {
-      None => {},
-      Some(request_time) => {
-        record_book::thread_local::push_chunk_load(
-          record_book::ChunkLoad {
-            requested_at : request_time,
-            responded_at : response_time,
-            processed_at : processed_time,
-            loaded_at    : chunk_loaded,
-          }
-        );
-      },
-    }
+    unimplemented!();
   }
 
   pub fn unload<UpdateView>(
     &mut self,
     update_view    : &mut UpdateView,
-    chunk_position : &chunk_position::T,
+    chunk_position : &chunk::position::T,
   ) where
     UpdateView : FnMut(view::update::T),
   {
@@ -360,53 +343,4 @@ impl T {
         }
       });
   }
-}
-
-#[inline(never)]
-fn updated_chunk_positions(
-  voxel: &voxel::bounds::T,
-) -> Vec<chunk_position::T>
-{
-  let chunk = chunk_position::containing_voxel(voxel);
-
-  macro_rules! tweak(($dim:ident) => {{
-    let mut new_voxel = voxel.clone();
-    new_voxel.$dim += 1;
-    if chunk_position::containing_voxel(&new_voxel) == chunk {
-      let mut new_voxel = voxel.clone();
-      new_voxel.$dim -= 1;
-      if chunk_position::containing_voxel(&new_voxel) == chunk {
-        0
-      } else {
-        -1
-      }
-    } else {
-      1
-    }
-  }});
-
-  let tweak =
-    cgmath::Point3::new(
-      tweak!(x),
-      tweak!(y),
-      tweak!(z),
-    );
-
-  macro_rules! consider(($dim:ident, $chunk:expr, $next:expr) => {{
-    $next($chunk);
-    if tweak.$dim != 0 {
-      let mut chunk = $chunk;
-      chunk.as_mut_pnt().$dim += tweak.$dim;
-      $next(chunk);
-    }
-  }});
-
-  let mut chunks = Vec::new();
-  consider!(x, chunk, |chunk: chunk_position::T| {
-  consider!(y, chunk, |chunk: chunk_position::T| {
-  consider!(z, chunk, |chunk: chunk_position::T| {
-    chunks.push(chunk);
-  })})});
-
-  chunks
 }

@@ -63,14 +63,7 @@ pub fn update_gaia(
         let mut clients = server.clients.lock().unwrap();
         for (_, client) in clients.iter_mut() {
           client.send(
-<<<<<<< HEAD
-            protocol::ServerToClient::Voxels(voxels.clone())
-=======
-            protocol::ServerToClient::Voxels {
-              voxels : updates.clone(),
-              reason : protocol::VoxelReason::Updated,
-            }
->>>>>>> master
+            protocol::ServerToClient::Voxels { voxels: voxels.clone() },
           );
         }
       },
@@ -125,7 +118,6 @@ fn load_chunk(
       let mut clients = server.clients.lock().unwrap();
       let client = clients.get_mut(&id).unwrap();
       client.send(
-<<<<<<< HEAD
         protocol::ServerToClient::Chunk {
           requested_at : requested_at,
           chunk        : chunk,
@@ -172,13 +164,7 @@ fn load_voxel(
       let mut clients = server.clients.lock().unwrap();
       let client = clients.get_mut(&id).unwrap();
       client.send(
-        protocol::ServerToClient::Voxels(vec!((voxel_bounds, voxel)))
-=======
-        protocol::ServerToClient::Voxels {
-          voxels : voxels,
-          reason : protocol::VoxelReason::Requested { at: request_time },
-        }
->>>>>>> master
+        protocol::ServerToClient::Voxels { voxels: vec!((voxel_bounds, voxel)) }
       );
     },
   }

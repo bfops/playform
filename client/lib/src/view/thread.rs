@@ -17,12 +17,7 @@ use client;
 use hud::make_hud;
 use process_event::process_event;
 use view;
-<<<<<<< HEAD:client/lib/src/view_thread.rs
-use view_update;
-use view_update::apply_client_to_view;
-=======
 use view::update;
->>>>>>> master:client/lib/src/view/thread.rs
 
 #[allow(missing_docs)]
 pub const FRAMES_PER_SECOND: u64 = 30;
