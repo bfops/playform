@@ -23,7 +23,7 @@ pub enum LoadDestination {
 pub enum Message {
   LoadChunk {
     requested_at : u64,
-    position     : chunk::Position,
+    position     : chunk::position::T,
     destination  : LoadDestination,
   },
   LoadVoxel {
@@ -75,7 +75,7 @@ pub fn update_gaia(
 fn load_chunk(
   server       : &server::T,
   requested_at : u64,
-  position     : chunk::Position,
+  position     : chunk::position::T,
   destination  : LoadDestination,
 ) {
   // TODO: Just lock `terrain` for the check and then the move;

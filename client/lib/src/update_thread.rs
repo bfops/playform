@@ -85,6 +85,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
     );
   let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
   let mut updates = surroundings_loader.updates(&load_position) ;
+  let mut terrain = client.terrain.lock().unwrap();
   loop {
     if client.pending_terrain_requests.lock().unwrap().len() as u32 >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
       trace!("update loop breaking");
@@ -108,16 +109,17 @@ fn update_surroundings<UpdateView, UpdateServer>(
         &chunk_position,
       );
     let new_lod = client::lod_index(distance);
+    let lg_voxel_size = terrain_mesh::LG_SAMPLE_SIZE[new_lod.0 as usize];
+    let chunk_position = chunk::position::T { coords: chunk_position, lg_voxel_size: lg_voxel_size };
     let mut requested_chunks: fnv_set::T<chunk::position::T> = fnv_set::new();
     match load_type {
       LoadType::Load | LoadType::Downgrade => {
         let r =
-          client.terrain.try_load_chunk(
+          terrain.try_load_chunk(
             &client.id_allocator,
-            &client.rng,
+            &mut *client.rng.lock().unwrap(),
             update_view,
-            chunk_position,
-            new_lod,
+            &chunk_position,
           );
         match r {
           terrain::LoadResult::Success => {},
@@ -125,30 +127,13 @@ fn update_surroundings<UpdateView, UpdateServer>(
             protocol::ClientToServer::RequestChunk {
               requested_at : time::precise_time_ns(),
               client_id    : client.id,
-              chunk        : chunk_position,
+              position     : chunk_position,
             };
           },
         }
       },
       LoadType::Unload => {
-        let mut loaded_edges = client.loaded_edges.lock().unwrap();
-        for edge in chunk_position.edges(new_lod) {
-          stopwatch::time("update_thread.unload", || {
-            // The block removal code is duplicated in load_terrain.
-
-            loaded_edges
-              .remove(&edge)
-              // If it wasn't loaded, don't unload anything.
-              .map(|mesh_fragment| {
-                for id in &mesh_fragment.ids {
-                  update_view(view::update::RemoveTerrain(*id));
-                }
-                for id in &mesh_fragment.grass_ids {
-                  update_view(view::update::RemoveGrass(*id));
-                }
-              });
-          })
-        }
+        terrain.unload(update_view, &chunk_position);
       },
     }
 
@@ -184,12 +169,10 @@ fn process_voxel_updates<UpdateView>(
 ) where
   UpdateView: FnMut(view::update::T),
 {
-  let terrain_loader = &mut *client.terrain_loader.lock().unwrap();
-  let voxels         = &mut *client.voxels.lock().unwrap();
-  let rng            = &mut *client.rng.lock().unwrap();
-  let id_allocator   = &mut *client.id_allocator.lock().unwrap();
-  let loaded_edges   = &mut *client.loaded_edges.lock().unwrap();
-  terrain_loader.tick(voxels, rng, id_allocator, loaded_edges, update_view);
+  let terrain      = &mut *client.terrain.lock().unwrap();
+  let rng          = &mut *client.rng.lock().unwrap();
+  let player_position = *client.player_position.lock().unwrap();
+  terrain.tick(&client.id_allocator, rng, update_view, &player_position);
 }
 
 #[inline(never)]

@@ -164,16 +164,15 @@ impl T {
     rng            : &mut Rng,
     update_view    : &mut UpdateView,
     chunk_position : &chunk::position::T,
-    lod            : lod::T,
   ) -> LoadResult where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
   {
     let mut r = LoadResult::Success;
-    for edge in chunk_position.edges(lod) {
+    for edge in chunk::edges(chunk_position) {
       let already_loaded = self.loaded_edges.lock().unwrap().contains_key(&edge);
       if already_loaded {
-        debug!("Not re-loading {:?} at {:?}", chunk_position, lod);
+        debug!("Not re-loading {:?}", chunk_position);
         continue;
       }
 
