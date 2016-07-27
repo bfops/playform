@@ -183,6 +183,32 @@ impl T {
     }
   }
 
+  pub fn load_chunk<Rng, UpdateView>(
+    &mut self,
+    id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
+    rng            : &mut Rng,
+    update_view    : &mut UpdateView,
+    chunk          : &chunk::T,
+  ) where
+    UpdateView : FnMut(view::update::T),
+    Rng        : rand::Rng,
+  {
+
+
+    for edge in chunk::edges(chunk_position) {
+      let already_loaded = self.loaded_edges.lock().unwrap().contains_key(&edge);
+      if already_loaded {
+        debug!("Not re-loading {:?}", chunk_position);
+        continue;
+      }
+
+      // Supress any edge loading errors. They *should* only be happening at the
+      // chunk boundaries, where we might not have all the adjacent voxels.
+      let _ = self.load_edge(update_view, edge);
+    }
+  }
+
+
   #[inline(never)]
   fn load_voxel<UpdateChunk>(
     &mut self,

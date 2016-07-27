@@ -10,12 +10,14 @@ pub const WIDTH: u32 = 1 << LG_WIDTH;
 /// Base-2 log of the chunk width
 pub const LG_WIDTH: u16 = 5;
 
-/// A position in "chunk coordinates".
+/// A chunk position in "chunk coordinates".
 pub mod position {
   use cgmath;
 
   #[derive(Debug, Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
   #[allow(missing_docs)]
+  /// Positions are implicitly multiples of the chunk size, which is
+  /// `WIDTH` times the voxel size.
   pub struct T {
     pub coords        : cgmath::Point3<i32>,
     pub lg_voxel_size : i16,
