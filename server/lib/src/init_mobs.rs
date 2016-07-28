@@ -9,7 +9,7 @@ use mob;
 use server;
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
-  bounds.min + (&bounds.max.to_vec()) * (0.5)
+  (bounds.min + bounds.max.to_vec()) * 0.5
 }
 
 // TODO: Locking is hard to reason about. Make it saner.
@@ -107,7 +107,7 @@ fn add_mob(
 
   let mob =
     mob::Mob {
-      position: bounds.min + (&bounds.max.to_vec()) * (0.5),
+      position: (bounds.min + bounds.max.to_vec()) * 0.5,
       speed: Vector3::new(0.0, 0.0, 0.0),
       behavior: behavior,
       entity_id: entity_id,

@@ -23,7 +23,7 @@ use update_gaia;
 use update_gaia::LoadReason;
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
-  bounds.min + (&bounds.max.to_vec()) * (1.0 / 2.0)
+  (bounds.min + bounds.max.to_vec()) * 0.5
 }
 
 fn cast(
@@ -161,7 +161,7 @@ pub fn apply_client_update<UpdateGaia>(
             f64::max(2.0 * trunk_radius, f64::min(6.0 * trunk_radius, leaf_radius));
 
           let (low, high) = bounds.corners();
-          let mut bottom = low + (&high.to_vec()) / 2.0;
+          let mut bottom = (low + high.to_vec()) / 2.0;
           bottom.y = low.y;
 
           let trunk_height = trunk_height as f32;

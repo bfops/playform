@@ -167,12 +167,7 @@ fn place_grass<T, Rng: rand::Rng>(
 ) -> Vec<Grass> {
   let v = &polygon.vertices;
   let normal = (v[1] - v[0]).cross(v[2] - v[0]);
-  let to_middle =
-    &v[0].to_vec()
-     + (&v[1].to_vec())
-     + (&v[2].to_vec())
-     / (3.0)
-  ;
+  let to_middle = (v[0].to_vec() + v[1].to_vec() + v[2].to_vec()) / 3.0 ;
 
   let y = cgmath::Vector3::new(0.0, 1.0, 0.0);
   let z = cgmath::Vector3::new(0.0, 0.0, 1.0);
