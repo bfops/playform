@@ -22,6 +22,7 @@
 
 extern crate bincode;
 extern crate cgmath;
+extern crate collision;
 extern crate common;
 extern crate fnv;
 extern crate gl;

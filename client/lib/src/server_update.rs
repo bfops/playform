@@ -1,5 +1,6 @@
 use cgmath;
-use cgmath::{Aabb3, Point, Point3, EuclideanVector};
+use cgmath::{Point3, EuclideanSpace, InnerSpace, ElementWise};
+use collision::{Aabb3};
 use rand::Rng;
 use stopwatch;
 use time;
@@ -53,9 +54,9 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrain
         }
 
         let position =
-          (bounds.min.to_vec() * cgmath::Vector3::new(0.5, 0.1, 0.5)) +
-          (bounds.max.to_vec() * cgmath::Vector3::new(0.5, 0.9, 0.5));
-        let position = Point3::from_vec(&position);
+          (bounds.min.to_vec().mul_element_wise(cgmath::Vector3::new(0.5, 0.1, 0.5))) +
+          (bounds.max.to_vec().mul_element_wise(cgmath::Vector3::new(0.5, 0.9, 0.5)));
+        let position = Point3::from_vec(position);
 
         *client.player_position.lock().unwrap() = position;
         update_view(view::update::MoveCamera(position));
@@ -95,7 +96,7 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrain
         if let protocol::Collision::PlayerTerrain(..) = collision_type {
           let player_position = *client.player_position.lock().unwrap();
           let mut last_footstep = client.last_footstep.lock().unwrap();
-          if player_position.sub_p(&*last_footstep).length() >= 4.0 {
+          if (player_position - *last_footstep).magnitude() >= 4.0 {
             *last_footstep = player_position;
             let idx = client.rng.lock().unwrap().gen_range(1, 17 + 1);
             update_audio(audio_thread::Message::PlayOneShot(audio_loader::SoundId::Footstep(idx)));

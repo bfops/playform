@@ -1,7 +1,8 @@
 //! Data structure for a small chunk of terrain.
 
 use cgmath;
-use cgmath::{Point, Point3, Vector3, Vector, EuclideanVector, Matrix, Rotation, Aabb, Aabb3};
+use cgmath::{Array, Point3, Vector3, EuclideanSpace, InnerSpace, SquareMatrix, Rotation, Rotation3, ElementWise};
+use collision::{Aabb, Aabb3};
 use isosurface_extraction::dual_contouring;
 use num::iter::range_inclusive;
 use rand;
@@ -87,7 +88,7 @@ fn make_bounds(
 }
 
 pub fn voxels_in(bounds: &Aabb3<i32>, lg_size: i16) -> Vec<voxel::bounds::T> {
-  let delta = bounds.max().sub_p(bounds.min());
+  let delta = bounds.max() - (bounds.min());
 
   // assert that lg_size samples fit neatly into the bounds.
   let mod_size = (1 << lg_size) - 1;
@@ -165,12 +166,12 @@ fn place_grass<T, Rng: rand::Rng>(
   rng: &mut Rng,
 ) -> Vec<Grass> {
   let v = &polygon.vertices;
-  let normal = v[1].sub_p(&v[0]).cross(&v[2].sub_p(&v[0]));
+  let normal = (v[1] - v[0]).cross(v[2] - v[0]);
   let to_middle =
     &v[0].to_vec()
-    .add_v(&v[1].to_vec())
-    .add_v(&v[2].to_vec())
-    .div_s(3.0)
+     + (&v[1].to_vec())
+     + (&v[2].to_vec())
+     / (3.0)
   ;
 
   let y = cgmath::Vector3::new(0.0, 1.0, 0.0);
@@ -178,46 +179,46 @@ fn place_grass<T, Rng: rand::Rng>(
 
   let scale =
     (rng.next_f32() + 1.0) *
-         (v[1].sub_p(&v[0]).length())
-    .max((v[2].sub_p(&v[1]).length())
-    .max((v[0].sub_p(&v[2]).length())));
-  let scale = cgmath::Vector3::new(1.4, 0.4, 1.4) * cgmath::Vector3::from_value(scale);
+         (v[1] - v[0]).magnitude()
+    .max((v[2] - v[1]).magnitude()
+    .max((v[0] - v[2]).magnitude()));
+  let scale = cgmath::Vector3::new(1.4, 0.4, 1.4).mul_element_wise(cgmath::Vector3::from_value(scale));
 
-  let middle = Point::from_vec(to_middle);
+  let middle = Point3::from_vec(to_middle);
   let shift =
     (rng.next_f32() + 1.0) *
-         (v[1].sub_p(&middle).length())
-    .min((v[2].sub_p(&middle).length())
-    .min((v[0].sub_p(&middle).length())));
+         (v[1] - middle).magnitude()
+    .min((v[2] - middle).magnitude()
+    .min((v[0] - middle).magnitude()));
   let shift_angle = rng.next_f32() * 2.0 * f32::consts::PI;
-  let shift = cgmath::Matrix3::from_axis_angle(&y, cgmath::rad(shift_angle)).mul_v(&cgmath::Vector3::new(shift, 0.0, 0.0));
+  let shift = cgmath::Matrix3::from_axis_angle(y, cgmath::rad(shift_angle)) * cgmath::Vector3::new(shift, 0.0, 0.0);
 
   let normal = normal.normalize();
 
-  let rotate_normal_basis: cgmath::Basis3<f32> = cgmath::Rotation::between_vectors(&y, &normal);
+  let rotate_normal_basis = cgmath::Basis3::between_vectors(y, normal);
   let rotate_normal: cgmath::Matrix3<f32> = From::from(rotate_normal_basis);
 
   // The direction the grass will point.
   // This is roughly straight up, perturbed randomly and squeezed into valid directions.
   let up = {
     let altitude = (rng.next_f32()  * 2.0 - 1.0) * f32::consts::PI / 8.0;
-    let altitude: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(&z, cgmath::rad(altitude));
+    let altitude: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(z, cgmath::rad(altitude));
     let azimuth = rng.next_f32() * 2.0 * f32::consts::PI;
-    let azimuth: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(&y, cgmath::rad(azimuth));
-    let up = (rotate_normal * azimuth * altitude).mul_v(&y);
+    let azimuth: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(y, cgmath::rad(azimuth));
+    let up = (rotate_normal * azimuth * altitude) * y;
 
-    let axis = normal.cross(&y).normalize();
+    let axis = normal.cross(y).normalize();
     let dot = up.y;
     // Smoothly compress the y vector to be within 90 degrees of the normal.
     let c = (dot - 1.0).exp().acos();
-    let rotate_normal = cgmath::Matrix3::from_axis_angle(&axis, cgmath::rad(c));
-    rotate_normal.mul_v(&up)
+    let rotate_normal = cgmath::Matrix3::from_axis_angle(axis, cgmath::rad(c));
+    rotate_normal * up
   };
 
   // model space skew transformation to make the grass point in the right direction after rotation
   let skew = {
     // `up` in model space
-    let up = rotate_normal_basis.invert().as_ref().mul_v(&up);
+    let up = rotate_normal_basis.invert().as_ref() * up;
     // dot with y
     let d = up.y;
     let skewness = (1.0 - d*d).sqrt();
@@ -228,19 +229,23 @@ fn place_grass<T, Rng: rand::Rng>(
     skew
   };
 
-  let rotate_normal: cgmath::Matrix4<f32> = From::from(rotate_normal);
+  let rotate_normal = cgmath::Matrix4::from(rotate_normal);
 
-  let rotate_model: cgmath::Quaternion<f32> = cgmath::Rotation3::from_axis_angle(&y, cgmath::rad(2.0 * f32::consts::PI * rng.next_f32()));
-  let rotate_model: cgmath::Matrix4<f32> = From::from(rotate_model);
+  let rotate_model =
+    cgmath::Quaternion::from_axis_angle(
+      y,
+      cgmath::rad(2.0 * f32::consts::PI * rng.next_f32()),
+    );
+  let rotate_model = cgmath::Matrix4::from(rotate_model);
 
-  let translate = cgmath::Matrix4::from_translation(&to_middle);
+  let translate = cgmath::Matrix4::from_translation(to_middle);
 
   let mut scale_mat = cgmath::Matrix4::from_value(1.0);
   scale_mat[0][0] = scale[0];
   scale_mat[1][1] = scale[1];
   scale_mat[2][2] = scale[2];
 
-  let shift_mat = cgmath::Matrix4::from_translation(&shift);
+  let shift_mat = cgmath::Matrix4::from_translation(shift);
 
   let model = From::from(translate * rotate_normal * shift_mat * skew * rotate_model * scale_mat);
 
@@ -275,7 +280,7 @@ pub fn generate<Rng: rand::Rng>(
       let lg_sample_size = LG_SAMPLE_SIZE[lod.0 as usize];
 
       let low = *chunk_position.as_pnt();
-      let high = low.add_v(&Vector3::new(1, 1, 1));
+      let high = low + (&Vector3::new(1, 1, 1));
       let low =
         Point3::new(
           low.x << lg_edge_samples,

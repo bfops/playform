@@ -1,4 +1,5 @@
 use cgmath;
+use collision;
 use rand;
 use std;
 use time;
@@ -182,7 +183,7 @@ impl T {
       let voxel_size = 1 << terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
       let voxels =
         terrain_mesh::voxels_in(
-          &cgmath::Aabb3::new(
+          &collision::Aabb3::new(
             cgmath::Point3::new(
               (chunk_position.as_pnt().x << terrain_mesh::LG_WIDTH) - voxel_size,
               (chunk_position.as_pnt().y << terrain_mesh::LG_WIDTH) - voxel_size,

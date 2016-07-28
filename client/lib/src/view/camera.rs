@@ -3,7 +3,7 @@
 use gl;
 use gl::types::*;
 use cgmath;
-use cgmath::{Matrix, Matrix3, Matrix4, Vector3, Point, Point3};
+use cgmath::{Matrix3, Matrix4, One, Vector3, Point3, EuclideanSpace};
 use std::f32::consts::PI;
 use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
@@ -33,31 +33,31 @@ pub struct T {
 /// and [0, -1] in z in depth.
 pub fn unit() -> T {
   T {
-    position: Point3::new(0.0, 0.0, 0.0),
-    lateral_rotation: 0.0,
-    vertical_rotation: 0.0,
+    position          : Point3::new(0.0, 0.0, 0.0),
+    lateral_rotation  : 0.0,
+    vertical_rotation : 0.0,
 
-    translation: Matrix4::identity(),
-    rotation: Matrix4::identity(),
-    fov: Matrix4::identity(),
+    translation       : Matrix4::one(),
+    rotation          : Matrix4::one(),
+    fov               : Matrix4::one(),
   }
 }
 
 impl T {
   #[allow(missing_docs)]
   pub fn projection_matrix(&self) -> Matrix4<GLfloat> {
-    self.fov.mul_m(&self.rotation).mul_m(&self.translation)
+    self.fov * self.rotation * self.translation
   }
 
   #[allow(missing_docs)]
   pub fn translate_to(&mut self, p: Point3<f32>) {
     self.position = p;
-    self.translation = Matrix4::from_translation(&-p.to_vec());
+    self.translation = Matrix4::from_translation(-p.to_vec());
   }
 
   /// Rotate about a given vector, by `r` radians.
   fn rotate(&mut self, v: &Vector3<f32>, r: f32) {
-    let mat = Matrix3::from_axis_angle(v, -cgmath::rad(r));
+    let mat = Matrix3::from_axis_angle(*v, -cgmath::rad(r));
     let mat =
       Matrix4::new(
         mat.x.x, mat.x.y, mat.x.z, 0.0,
@@ -65,7 +65,7 @@ impl T {
         mat.z.x, mat.z.y, mat.z.z, 0.0,
         0.0,     0.0,     0.0,     1.0,
       );
-    self.rotation.mul_self_m(&mat);
+    self.rotation = self.rotation * mat;
   }
 
   /// Rotate the camera around the y axis, by `r` radians. Positive is counterclockwise.
@@ -89,10 +89,10 @@ impl T {
 
     let axis =
       Matrix3::from_axis_angle(
-        &Vector3::new(0.0, 1.0, 0.0),
+        Vector3::new(0.0, 1.0, 0.0),
         cgmath::rad(self.lateral_rotation),
       );
-    let axis = axis.mul_v(&Vector3::new(1.0, 0.0, 0.0));
+    let axis = axis * (&Vector3::new(1.0, 0.0, 0.0));
     self.rotate(&axis, r);
   }
 }

@@ -1,5 +1,5 @@
 use cgmath;
-use cgmath::{Vector, Point, Matrix};
+use cgmath::{Point3, EuclideanSpace};
 use gl;
 use std;
 use std::f32;
@@ -57,20 +57,20 @@ pub fn new<'a, 'b:'a>(
       };
 
       tri(
-        Point::from_vec(&-v.div_s(2.0))                , cgmath::Vector2::new(0.0 , 0.0) ,
-        Point::from_vec(&v.div_s(2.0))                 , cgmath::Vector2::new(1.0 , 0.0) ,
-        Point::from_vec(&v.div_s(2.0).add_v(&normal))  , cgmath::Vector2::new(1.0 , 1.0) ,
+        Point3::from_vec(-*v / 2.0)          , cgmath::Vector2::new(0.0 , 0.0) ,
+        Point3::from_vec( *v / 2.0)          , cgmath::Vector2::new(1.0 , 0.0) ,
+        Point3::from_vec( *v / 2.0) + normal , cgmath::Vector2::new(1.0 , 1.0) ,
       );
       tri(
-        Point::from_vec(&-v.div_s(2.0))                , cgmath::Vector2::new(0.0 , 0.0) ,
-        Point::from_vec(&v.div_s(2.0).add_v(&normal))  , cgmath::Vector2::new(1.0 , 1.0) ,
-        Point::from_vec(&-v.div_s(2.0).add_v(&normal)) , cgmath::Vector2::new(0.0 , 1.0) ,
+        Point3::from_vec(-*v / 2.0)          , cgmath::Vector2::new(0.0 , 0.0) ,
+        Point3::from_vec( *v / 2.0) + normal , cgmath::Vector2::new(1.0 , 1.0) ,
+        Point3::from_vec(-*v / 2.0) + normal , cgmath::Vector2::new(0.0 , 1.0) ,
       );
     };
 
     quad(&tangent);
-    quad(&cgmath::Matrix3::from_axis_angle(&normal, cgmath::rad(f32::consts::FRAC_PI_3)).mul_v(&tangent));
-    quad(&cgmath::Matrix3::from_axis_angle(&normal, cgmath::rad(2.0 * f32::consts::FRAC_PI_3)).mul_v(&tangent));
+    quad(&(cgmath::Matrix3::from_axis_angle(normal, cgmath::rad(f32::consts::FRAC_PI_3)) * tangent));
+    quad(&(cgmath::Matrix3::from_axis_angle(normal, cgmath::rad(2.0 * f32::consts::FRAC_PI_3)) * tangent));
   }
 
   unsafe {
