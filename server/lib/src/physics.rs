@@ -1,4 +1,5 @@
-use cgmath::{Aabb3, Point, Vector3};
+use cgmath::{Vector3};
+use collision::{Aabb3};
 
 use common::entity_id;
 use common::fnv_map;
@@ -72,8 +73,8 @@ impl Physics {
     let bounds = self.bounds.get_mut(&id).unwrap();
     let new_bounds =
       Aabb3::new(
-        bounds.min.add_v(&amount),
-        bounds.max.add_v(&amount),
+        bounds.min + (&amount),
+        bounds.max + (&amount),
       );
     let terrain_collision = self.terrain_octree.intersect(&new_bounds, None);
     if terrain_collision.is_none() {

@@ -1,4 +1,5 @@
-use cgmath::{Aabb3, Point3};
+use cgmath::{Point3};
+use collision::{Aabb3};
 use std::fmt::Debug;
 use std::ptr;
 

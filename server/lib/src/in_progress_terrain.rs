@@ -1,4 +1,4 @@
-use cgmath::{Aabb3};
+use collision::{Aabb3};
 use std::sync::Mutex;
 
 use common::entity_id;

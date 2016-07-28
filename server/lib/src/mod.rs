@@ -25,6 +25,7 @@
 
 extern crate bincode;
 extern crate cgmath;
+extern crate collision;
 extern crate common;
 #[macro_use]
 extern crate log;

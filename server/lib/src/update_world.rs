@@ -1,4 +1,4 @@
-use cgmath::{Point, Point3, Vector, Vector3};
+use cgmath::{Point3, Vector3};
 use std::ops::Neg;
 use stopwatch;
 
@@ -74,7 +74,7 @@ pub fn update_world<RequestBlock>(
           (behavior)(server, mob);
         }
 
-        mob.speed = mob.speed.add_v(&-Vector3::new(0.0, 0.1, 0.0 as f32));
+        mob.speed = mob.speed + -Vector3::new(0.0, 0.1, 0.0 as f32);
 
         // TODO: This logic is dumb (isolating along components shouldn't be a thing). Change it.
         let delta_p = mob.speed;
@@ -107,14 +107,14 @@ fn translate_mob(
   {
     let mut physics = server.physics.lock().unwrap();
     if physics.translate_misc(mob.entity_id, *delta_p).is_some() {
-      mob.speed.add_self_v(&delta_p.neg());
+      mob.speed += delta_p.neg();
       return;
     } else {
       bounds = *physics.get_bounds(mob.entity_id).unwrap();
     }
   }
 
-  mob.position.add_self_v(delta_p);
+  mob.position += *delta_p;
 
   for (_, client) in server.clients.lock().unwrap().iter_mut() {
     client.send(

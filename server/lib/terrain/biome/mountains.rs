@@ -1,6 +1,6 @@
 //! Mountain biome
 
-use cgmath::{Point3, Vector3, EuclideanVector};
+use cgmath::{Point3, Vector3, InnerSpace};
 use noise::{Seed, Brownian2, Brownian3, perlin2, perlin3};
 
 use common::voxel;

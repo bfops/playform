@@ -1,6 +1,6 @@
 /// Creator of the earth.
 
-use cgmath::{Aabb3};
+use collision::{Aabb3};
 use stopwatch;
 
 use common;

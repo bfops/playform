@@ -17,6 +17,7 @@
 #![plugin(clippy)]
 
 extern crate cgmath;
+extern crate collision;
 extern crate common;
 extern crate fnv;
 #[macro_use]
