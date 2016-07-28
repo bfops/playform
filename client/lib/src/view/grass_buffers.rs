@@ -57,14 +57,14 @@ pub fn new<'a, 'b:'a>(
       };
 
       tri(
-        Point3::from_vec(-*v / 2.0)          , cgmath::Vector2::new(0.0 , 0.0) ,
-        Point3::from_vec( *v / 2.0)          , cgmath::Vector2::new(1.0 , 0.0) ,
-        Point3::from_vec( *v / 2.0) + normal , cgmath::Vector2::new(1.0 , 1.0) ,
+        Point3::from_vec(-(*v / 2.0))          , cgmath::Vector2::new(0.0 , 0.0) ,
+        Point3::from_vec( (*v / 2.0))          , cgmath::Vector2::new(1.0 , 0.0) ,
+        Point3::from_vec( (*v / 2.0 + normal)) , cgmath::Vector2::new(1.0 , 1.0) ,
       );
       tri(
-        Point3::from_vec(-*v / 2.0)          , cgmath::Vector2::new(0.0 , 0.0) ,
-        Point3::from_vec( *v / 2.0) + normal , cgmath::Vector2::new(1.0 , 1.0) ,
-        Point3::from_vec(-*v / 2.0) + normal , cgmath::Vector2::new(0.0 , 1.0) ,
+        Point3::from_vec(-(*v / 2.0))          , cgmath::Vector2::new(0.0 , 0.0) ,
+        Point3::from_vec( (*v / 2.0 + normal)) , cgmath::Vector2::new(1.0 , 1.0) ,
+        Point3::from_vec(-(*v / 2.0 + normal)) , cgmath::Vector2::new(0.0 , 1.0) ,
       );
     };
 
