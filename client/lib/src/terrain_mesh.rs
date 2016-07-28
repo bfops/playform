@@ -161,13 +161,42 @@ mod voxel_storage {
   }
 }
 
+/// Barycentric interpolation function to smoothly interpolate vertex-associated values over a triangle.
+/// This returns the weight that should be given to each vertex value at a specified point.
+fn barycentric(
+  vertices : &[cgmath::Point3<f32>; 3],
+  point    : &cgmath::Point3<f32>,
+) -> [f32; 3] {
+  let d = [ vertices[0]-point, vertices[1]-point, vertices[2]-point ];
+  let sqr_len = [d[0].magnitude2(), d[1].magnitude2(), d[2].magnitude2()];
+  let pair_len = [
+    sqr_len[1] * sqr_len[2],
+    sqr_len[2] * sqr_len[0],
+    sqr_len[0] * sqr_len[1],
+  ];
+  let dot = [
+    d[1].dot(d[2]),
+    d[2].dot(d[0]),
+    d[0].dot(d[1]),
+  ];
+  [
+    0.5 * (pair_len[0] - dot[0]*dot[0]).sqrt(),
+    0.5 * (pair_len[1] - dot[1]*dot[1]).sqrt(),
+    0.5 * (pair_len[2] - dot[2]*dot[2]).sqrt(),
+  ]
+}
+
 fn place_grass<T, Rng: rand::Rng>(
   polygon: &dual_contouring::polygon::T<T>,
   rng: &mut Rng,
 ) -> Vec<Grass> {
   let v = &polygon.vertices;
-  let normal = (v[1] - v[0]).cross(v[2] - v[0]);
-  let to_middle = (v[0].to_vec() + v[1].to_vec() + v[2].to_vec()) / 3.0 ;
+  let to_middle = (v[0].to_vec() + v[1].to_vec() + v[2].to_vec()) / 3.0;
+  let middle = Point3::from_vec(to_middle);
+  let normal = {
+    let w = barycentric(&polygon.vertices, &middle);
+    w[0]*polygon.normals[0] + w[1]*polygon.normals[1] + w[2]*polygon.normals[2]
+  };
 
   let y = cgmath::Vector3::new(0.0, 1.0, 0.0);
   let z = cgmath::Vector3::new(0.0, 0.0, 1.0);
