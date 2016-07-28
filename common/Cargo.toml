@@ -3,7 +3,7 @@
 name = "playform-common"
 version = "0.0.0"
 authors = [
-  "Ben Foppa <benjamin.foppa@gmail.com>",
+  "Zeke Foppa <benjamin.foppa@gmail.com>",
   "Clark Gaebel <cg.wowus.cg@gmail.com>",
   "Elijah Andrews <elijahcandrews@gmail.com>",
 ]
@@ -13,14 +13,15 @@ name = "common"
 path = "mod.rs"
 
 [dependencies]
-cgmath = "0.10.*"
-clippy = "*"
-fnv = "*"
-log = "*"
-nanomsg = "*"
-num = "*"
+cgmath          = "0.10.*"
+clippy          = "*"
+collision       = "*"
+fnv             = "*"
+log             = "*"
+nanomsg         = "*"
+num             = "*"
 rustc-serialize = "*"
-time = "*"
+time            = "*"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"

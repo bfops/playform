@@ -1,6 +1,6 @@
 //! Functions and structures for interacting with cubic shells.
 
-use cgmath::{Point, Point3, Vector3};
+use cgmath::{Point3, Vector3};
 use range_abs::range_abs;
 use std::cmp::{min, max};
 use num::iter::range_inclusive;
@@ -25,7 +25,7 @@ pub fn cube_shell(center: &Point3<i32>, radius: i32) -> Vec<Point3<i32>> {
       for dx in $dxs {
         for dy in $dys {
           for dz in $dzs {
-            shell.push(center.add_v(&Vector3::new(dx, dy, dz)));
+            shell.push(center + Vector3::new(dx, dy, dz));
           }
         }
       }

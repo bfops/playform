@@ -1,6 +1,7 @@
 //! Defines the messages passed between client and server.
 
-use cgmath::{Aabb3, Vector2, Vector3, Point3};
+use cgmath::{Vector2, Vector3, Point3};
+use collision::{Aabb3};
 use std::default::Default;
 use std::ops::Add;
 
