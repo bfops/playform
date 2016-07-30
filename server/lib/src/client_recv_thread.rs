@@ -3,7 +3,6 @@ use collision::{Aabb3};
 use rand;
 use rand::distributions::IndependentSample;
 use std::convert::AsRef;
-use std::f32::consts::PI;
 use std::ops::DerefMut;
 use std::time::Duration;
 use stopwatch;
@@ -84,13 +83,12 @@ pub fn apply_client_update<UpdateGaia>(
           );
 
         // TODO: shift upward until outside terrain
-        let min = Point3::new(0.0, 64.0, 4.0);
-        let max = min + (&Vector3::new(1.0, 2.0, 1.0));
+        let min = Point3::new(-60.0, 64.0, -32.0);
+        let max = min + Vector3::new(1.0, 2.0, 1.0);
         let bounds = Aabb3::new(min, max);
         server.physics.lock().unwrap().insert_misc(player.entity_id, &bounds);
 
         player.position = center(&bounds);
-        player.rotate_lateral(PI / 2.0);
 
         let id = player.entity_id;
         let pos = player.position;

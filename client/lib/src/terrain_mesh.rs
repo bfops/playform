@@ -264,6 +264,7 @@ pub fn generate<Rng: rand::Rng>(
 }
 
 #[derive(Debug, Clone)]
+#[repr(C)]
 pub struct Grass {
   pub polygon_id : entity_id::T,
   pub tex_id     : u32,

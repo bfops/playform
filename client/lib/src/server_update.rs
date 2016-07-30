@@ -66,6 +66,7 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrain
         update_view(view::update::UpdateMob(id, mesh));
       },
       protocol::ServerToClient::UpdateSun(fraction) => {
+        let _ = fraction; let fraction = 0.37;
         update_view(view::update::SetSun(
           view::light::Sun {
             progression: fraction,
