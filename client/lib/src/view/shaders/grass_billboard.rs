@@ -122,8 +122,9 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
 
         mat4 noise_shear;
         {{
-          float azimuth = 3.14 * cnoise(root + vec3(122, -1, 14.5) + vec3(0, time_ms / 2000, 0));
-          float altitude = 3.14/2 - 3.14/4 * (cnoise(root + vec3(-18.11, 101.1, 44.5) + vec3(0, time_ms / 2000, 0)) + 1) / 2.0;
+          vec3 billboard_seed = root + (gl_VertexID / 6) * vec3(213.11, 967.1, -1114.3);
+          float azimuth = 3.14 * cnoise(billboard_seed + vec3(122, -1, 14.5) + vec3(0, time_ms / 2000, 0));
+          float altitude = 3.14/2 - 3.14/4 * (cnoise(billboard_seed + vec3(-18.11, 101.1, 44.5) + vec3(0, time_ms / 2000, 0)) + 1) / 2.0;
           vec3 v =
             vec3(
               cos(altitude) * cos(azimuth),
@@ -138,7 +139,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
         float min_side = min(min(side_length[0], side_length[1]), side_length[2]);
         float side_scale = sqrt(min_side*max_side);
         scale[1].y = side_scale * 0.4;
-        scale[0].x = side_scale * 4.0;
+        scale[0].x = side_scale * 2.0;
         scale[2].z = scale[0].x;
 
         mat4 model_matrix = translation * rotation * shear * noise_shear * scale;
