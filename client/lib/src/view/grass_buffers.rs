@@ -200,7 +200,11 @@ impl<'a> T<'a> {
     polygon_id: entity_id::T,
     new_index: u32,
   ) {
-    let grass_id = self.of_polygon_id.get(&polygon_id).unwrap();
+    let grass_id =
+      match self.of_polygon_id.get(&polygon_id) {
+        None => return,
+        Some(id) => id,
+      };
     let entry_idx = self.id_to_index.get(&grass_id).unwrap();
     // update the underlying byte buffer directly and only touch the polygon
     // index field.
@@ -208,7 +212,7 @@ impl<'a> T<'a> {
     unsafe {
       self.per_tuft.byte_buffer.update(
         gl,
-        std::mem::size_of::<Entry>() * entry_idx + std::mem::size_of::<u32>(),
+        std::mem::size_of::<Entry>() * entry_idx,
         &new_index as *const u32 as *const u8,
         std::mem::size_of::<u32>(),
       );
