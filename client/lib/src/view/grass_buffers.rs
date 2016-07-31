@@ -51,9 +51,8 @@ pub fn new<'a, 'b:'a>(
 
   let mut vertices = Vec::new();
   {
-    let tangent = cgmath::Vector3::new(0.0, 0.0, 0.5);
     let normal = cgmath::Vector3::new(0.0, 1.0, 0.0);
-    let mut quad = |v: &cgmath::Vector3<f32>| {
+    let mut quad = |t: &cgmath::Matrix3<f32>| {
       let mut tri = |p0, t0, p1, t1, p2, t2| {
         let vert = |p, t| {
           vertex::TextureVertex {
@@ -66,21 +65,26 @@ pub fn new<'a, 'b:'a>(
         vertices.push(vert(p2, t2));
       };
 
+      let v = *t * cgmath::Vector3::new(0.0, 0.0, -1.0);
+      let p = *t * cgmath::Vector3::new(1.0, 0.0, 0.0);
+      let p = Point3::from_vec(p/2.0);
+
       tri(
-        Point3::from_vec(-(*v / 2.0))          , cgmath::Vector2::new(0.0 , 0.0) ,
-        Point3::from_vec( (*v / 2.0))          , cgmath::Vector2::new(1.0 , 0.0) ,
-        Point3::from_vec( (*v / 2.0 + normal)) , cgmath::Vector2::new(1.0 , 1.0) ,
+        p + -v/2.0          , cgmath::Vector2::new(0.0 , 0.0) ,
+        p +  v/2.0          , cgmath::Vector2::new(1.0 , 0.0) ,
+        p +  v/2.0 + normal , cgmath::Vector2::new(1.0 , 1.0) ,
       );
       tri(
-        Point3::from_vec(-(*v / 2.0))          , cgmath::Vector2::new(0.0 , 0.0) ,
-        Point3::from_vec( (*v / 2.0 + normal)) , cgmath::Vector2::new(1.0 , 1.0) ,
-        Point3::from_vec(-(*v / 2.0 + normal)) , cgmath::Vector2::new(0.0 , 1.0) ,
+        p + -v/2.0          , cgmath::Vector2::new(0.0 , 0.0) ,
+        p +  v/2.0 + normal , cgmath::Vector2::new(1.0 , 1.0) ,
+        p + -v/2.0 + normal , cgmath::Vector2::new(0.0 , 1.0) ,
       );
     };
 
-    quad(&tangent);
-    quad(&(cgmath::Matrix3::from_axis_angle(normal, cgmath::rad(f32::consts::FRAC_PI_3)) * tangent));
-    quad(&(cgmath::Matrix3::from_axis_angle(normal, cgmath::rad(2.0 * f32::consts::FRAC_PI_3)) * tangent));
+    use cgmath::SquareMatrix;
+    quad(&cgmath::Matrix3::from_value(1.0));
+    quad(&cgmath::Matrix3::from_axis_angle(normal, cgmath::rad(f32::consts::FRAC_PI_3)));
+    quad(&cgmath::Matrix3::from_axis_angle(normal, cgmath::rad(2.0 * f32::consts::FRAC_PI_3)));
   }
 
   unsafe {

@@ -139,7 +139,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
         float min_side = min(min(side_length[0], side_length[1]), side_length[2]);
         float side_scale = sqrt(min_side*max_side);
         scale[1].y = side_scale * 0.4;
-        scale[0].x = side_scale * 2.0;
+        scale[0].x = side_scale * 1.0;
         scale[2].z = scale[0].x;
 
         mat4 model_matrix = translation * rotation * shear * noise_shear * scale;
@@ -186,7 +186,9 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
         int tex_id = int(round(vs_tex_id));
         int y = tex_id / 3;
         int x = tex_id % 3;
-        vec2 tex_position = (vs_texture_position + y*vec2(0, 1) + x*vec2(1, 0)) / 3;
+        vec2 tex_position =
+          (vs_texture_position + y*vec2(0, 1) + x*vec2(1, 0)) / 3
+          - vec2(0.0, 0.05);
         vec4 c = texture(texture_in, tex_position);
         if (c.a < alpha_threshold) {{
           discard;
