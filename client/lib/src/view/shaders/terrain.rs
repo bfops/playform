@@ -133,7 +133,6 @@ pub fn new<'a, 'b>(gl: &'b GLContext, near: f32, far: f32) -> T<'a> where 'a: 'b
         float shininess = 100000000;
 
         if (material == 1) {{
-          // duplicated in grass billboard shader
           float grass_amount =
             (cnoise(world_position / 32) + 1) / 2 *
             dot(normal, vec3(0, 1, 0)) *

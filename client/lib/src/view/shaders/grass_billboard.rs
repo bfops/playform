@@ -127,15 +127,10 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
           noise_shear = shearTo(v);
         }}
 
-        float grassiness =
-          (cnoise(root / 32) + 1) / 2 *
-          dot(normal, vec3(0, 1, 0)) *
-          1.5;
-
         mat4 scale = mat4(1.0);
         float distance_scaling = exp(length(root - eye_position) / (1 << 6));
-        scale[1].y = distance_scaling * grassiness * 0.4;
-        scale[0].x = distance_scaling * grassiness * 4.0;
+        scale[1].y = distance_scaling * 0.4;
+        scale[0].x = distance_scaling * 4.0;
         scale[2].z = scale[0].x;
 
         mat4 model_matrix = translation * rotation * shear * noise_shear * scale;
