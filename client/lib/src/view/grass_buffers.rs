@@ -14,8 +14,16 @@ use vertex;
 
 // VRAM bytes
 pub const BYTE_BUDGET: usize = 64_000_000;
-pub const TUFT_COST: usize = 100;
+pub const TUFT_COST: usize = 8;
 pub const TUFT_BUDGET: usize = BYTE_BUDGET / TUFT_COST;
+
+#[derive(Debug, Clone)]
+#[repr(C)]
+pub struct Entry {
+  pub polygon_index : u32,
+  pub tex_id        : u32,
+}
+
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
 pub struct T<'a> {
@@ -24,7 +32,7 @@ pub struct T<'a> {
 
   gl_array: yaglw::vertex_buffer::ArrayHandle<'a>,
   _instance_vertices: yaglw::vertex_buffer::GLBuffer<'a, vertex::TextureVertex>,
-  per_tuft: yaglw::vertex_buffer::GLBuffer<'a, terrain_mesh::Grass>,
+  per_tuft: yaglw::vertex_buffer::GLBuffer<'a, Entry>,
 }
 
 #[allow(missing_docs)]
@@ -105,38 +113,14 @@ pub fn new<'a, 'b:'a>(
     vertex_buffer::VertexAttribData::apply(
       &[
         vertex_buffer::VertexAttribData {
-          name: "model_matrix_col0",
-          size: 4,
-          unit: vertex_buffer::GLType::Float,
-          divisor: 1,
-        },
-        vertex_buffer::VertexAttribData {
-          name: "model_matrix_col1",
-          size: 4,
-          unit: vertex_buffer::GLType::Float,
-          divisor: 1,
-        },
-        vertex_buffer::VertexAttribData {
-          name: "model_matrix_col2",
-          size: 4,
-          unit: vertex_buffer::GLType::Float,
-          divisor: 1,
-        },
-        vertex_buffer::VertexAttribData {
-          name: "model_matrix_col3",
-          size: 4,
-          unit: vertex_buffer::GLType::Float,
-          divisor: 1,
-        },
-        vertex_buffer::VertexAttribData {
-          name: "normal",
-          size: 3,
-          unit: vertex_buffer::GLType::Float,
+          name: "polygon_id",
+          size: 1,
+          unit: vertex_buffer::GLType::Int,
           divisor: 1,
         },
         vertex_buffer::VertexAttribData {
           name: "tex_id",
-          size: 3,
+          size: 1,
           unit: vertex_buffer::GLType::UInt,
           divisor: 1,
         },
@@ -161,7 +145,7 @@ impl<'a> T<'a> {
   pub fn push(
     &mut self,
     gl: &mut GLContext,
-    grass: &[terrain_mesh::Grass],
+    grass: &[Entry],
     grass_ids: &[entity_id::T],
   ) {
     self.per_tuft.byte_buffer.bind(gl);

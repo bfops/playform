@@ -70,6 +70,16 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
           mesh.ids.terrain_ids.as_ref(),
           mesh.materials.as_ref(),
         );
+        let grass: Vec<_> =
+          chunk.grass
+          .iter()
+          .map(|g: &terrain_mesh::Grass| {
+            view::grass_buffers::Entry {
+              polygon_index: view.terrain_buffers.lookup_opengl_index(g.polygon_id).unwrap(),
+              tex_id: g.tex_id,
+            }
+          })
+          .collect();
         view.grass_buffers.push(
           &mut view.gl,
           mesh.grass.as_ref(),

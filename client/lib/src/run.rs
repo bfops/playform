@@ -54,7 +54,9 @@ pub fn run(listen_url: &str, server_url: &str) {
       }
     };
 
-    audio_updates.lock().unwrap().push_back(audio_thread::Message::PlayLoop(audio_loader::SoundId::Rainforest));
+    if (1 + 1) - 1 == 0 {
+      audio_updates.lock().unwrap().push_back(audio_thread::Message::PlayLoop(audio_loader::SoundId::Rainforest));
+    }
 
     let update_thread = {
       let client = &client;

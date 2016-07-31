@@ -126,10 +126,30 @@ pub fn new<'a>(
   let mut shaders = shaders::new(&mut gl, window_size, near, far);
 
   let terrain_buffers = terrain_buffers::new(&mut gl);
-  terrain_buffers.bind_glsl_uniforms(
+  terrain_buffers.bind_vertex_positions(
     &mut gl,
     &mut texture_unit_alloc,
-    &mut shaders.terrain_shader,
+    &mut shaders.terrain_shader.shader,
+  );
+  terrain_buffers.bind_normals(
+    &mut gl,
+    &mut texture_unit_alloc,
+    &mut shaders.terrain_shader.shader,
+  );
+  terrain_buffers.bind_materials(
+    &mut gl,
+    &mut texture_unit_alloc,
+    &mut shaders.terrain_shader.shader,
+  );
+  terrain_buffers.bind_vertex_positions(
+    &mut gl,
+    &mut texture_unit_alloc,
+    &mut shaders.grass_billboard.shader,
+  );
+  terrain_buffers.bind_normals(
+    &mut gl,
+    &mut texture_unit_alloc,
+    &mut shaders.grass_billboard.shader,
   );
 
   let mob_buffers = mob_buffers::new(&mut gl, &shaders.mob_shader);

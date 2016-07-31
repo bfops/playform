@@ -21,14 +21,13 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
       uniform mat4 projection_matrix;
       uniform vec3 eye_position;
 
-      in vec3 vertex_position;
+      uniform samplerBuffer positions;
+      uniform samplerBuffer normals;
+
       in vec2 texture_position;
-      in ivec3 tex_id;
-      in vec4 model_matrix_col0;
-      in vec4 model_matrix_col1;
-      in vec4 model_matrix_col2;
-      in vec4 model_matrix_col3;
-      in vec3 normal;
+      in vec3 vertex_position;
+      in int polygon_id;
+      in uint tex_id;
 
       out vec2 vs_texture_position;
       out vec3 vs_normal;
@@ -50,19 +49,95 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
         return mat3(1) + skew + skew*skew*(1-c)/(s*s);
       }}
 
+      // Barycentric interpolation function to smoothly interpolate vertex-associated values over a triangle.
+      // This returns the weight that should be given to each vertex value at a specified point.
+      vec3 barycentric(mat3 v, vec3 p) {{
+        mat3 d = v - mat3(p, p, p);
+        vec3 weights =
+          vec3(
+            length(cross(d[1], d[2])),
+            length(cross(d[2], d[0])),
+            length(cross(d[0], d[1]))
+          );
+        return weights / dot(weights, vec3(1));
+      }}
+
+      vec3 vec3Fetch(samplerBuffer vs, int float_idx) {{
+        vec3 r;
+        r.x = texelFetch(vs, float_idx + 0).r;
+        r.y = texelFetch(vs, float_idx + 1).r;
+        r.z = texelFetch(vs, float_idx + 2).r;
+        return r;
+      }}
+
       void main() {{
-        mat4 model_matrix = mat4(model_matrix_col0, model_matrix_col1, model_matrix_col2, model_matrix_col3);
         vs_texture_position = texture_position;
-        vs_tex_id = float(tex_id[gl_VertexID / 6]);
-        vs_normal = normal;
-        vec4 root = model_matrix * vec4(0, 0, 0, 1);
-        float scale = exp(-length(vec3(root / root.w) - eye_position) / 64);
+        vs_tex_id = float(tex_id);
+
+        // Put the grass tuft in the middle of the underlying terrain polygon.
+        int position_id = polygon_id * 3 * 3;
+        mat3 vertices =
+          mat3(
+            vec3Fetch(positions, position_id),
+            vec3Fetch(positions, position_id + 3),
+            vec3Fetch(positions, position_id + 6)
+          );
+        vec3 root = vertices * vec3(1.0/3.0);
+
+        // Find the normal for the grass by barycentrically interpolating the
+        // vertex normals to the root.
+        int normal_id = polygon_id * 3 * 3;
+        mat3 vertex_normals =
+          mat3(
+            vec3Fetch(normals, normal_id),
+            vec3Fetch(normals, normal_id + 3),
+            vec3Fetch(normals, normal_id + 6)
+          );
+        vec3 normal = vertex_normals * barycentric(vertices, root);
+
+        mat4 translation = mat4(1.0);
+        translation[3].xyz = root;
+
+        mat3 rotate_normal = between(vec3(0, 1, 0), normal);
+        mat4 rotation = mat4(rotate_normal);
+
+        // We will apply a model-space skew transformation to make the grass point
+        // in a desired direction. In model coordinates the grass initially points
+        // to (0, 1, 0), so to skew this into (xd, yd, zd) we apply a skew of
+        //    x' = x0 + xd*(y/yd)
+        //    y' = y
+        //    z' = z0 + zd*(y/yd)
+        mat4 skew = mat4(1.0);
+        {{
+          vec3 desired = vec3(0, 1, 0);
+          float d = dot(normal, desired);
+          if (d < 0.99) {{
+            // in model space
+            vec3 desired = inverse(rotate_normal) * desired;
+            // tweak the dot product to be in a valid range
+            float new_d = exp(d - 1.0);
+            // the common skew factor
+            float k = sqrt((1.0-new_d*new_d)/(new_d*new_d*(1.0-d*d)));
+
+            skew[1].x = desired.x * k;
+            skew[1].y = 1.0;
+            skew[1].z = desired.z * k;
+          }}
+        }};
+
+        mat4 scale = mat4(1.0);
+        scale[0].x = scale[2].z = 4.0;
+
+        mat4 model_matrix = translation * rotation * skew * scale;
+
         gl_Position =
           adjust_depth_precision(
             projection_matrix *
             model_matrix *
-            vec4(scale * vertex_position, 1)
+            vec4(vertex_position, 1)
           );
+
+        vs_normal = normal;
       }}"#,
       shaders::adjust_depth_precision::as_string(near, far),
     )),
