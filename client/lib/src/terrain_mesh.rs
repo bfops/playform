@@ -46,7 +46,7 @@ pub const LG_SAMPLE_SIZE: [i16; LOD_COUNT] = [
   LG_WIDTH - LG_EDGE_SAMPLES[4] as i16,
 ];
 
-pub const MAX_GRASS_LOD: lod::T = lod::T(2);
+pub const MAX_GRASS_LOD: lod::T = lod::T(3);
 
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
 /// [T; 3], but serializable.
