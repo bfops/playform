@@ -93,6 +93,12 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
             vec3Fetch(positions, position_id + 3),
             vec3Fetch(positions, position_id + 6)
           );
+        vec3 side_length =
+          vec3(
+            length(vertices[0] - vertices[1]),
+            length(vertices[1] - vertices[2]),
+            length(vertices[2] - vertices[0])
+          );
         vec3 root = vertices * vec3(1.0/3.0);
 
         // Find the normal for the grass by barycentrically interpolating the
@@ -128,9 +134,11 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
         }}
 
         mat4 scale = mat4(1.0);
-        float distance_scaling = exp(length(root - eye_position) / (1 << 6));
-        scale[1].y = distance_scaling * 0.4;
-        scale[0].x = distance_scaling * 4.0;
+        float max_side = max(max(side_length[0], side_length[1]), side_length[2]);
+        float min_side = min(min(side_length[0], side_length[1]), side_length[2]);
+        float side_scale = sqrt(min_side*max_side);
+        scale[1].y = side_scale * 0.4;
+        scale[0].x = side_scale * 4.0;
         scale[2].z = scale[0].x;
 
         mat4 model_matrix = translation * rotation * shear * noise_shear * scale;
