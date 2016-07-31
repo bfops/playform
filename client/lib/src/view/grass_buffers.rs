@@ -20,15 +20,17 @@ pub const TUFT_BUDGET: usize = BYTE_BUDGET / TUFT_COST;
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct Entry {
-  pub polygon_index : u32,
-  pub tex_id        : u32,
+  pub polygon_idx : u32,
+  pub tex_id      : u32,
 }
-
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
 pub struct T<'a> {
   id_to_index: fnv_map::T<entity_id::T, usize>,
   index_to_id: Vec<entity_id::T>,
+
+  to_polygon_id: fnv_map::T<entity_id::T, entity_id::T>,
+  of_polygon_id: fnv_map::T<entity_id::T, entity_id::T>,
 
   gl_array: yaglw::vertex_buffer::ArrayHandle<'a>,
   _instance_vertices: yaglw::vertex_buffer::GLBuffer<'a, vertex::TextureVertex>,
@@ -134,6 +136,9 @@ pub fn new<'a, 'b:'a>(
     id_to_index: fnv_map::new(),
     index_to_id: Vec::new(),
 
+    to_polygon_id: fnv_map::new(),
+    of_polygon_id: fnv_map::new(),
+
     gl_array: gl_array,
     _instance_vertices: instance_vertices,
     per_tuft: per_tuft,
@@ -146,8 +151,12 @@ impl<'a> T<'a> {
     &mut self,
     gl: &mut GLContext,
     grass: &[Entry],
+    polygon_ids: &[entity_id::T],
     grass_ids: &[entity_id::T],
   ) {
+    assert!(grass.len() == polygon_ids.len());
+    assert!(grass.len() == grass_ids.len());
+
     self.per_tuft.byte_buffer.bind(gl);
     let success: bool = self.per_tuft.push(gl, grass);
     if !success {
@@ -157,6 +166,11 @@ impl<'a> T<'a> {
     for id in grass_ids {
       self.id_to_index.insert(*id, self.index_to_id.len());
       self.index_to_id.push(*id);
+    }
+
+    for (id, polygon_id) in grass_ids.iter().zip(polygon_ids.iter()) {
+      self.to_polygon_id.insert(*id, *polygon_id);
+      self.of_polygon_id.insert(*polygon_id, *id);
     }
   }
 
@@ -175,6 +189,30 @@ impl<'a> T<'a> {
 
     self.per_tuft.byte_buffer.bind(gl);
     self.per_tuft.swap_remove(gl, idx, 1);
+
+    let polygon_id = self.to_polygon_id.remove(&id).unwrap();
+    self.of_polygon_id.remove(&polygon_id).unwrap();
+  }
+
+  pub fn update_polygon_index(
+    &self,
+    gl: &mut GLContext,
+    polygon_id: entity_id::T,
+    new_index: u32,
+  ) {
+    let grass_id = self.of_polygon_id.get(&polygon_id).unwrap();
+    let entry_idx = self.id_to_index.get(&grass_id).unwrap();
+    // update the underlying byte buffer directly and only touch the polygon
+    // index field.
+    self.per_tuft.byte_buffer.bind(gl);
+    unsafe {
+      self.per_tuft.byte_buffer.update(
+        gl,
+        std::mem::size_of::<Entry>() * entry_idx + std::mem::size_of::<u32>(),
+        &new_index as *const u32 as *const u8,
+        std::mem::size_of::<u32>(),
+      );
+    }
   }
 
   pub fn draw(&self, _gl: &mut GLContext) {

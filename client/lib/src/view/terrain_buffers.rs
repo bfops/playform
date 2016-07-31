@@ -161,18 +161,27 @@ impl<'a> T<'a> {
     self.length += VERTICES_PER_TRIANGLE as usize * ids.len();
   }
 
-  // TODO: Make this take many ids as a parameter, to reduce `bind`s.
   // Note: `id` must be present in the buffers.
   /// Remove some entity from VRAM.
-  pub fn swap_remove(&mut self, gl: &mut GLContext, id: entity_id::T) {
+  /// Returns the swapped ID and its VRAM index, if any.
+  pub fn swap_remove(
+    &mut self,
+    gl: &mut GLContext,
+    id: entity_id::T,
+  ) -> Option<(entity_id::T, usize)>
+  {
     let idx = *self.id_to_index.get(&id).unwrap();
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     self.index_to_id.swap_remove(idx);
     self.id_to_index.remove(&id);
 
-    if id != swapped_id {
-      self.id_to_index.insert(swapped_id, idx);
-    }
+    let r =
+      if id == swapped_id {
+        None
+      } else {
+        self.id_to_index.insert(swapped_id, idx);
+        Some((swapped_id, idx))
+      };
 
     self.length -= 3;
 
@@ -184,6 +193,8 @@ impl<'a> T<'a> {
 
     self.materials.buffer.byte_buffer.bind(gl);
     self.materials.buffer.swap_remove(gl, idx, 1);
+
+    r
   }
 
   /// Draw the terrain.

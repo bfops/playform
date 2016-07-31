@@ -70,26 +70,37 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
           mesh.ids.terrain_ids.as_ref(),
           mesh.materials.as_ref(),
         );
-        let grass: Vec<_> =
-          chunk.grass
-          .iter()
-          .map(|g: &terrain_mesh::Grass| {
+        let mut grass = Vec::with_capacity(mesh.grass.len());
+        let mut polygon_indices = Vec::with_capacity(mesh.grass.len());
+        for g in &mesh.grass {
+          grass.push(
             view::grass_buffers::Entry {
-              polygon_index: view.terrain_buffers.lookup_opengl_index(g.polygon_id).unwrap(),
-              tex_id: g.tex_id,
+              polygon_idx : view.terrain_buffers.lookup_opengl_index(g.polygon_id).unwrap(),
+              tex_id      : g.tex_id,
             }
-          })
-          .collect();
+          );
+          polygon_indices.push(g.polygon_id);
+        }
         view.grass_buffers.push(
           &mut view.gl,
-          mesh.grass.as_ref(),
+          grass.as_ref(),
+          polygon_indices.as_ref(),
           mesh.ids.grass_ids.as_ref(),
         );
       })
     },
     T::UnloadChunk { ids: terrain_mesh::Ids { terrain_ids, grass_ids } } => {
       for id in terrain_ids {
-        view.terrain_buffers.swap_remove(&mut view.gl, id);
+        match view.terrain_buffers.swap_remove(&mut view.gl, id) {
+          None => {},
+          Some((swapped_id, idx)) => {
+            view.grass_buffers.update_polygon_index(
+              &mut view.gl,
+              swapped_id,
+              idx as u32,
+            );
+          },
+        }
       }
       for id in grass_ids {
         view.grass_buffers.swap_remove(&mut view.gl, id);

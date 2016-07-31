@@ -228,7 +228,7 @@ pub fn generate<Rng: rand::Rng>(
                         tex_id: rng.gen_range(0, 9),
                       }
                     );
-                    chunk2.grass_ids.push(id_allocator::allocate(id_allocator));
+                    chunk2.ids.grass_ids.push(id_allocator::allocate(id_allocator));
                   }
                 }
               );
