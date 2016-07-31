@@ -19,6 +19,7 @@
 #![allow(doc_markdown)]
 #![allow(assign_op_pattern)]
 #![allow(needless_borrow)]
+#![allow(new_without_default_derive)]
 
 extern crate bincode;
 extern crate cgmath;

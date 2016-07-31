@@ -344,7 +344,7 @@ pub fn generate<Rng: rand::Rng>(
                   chunk2.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
                   chunk2.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
                   chunk2.materials.push(polygon.material as i32);
-                  chunk2.ids.push(id);
+                  chunk2.ids.terrain_ids.push(id);
                   let v = &polygon.vertices;
                   chunk2.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
 
@@ -352,7 +352,7 @@ pub fn generate<Rng: rand::Rng>(
                     for grass in place_grass(&polygon, rng) {
                       let id = id_allocator::allocate(id_allocator);
                       chunk2.grass.push(grass);
-                      chunk2.grass_ids.push(id);
+                      chunk2.ids.grass_ids.push(id);
                     }
                   }
                 }
@@ -392,6 +392,27 @@ pub struct Grass {
 }
 
 #[derive(Debug, Clone)]
+pub struct Ids {
+  /// Entity IDs for each triangle.
+  pub terrain_ids: Vec<entity_id::T>,
+  /// Entity IDs for each grass tuft.
+  pub grass_ids: Vec<entity_id::T>,
+}
+
+impl Ids {
+  pub fn new() -> Self {
+    Ids {
+      terrain_ids : Vec::new(),
+      grass_ids   : Vec::new(),
+    }
+  }
+
+  pub fn is_empty(&self) -> bool {
+    self.terrain_ids.is_empty() && self.grass_ids.is_empty()
+  }
+}
+
+#[derive(Debug, Clone)]
 /// A small continguous chunk of terrain.
 pub struct T2 {
   // These Vecs must all be ordered the same way; each entry is the next triangle.
@@ -400,16 +421,19 @@ pub struct T2 {
   pub vertex_coordinates: Vec<Triangle<Point3<f32>>>,
   /// Vertex normals. These should be normalized!
   pub normals: Vec<Triangle<Vector3<f32>>>,
-  /// Entity IDs for each triangle.
-  pub ids: Vec<entity_id::T>,
   /// Material IDs for each triangle.
   pub materials: Vec<i32>,
   // TODO: Change this back to a hashmap once initial capacity is zero for those.
   /// Per-triangle bounding boxes.
   pub bounds: Vec<(entity_id::T, Aabb3<f32>)>,
-
   pub grass: Vec<Grass>,
-  pub grass_ids: Vec<entity_id::T>,
+  pub ids: Ids,
+}
+
+impl T2 {
+  pub fn ids(&self) -> Ids {
+    self.ids.clone()
+  }
 }
 
 pub type T = Arc<T2>;
@@ -420,11 +444,10 @@ pub fn empty() -> T {
     vertex_coordinates: Vec::new(),
     normals: Vec::new(),
 
-    ids: Vec::new(),
+    ids: Ids::new(),
     materials: Vec::new(),
     bounds: Vec::new(),
 
     grass: Vec::new(),
-    grass_ids: Vec::new(),
   })
 }

@@ -12,53 +12,6 @@ use terrain_mesh;
 /// The position is implicitly in units of terrain_mesh::WIDTH.
 pub struct T(Point3<i32>);
 
-pub mod map {
-  use common::fnv_map;
-
-  pub type T<V> = fnv_map::T<super::T, V>;
-
-  pub fn new<V>() -> T<V> {
-    fnv_map::new()
-  }
-}
-
-pub mod set {
-  use common::fnv_set;
-
-  pub type T = fnv_set::T<super::T>;
-
-  #[allow(dead_code)]
-  pub fn new() -> T {
-    fnv_set::new()
-  }
-}
-
-pub mod with_lod {
-  use lod;
-
-  pub type T = (super::T, lod::T);
-
-  pub mod set {
-    use common::fnv_set;
-
-    pub type T = fnv_set::T<super::T>;
-
-    pub fn new() -> T {
-      fnv_set::new()
-    }
-  }
-
-  pub mod map {
-    use common::fnv_map;
-
-    pub type T<V> = fnv_map::T<super::T, V>;
-
-    pub fn new<V>() -> T<V> {
-      fnv_map::new()
-    }
-  }
-}
-
 #[inline(never)]
 pub fn containing_voxel(bounds: &voxel::bounds::T) -> T {
   if bounds.lg_size < 0 {
