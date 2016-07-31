@@ -225,29 +225,25 @@ impl T {
 
     // The LOD of the chunks that should be updated.
     // This doesn't necessarily match the LOD they're loaded at.
-    let mut updated_lod = None;
+    let mut updated_lods = Vec::new();
     for lod in 0..terrain_mesh::LOD_COUNT as u32 {
       let lod = lod::T(lod);
 
       let lg_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
       if lg_size == bounds.lg_size {
-        updated_lod = Some(lod);
-        break
+        updated_lods.push(lod);
       }
     }
 
     for chunk_position in updated_chunk_positions(&bounds).into_iter() {
       trace!("chunk_position {:?}", chunk_position);
       if new_voxel_loaded {
-        match updated_lod {
-          None => {}
-          Some(updated_lod) => {
-            let chunk_voxels_loaded =
-              self.chunk_voxels_loaded.entry((chunk_position, updated_lod))
-              .or_insert_with(|| 0);
-            trace!("{:?} gets {:?}", chunk_position, bounds);
-            *chunk_voxels_loaded += 1;
-          },
+        for &updated_lod in &updated_lods {
+          let chunk_voxels_loaded =
+            self.chunk_voxels_loaded.entry((chunk_position, updated_lod))
+            .or_insert_with(|| 0);
+          trace!("{:?} gets {:?}", chunk_position, bounds);
+          *chunk_voxels_loaded += 1;
         }
       }
 
