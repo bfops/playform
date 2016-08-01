@@ -27,6 +27,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
 
       in vec2 texture_position;
       in vec3 vertex_position;
+      in vec3 model_translation;
       in int polygon_id;
       in uint tex_id;
 
@@ -122,7 +123,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
 
         mat4 noise_shear;
         {{
-          vec3 billboard_seed = root + (gl_VertexID / 6) * vec3(213.11, 967.1, -1114.3);
+          vec3 billboard_seed = root / vec3(1 << 3, 1, 1 << 3);
           float azimuth = 3.14 * cnoise(billboard_seed + vec3(122, -1, 14.5) + vec3(0, time_ms / 2000, 0));
           float altitude = 3.14/2 - 3.14/4 * (cnoise(billboard_seed + vec3(-18.11, 101.1, 44.5) + vec3(0, time_ms / 2000, 0)) + 1) / 2.0;
           vec3 v =
@@ -142,13 +143,21 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
         scale[0].x = side_scale * 1.0;
         scale[2].z = scale[0].x;
 
-        mat4 model_matrix = translation * rotation * shear * noise_shear * scale;
+        mat4 model_translation_mat = mat4(1.0);
+        model_translation_mat[3].xyz = model_translation;
+
+        mat4 shear_mat = shear * noise_shear;
+        mat4 to_world_mat = translation * rotation * model_translation_mat;
+
+        vec4 sheared = shear_mat * scale * vec4(vertex_position, 1);
+        vec4 sheared_axis = shear_mat * vec4(0, 1, 0, 0);
+        sheared /= vec4(vec3(length(sheared_axis)), 1);
 
         gl_Position =
           adjust_depth_precision(
             projection_matrix *
-            model_matrix *
-            vec4(vertex_position, 1)
+            to_world_mat *
+            sheared
           );
 
         vs_normal = normal;

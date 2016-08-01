@@ -10,7 +10,6 @@ use common::entity_id;
 use common::fnv_map;
 
 use terrain_mesh;
-use vertex;
 
 // VRAM bytes
 pub const BYTE_BUDGET: usize = 64_000_000;
@@ -33,8 +32,20 @@ pub struct T<'a> {
   of_polygon_id: fnv_map::T<entity_id::T, entity_id::T>,
 
   gl_array: yaglw::vertex_buffer::ArrayHandle<'a>,
-  _instance_vertices: yaglw::vertex_buffer::GLBuffer<'a, vertex::TextureVertex>,
+  _instance_vertices: yaglw::vertex_buffer::GLBuffer<'a, Vertex>,
   per_tuft: yaglw::vertex_buffer::GLBuffer<'a, Entry>,
+}
+
+struct Vertex {
+  /// The position of this vertex in the world.
+  pub world_position    : cgmath::Point3<f32>,
+
+  /// The position of this vertex on a texture. The range of valid values
+  /// in each dimension is [0, 1].
+  pub texture_position  : cgmath::Vector2<f32>,
+
+  /// The translation of the entire model (applied after scaling effects)
+  pub model_translation : cgmath::Vector3<f32>,
 }
 
 #[allow(missing_docs)]
@@ -53,10 +64,11 @@ pub fn new<'a, 'b:'a>(
   {
     let normal = cgmath::Vector3::new(0.0, 1.0, 0.0);
     let mut quad = |t: &cgmath::Matrix3<f32>| {
-      let mut tri = |p0, t0, p1, t1, p2, t2| {
+      let mut tri = |mt, p0, t0, p1, t1, p2, t2| {
         let vert = |p, t| {
-          vertex::TextureVertex {
+          Vertex {
             world_position: p,
+            model_translation: mt,
             texture_position: t,
           }
         };
@@ -66,18 +78,19 @@ pub fn new<'a, 'b:'a>(
       };
 
       let v = *t * cgmath::Vector3::new(0.0, 0.0, -1.0);
-      let p = *t * cgmath::Vector3::new(1.0, 0.0, 0.0);
-      let p = Point3::from_vec(p/2.0);
+      let model_translation = *t * cgmath::Vector3::new(1.0, 0.0, 0.0) / 2.0;
 
       tri(
-        p + -v/2.0          , cgmath::Vector2::new(0.0 , 0.0) ,
-        p +  v/2.0          , cgmath::Vector2::new(1.0 , 0.0) ,
-        p +  v/2.0 + normal , cgmath::Vector2::new(1.0 , 1.0) ,
+        model_translation,
+        Point3::from_vec(-v/2.0)          , cgmath::Vector2::new(0.0 , 0.0) ,
+        Point3::from_vec( v/2.0)          , cgmath::Vector2::new(1.0 , 0.0) ,
+        Point3::from_vec( v/2.0 + normal) , cgmath::Vector2::new(1.0 , 1.0) ,
       );
       tri(
-        p + -v/2.0          , cgmath::Vector2::new(0.0 , 0.0) ,
-        p +  v/2.0 + normal , cgmath::Vector2::new(1.0 , 1.0) ,
-        p + -v/2.0 + normal , cgmath::Vector2::new(0.0 , 1.0) ,
+        model_translation,
+        Point3::from_vec(-v/2.0)          , cgmath::Vector2::new(0.0 , 0.0) ,
+        Point3::from_vec( v/2.0 + normal) , cgmath::Vector2::new(1.0 , 1.0) ,
+        Point3::from_vec(-v/2.0 + normal) , cgmath::Vector2::new(0.0 , 1.0) ,
       );
     };
 
@@ -108,11 +121,17 @@ pub fn new<'a, 'b:'a>(
           unit: vertex_buffer::GLType::Float,
           divisor: 0,
         },
+        vertex_buffer::VertexAttribData {
+          name: "model_translation",
+          size: 3,
+          unit: vertex_buffer::GLType::Float,
+          divisor: 0,
+        },
       ],
       gl,
       shader,
     );
-  assert!(attrib_span == std::mem::size_of::<vertex::TextureVertex>() as u32);
+  assert!(attrib_span == std::mem::size_of::<Vertex>() as u32);
 
   per_tuft.byte_buffer.bind(gl);
   let attrib_span =
