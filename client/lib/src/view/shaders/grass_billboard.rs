@@ -138,7 +138,7 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
         mat4 scale = mat4(1.0);
         float max_side = max(max(side_length[0], side_length[1]), side_length[2]);
         float min_side = min(min(side_length[0], side_length[1]), side_length[2]);
-        float side_scale = sqrt(min_side*max_side);
+        float side_scale = (min_side + max_side) / 2.0;
         scale[1].y = side_scale * 0.4;
         scale[0].x = side_scale * 1.0;
         scale[2].z = scale[0].x;
