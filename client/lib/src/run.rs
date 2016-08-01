@@ -6,6 +6,7 @@ use thread_scoped;
 
 use common::protocol;
 
+use audio_loader;
 use audio_thread;
 use client;
 use server;
