@@ -135,12 +135,19 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
           noise_shear = shearTo(v);
         }}
 
+        // this is duplicated in the terrain shader
+        float grassiness =
+          (cnoise(root / 32) + 1) / 2 *
+          dot(normal, vec3(0, 1, 0)) *
+          1.5;
+        grassiness = clamp(grassiness, 0, 1);
+
         mat4 scale = mat4(1.0);
         float max_side = max(max(side_length[0], side_length[1]), side_length[2]);
         float min_side = min(min(side_length[0], side_length[1]), side_length[2]);
         float side_scale = (min_side + max_side) / 2.0;
-        scale[1].y = side_scale * 0.4;
-        scale[0].x = side_scale * 1.0;
+        scale[1].y = grassiness * 0.8;
+        scale[0].x = grassiness * side_scale * 1.0;
         scale[2].z = scale[0].x;
 
         mat4 model_translation_mat = mat4(1.0);
@@ -149,9 +156,10 @@ pub fn new<'a, 'b:'a>(gl: &'a GLContext, near: f32, far: f32) -> T<'b> {
         mat4 shear_mat = shear * noise_shear;
         mat4 to_world_mat = translation * rotation * model_translation_mat;
 
-        vec4 sheared = shear_mat * scale * vec4(vertex_position, 1);
-        vec4 sheared_axis = shear_mat * vec4(0, 1, 0, 0);
-        sheared /= vec4(vec3(length(sheared_axis)), 1);
+        vec4 scaled = scale * vec4(vertex_position, 1);
+        vec4 sheared = shear_mat * scaled;
+        float length_ratio = length(vec3(scaled)) / length(vec3(sheared));
+        sheared *= vec4(vec3(length_ratio), 1);
 
         gl_Position =
           adjust_depth_precision(
