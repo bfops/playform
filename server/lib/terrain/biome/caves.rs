@@ -1,6 +1,6 @@
 //! Cave biome. This is very experimental and really needs occlusion culling to support any render distance at all.
 
-use cgmath::{Point3, Vector3, EuclideanVector};
+use cgmath::{Point3, Vector3, InnerSpace};
 use noise::{Seed, perlin3};
 
 use common::voxel;

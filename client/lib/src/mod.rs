@@ -20,9 +20,11 @@
 #![allow(doc_markdown)]
 #![allow(assign_op_pattern)]
 #![allow(needless_borrow)]
+#![allow(new_without_default_derive)]
 
 extern crate bincode;
 extern crate cgmath;
+extern crate collision;
 extern crate common;
 extern crate fnv;
 extern crate gl;
@@ -56,11 +58,7 @@ pub mod chunk;
 #[allow(missing_docs)]
 pub mod client;
 #[allow(missing_docs)]
-pub mod edge;
-#[allow(missing_docs)]
 pub mod hud;
-#[allow(missing_docs)]
-pub mod loaded_edges;
 #[allow(missing_docs)]
 pub mod lod;
 #[allow(missing_docs)]

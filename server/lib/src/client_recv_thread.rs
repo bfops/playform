@@ -1,4 +1,5 @@
-use cgmath::{Point, Point3, Vector, Vector3, Aabb3};
+use cgmath::{Point3, Vector3, EuclideanSpace};
+use collision::{Aabb3};
 use rand;
 use rand::distributions::IndependentSample;
 use std::convert::AsRef;
@@ -22,7 +23,7 @@ use update_gaia;
 use update_gaia::LoadDestination;
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
-  bounds.min.add_v(&bounds.max.to_vec()).mul_s(1.0 / 2.0)
+  (bounds.min + bounds.max.to_vec()) * 0.5
 }
 
 fn cast(
@@ -84,7 +85,7 @@ pub fn apply_client_update<UpdateGaia>(
 
         // TODO: shift upward until outside terrain
         let min = Point3::new(0.0, 64.0, 4.0);
-        let max = min.add_v(&Vector3::new(1.0, 2.0, 1.0));
+        let max = min + (&Vector3::new(1.0, 2.0, 1.0));
         let bounds = Aabb3::new(min, max);
         server.physics.lock().unwrap().insert_misc(player.entity_id, &bounds);
 
@@ -166,7 +167,7 @@ pub fn apply_client_update<UpdateGaia>(
             f64::max(2.0 * trunk_radius, f64::min(6.0 * trunk_radius, leaf_radius));
 
           let (low, high) = bounds.corners();
-          let mut bottom = low.add_v(&high.to_vec()).div_s(2.0);
+          let mut bottom = (low + high.to_vec()) / 2.0;
           bottom.y = low.y;
 
           let trunk_height = trunk_height as f32;
@@ -180,18 +181,18 @@ pub fn apply_client_update<UpdateGaia>(
             };
 
           let center =
-            bottom.add_v(&Vector3::new(0.0, trunk_height / 2.0, 0.0));
+            bottom + (&Vector3::new(0.0, trunk_height / 2.0, 0.0));
           let r = trunk_height / 2.0 + leaf_radius + 20.0;
           let brush =
             voxel_data::brush::T {
               bounds:
                 Aabb3::new(
                   {
-                    let low = center.add_v(&-Vector3::new(r, r, r));
+                    let low = center + (&-Vector3::new(r, r, r));
                     Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
                   },
                   {
-                    let high = center.add_v(&Vector3::new(r, r, r));
+                    let high = center + (&Vector3::new(r, r, r));
                     Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
                   },
                 ),
@@ -225,11 +226,11 @@ pub fn apply_client_update<UpdateGaia>(
               bounds:
                 Aabb3::new(
                   {
-                    let low = sphere.field.translation.add_v(&-Vector3::new(r, r, r));
+                    let low = sphere.field.translation + (&-Vector3::new(r, r, r));
                     Point3::new(low.x.floor() as i32, low.y.floor() as i32, low.z.floor() as i32)
                   },
                   {
-                    let high = sphere.field.translation.add_v(&Vector3::new(r, r, r));
+                    let high = sphere.field.translation + (&Vector3::new(r, r, r));
                     Point3::new(high.x.ceil() as i32, high.y.ceil() as i32, high.z.ceil() as i32)
                   },
                 ),

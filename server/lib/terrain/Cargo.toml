@@ -9,8 +9,9 @@ name = "terrain"
 path = "mod.rs"
 
 [dependencies]
-cgmath = "0.3.*"
+cgmath = "0.10.*"
 clippy = "*"
+collision = "*"
 fnv = "*"
 log = "*"
 lru-cache = "*"

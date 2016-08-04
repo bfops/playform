@@ -1,5 +1,6 @@
 use cgmath;
-use cgmath::{Aabb3, Point, Point3, Matrix, Matrix3, Ray, Ray3, Vector, Vector3};
+use cgmath::{Point3, Matrix3, Vector3, ElementWise};
+use collision::{Aabb3, Ray3};
 use std::f32::consts::PI;
 use std::ops::DerefMut;
 use std::sync::Mutex;
@@ -91,8 +92,8 @@ impl T {
     let bounds = physics.bounds.get_mut(&self.entity_id).unwrap();
     let init_bounds =
       Aabb3::new(
-        bounds.min.add_v(&v),
-        bounds.max.add_v(&v),
+        bounds.min + (&v),
+        bounds.max + (&v),
       );
 
     let mut new_bounds = init_bounds;
@@ -107,8 +108,8 @@ impl T {
             collided = true;
             collisions.push(Collision::Misc(id));
           } else {
-            self.position.add_self_v(&v);
-            self.position.add_self_v(&Vector3::new(0.0, step_height, 0.0));
+            self.position += v;
+            self.position += Vector3::new(0.0, step_height, 0.0);
           }
           break
         },
@@ -127,8 +128,8 @@ impl T {
 
           new_bounds =
             Aabb3::new(
-              init_bounds.min.add_v(&Vector3::new(0.0, step_height, 0.0)),
-              init_bounds.max.add_v(&Vector3::new(0.0, step_height, 0.0)),
+              init_bounds.min + Vector3::new(0.0, step_height, 0.0),
+              init_bounds.max + Vector3::new(0.0, step_height, 0.0),
             );
         },
       }
@@ -139,7 +140,7 @@ impl T {
         self.jump_fuel = MAX_JUMP_FUEL;
       }
 
-      self.speed.add_self_v(&-v);
+      self.speed += -v;
     } else {
       if v.y < 0.0 {
         self.jump_fuel = 0;
@@ -232,19 +233,19 @@ impl T {
 
     let y_axis = Vector3::new(0.0, 1.0, 0.0);
     let walk_v =
-        Matrix3::from_axis_angle(&y_axis, cgmath::rad(self.lateral_rotation))
-        .mul_v(&self.walk_accel);
-    self.speed.add_self_v(&walk_v);
-    self.speed.add_self_v(&self.accel);
+        Matrix3::from_axis_angle(y_axis, cgmath::rad(self.lateral_rotation))
+        * self.walk_accel;
+    self.speed += walk_v;
+    self.speed += self.accel;
     // friction
-    self.speed.mul_self_v(&Vector3::new(0.7, 0.99, 0.7 as f32));
+    self.speed.mul_assign_element_wise(Vector3::new(0.7, 0.99, 0.7 as f32));
 
     (new_bounds, collisions)
   }
 
   /// Changes the player's acceleration by the given `da`.
   pub fn walk(&mut self, da: Vector3<f32>) {
-    self.walk_accel.add_self_v(&da.mul_s(0.1));
+    self.walk_accel += &da * 0.1;
   }
 
   /// Rotate the player around the y axis, by `r` radians. Positive is counterclockwise.
@@ -270,21 +271,22 @@ impl T {
 
   /// Return the "right" axis (i.e. the x-axis rotated to match you).
   pub fn right(&self) -> Vector3<f32> {
-    Matrix3::from_axis_angle(&Vector3::new(0.0, 1.0, 0.0), cgmath::rad(self.lateral_rotation)).mul_v(&Vector3::new(1.0, 0.0, 0.0))
+    Matrix3::from_axis_angle(Vector3::new(0.0, 1.0, 0.0), cgmath::rad(self.lateral_rotation))
+      * Vector3::new(1.0, 0.0, 0.0)
   }
 
   /// Return the "Ray axis (i.e. the z-axis rotated to match you).
   pub fn forward(&self) -> Vector3<f32> {
     let y_axis = Vector3::new(0.0, 1.0, 0.0);
     let transform =
-      Matrix3::from_axis_angle(&self.right(), cgmath::rad(self.vertical_rotation))
-      .mul_m(&Matrix3::from_axis_angle(&y_axis, cgmath::rad(self.lateral_rotation)));
+      Matrix3::from_axis_angle(self.right(), cgmath::rad(self.vertical_rotation))
+        * Matrix3::from_axis_angle(y_axis, cgmath::rad(self.lateral_rotation));
     let forward_orig = Vector3::new(0.0, 0.0, -1.0);
 
-    transform.mul_v(&forward_orig)
+    transform * forward_orig
   }
 
   pub fn forward_ray(&self) -> Ray3<f32> {
-    Ray::new(self.position, self.forward())
+    Ray3::new(self.position, self.forward())
   }
 }

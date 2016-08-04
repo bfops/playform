@@ -28,12 +28,14 @@ pub enum T {
   /// Update the sun.
   SetSun(light::Sun),
 
-  /// Add a terrain block to the view.
-  LoadMesh(terrain_mesh::T),
+  /// Add a terrain chunk to the view.
+  LoadChunk {
+    mesh: terrain_mesh::T,
+  },
   /// Remove a terrain entity.
-  RemoveTerrain(entity_id::T),
-  /// Remove a grass billboard.
-  RemoveGrass(entity_id::T),
+  UnloadChunk {
+    ids: terrain_mesh::Ids,
+  },
   /// Treat a series of updates as an atomic operation.
   Atomic(Vec<T>),
 }
@@ -60,27 +62,50 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
         },
       }
     },
-    T::LoadMesh(mesh) => {
-      stopwatch::time("load_mesh", || {
+    T::LoadChunk { mesh } => {
+      stopwatch::time("add_chunk", || {
         view.terrain_buffers.push(
           &mut view.gl,
           mesh.vertex_coordinates.as_ref(),
           mesh.normals.as_ref(),
-          mesh.ids.as_ref(),
+          mesh.ids.terrain_ids.as_ref(),
           mesh.materials.as_ref(),
         );
+        let mut grass = Vec::with_capacity(mesh.grass.len());
+        let mut polygon_indices = Vec::with_capacity(mesh.grass.len());
+        for g in &mesh.grass {
+          grass.push(
+            view::grass_buffers::Entry {
+              polygon_idx : view.terrain_buffers.lookup_opengl_index(g.polygon_id).unwrap(),
+              tex_id      : g.tex_id,
+            }
+          );
+          polygon_indices.push(g.polygon_id);
+        }
         view.grass_buffers.push(
           &mut view.gl,
-          mesh.grass.as_ref(),
-          mesh.grass_ids.as_ref(),
+          grass.as_ref(),
+          polygon_indices.as_ref(),
+          mesh.ids.grass_ids.as_ref(),
         );
       })
     },
-    T::RemoveTerrain(id) => {
-      view.terrain_buffers.swap_remove(&mut view.gl, id);
-    },
-    T::RemoveGrass(id) => {
-      view.grass_buffers.swap_remove(&mut view.gl, id);
+    T::UnloadChunk { ids: terrain_mesh::Ids { terrain_ids, grass_ids } } => {
+      for id in terrain_ids {
+        match view.terrain_buffers.swap_remove(&mut view.gl, id) {
+          None => {},
+          Some((swapped_id, idx)) => {
+            view.grass_buffers.update_polygon_index(
+              &mut view.gl,
+              swapped_id,
+              idx as u32,
+            );
+          },
+        }
+      }
+      for id in grass_ids {
+        view.grass_buffers.swap_remove(&mut view.gl, id);
+      }
     },
     T::Atomic(updates) => {
       for up in updates.into_iter() {

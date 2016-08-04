@@ -1,17 +1,17 @@
 use cgmath;
+use collision;
 use rand;
 use std;
 use time;
 
 use common::entity_id;
+use common::{fnv_set, fnv_map};
 use common::id_allocator;
 use common::surroundings_loader;
 use common::voxel;
 
 use chunk;
 use client;
-use edge;
-use loaded_edges;
 use lod;
 use record_book;
 use terrain_mesh;
@@ -29,8 +29,8 @@ pub enum Load {
 }
 
 pub struct T {
-  /// The set of currently loaded edges.
-  loaded_edges        : loaded_edges::T<terrain_mesh::T>,
+  /// A record of all the chunks that have been loaded.
+  loaded_chunks       : fnv_map::T<chunk::position::T, (terrain_mesh::Ids, lod::T)>,
   /// The voxels we have cached from the server.
   voxels              : voxel::tree::T,
   max_load_distance   : i32,
@@ -39,7 +39,7 @@ pub struct T {
 
 pub fn new(max_load_distance: i32) -> T {
   T {
-    loaded_edges        : loaded_edges::new(),
+    loaded_chunks       : fnv_map::new(),
     voxels              : voxel::tree::new(),
     max_load_distance   : max_load_distance,
     queue               : std::collections::VecDeque::new(),
@@ -94,7 +94,7 @@ impl T {
     while let Some(msg) = self.queue.pop_front() {
       match msg {
         Load::Voxels { voxels, requested_at } => {
-          self.load_voxels(
+          self.load_chunks(
             id_allocator,
             rng,
             update_view,
@@ -132,26 +132,20 @@ impl T {
     // TODO: Rc instead of clone.
     match self.loaded_chunks.entry(*chunk_position) {
       Vacant(entry) => {
-        entry.insert((mesh_chunk.clone(), lod));
+        entry.insert((mesh_chunk.ids(), lod));
       },
       Occupied(mut entry) => {
-        {
-          // The mesh_chunk removal code is duplicated in update_thread.
-
-          let &(ref prev_chunk, _) = entry.get();
-          for id in &prev_chunk.grass_ids {
-            updates.push(view::update::RemoveGrass(*id));
-          }
-          for &id in &prev_chunk.ids {
-            updates.push(view::update::RemoveTerrain(id));
-          }
-        }
-        entry.insert((mesh_chunk.clone(), lod));
+        let (ids, _) = entry.insert((mesh_chunk.ids(), lod));
+        updates.push(view::update::UnloadChunk { ids: ids });
       },
     };
 
     if !mesh_chunk.ids.is_empty() {
-      updates.push(view::update::LoadMesh(mesh_chunk));
+      updates.push(
+        view::update::LoadChunk {
+          mesh     : mesh_chunk,
+        }
+      );
     }
 
     update_view(view::update::Atomic(updates));
@@ -193,19 +187,14 @@ impl T {
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
   {
-
-
-    for edge in chunk::edges(chunk_position) {
-      let already_loaded = self.loaded_edges.lock().unwrap().contains_key(&edge);
-      if already_loaded {
-        debug!("Not re-loading {:?}", chunk_position);
-        continue;
-      }
-
-      // Supress any edge loading errors. They *should* only be happening at the
-      // chunk boundaries, where we might not have all the adjacent voxels.
-      let _ = self.load_edge(update_view, edge);
-    }
+    self.force_load_chunk(
+      id_allocator,
+      rng,
+      update_view,
+      chunk_position,
+      lod,
+    );
+    Ok(())
   }
 
 
@@ -238,29 +227,25 @@ impl T {
 
     // The LOD of the chunks that should be updated.
     // This doesn't necessarily match the LOD they're loaded at.
-    let mut updated_lod = None;
+    let mut updated_lods = Vec::new();
     for lod in 0..terrain_mesh::LOD_COUNT as u32 {
       let lod = lod::T(lod);
 
       let lg_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
       if lg_size == bounds.lg_size {
-        updated_lod = Some(lod);
-        break
+        updated_lods.push(lod);
       }
     }
 
     for chunk_position in updated_chunk_positions(&bounds).into_iter() {
       trace!("chunk_position {:?}", chunk_position);
       if new_voxel_loaded {
-        match updated_lod {
-          None => {}
-          Some(updated_lod) => {
-            let chunk_voxels_loaded =
-              self.chunk_voxels_loaded.entry((chunk_position, updated_lod))
-              .or_insert_with(|| 0);
-            trace!("{:?} gets {:?}", chunk_position, bounds);
-            *chunk_voxels_loaded += 1;
-          },
+        for &updated_lod in &updated_lods {
+          let chunk_voxels_loaded =
+            self.chunk_voxels_loaded.entry((chunk_position, updated_lod))
+            .or_insert_with(|| 0);
+          trace!("{:?} gets {:?}", chunk_position, bounds);
+          *chunk_voxels_loaded += 1;
         }
       }
 
@@ -334,7 +319,7 @@ impl T {
   }
 
   #[inline(never)]
-  fn load_voxels<Rng, UpdateView>(
+  fn load_chunk<Rng, UpdateView>(
     &mut self,
     id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
     rng             : &mut Rng,
@@ -346,7 +331,45 @@ impl T {
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
   {
-    unimplemented!();
+    let mut update_chunks = fnv_set::new();
+    let response_time = time::precise_time_ns();
+    for (bounds, voxel) in voxel_updates {
+      trace!("Got voxel at {:?}", bounds);
+      self.load_voxel(
+        player_position,
+        voxel,
+        &bounds,
+        |chunk, lod| { update_chunks.insert((chunk, lod)); },
+      );
+    }
+
+    let processed_time = time::precise_time_ns();
+    for (chunk, lod) in update_chunks.into_iter() {
+      let _ =
+        self.load_chunk(
+          id_allocator,
+          rng,
+          update_view,
+          &chunk,
+          lod,
+        );
+    }
+
+    let chunk_loaded = time::precise_time_ns();
+
+    match request_time {
+      None => {},
+      Some(request_time) => {
+        record_book::thread_local::push_chunk_load(
+          record_book::ChunkLoad {
+            requested_at : request_time,
+            responded_at : response_time,
+            processed_at : processed_time,
+            loaded_at    : chunk_loaded,
+          }
+        );
+      },
+    }
   }
 
   pub fn unload<UpdateView>(
@@ -356,16 +379,11 @@ impl T {
   ) where
     UpdateView : FnMut(view::update::T),
   {
-    self.loaded_chunks
-      .remove(chunk_position)
-      // If it wasn't loaded, don't unload anything.
-      .map(|(chunk, _)| {
-        for id in &chunk.grass_ids {
-          update_view(view::update::RemoveGrass(*id));
-        }
-        for id in &chunk.ids {
-          update_view(view::update::RemoveTerrain(*id));
-        }
-      });
+    match self.loaded_chunks.remove(chunk_position) {
+      None => {},
+      Some((ids, _)) => {
+        update_view(view::update::UnloadChunk { ids: ids });
+      },
+    }
   }
 }

@@ -13,14 +13,13 @@ use common::id_allocator;
 use common::protocol;
 use common::surroundings_loader;
 
-use loaded_edges;
 use lod;
 use terrain_mesh;
 use terrain;
 use view;
 
 /// The distances at which LOD switches.
-pub const LOD_THRESHOLDS: [i32; terrain_mesh::LOD_COUNT-1] = [2, 16, 32];
+pub const LOD_THRESHOLDS: [i32; terrain_mesh::LOD_COUNT-1] = [2, 16, 32, 48];
 // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
 const MAX_LOAD_DISTANCE: i32 = 1 << 6;
 

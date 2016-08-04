@@ -12,7 +12,6 @@ use common::protocol;
 
 use chunk;
 use client;
-use edge;
 use terrain_mesh;
 use view;
 

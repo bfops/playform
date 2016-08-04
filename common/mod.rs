@@ -17,6 +17,7 @@
 #![allow(needless_borrow)]
 
 extern crate cgmath;
+extern crate collision;
 extern crate fnv;
 extern crate isosurface_extraction;
 #[macro_use]

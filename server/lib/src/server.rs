@@ -1,4 +1,5 @@
-use cgmath::{Aabb3, Point3};
+use cgmath::{Point3};
+use collision::{Aabb3};
 use rand;
 use std::sync::Mutex;
 use time;

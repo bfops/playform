@@ -1,7 +1,8 @@
 //! Data structure for a small chunk of terrain.
 
 use cgmath;
-use cgmath::{Point, Point3, Vector3, Vector, EuclideanVector, Matrix, Rotation, Aabb3};
+use cgmath::{Point3, Vector3, EuclideanSpace, Matrix, Rotation};
+use collision::Aabb3;
 use isosurface_extraction::dual_contouring;
 use rand;
 use std::f32;
@@ -14,12 +15,11 @@ use common::voxel;
 // TODO: Move the server-only parts to the server, like BLOCK_WIDTH and sample_info.
 
 use chunk;
-use edge;
 use lod;
 
 // TODO: terrain_mesh is now chunk-agnostic. Some/all of these values should be moved.
 /// Number of LODs
-pub const LOD_COUNT: usize = 4;
+pub const LOD_COUNT: usize = 5;
 /// lg(WIDTH)
 pub const LG_WIDTH: i16 = 3;
 /// The width of a chunk of terrain.
@@ -28,13 +28,14 @@ pub const WIDTH: i32 = 1 << LG_WIDTH;
 /// lg(EDGE_SAMPLES)
 // NOTE: If there are duplicates here, weird invariants will fail.
 // Just remove the LODs if you don't want duplicates.
-pub const LG_EDGE_SAMPLES: [u16; LOD_COUNT] = [3, 2, 1, 0];
+pub const LG_EDGE_SAMPLES: [u16; LOD_COUNT] = [3, 2, 1, 1, 0];
 /// The number of voxels along an axis within a chunk, indexed by LOD.
 pub const EDGE_SAMPLES: [u16; LOD_COUNT] = [
   1 << LG_EDGE_SAMPLES[0],
   1 << LG_EDGE_SAMPLES[1],
   1 << LG_EDGE_SAMPLES[2],
   1 << LG_EDGE_SAMPLES[3],
+  1 << LG_EDGE_SAMPLES[4],
 ];
 
 /// The width of a voxel within a chunk, indexed by LOD.
@@ -43,7 +44,10 @@ pub const LG_SAMPLE_SIZE: [i16; LOD_COUNT] = [
   LG_WIDTH - LG_EDGE_SAMPLES[1] as i16,
   LG_WIDTH - LG_EDGE_SAMPLES[2] as i16,
   LG_WIDTH - LG_EDGE_SAMPLES[3] as i16,
+  LG_WIDTH - LG_EDGE_SAMPLES[4] as i16,
 ];
+
+pub const MAX_GRASS_LOD: lod::T = lod::T(3);
 
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
 /// [T; 3], but serializable.
@@ -87,6 +91,40 @@ fn make_bounds(
   )
 }
 
+pub fn voxels_in(bounds: &Aabb3<i32>, lg_size: i16) -> Vec<voxel::bounds::T> {
+  let delta = bounds.max() - (bounds.min());
+
+  // assert that lg_size samples fit neatly into the bounds.
+  let mod_size = (1 << lg_size) - 1;
+  assert!(bounds.min().x & mod_size == 0);
+  assert!(bounds.min().y & mod_size == 0);
+  assert!(bounds.min().z & mod_size == 0);
+  assert!(bounds.max().x & mod_size == 0);
+  assert!(bounds.max().y & mod_size == 0);
+  assert!(bounds.max().z & mod_size == 0);
+
+  let x_len = delta.x >> lg_size;
+  let y_len = delta.y >> lg_size;
+  let z_len = delta.z >> lg_size;
+
+  let x_off = bounds.min().x >> lg_size;
+  let y_off = bounds.min().y >> lg_size;
+  let z_off = bounds.min().z >> lg_size;
+
+  let mut voxels =
+    Vec::with_capacity(x_len as usize + y_len as usize + z_len as usize);
+
+  for dx in 0 .. x_len {
+  for dy in 0 .. y_len {
+  for dz in 0 .. z_len {
+    let x = x_off + dx;
+    let y = y_off + dy;
+    let z = z_off + dz;
+    voxels.push(voxel::bounds::new(x, y, z, lg_size));
+  }}}
+  voxels
+}
+
 mod voxel_storage {
   use isosurface_extraction::dual_contouring;
 
@@ -127,105 +165,6 @@ mod voxel_storage {
   }
 }
 
-fn place_grass<T, Rng: rand::Rng>(
-  polygon: &dual_contouring::polygon::T<T>,
-  rng: &mut Rng,
-) -> Vec<Grass> {
-  let v = &polygon.vertices;
-  let normal = v[1].sub_p(&v[0]).cross(&v[2].sub_p(&v[0]));
-  let to_middle =
-    &v[0].to_vec()
-    .add_v(&v[1].to_vec())
-    .add_v(&v[2].to_vec())
-    .div_s(3.0)
-  ;
-
-  let y = cgmath::Vector3::new(0.0, 1.0, 0.0);
-  let z = cgmath::Vector3::new(0.0, 0.0, 1.0);
-
-  let scale =
-    (rng.next_f32() + 1.0) *
-         (v[1].sub_p(&v[0]).length())
-    .max((v[2].sub_p(&v[1]).length())
-    .max((v[0].sub_p(&v[2]).length())));
-  let scale = cgmath::Vector3::new(1.4, 0.4, 1.4) * cgmath::Vector3::from_value(scale);
-
-  let middle = Point::from_vec(to_middle);
-  let shift =
-    (rng.next_f32() + 1.0) *
-         (v[1].sub_p(&middle).length())
-    .min((v[2].sub_p(&middle).length())
-    .min((v[0].sub_p(&middle).length())));
-  let shift_angle = rng.next_f32() * 2.0 * f32::consts::PI;
-  let shift = cgmath::Matrix3::from_axis_angle(&y, cgmath::rad(shift_angle)).mul_v(&cgmath::Vector3::new(shift, 0.0, 0.0));
-
-  let normal = normal.normalize();
-
-  let rotate_normal_basis: cgmath::Basis3<f32> = cgmath::Rotation::between_vectors(&y, &normal);
-  let rotate_normal: cgmath::Matrix3<f32> = From::from(rotate_normal_basis);
-
-  // The direction the grass will point.
-  // This is roughly straight up, perturbed randomly and squeezed into valid directions.
-  let up = {
-    let altitude = (rng.next_f32()  * 2.0 - 1.0) * f32::consts::PI / 8.0;
-    let altitude: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(&z, cgmath::rad(altitude));
-    let azimuth = rng.next_f32() * 2.0 * f32::consts::PI;
-    let azimuth: cgmath::Matrix3<f32> = cgmath::Matrix3::from_axis_angle(&y, cgmath::rad(azimuth));
-    let up = (rotate_normal * azimuth * altitude).mul_v(&y);
-
-    let axis = normal.cross(&y).normalize();
-    let dot = up.y;
-    // Smoothly compress the y vector to be within 90 degrees of the normal.
-    let c = (dot - 1.0).exp().acos();
-    let rotate_normal = cgmath::Matrix3::from_axis_angle(&axis, cgmath::rad(c));
-    rotate_normal.mul_v(&up)
-  };
-
-  // model space skew transformation to make the grass point in the right direction after rotation
-  let skew = {
-    // `up` in model space
-    let up = rotate_normal_basis.invert().as_ref().mul_v(&up);
-    // dot with y
-    let d = up.y;
-    let skewness = (1.0 - d*d).sqrt();
-    let mut skew = cgmath::Matrix4::from_value(1.0);
-    skew[1][0] = up.x * skewness;
-    skew[1][1] = d;
-    skew[1][2] = up.z * skewness;
-    skew
-  };
-
-  let rotate_normal: cgmath::Matrix4<f32> = From::from(rotate_normal);
-
-  let rotate_model: cgmath::Quaternion<f32> = cgmath::Rotation3::from_axis_angle(&y, cgmath::rad(2.0 * f32::consts::PI * rng.next_f32()));
-  let rotate_model: cgmath::Matrix4<f32> = From::from(rotate_model);
-
-  let translate = cgmath::Matrix4::from_translation(&to_middle);
-
-  let mut scale_mat = cgmath::Matrix4::from_value(1.0);
-  scale_mat[0][0] = scale[0];
-  scale_mat[1][1] = scale[1];
-  scale_mat[2][2] = scale[2];
-
-  let shift_mat = cgmath::Matrix4::from_translation(&shift);
-
-  let model = From::from(translate * rotate_normal * shift_mat * skew * rotate_model * scale_mat);
-
-  let billboard_indices = [
-    rng.gen_range(0, 9),
-    rng.gen_range(0, 9),
-    rng.gen_range(0, 9),
-  ];
-  vec!(
-    Grass {
-      model_matrix: model,
-      normal: normal,
-      tex_ids: billboard_indices,
-    }
-  )
-}
-
-#[inline(never)]
 pub fn generate<Rng: rand::Rng>(
   voxels: &voxel::tree::T,
   edge: &edge::T,
@@ -238,8 +177,11 @@ pub fn generate<Rng: rand::Rng>(
     {
       let block2 = Arc::make_mut(&mut block);
 
-      let low = edge.low_corner;
-      let high = low.add_v(&Vector3::new(1, 1, 1));
+      let lg_edge_samples = LG_EDGE_SAMPLES[lod.0 as usize];
+      let lg_sample_size = LG_SAMPLE_SIZE[lod.0 as usize];
+
+      let low = *chunk_position.as_pnt();
+      let high = low + (&Vector3::new(1, 1, 1));
       let low =
         Point3::new(
           low.x << edge.lg_size,
@@ -256,39 +198,66 @@ pub fn generate<Rng: rand::Rng>(
       trace!("low {:?}", low);
       trace!("high {:?}", high);
 
-      trace!("edge: {:?} {:?}", edge.direction, low);
+      {
+        let mut edges = |direction, low_x, high_x, low_y, high_y, low_z, high_z| {
+          for x in range_inclusive(low_x, high_x) {
+          for y in range_inclusive(low_y, high_y) {
+          for z in range_inclusive(low_z, high_z) {
+            trace!("edge: {:?} {:?}", direction, Point3::new(x, y, z));
+            let edge =
+              dual_contouring::edge::T {
+                low_corner: Point3::new(x, y, z),
+                direction: direction,
+                lg_size: lg_sample_size,
+              };
 
-      try!(dual_contouring::edge::extract(
-        &mut voxel_storage::T { voxels: voxels },
-        &dual_contouring::edge::T {
-          low_corner: edge.low_corner,
-          lg_size: edge.lg_size,
-          direction:
-            match edge.direction {
-              edge::Direction::X => dual_contouring::edge::Direction::X,
-              edge::Direction::Y => dual_contouring::edge::Direction::Y,
-              edge::Direction::Z => dual_contouring::edge::Direction::Z,
-            },
-        },
-        &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
-          let id = id_allocator::allocate(id_allocator);
+            let _ =
+              dual_contouring::edge::extract(
+                &mut voxel_storage::T { voxels: voxels },
+                &edge,
+                &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
+                  let id = id_allocator::allocate(id_allocator);
 
-          let v = &polygon.vertices;
-          block2.vertex_coordinates.push(tri(v[0], v[1], v[2]));
-          block2.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
-          block2.materials.push(polygon.material as i32);
-          block2.ids.push(id);
-          block2.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
+                  chunk2.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
+                  chunk2.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
+                  chunk2.materials.push(polygon.material as i32);
+                  chunk2.ids.terrain_ids.push(id);
+                  let v = &polygon.vertices;
+                  chunk2.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
 
-          if polygon.material == voxel::Material::Terrain && edge.lg_size <= LG_SAMPLE_SIZE[1] {
-            for grass in place_grass(&polygon, rng) {
-              let id = id_allocator::allocate(id_allocator);
-              block2.grass.push(grass);
-              block2.grass_ids.push(id);
-            }
-          }
-        }
-      ));
+                  if polygon.material == voxel::Material::Terrain && lod <= MAX_GRASS_LOD {
+                    chunk2.grass.push(
+                      Grass {
+                        polygon_id: id,
+                        tex_id: rng.gen_range(0, 9),
+                      }
+                    );
+                    chunk2.ids.grass_ids.push(id_allocator::allocate(id_allocator));
+                  }
+                }
+              );
+          }}}
+        };
+
+        edges(
+          dual_contouring::edge::Direction::X,
+          low.x, high.x - 1,
+          low.y, high.y - 1,
+          low.z, high.z - 1,
+        );
+        edges(
+          dual_contouring::edge::Direction::Y,
+          low.x, high.x - 1,
+          low.y, high.y - 1,
+          low.z, high.z - 1,
+        );
+        edges(
+          dual_contouring::edge::Direction::Z,
+          low.x, high.x - 1,
+          low.y, high.y - 1,
+          low.z, high.z - 1,
+        );
+      }
     }
     Ok(block)
   })
@@ -296,9 +265,29 @@ pub fn generate<Rng: rand::Rng>(
 
 #[derive(Debug, Clone)]
 pub struct Grass {
-  pub model_matrix: cgmath::Matrix4<f32>,
-  pub normal: cgmath::Vector3<f32>,
-  pub tex_ids: [u32; 3],
+  pub polygon_id : entity_id::T,
+  pub tex_id     : u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct Ids {
+  /// Entity IDs for each triangle.
+  pub terrain_ids: Vec<entity_id::T>,
+  /// Entity IDs for each grass tuft.
+  pub grass_ids: Vec<entity_id::T>,
+}
+
+impl Ids {
+  pub fn new() -> Self {
+    Ids {
+      terrain_ids : Vec::new(),
+      grass_ids   : Vec::new(),
+    }
+  }
+
+  pub fn is_empty(&self) -> bool {
+    self.terrain_ids.is_empty() && self.grass_ids.is_empty()
+  }
 }
 
 #[derive(Debug, Clone)]
@@ -310,16 +299,19 @@ pub struct T2 {
   pub vertex_coordinates: Vec<Triangle<Point3<f32>>>,
   /// Vertex normals. These should be normalized!
   pub normals: Vec<Triangle<Vector3<f32>>>,
-  /// Entity IDs for each triangle.
-  pub ids: Vec<entity_id::T>,
   /// Material IDs for each triangle.
   pub materials: Vec<i32>,
   // TODO: Change this back to a hashmap once initial capacity is zero for those.
   /// Per-triangle bounding boxes.
   pub bounds: Vec<(entity_id::T, Aabb3<f32>)>,
-
   pub grass: Vec<Grass>,
-  pub grass_ids: Vec<entity_id::T>,
+  pub ids: Ids,
+}
+
+impl T2 {
+  pub fn ids(&self) -> Ids {
+    self.ids.clone()
+  }
 }
 
 pub type T = Arc<T2>;
@@ -330,11 +322,10 @@ pub fn empty() -> T {
     vertex_coordinates: Vec::new(),
     normals: Vec::new(),
 
-    ids: Vec::new(),
+    ids: Ids::new(),
     materials: Vec::new(),
     bounds: Vec::new(),
 
     grass: Vec::new(),
-    grass_ids: Vec::new(),
   })
 }

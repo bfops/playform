@@ -12,6 +12,7 @@ use terrain_mesh;
 /// The position is implicitly in units of terrain_mesh::WIDTH.
 pub struct T(Point3<i32>);
 
+<<<<<<< HEAD
 pub mod map {
   use common::fnv_map;
 
@@ -104,6 +105,22 @@ impl Iterator for Edges {
       direction: self.direction,
       lg_size: self.lg_size,
     })
+=======
+#[inline(never)]
+pub fn containing_voxel(bounds: &voxel::bounds::T) -> T {
+  if bounds.lg_size < 0 {
+    new(
+      (bounds.x >> -bounds.lg_size) >> terrain_mesh::LG_WIDTH,
+      (bounds.y >> -bounds.lg_size) >> terrain_mesh::LG_WIDTH,
+      (bounds.z >> -bounds.lg_size) >> terrain_mesh::LG_WIDTH,
+    )
+  } else {
+    new(
+      (bounds.x << bounds.lg_size) >> terrain_mesh::LG_WIDTH,
+      (bounds.y << bounds.lg_size) >> terrain_mesh::LG_WIDTH,
+      (bounds.z << bounds.lg_size) >> terrain_mesh::LG_WIDTH,
+    )
+>>>>>>> master
   }
 }
 

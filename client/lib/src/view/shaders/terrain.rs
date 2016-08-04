@@ -133,12 +133,13 @@ pub fn new<'a, 'b>(gl: &'b GLContext, near: f32, far: f32) -> T<'a> where 'a: 'b
         float shininess = 100000000;
 
         if (material == 1) {{
-          float grass_amount =
+          // this is duplicated in the grass billboard shader
+          float grassiness =
             (cnoise(world_position / 32) + 1) / 2 *
             dot(normal, vec3(0, 1, 0)) *
             1.5;
-          grass_amount = clamp(grass_amount, 0, 1);
-          base_color = vec4(mix(dirt(), grass(), grass_amount), 1);
+          grassiness = clamp(grassiness, 0, 1);
+          base_color = vec4(mix(dirt(), grass(), grassiness), 1);
         }} else if (material == 2) {{
           base_color = vec4(bark(), 1);
         }} else if (material == 3) {{

@@ -107,8 +107,10 @@ fn load_grass_texture<'a, 'b:'a>(
     gl::BindTexture(gl::TEXTURE_2D, grass_texture.handle.gl_id);
     let data = std::mem::transmute(pixels.as_ptr());
     gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as i32, w as i32, h as i32, 0, gl::RGBA, gl::UNSIGNED_BYTE, data);
-    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
-    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
   }
 
   Ok(grass_texture)
@@ -126,10 +128,30 @@ pub fn new<'a>(
   let mut shaders = shaders::new(&mut gl, window_size, near, far);
 
   let terrain_buffers = terrain_buffers::new(&mut gl);
-  terrain_buffers.bind_glsl_uniforms(
+  terrain_buffers.bind_vertex_positions(
     &mut gl,
     &mut texture_unit_alloc,
-    &mut shaders.terrain_shader,
+    &mut shaders.terrain_shader.shader,
+  );
+  terrain_buffers.bind_normals(
+    &mut gl,
+    &mut texture_unit_alloc,
+    &mut shaders.terrain_shader.shader,
+  );
+  terrain_buffers.bind_materials(
+    &mut gl,
+    &mut texture_unit_alloc,
+    &mut shaders.terrain_shader.shader,
+  );
+  terrain_buffers.bind_vertex_positions(
+    &mut gl,
+    &mut texture_unit_alloc,
+    &mut shaders.grass_billboard.shader,
+  );
+  terrain_buffers.bind_normals(
+    &mut gl,
+    &mut texture_unit_alloc,
+    &mut shaders.grass_billboard.shader,
   );
 
   let mob_buffers = mob_buffers::new(&mut gl, &shaders.mob_shader);

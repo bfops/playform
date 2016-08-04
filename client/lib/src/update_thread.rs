@@ -1,5 +1,4 @@
 use cgmath;
-use cgmath::Point;
 use std::sync::Mutex;
 use stopwatch;
 use time;
@@ -12,7 +11,6 @@ use common::surroundings_loader::LoadType;
 use audio_thread;
 use chunk;
 use client;
-use edge;
 use lod;
 use record_book;
 use server_update::apply_server_update;

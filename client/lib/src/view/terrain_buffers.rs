@@ -3,6 +3,7 @@
 use gl;
 use gl::types::*;
 use cgmath::{Point3, Vector3};
+use yaglw;
 use yaglw::gl_context::GLContext;
 use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
@@ -11,7 +12,6 @@ use common::entity_id;
 use common::fnv_map;
 use common::id_allocator;
 
-use view::shaders;
 use terrain_mesh::Triangle;
 
 const VERTICES_PER_TRIANGLE: u32 = 3;
@@ -72,29 +72,60 @@ pub fn new<'a, 'b>(
 }
 
 impl<'a> T<'a> {
-  /// Set the values of `shader`'s uniforms to correspond to these terrain buffers.
-  pub fn bind_glsl_uniforms(
+  /// Lookup the OpenGL index for an entity.
+  pub fn lookup_opengl_index(
+    &self,
+    id: entity_id::T,
+  ) -> Option<u32> {
+    self.id_to_index.get(&id).map(|&x| x as u32)
+  }
+
+  fn bind(
+    &self,
+    texture_unit_alloc: &mut id_allocator::T<TextureUnit>,
+    shader: &mut yaglw::shader::Shader,
+    name: &'static str,
+    id: u32,
+  ) {
+    let unit = texture_unit_alloc.allocate();
+    unsafe {
+      gl::ActiveTexture(unit.gl_id());
+      gl::BindTexture(gl::TEXTURE_BUFFER, id);
+    }
+    let loc = shader.get_uniform_location(name);
+    unsafe {
+      gl::Uniform1i(loc, unit.glsl_id as GLint);
+    }
+  }
+
+  pub fn bind_vertex_positions(
     &self,
     gl: &mut GLContext,
     texture_unit_alloc: &mut id_allocator::T<TextureUnit>,
-    shader: &mut shaders::terrain::T,
+    shader: &mut yaglw::shader::Shader,
   ) {
-    shader.shader.use_shader(gl);
-    let mut bind = |name, id| {
-      let unit = texture_unit_alloc.allocate();
-      unsafe {
-        gl::ActiveTexture(unit.gl_id());
-        gl::BindTexture(gl::TEXTURE_BUFFER, id);
-      }
-      let loc = shader.shader.get_uniform_location(name);
-      unsafe {
-        gl::Uniform1i(loc, unit.glsl_id as GLint);
-      }
-    };
+    shader.use_shader(gl);
+    self.bind(texture_unit_alloc, shader, "positions", self.vertex_positions.handle.gl_id);
+  }
 
-    bind("positions", self.vertex_positions.handle.gl_id);
-    bind("normals", self.normals.handle.gl_id);
-    bind("materials", self.materials.handle.gl_id);
+  pub fn bind_normals(
+    &self,
+    gl: &mut GLContext,
+    texture_unit_alloc: &mut id_allocator::T<TextureUnit>,
+    shader: &mut yaglw::shader::Shader,
+  ) {
+    shader.use_shader(gl);
+    self.bind(texture_unit_alloc, shader, "normals", self.normals.handle.gl_id);
+  }
+
+  pub fn bind_materials(
+    &self,
+    gl: &mut GLContext,
+    texture_unit_alloc: &mut id_allocator::T<TextureUnit>,
+    shader: &mut yaglw::shader::Shader,
+  ) {
+    shader.use_shader(gl);
+    self.bind(texture_unit_alloc, shader, "materials", self.materials.handle.gl_id);
   }
 
   /// Add a series of entites into VRAM.
@@ -130,18 +161,27 @@ impl<'a> T<'a> {
     self.length += VERTICES_PER_TRIANGLE as usize * ids.len();
   }
 
-  // TODO: Make this take many ids as a parameter, to reduce `bind`s.
   // Note: `id` must be present in the buffers.
   /// Remove some entity from VRAM.
-  pub fn swap_remove(&mut self, gl: &mut GLContext, id: entity_id::T) {
+  /// Returns the swapped ID and its VRAM index, if any.
+  pub fn swap_remove(
+    &mut self,
+    gl: &mut GLContext,
+    id: entity_id::T,
+  ) -> Option<(entity_id::T, usize)>
+  {
     let idx = *self.id_to_index.get(&id).unwrap();
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     self.index_to_id.swap_remove(idx);
     self.id_to_index.remove(&id);
 
-    if id != swapped_id {
-      self.id_to_index.insert(swapped_id, idx);
-    }
+    let r =
+      if id == swapped_id {
+        None
+      } else {
+        self.id_to_index.insert(swapped_id, idx);
+        Some((swapped_id, idx))
+      };
 
     self.length -= 3;
 
@@ -153,6 +193,8 @@ impl<'a> T<'a> {
 
     self.materials.buffer.byte_buffer.bind(gl);
     self.materials.buffer.swap_remove(gl, idx, 1);
+
+    r
   }
 
   /// Draw the terrain.
