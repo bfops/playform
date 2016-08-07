@@ -5,9 +5,9 @@ use std;
 
 use voxel;
 
-/// Width of a chunk, in voxels
+/// Width of a chunk, in world coordinates.
 pub const WIDTH: u32 = 1 << LG_WIDTH;
-/// Base-2 log of the chunk width
+/// Base-2 log of the chunk width.
 pub const LG_WIDTH: u16 = 3;
 
 /// A chunk position in "chunk coordinates".
@@ -27,11 +27,12 @@ pub mod position {
 #[allow(missing_docs)]
 pub struct T {
   pub voxels : Vec<voxel::T>,
+  pub width  : u32,
 }
 
 impl T {
   fn idx(&self, p: &cgmath::Point3<i32>) -> usize {
-    (p.x as usize * WIDTH as usize + p.y as usize) * WIDTH as usize + p.z as usize
+    (p.x as usize * self.width as usize + p.y as usize) * self.width as usize + p.z as usize
   }
 
   /// Get a reference to the voxel at a point specified relative to the lowest
@@ -86,26 +87,27 @@ impl<'a> std::iter::Iterator for VoxelBounds<'a> {
       return None
     }
 
+    let width = 1 << (LG_WIDTH as i16 - self.lg_voxel_size);
     let r =
       Some(
         voxel::bounds::T {
-          x       : WIDTH as i32 * self.position.as_point.x + self.current.x as i32,
-          y       : WIDTH as i32 * self.position.as_point.y + self.current.y as i32,
-          z       : WIDTH as i32 * self.position.as_point.z + self.current.z as i32,
+          x       : width as i32 * self.position.as_point.x + self.current.x as i32,
+          y       : width as i32 * self.position.as_point.y + self.current.y as i32,
+          z       : width as i32 * self.position.as_point.z + self.current.z as i32,
           lg_size : self.lg_voxel_size,
         },
       );
 
     self.current.x += 1;
-    if (self.current.x as u32) < WIDTH { return r }
+    if (self.current.x as u32) < width { return r }
     self.current.x = 0;
 
     self.current.y += 1;
-    if (self.current.y as u32) < WIDTH { return r }
+    if (self.current.y as u32) < width { return r }
     self.current.y = 0;
 
     self.current.z += 1;
-    if (self.current.z as u32) < WIDTH { return r }
+    if (self.current.z as u32) < width { return r }
     self.done = true;
 
     r

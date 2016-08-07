@@ -12,7 +12,7 @@ pub fn of_callback<F>(position: &position::T, lg_voxel_size: i16, mut f: F) -> T
 
   let mut voxels = Vec::new();
 
-  let samples = 1 << (LG_WIDTH as i16 - lg_voxel_size);
+  let samples = 1 << (LG_WIDTH as i32 - lg_voxel_size as i32);
   for x in 0 .. samples {
   for y in 0 .. samples {
   for z in 0 .. samples {
@@ -27,7 +27,8 @@ pub fn of_callback<F>(position: &position::T, lg_voxel_size: i16, mut f: F) -> T
   }}}
 
   T {
-    voxels: voxels,
+    voxels : voxels,
+    width  : samples as u32,
   }
 }
 
