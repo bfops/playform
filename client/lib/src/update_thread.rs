@@ -7,7 +7,7 @@ use common::surroundings_loader;
 use common::surroundings_loader::LoadType;
 
 use audio_thread;
-use chunk_position;
+use chunk;
 use client;
 use lod;
 use server_update::apply_server_update;
@@ -70,7 +70,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
     let load_position = *client.load_position.lock().unwrap();
     load_position.unwrap_or_else(|| *client.player_position.lock().unwrap())
   };
-  let load_position = chunk_position::of_world_position(&load_position);
+  let load_position = chunk::position::of_world_position(&load_position);
   let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
   let mut updates = surroundings_loader.updates(load_position.as_pnt()) ;
   loop {
@@ -84,7 +84,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
     match updates.next() {
       None => break,
       Some((b, l)) => {
-        chunk_position = chunk_position::of_pnt(&b);
+        chunk_position = chunk::position::of_pnt(&b);
         load_type = l;
       },
     }
@@ -141,7 +141,7 @@ fn load_or_request_chunk<UpdateServer, UpdateView>(
   client         : &client::T,
   update_server  : &mut UpdateServer,
   update_view    : &mut UpdateView,
-  chunk_position : &chunk_position::T,
+  chunk_position : &chunk::position::T,
   lod            : lod::T,
 ) where
   UpdateServer: FnMut(protocol::ClientToServer),

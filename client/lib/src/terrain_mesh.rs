@@ -14,39 +14,8 @@ use common::id_allocator;
 use common::voxel;
 // TODO: Move the server-only parts to the server, like BLOCK_WIDTH and sample_info.
 
-use chunk_position;
+use chunk;
 use lod;
-
-/// Number of LODs
-pub const LOD_COUNT: usize = 5;
-/// lg(WIDTH)
-pub const LG_WIDTH: i16 = 3;
-/// The width of a chunk of terrain.
-pub const WIDTH: i32 = 1 << LG_WIDTH;
-
-/// lg(EDGE_SAMPLES)
-// NOTE: If there are duplicates here, weird invariants will fail.
-// Just remove the LODs if you don't want duplicates.
-pub const LG_EDGE_SAMPLES: [u16; LOD_COUNT] = [3, 2, 1, 1, 0];
-/// The number of voxels along an axis within a chunk, indexed by LOD.
-pub const EDGE_SAMPLES: [u16; LOD_COUNT] = [
-  1 << LG_EDGE_SAMPLES[0],
-  1 << LG_EDGE_SAMPLES[1],
-  1 << LG_EDGE_SAMPLES[2],
-  1 << LG_EDGE_SAMPLES[3],
-  1 << LG_EDGE_SAMPLES[4],
-];
-
-/// The width of a voxel within a chunk, indexed by LOD.
-pub const LG_SAMPLE_SIZE: [i16; LOD_COUNT] = [
-  LG_WIDTH - LG_EDGE_SAMPLES[0] as i16,
-  LG_WIDTH - LG_EDGE_SAMPLES[1] as i16,
-  LG_WIDTH - LG_EDGE_SAMPLES[2] as i16,
-  LG_WIDTH - LG_EDGE_SAMPLES[3] as i16,
-  LG_WIDTH - LG_EDGE_SAMPLES[4] as i16,
-];
-
-pub const MAX_GRASS_LOD: lod::T = lod::T(3);
 
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
 /// [T; 3], but serializable.
@@ -166,7 +135,7 @@ mod voxel_storage {
 
 pub fn generate<Rng: rand::Rng>(
   voxels: &voxel::tree::T,
-  chunk_position: &chunk_position::T,
+  chunk_position: &chunk::position::T,
   lod: lod::T,
   id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
   rng: &mut Rng,
@@ -177,8 +146,8 @@ pub fn generate<Rng: rand::Rng>(
     {
       let chunk2 = Arc::make_mut(&mut chunk);
 
-      let lg_edge_samples = LG_EDGE_SAMPLES[lod.0 as usize];
-      let lg_sample_size = LG_SAMPLE_SIZE[lod.0 as usize];
+      let lg_edge_samples = lod::LG_EDGE_SAMPLES[lod.0 as usize];
+      let lg_sample_size = lod::LG_SAMPLE_SIZE[lod.0 as usize];
 
       let low = *chunk_position.as_pnt();
       let high = low + (&Vector3::new(1, 1, 1));
@@ -225,7 +194,7 @@ pub fn generate<Rng: rand::Rng>(
                   let v = &polygon.vertices;
                   chunk2.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
 
-                  if polygon.material == voxel::Material::Terrain && lod <= MAX_GRASS_LOD {
+                  if polygon.material == voxel::Material::Terrain && lod <= lod::MAX_GRASS_LOD {
                     chunk2.grass.push(
                       Grass {
                         polygon_id: id,

@@ -12,12 +12,9 @@ use common::protocol;
 use common::surroundings_loader;
 
 use lod;
-use terrain_mesh;
 use terrain;
 use view;
 
-/// The distances at which LOD switches.
-pub const LOD_THRESHOLDS: [i32; terrain_mesh::LOD_COUNT-1] = [2, 16, 32, 48];
 // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
 const MAX_LOAD_DISTANCE: i32 = 80;
 
@@ -25,8 +22,8 @@ pub fn lod_index(distance: i32) -> lod::T {
   assert!(distance >= 0);
   let mut lod = 0;
   while
-    lod < LOD_THRESHOLDS.len()
-    && LOD_THRESHOLDS[lod] < distance
+    lod < lod::THRESHOLDS.len()
+    && lod::THRESHOLDS[lod] < distance
   {
     lod += 1;
   }
@@ -55,7 +52,7 @@ fn load_distance(mut polygon_budget: i32) -> i32 {
   let mut load_distance = 0;
   let mut prev_threshold = 0;
   let mut prev_square = 0;
-  for (&threshold, &quality) in LOD_THRESHOLDS.iter().zip(terrain_mesh::EDGE_SAMPLES.iter()) {
+  for (&threshold, &quality) in lod::THRESHOLDS.iter().zip(lod::EDGE_SAMPLES.iter()) {
     let polygons_per_chunk = (quality * quality * 4) as i32;
     for i in num::iter::range_inclusive(prev_threshold, threshold) {
       let i = 2 * i + 1;
@@ -76,7 +73,7 @@ fn load_distance(mut polygon_budget: i32) -> i32 {
   loop {
     let square = width * width;
     // The "to infinity and beyond" quality.
-    let quality = terrain_mesh::EDGE_SAMPLES[LOD_THRESHOLDS.len()];
+    let quality = lod::EDGE_SAMPLES[lod::THRESHOLDS.len()];
     let polygons_per_chunk = (quality * quality * 4) as i32;
     let polygons_in_layer = (square - prev_square) * polygons_per_chunk;
     polygon_budget -= polygons_in_layer;
@@ -114,7 +111,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
   let surroundings_loader = {
     surroundings_loader::new(
       load_distance,
-      LOD_THRESHOLDS.iter().cloned().collect(),
+      lod::THRESHOLDS.iter().cloned().collect(),
     )
   };
 

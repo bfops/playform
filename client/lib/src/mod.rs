@@ -53,7 +53,7 @@ pub mod audio_loader;
 #[allow(missing_docs)]
 pub mod audio_thread;
 #[allow(missing_docs)]
-pub mod chunk_position;
+pub mod chunk;
 #[allow(missing_docs)]
 pub mod client;
 #[allow(missing_docs)]

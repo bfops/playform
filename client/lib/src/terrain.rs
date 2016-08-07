@@ -10,7 +10,7 @@ use common::id_allocator;
 use common::surroundings_loader;
 use common::voxel;
 
-use chunk_position;
+use chunk;
 use client;
 use lod;
 use record_book;
@@ -27,9 +27,9 @@ pub enum Load {
 
 pub struct T {
   /// A record of all the chunks that have been loaded.
-  loaded_chunks       : fnv_map::T<chunk_position::T, (terrain_mesh::Ids, lod::T)>,
+  loaded_chunks       : fnv_map::T<chunk::position::T, (terrain_mesh::Ids, lod::T)>,
   /// Map each chunk to the number of voxels inside it that we have.
-  chunk_voxels_loaded : fnv_map::T<(chunk_position::T, lod::T), u32>,
+  chunk_voxels_loaded : fnv_map::T<(chunk::position::T, lod::T), u32>,
   /// The voxels we have cached from the server.
   voxels              : voxel::tree::T,
   max_load_distance   : i32,
@@ -47,7 +47,7 @@ pub fn new(max_load_distance: i32) -> T {
 }
 
 impl T {
-  pub fn load_state(&self, chunk_position: &chunk_position::T) -> Option<lod::T> {
+  pub fn load_state(&self, chunk_position: &chunk::position::T) -> Option<lod::T> {
     self.loaded_chunks
       .get(&chunk_position)
       .map(|&(_, lod)| lod)
@@ -63,7 +63,7 @@ impl T {
 
   fn all_voxels_loaded(
     &self,
-    chunk_position: chunk_position::T,
+    chunk_position: chunk::position::T,
     lod: lod::T,
   ) -> bool {
     let chunk_voxels_loaded =
@@ -72,7 +72,7 @@ impl T {
         Some(x) => x,
       };
 
-    let edge_samples = terrain_mesh::EDGE_SAMPLES[lod.0 as usize] as u32 + 2;
+    let edge_samples = lod::EDGE_SAMPLES[lod.0 as usize] as u32 + 2;
     let samples = edge_samples * edge_samples * edge_samples;
     assert!(*chunk_voxels_loaded <= samples, "{:?}", chunk_position);
     *chunk_voxels_loaded == samples
@@ -115,7 +115,7 @@ impl T {
     id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
     rng            : &mut Rng,
     update_view    : &mut UpdateView,
-    chunk_position : &chunk_position::T,
+    chunk_position : &chunk::position::T,
     lod            : lod::T,
   ) where
     UpdateView : FnMut(view::update::T),
@@ -154,7 +154,7 @@ impl T {
     id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
     rng            : &mut Rng,
     update_view    : &mut UpdateView,
-    chunk_position : &chunk_position::T,
+    chunk_position : &chunk::position::T,
     lod            : lod::T,
   ) -> Result<(), Vec<voxel::bounds::T>> where
     UpdateView : FnMut(view::update::T),
@@ -175,22 +175,22 @@ impl T {
       );
       Ok(())
     } else {
-      let voxel_size = 1 << terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
+      let voxel_size = 1 << lod::LG_SAMPLE_SIZE[lod.0 as usize];
       let voxels =
         terrain_mesh::voxels_in(
           &collision::Aabb3::new(
             cgmath::Point3::new(
-              (chunk_position.as_pnt().x << terrain_mesh::LG_WIDTH) - voxel_size,
-              (chunk_position.as_pnt().y << terrain_mesh::LG_WIDTH) - voxel_size,
-              (chunk_position.as_pnt().z << terrain_mesh::LG_WIDTH) - voxel_size,
+              (chunk_position.as_pnt().x << chunk::LG_WIDTH) - voxel_size,
+              (chunk_position.as_pnt().y << chunk::LG_WIDTH) - voxel_size,
+              (chunk_position.as_pnt().z << chunk::LG_WIDTH) - voxel_size,
             ),
             cgmath::Point3::new(
-              ((chunk_position.as_pnt().x + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-              ((chunk_position.as_pnt().y + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
-              ((chunk_position.as_pnt().z + 1) << terrain_mesh::LG_WIDTH) + voxel_size,
+              ((chunk_position.as_pnt().x + 1) << chunk::LG_WIDTH) + voxel_size,
+              ((chunk_position.as_pnt().y + 1) << chunk::LG_WIDTH) + voxel_size,
+              ((chunk_position.as_pnt().z + 1) << chunk::LG_WIDTH) + voxel_size,
             ),
           ),
-          terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize],
+          lod::LG_SAMPLE_SIZE[lod.0 as usize],
         );
       Err(voxels)
     }
@@ -204,9 +204,9 @@ impl T {
     bounds           : &voxel::bounds::T,
     mut update_chunk : UpdateChunk,
   ) where
-    UpdateChunk: FnMut(chunk_position::T, lod::T),
+    UpdateChunk: FnMut(chunk::position::T, lod::T),
   {
-    let player_position = chunk_position::of_world_position(player_position);
+    let player_position = chunk::position::of_world_position(player_position);
 
     // Has a new voxel been loaded? (or did we change an existing voxel)
     let new_voxel_loaded;
@@ -226,10 +226,10 @@ impl T {
     // The LOD of the chunks that should be updated.
     // This doesn't necessarily match the LOD they're loaded at.
     let mut updated_lods = Vec::new();
-    for lod in 0..terrain_mesh::LOD_COUNT as u32 {
+    for lod in 0..lod::COUNT as u32 {
       let lod = lod::T(lod);
 
-      let lg_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
+      let lg_size = lod::LG_SAMPLE_SIZE[lod.0 as usize];
       if lg_size == bounds.lg_size {
         updated_lods.push(lod);
       }
@@ -263,7 +263,7 @@ impl T {
       }
 
       let lod = client::lod_index(distance);
-      let lg_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
+      let lg_size = lod::LG_SAMPLE_SIZE[lod.0 as usize];
       if lg_size != bounds.lg_size {
         debug!(
           "{:?} is not the desired LOD {:?}.",
@@ -336,7 +336,7 @@ impl T {
   pub fn unload<UpdateView>(
     &mut self,
     update_view    : &mut UpdateView,
-    chunk_position : &chunk_position::T,
+    chunk_position : &chunk::position::T,
   ) where
     UpdateView : FnMut(view::update::T),
   {
@@ -352,17 +352,17 @@ impl T {
 #[inline(never)]
 fn updated_chunk_positions(
   voxel: &voxel::bounds::T,
-) -> Vec<chunk_position::T>
+) -> Vec<chunk::position::T>
 {
-  let chunk = chunk_position::containing_voxel(voxel);
+  let chunk = chunk::position::containing_voxel(voxel);
 
   macro_rules! tweak(($dim:ident) => {{
     let mut new_voxel = voxel.clone();
     new_voxel.$dim += 1;
-    if chunk_position::containing_voxel(&new_voxel) == chunk {
+    if chunk::position::containing_voxel(&new_voxel) == chunk {
       let mut new_voxel = voxel.clone();
       new_voxel.$dim -= 1;
-      if chunk_position::containing_voxel(&new_voxel) == chunk {
+      if chunk::position::containing_voxel(&new_voxel) == chunk {
         0
       } else {
         -1
@@ -389,9 +389,9 @@ fn updated_chunk_positions(
   }});
 
   let mut chunks = Vec::new();
-  consider!(x, chunk, |chunk: chunk_position::T| {
-  consider!(y, chunk, |chunk: chunk_position::T| {
-  consider!(z, chunk, |chunk: chunk_position::T| {
+  consider!(x, chunk, |chunk: chunk::position::T| {
+  consider!(y, chunk, |chunk: chunk::position::T| {
+  consider!(z, chunk, |chunk: chunk::position::T| {
     chunks.push(chunk);
   })})});
 
