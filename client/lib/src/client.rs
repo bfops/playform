@@ -34,7 +34,7 @@ pub struct T {
   pub surroundings_loader      : Mutex<surroundings_loader::T>,
   pub id_allocator             : Mutex<id_allocator::T<entity_id::T>>,
   /// The terrain requests that are pending,
-  pub pending_terrain_requests : Mutex<fnv_set::T<chunk::position::T>>,
+  pub pending_terrain_requests : Mutex<fnv_set::T<(chunk::position::T, i16)>>,
   pub terrain                  : Mutex<terrain::T>,
   pub rng                      : Mutex<rand::XorShiftRng>,
 }

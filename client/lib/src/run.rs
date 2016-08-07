@@ -77,8 +77,8 @@ pub fn run(listen_url: &str, server_url: &str) {
   	        &mut |up| { server.talk.tell(&up) },
             &mut |msg| {
               match msg {
-                terrain::Load::Chunk { chunk, .. } => {
-                  let removed = client.pending_terrain_requests.lock().unwrap().remove(&chunk.position);
+                terrain::Load::Chunk { chunk, position, lg_voxel_size, .. } => {
+                  let removed = client.pending_terrain_requests.lock().unwrap().remove(&(position, lg_voxel_size));
                   assert!(removed);
                 }
                 terrain::Load::Voxels {..} => {},

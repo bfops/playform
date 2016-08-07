@@ -132,12 +132,13 @@ pub fn apply_client_update<UpdateGaia>(
         player.rotate_lateral(v.x);
         player.rotate_vertical(v.y);
       },
-      protocol::ClientToServer::RequestChunk { requested_at, client_id, position } => {
+      protocol::ClientToServer::RequestChunk { requested_at, client_id, position, lg_voxel_size } => {
         update_gaia(
           update_gaia::Message::LoadChunk {
-            requested_at : requested_at,
-            position     : position,
-            destination  : LoadDestination::Client(client_id),
+            requested_at  : requested_at,
+            position      : position,
+            lg_voxel_size : lg_voxel_size,
+            destination   : LoadDestination::Client(client_id),
           }
         );
       },

@@ -20,41 +20,48 @@ use view;
 #[derive(Debug, Clone)]
 pub enum Load {
   Chunk {
-    chunk        : chunk::T,
-    requested_at : u64,
+    chunk         : chunk::T,
+    position      : chunk::position::T,
+    lg_voxel_size : i16,
+    requested_at  : u64,
   },
   Voxels {
     voxels : Vec<(voxel::bounds::T, voxel::T)>,
   },
 }
 
-pub type Chunks = fnv_map::T<chunk::position::T, chunk::T>;
+pub type Chunks = fnv_map::T<(chunk::position::T, i16), chunk::T>;
+
+struct LoadState {
+  mesh_ids : terrain_mesh::Ids,
+  lod      : lod::T,
+}
 
 pub struct T {
   /// The chunks we have cached from the server.
   chunks            : Chunks,
   /// A record of all the chunks that have been loaded.
-  loaded_chunks     : fnv_map::T<chunk::position::T, (terrain_mesh::Ids, lod::T)>,
+  loaded_chunks     : fnv_map::T<chunk::position::T, LoadState>,
   max_load_distance : i32,
   queue             : std::collections::VecDeque<Load>,
 }
 
 pub fn new(max_load_distance: i32) -> T {
   T {
-    loaded_chunks       : fnv_map::new(),
-    chunks       : fnv_map::new(),
-    max_load_distance   : max_load_distance,
-    queue               : std::collections::VecDeque::new(),
+    loaded_chunks     : fnv_map::new(),
+    chunks            : fnv_map::new(),
+    max_load_distance : max_load_distance,
+    queue             : std::collections::VecDeque::new(),
   }
 }
 
-pub enum LoadResult { Success, VoxelsMissing, AlreadyLoaded }
+pub enum LoadResult { Success, ChunkMissing, AlreadyLoaded }
 
 impl T {
   pub fn load_state(&self, chunk_position: &chunk::position::T) -> Option<lod::T> {
     self.loaded_chunks
       .get(&chunk_position)
-      .map(|&(_, lod)| lod)
+      .map(|&load_state| load_state.lod)
   }
 
   pub fn queued_update_count(&self) -> usize {
@@ -87,15 +94,22 @@ impl T {
             voxels,
           );
         },
-        Load::Chunk { chunk, requested_at } => {
-          let lod = lod::at_chunk(player_position, &chunk.position);
+        Load::Chunk { chunk, requested_at, position, lg_voxel_size, .. } => {
+          let lod =
+            lod::of_distance(
+              surroundings_loader::distance_between(
+                &chunk::position::of_world_position(player_position).as_point,
+                &position.as_point,
+              )
+            );
           self.load_chunk(
             id_allocator,
             rng,
             update_view,
+            position,
             chunk,
             requested_at,
-            lod,
+            lg_voxel_size,
           );
         },
       }
@@ -134,11 +148,22 @@ impl T {
     // TODO: Rc instead of clone.
     match self.loaded_chunks.entry(*chunk_position) {
       Vacant(entry) => {
-        entry.insert((mesh_chunk.ids(), lod));
+        entry.insert(
+          LoadState {
+            mesh_ids : mesh_chunk.ids(),
+            lod      : lod,
+          }
+        );
       },
       Occupied(mut entry) => {
-        let (ids, _) = entry.insert((mesh_chunk.ids(), lod));
-        updates.push(view::update::UnloadChunk { ids: ids });
+        let load_state =
+          entry.insert(
+            LoadState {
+              mesh_ids : mesh_chunk.ids(),
+              lod      : lod,
+            }
+          );
+        updates.push(view::update::UnloadChunk { ids: load_state.mesh_ids });
       },
     };
 
@@ -160,22 +185,28 @@ impl T {
     rng            : &mut Rng,
     update_view    : &mut UpdateView,
     chunk_position : &chunk::position::T,
+    lod            : lod::T,
   ) -> LoadResult where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
   {
     let mut r = LoadResult::Success;
-    let already_loaded = self.loaded_chunks.contains_key(chunk_position);
+    let already_loaded =
+      match self.loaded_chunks.get(chunk_position) {
+        None             => false,
+        Some(load_state) => load_state.lod == lod,
+      };
     if already_loaded {
-      debug!("Not re-loading {:?}", chunk_position);
-      return LoadResult::AlreadyLoaded;
+      debug!("Not re-loading {:?}", (chunk_position, lod));
+      return LoadResult::AlreadyLoaded
     }
 
-    if self.chunks.contains_key(chunk_position);
-    match self.load_chunk(update_view, chunk_position) {
-      Ok(())  => {},
-      Err(()) => r = LoadResult::VoxelsMissing,
+    let lg_voxel_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
+    if !self.chunks.contains_key(&(*chunk_position, lg_voxel_size)) {
+      return LoadResult::ChunkMissing
     }
+
+    self.force_load_chunk(id_allocator, rng, update_view, chunk_position, lod);
 
     r
   }
@@ -211,40 +242,42 @@ impl T {
   #[inline(never)]
   fn load_chunk<Rng, UpdateView>(
     &mut self,
-    id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
-    rng             : &mut Rng,
-    update_view     : &mut UpdateView,
-    chunk           : chunk::T,
-    requested_at    : u64,
-    lod             : lod::T,
+    id_allocator  : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
+    rng           : &mut Rng,
+    update_view   : &mut UpdateView,
+    position      : chunk::position::T,
+    chunk         : chunk::T,
+    requested_at  : u64,
+    lg_voxel_size : i16,
   ) where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
   {
-    let mut update_chunks = fnv_set::new();
     let response_time = time::precise_time_ns();
-    self.chunks.insert(chunk.position, chunk);
-
+    self.chunks.insert((position, lg_voxel_size), chunk);
     let processed_time = time::precise_time_ns();
-    for (chunk, lod) in update_chunks.into_iter() {
-      let _ =
+
+    for i in 0 .. terrain_mesh::LOD_COUNT {
+      if terrain_mesh::LG_SAMPLE_SIZE[i] == lg_voxel_size {
+        let lod = lod::T(i as u32);
         self.force_load_chunk(
           id_allocator,
           rng,
           update_view,
-          &chunk,
+          &position,
           lod,
         );
+      }
     }
 
     let chunk_loaded = time::precise_time_ns();
 
     record_book::thread_local::push_chunk_load(
       record_book::ChunkLoad {
-        requested_at : requested_at,
-        responded_at : response_time,
-        processed_at : processed_time,
-        loaded_at    : chunk_loaded,
+        requested     : requested_at,
+        responded     : response_time,
+        voxels_loaded : processed_time,
+        edges_loaded  : chunk_loaded,
       },
     );
   }
@@ -258,8 +291,8 @@ impl T {
   {
     match self.loaded_chunks.remove(chunk_position) {
       None => {},
-      Some((ids, _)) => {
-        update_view(view::update::UnloadChunk { ids: ids });
+      Some(load_state) => {
+        update_view(view::update::UnloadChunk { ids: load_state.mesh_ids });
       },
     }
   }

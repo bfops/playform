@@ -108,8 +108,8 @@ fn update_surroundings<UpdateView, UpdateServer>(
       );
     let new_lod = lod::of_distance(distance);
     let lg_voxel_size = terrain_mesh::LG_SAMPLE_SIZE[new_lod.0 as usize];
-    let chunk_position = chunk::position::T { coords: chunk_position, lg_voxel_size: lg_voxel_size };
-    let mut requested_chunks: fnv_set::T<chunk::position::T> = fnv_set::new();
+    let chunk_position = chunk::position::T { as_point: chunk_position };
+    let mut requested_chunks: fnv_set::T<(chunk::position::T, i16)> = fnv_set::new();
     match load_type {
       LoadType::Load | LoadType::Downgrade => {
         let r =
@@ -118,37 +118,30 @@ fn update_surroundings<UpdateView, UpdateServer>(
             &mut *client.rng.lock().unwrap(),
             update_view,
             &chunk_position,
+            new_lod,
           );
+        use terrain::LoadResult::*;
         match r {
-          terrain::LoadResult::Success => {},
-          terrain::LoadResult::VoxelsMissing => {
-            protocol::ClientToServer::RequestChunk {
-              requested_at : time::precise_time_ns(),
-              client_id    : client.id,
-              position     : chunk_position,
-            };
+          Success | AlreadyLoaded => {},
+          ChunkMissing => {
+            let request_already_exists =
+              !client.pending_terrain_requests
+                .lock().unwrap()
+                .insert((chunk_position, lg_voxel_size));
+            if !request_already_exists {
+              protocol::ClientToServer::RequestChunk {
+                requested_at  : time::precise_time_ns(),
+                client_id     : client.id,
+                position      : chunk_position,
+                lg_voxel_size : lg_voxel_size,
+              };
+            }
           },
         }
       },
       LoadType::Unload => {
         terrain.unload(update_view, &chunk_position);
       },
-    }
-
-    for chunk in requested_chunks {
-      let request_already_exists =
-        !client.pending_terrain_requests
-          .lock().unwrap()
-          .insert(chunk);
-      if !request_already_exists {
-        update_server(
-          protocol::ClientToServer::RequestChunk {
-            requested_at : time::precise_time_ns(),
-            client_id    : client.id,
-            position     : chunk,
-          }
-        );
-      }
     }
 
     if i >= 10 {

@@ -23,7 +23,3 @@ pub fn of_distance(distance: i32) -> T {
   }
   T(num::traits::FromPrimitive::from_usize(lod).unwrap())
 }
-
-pub fn at_chunk(player_position: &cgmath::Point3<f32>, chunk: &chunk::position::T) -> T {
-
-}

@@ -22,9 +22,10 @@ pub enum LoadDestination {
 
 pub enum Message {
   LoadChunk {
-    requested_at : u64,
-    position     : chunk::position::T,
-    destination  : LoadDestination,
+    requested_at  : u64,
+    position      : chunk::position::T,
+    lg_voxel_size : i16,
+    destination   : LoadDestination,
   },
   LoadVoxel {
     bounds      : voxel::bounds::T,
@@ -40,9 +41,9 @@ pub fn update_gaia(
 ) {
   stopwatch::time("update_gaia", move || {
     match update {
-      Message::LoadChunk { requested_at, position, destination } => {
+      Message::LoadChunk { requested_at, position, lg_voxel_size, destination } => {
         stopwatch::time("terrain.load_chunk", || {
-          load_chunk(server, requested_at, position, destination);
+          load_chunk(server, requested_at, position, lg_voxel_size, destination);
         });
       },
       Message::LoadVoxel { bounds, destination } => {
@@ -73,10 +74,11 @@ pub fn update_gaia(
 
 #[inline(never)]
 fn load_chunk(
-  server       : &server::T,
-  requested_at : u64,
-  position     : chunk::position::T,
-  destination  : LoadDestination,
+  server        : &server::T,
+  requested_at  : u64,
+  position      : chunk::position::T,
+  lg_voxel_size : i16,
+  destination   : LoadDestination,
 ) {
   // TODO: Just lock `terrain` for the check and then the move;
   // don't lock for the whole time where we're generating the block.
@@ -84,7 +86,7 @@ fn load_chunk(
   let mut in_progress_terrain = server.terrain_loader.in_progress_terrain.lock().unwrap();
   match destination {
     LoadDestination::Local(owner) => {
-      for voxel_bounds in position.voxels() {
+      for voxel_bounds in chunk::voxel_bounds(&position, lg_voxel_size) {
         let voxel = server.terrain_loader.terrain.load(&voxel_bounds);
         let bounds =
           match voxel {
@@ -112,6 +114,7 @@ fn load_chunk(
       let chunk =
         chunk::of_callback(
           &position,
+          lg_voxel_size,
           |bounds| { server.terrain_loader.terrain.load(&bounds) },
         );
 
@@ -119,8 +122,10 @@ fn load_chunk(
       let client = clients.get_mut(&id).unwrap();
       client.send(
         protocol::ServerToClient::Chunk {
-          requested_at : requested_at,
-          chunk        : chunk,
+          requested_at  : requested_at,
+          chunk         : chunk,
+          position      : position,
+          lg_voxel_size : lg_voxel_size,
         }
       );
     },

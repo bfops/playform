@@ -127,11 +127,15 @@ pub fn voxels_in(bounds: &Aabb3<i32>, lg_size: i16) -> Vec<voxel::bounds::T> {
 }
 
 mod voxel_storage {
+  use cgmath;
   use isosurface_extraction::dual_contouring;
 
   use common::voxel;
 
+  use chunk;
   use terrain;
+
+  use super::LG_WIDTH;
 
   pub struct T<'a> {
     pub chunks: &'a terrain::Chunks,
@@ -139,7 +143,21 @@ mod voxel_storage {
 
   fn get_voxel<'a>(this: &mut T<'a>, bounds: &voxel::bounds::T) -> Option<&'a voxel::T> {
     trace!("fetching {:?}", bounds);
-    this.chunks.get(bounds)
+    let chunk = chunk::containing(bounds);
+    this.chunks
+      .get(&(chunk, bounds.lg_size))
+      .map(|chunk| {
+        // get the voxel position within the chunk
+        // this is just a modulo by the chunk size.
+        let mask = (1 << (LG_WIDTH - bounds.lg_size)) - 1;
+        let p =
+          cgmath::Point3::new(
+            bounds.x & mask,
+            bounds.y & mask,
+            bounds.z & mask,
+          );
+        chunk.get(&p)
+      })
   }
 
   impl<'a> dual_contouring::voxel_storage::T<voxel::Material> for T<'a> {
@@ -184,7 +202,7 @@ pub fn generate<Rng: rand::Rng>(
       let lg_edge_samples = LG_EDGE_SAMPLES[lod.0 as usize];
       let lg_sample_size = LG_SAMPLE_SIZE[lod.0 as usize];
 
-      let low = *position.as_pnt();
+      let low = position.as_point;
       let high = low + (&Vector3::new(1, 1, 1));
       let low =
         Point3::new(
@@ -204,8 +222,8 @@ pub fn generate<Rng: rand::Rng>(
 
       {
         let mut edges = |direction, low_x, high_x, low_y, high_y, low_z, high_z| {
-          for x in (low_x, high_x) {
-          for y in (low_y, high_y) {
+          for x in low_x ... high_x {
+          for y in low_y ... high_y {
           for z in low_z ... high_z {
             trace!("edge: {:?} {:?}", direction, Point3::new(x, y, z));
             let edge =
