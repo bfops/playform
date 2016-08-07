@@ -192,7 +192,7 @@ impl T {
       return LoadResult::AlreadyLoaded
     }
 
-    let lg_voxel_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
+    let lg_voxel_size = lod::LG_SAMPLE_SIZE[lod.0 as usize];
     if !self.chunks.contains_key(&(*chunk_position, lg_voxel_size)) {
       return LoadResult::ChunkMissing
     }

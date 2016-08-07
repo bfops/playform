@@ -34,6 +34,7 @@ extern crate num;
 mod cache_mosaic;
 
 pub mod biome;
+pub mod chunk;
 pub mod tree;
 
 pub use noise::Seed;

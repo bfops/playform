@@ -4,7 +4,6 @@ use collision::{Aabb3};
 use stopwatch;
 
 use common;
-use common::chunk;
 use common::id_allocator;
 use common::protocol;
 use common::voxel;
@@ -12,6 +11,7 @@ use common::voxel;
 use lod;
 use server;
 use terrain_loader;
+use terrain::chunk;
 use voxel_data;
 
 #[derive(Debug, Clone, Copy)]

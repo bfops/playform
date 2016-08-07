@@ -8,7 +8,7 @@ use voxel;
 /// Width of a chunk, in voxels
 pub const WIDTH: u32 = 1 << LG_WIDTH;
 /// Base-2 log of the chunk width
-pub const LG_WIDTH: u16 = 5;
+pub const LG_WIDTH: u16 = 3;
 
 /// A chunk position in "chunk coordinates".
 pub mod position {
@@ -57,33 +57,6 @@ pub fn voxels<'a>(chunk: &'a T, position: &'a position::T, lg_voxel_size: i16) -
 /// Return an iterator for the bounds of the voxels in a chunk.
 pub fn voxel_bounds(p: &position::T, lg_voxel_size: i16) -> VoxelBounds {
   VoxelBounds::new(p, lg_voxel_size)
-}
-
-/// Construct a chunk from a position and an initialization callback.
-pub fn of_callback<F>(position: &position::T, lg_voxel_size: i16, mut f: F) -> T
-  where F: FnMut(voxel::bounds::T) -> voxel::T
-{
-  assert!(lg_voxel_size <= 0 || lg_voxel_size as u16 <= LG_WIDTH);
-
-  let mut voxels = Vec::new();
-
-  let samples = 1 << (LG_WIDTH as i16 - lg_voxel_size);
-  for x in 0 .. samples {
-  for y in 0 .. samples {
-  for z in 0 .. samples {
-    let bounds =
-      voxel::bounds::T {
-        x: position.as_point.x + x,
-        y: position.as_point.y + y,
-        z: position.as_point.z + z,
-        lg_size: lg_voxel_size,
-      };
-    voxels.push(f(bounds));
-  }}}
-
-  T {
-    voxels: voxels,
-  }
 }
 
 /// An iterator for the bounds of the voxels inside a chunk.
