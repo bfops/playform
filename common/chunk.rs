@@ -19,7 +19,19 @@ pub mod position {
   /// Positions are implicitly multiples of the chunk size, which is
   /// `WIDTH` times the voxel size.
   pub struct T {
-    pub coords        : cgmath::Point3<i32>,
+    pub as_point : cgmath::Point3<i32>,
+  }
+}
+
+/// A chunk position with sampling info.
+pub mod metadata {
+  use chunk;
+
+  #[derive(Debug, Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
+  #[allow(missing_docs)]
+  pub struct T {
+    pub position      : chunk::position::T,
+    /// The base-2 log of the size of the voxels in a chunk.
     pub lg_voxel_size : i16,
   }
 
@@ -34,8 +46,7 @@ pub mod position {
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 #[allow(missing_docs)]
 pub struct T {
-  pub position : position::T,
-  pub voxels   : Vec<voxel::T>,
+  pub voxels : Vec<voxel::T>,
 }
 
 impl T {
@@ -54,53 +65,52 @@ impl T {
     let idx = self.idx(p);
     &mut self.voxels[idx]
   }
+}
 
-  /// Iterate through the voxels in this chunk.
-  pub fn voxels(&self) -> Voxels {
-    Voxels::new(self)
-  }
+/// Iterate through the voxels in this chunk.
+pub fn voxels<'a>(chunk: &'a T, meta: &'a metadata::T) -> Voxels<'a> {
+  Voxels::new(chunk, meta)
 }
 
 /// Construct a chunk from a position and an initialization callback.
-pub fn of_callback<F>(p: &position::T, mut f: F) -> T
+pub fn of_callback<F>(meta: &metadata::T, mut f: F) -> T
   where F: FnMut(voxel::bounds::T) -> voxel::T
 {
-  assert!(p.lg_voxel_size <= 0 || p.lg_voxel_size as u16 <= LG_WIDTH);
+  assert!(meta.lg_voxel_size <= 0 || meta.lg_voxel_size as u16 <= LG_WIDTH);
 
   let mut voxels = Vec::new();
 
-  let samples = 1 << (LG_WIDTH as i16 - p.lg_voxel_size);
+  let samples = 1 << (LG_WIDTH as i16 - meta.lg_voxel_size);
   for x in 0 .. samples {
   for y in 0 .. samples {
   for z in 0 .. samples {
     let bounds =
       voxel::bounds::T {
-        x: p.coords.x + x,
-        y: p.coords.y + y,
-        z: p.coords.z + z,
-        lg_size: p.lg_voxel_size,
+        x: meta.position.as_point.x + x,
+        y: meta.position.as_point.y + y,
+        z: meta.position.as_point.z + z,
+        lg_size: meta.lg_voxel_size,
       };
     voxels.push(f(bounds));
   }}}
 
   T {
-    position: p.clone(),
     voxels: voxels,
   }
 }
 
 /// An iterator for the bounds of the voxels inside a chunk.
 pub struct VoxelBounds<'a> {
-  chunk   : &'a position::T,
+  meta    : &'a metadata::T,
   current : cgmath::Point3<u8>,
   done    : bool,
 }
 
 impl<'a> VoxelBounds <'a> {
   #[allow(missing_docs)]
-  pub fn new<'b:'a>(chunk: &'b position::T) -> Self {
+  pub fn new<'b:'a>(meta: &'b metadata::T) -> Self {
     VoxelBounds {
-      chunk         : chunk,
+      meta          : meta,
       current       : cgmath::Point3::new(0, 0, 0),
       done          : false,
     }
@@ -117,10 +127,10 @@ impl<'a> std::iter::Iterator for VoxelBounds<'a> {
     let r =
       Some(
         voxel::bounds::T {
-          x       : WIDTH as i32 * self.chunk.coords.x + self.current.x as i32,
-          y       : WIDTH as i32 * self.chunk.coords.y + self.current.y as i32,
-          z       : WIDTH as i32 * self.chunk.coords.z + self.current.z as i32,
-          lg_size : self.chunk.lg_voxel_size,
+          x       : WIDTH as i32 * self.meta.position.as_point.x + self.current.x as i32,
+          y       : WIDTH as i32 * self.meta.position.as_point.y + self.current.y as i32,
+          z       : WIDTH as i32 * self.meta.position.as_point.z + self.current.z as i32,
+          lg_size : self.meta.lg_voxel_size,
         },
       );
 
@@ -143,15 +153,17 @@ impl<'a> std::iter::Iterator for VoxelBounds<'a> {
 /// An iterator for the voxels inside a chunk.
 pub struct Voxels<'a> {
   chunk   : &'a T,
+  meta    : &'a metadata::T,
   current : cgmath::Point3<u8>,
   done    : bool,
 }
 
 impl<'a> Voxels <'a> {
   #[allow(missing_docs)]
-  pub fn new<'b: 'a>(chunk: &'b T) -> Self {
+  pub fn new<'b: 'a>(chunk: &'b T, meta: &'b metadata::T) -> Self {
     Voxels {
       chunk   : chunk,
+      meta    : meta,
       current : cgmath::Point3::new(0, 0, 0),
       done    : false,
     }
@@ -165,12 +177,12 @@ impl<'a> std::iter::Iterator for Voxels<'a> {
       return None
     }
 
-    let x = self.chunk.position.coords.x + self.current.x as i32;
-    let y = self.chunk.position.coords.y + self.current.y as i32;
-    let z = self.chunk.position.coords.z + self.current.z as i32;
+    let x = self.meta.position.as_point.x + self.current.x as i32;
+    let y = self.meta.position.as_point.y + self.current.y as i32;
+    let z = self.meta.position.as_point.z + self.current.z as i32;
     let r =
       Some((
-        voxel::bounds::T { x: x, y: y, z: z, lg_size: self.chunk.position.lg_voxel_size },
+        voxel::bounds::T { x: x, y: y, z: z, lg_size: self.meta.lg_voxel_size },
         *self.chunk.get(&cgmath::Point3::new(x, y, z)),
       ));
 

@@ -106,7 +106,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
         &load_position,
         &chunk_position,
       );
-    let new_lod = client::lod_index(distance);
+    let new_lod = lod::of_distance(distance);
     let lg_voxel_size = terrain_mesh::LG_SAMPLE_SIZE[new_lod.0 as usize];
     let chunk_position = chunk::position::T { coords: chunk_position, lg_voxel_size: lg_voxel_size };
     let mut requested_chunks: fnv_set::T<chunk::position::T> = fnv_set::new();

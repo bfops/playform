@@ -4,6 +4,7 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
+#![feature(inclusive_range_syntax)]
 #![feature(plugin)]
 #![feature(test)]
 #![feature(type_ascription)]

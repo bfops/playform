@@ -2,7 +2,7 @@
 
 use cgmath;
 use cgmath::{Point3, Vector3, EuclideanSpace, Matrix, Rotation};
-use collision::Aabb3;
+use collision::{Aabb, Aabb3};
 use isosurface_extraction::dual_contouring;
 use rand;
 use std::f32;
@@ -16,6 +16,7 @@ use common::voxel;
 
 use chunk;
 use lod;
+use terrain;
 
 // TODO: terrain_mesh is now chunk-agnostic. Some/all of these values should be moved.
 /// Number of LODs
@@ -130,13 +131,15 @@ mod voxel_storage {
 
   use common::voxel;
 
+  use terrain;
+
   pub struct T<'a> {
-    pub voxels: &'a voxel::tree::T,
+    pub chunks: &'a terrain::Chunks,
   }
 
   fn get_voxel<'a>(this: &mut T<'a>, bounds: &voxel::bounds::T) -> Option<&'a voxel::T> {
     trace!("fetching {:?}", bounds);
-    this.voxels.get(bounds)
+    this.chunks.get(bounds)
   }
 
   impl<'a> dual_contouring::voxel_storage::T<voxel::Material> for T<'a> {
@@ -166,33 +169,34 @@ mod voxel_storage {
 }
 
 pub fn generate<Rng: rand::Rng>(
-  voxels: &voxel::tree::T,
-  edge: &edge::T,
-  id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
-  rng: &mut Rng,
-) -> Result<T, ()>
+  chunks       : &terrain::Chunks,
+  position     : &chunk::position::T,
+  lod          : lod::T,
+  id_allocator : &Mutex<id_allocator::T<entity_id::T>>,
+  rng          : &mut Rng,
+) -> T
 {
   stopwatch::time("terrain_mesh::generate", || {
-    let mut block = empty();
+    let mut chunk = empty();
     {
-      let block2 = Arc::make_mut(&mut block);
+      let chunk2 = Arc::make_mut(&mut chunk);
 
       let lg_edge_samples = LG_EDGE_SAMPLES[lod.0 as usize];
       let lg_sample_size = LG_SAMPLE_SIZE[lod.0 as usize];
 
-      let low = *chunk_position.as_pnt();
+      let low = *position.as_pnt();
       let high = low + (&Vector3::new(1, 1, 1));
       let low =
         Point3::new(
-          low.x << edge.lg_size,
-          low.y << edge.lg_size,
-          low.z << edge.lg_size,
+          low.x << lg_edge_samples,
+          low.y << lg_edge_samples,
+          low.z << lg_edge_samples,
         );
       let high =
         Point3::new(
-          high.x << edge.lg_size,
-          high.y << edge.lg_size,
-          high.z << edge.lg_size,
+          high.x << lg_edge_samples,
+          high.y << lg_edge_samples,
+          high.z << lg_edge_samples,
         );
 
       trace!("low {:?}", low);
@@ -200,9 +204,9 @@ pub fn generate<Rng: rand::Rng>(
 
       {
         let mut edges = |direction, low_x, high_x, low_y, high_y, low_z, high_z| {
-          for x in range_inclusive(low_x, high_x) {
-          for y in range_inclusive(low_y, high_y) {
-          for z in range_inclusive(low_z, high_z) {
+          for x in (low_x, high_x) {
+          for y in (low_y, high_y) {
+          for z in low_z ... high_z {
             trace!("edge: {:?} {:?}", direction, Point3::new(x, y, z));
             let edge =
               dual_contouring::edge::T {
@@ -213,7 +217,7 @@ pub fn generate<Rng: rand::Rng>(
 
             let _ =
               dual_contouring::edge::extract(
-                &mut voxel_storage::T { voxels: voxels },
+                &mut voxel_storage::T { chunks: chunks },
                 &edge,
                 &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
                   let id = id_allocator::allocate(id_allocator);
@@ -259,7 +263,7 @@ pub fn generate<Rng: rand::Rng>(
         );
       }
     }
-    Ok(block)
+    chunk
   })
 }
 

@@ -23,18 +23,6 @@ pub const LOD_THRESHOLDS: [i32; terrain_mesh::LOD_COUNT-1] = [2, 16, 32, 48];
 // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
 const MAX_LOAD_DISTANCE: i32 = 1 << 6;
 
-pub fn lod_index(distance: i32) -> lod::T {
-  assert!(distance >= 0);
-  let mut lod = 0;
-  while
-    lod < LOD_THRESHOLDS.len()
-    && LOD_THRESHOLDS[lod] < distance
-  {
-    lod += 1;
-  }
-  lod::T(num::traits::FromPrimitive::from_usize(lod).unwrap())
-}
-
 /// The main client state.
 pub struct T {
   pub id                       : protocol::ClientId,
