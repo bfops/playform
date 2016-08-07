@@ -3,7 +3,6 @@ use std::sync::Mutex;
 use stopwatch;
 use time;
 
-use common::fnv_set;
 use common::protocol;
 use common::surroundings_loader;
 use common::surroundings_loader::LoadType;
@@ -12,12 +11,10 @@ use audio_thread;
 use chunk;
 use client;
 use lod;
-use record_book;
 use server_update::apply_server_update;
 use terrain;
 use terrain_mesh;
 use view;
-use voxel;
 
 const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
 
@@ -109,7 +106,6 @@ fn update_surroundings<UpdateView, UpdateServer>(
     let new_lod = lod::of_distance(distance);
     let lg_voxel_size = terrain_mesh::LG_SAMPLE_SIZE[new_lod.0 as usize];
     let chunk_position = chunk::position::T { as_point: chunk_position };
-    let mut requested_chunks: fnv_set::T<(chunk::position::T, i16)> = fnv_set::new();
     match load_type {
       LoadType::Load | LoadType::Downgrade => {
         let r =
@@ -129,12 +125,14 @@ fn update_surroundings<UpdateView, UpdateServer>(
                 .lock().unwrap()
                 .insert((chunk_position, lg_voxel_size));
             if !request_already_exists {
-              protocol::ClientToServer::RequestChunk {
-                requested_at  : time::precise_time_ns(),
-                client_id     : client.id,
-                position      : chunk_position,
-                lg_voxel_size : lg_voxel_size,
-              };
+              update_server(
+                protocol::ClientToServer::RequestChunk {
+                  requested_at  : time::precise_time_ns(),
+                  client_id     : client.id,
+                  position      : chunk_position,
+                  lg_voxel_size : lg_voxel_size,
+                }
+              );
             }
           },
         }

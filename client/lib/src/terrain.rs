@@ -1,17 +1,15 @@
 use cgmath;
-use collision;
 use rand;
 use std;
 use time;
 
 use common::entity_id;
-use common::{fnv_set, fnv_map};
+use common::fnv_map;
 use common::id_allocator;
 use common::surroundings_loader;
 use common::voxel;
 
 use chunk;
-use client;
 use lod;
 use record_book;
 use terrain_mesh;
@@ -61,7 +59,7 @@ impl T {
   pub fn load_state(&self, chunk_position: &chunk::position::T) -> Option<lod::T> {
     self.loaded_chunks
       .get(&chunk_position)
-      .map(|&load_state| load_state.lod)
+      .map(|load_state| load_state.lod)
   }
 
   pub fn queued_update_count(&self) -> usize {
@@ -95,17 +93,11 @@ impl T {
           );
         },
         Load::Chunk { chunk, requested_at, position, lg_voxel_size, .. } => {
-          let lod =
-            lod::of_distance(
-              surroundings_loader::distance_between(
-                &chunk::position::of_world_position(player_position).as_point,
-                &position.as_point,
-              )
-            );
           self.load_chunk(
             id_allocator,
             rng,
             update_view,
+            player_position,
             position,
             chunk,
             requested_at,
@@ -190,7 +182,6 @@ impl T {
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
   {
-    let mut r = LoadResult::Success;
     let already_loaded =
       match self.loaded_chunks.get(chunk_position) {
         None             => false,
@@ -207,31 +198,17 @@ impl T {
     }
 
     self.force_load_chunk(id_allocator, rng, update_view, chunk_position, lod);
-
-    r
-  }
-
-  #[inline(never)]
-  fn load_voxel<UpdateChunk>(
-    &mut self,
-    player_position  : &cgmath::Point3<f32>,
-    voxel            : voxel::T,
-    bounds           : &voxel::bounds::T,
-    mut update_chunk : UpdateChunk,
-  ) where
-    UpdateChunk: FnMut(chunk::position::T, lod::T),
-  {
-    unimplemented!();
+    LoadResult::Success
   }
 
   #[inline(never)]
   fn load_voxels<Rng, UpdateView>(
     &mut self,
-    id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
-    rng             : &mut Rng,
-    update_view     : &mut UpdateView,
-    player_position : &cgmath::Point3<f32>,
-    voxel_updates   : Vec<(voxel::bounds::T, voxel::T)>,
+    _id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
+    _rng             : &mut Rng,
+    _update_view     : &mut UpdateView,
+    _player_position : &cgmath::Point3<f32>,
+    _voxel_updates   : Vec<(voxel::bounds::T, voxel::T)>,
   ) where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
@@ -242,13 +219,14 @@ impl T {
   #[inline(never)]
   fn load_chunk<Rng, UpdateView>(
     &mut self,
-    id_allocator  : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
-    rng           : &mut Rng,
-    update_view   : &mut UpdateView,
-    position      : chunk::position::T,
-    chunk         : chunk::T,
-    requested_at  : u64,
-    lg_voxel_size : i16,
+    id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
+    rng             : &mut Rng,
+    update_view     : &mut UpdateView,
+    player_position : &cgmath::Point3<f32>,
+    position        : chunk::position::T,
+    chunk           : chunk::T,
+    requested_at    : u64,
+    lg_voxel_size   : i16,
   ) where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
@@ -257,18 +235,23 @@ impl T {
     self.chunks.insert((position, lg_voxel_size), chunk);
     let processed_time = time::precise_time_ns();
 
-    for i in 0 .. terrain_mesh::LOD_COUNT {
-      if terrain_mesh::LG_SAMPLE_SIZE[i] == lg_voxel_size {
-        let lod = lod::T(i as u32);
-        self.force_load_chunk(
-          id_allocator,
-          rng,
-          update_view,
-          &position,
-          lod,
-        );
-      }
+    let distance =
+      surroundings_loader::distance_between(
+        &position.as_point,
+        &chunk::position::of_world_position(player_position).as_point,
+      );
+    if distance > self.max_load_distance {
+      return
     }
+
+    let lod = lod::of_distance(distance);
+    self.force_load_chunk(
+      id_allocator,
+      rng,
+      update_view,
+      &position,
+      lod,
+    );
 
     let chunk_loaded = time::precise_time_ns();
 

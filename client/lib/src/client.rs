@@ -13,7 +13,6 @@ use common::id_allocator;
 use common::protocol;
 use common::surroundings_loader;
 
-use lod;
 use terrain_mesh;
 use terrain;
 use view;

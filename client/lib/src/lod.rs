@@ -1,10 +1,8 @@
 //! Structs for keeping track of terrain level of detail.
 
-use cgmath;
 use num;
 
 use client;
-use chunk;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// A strongly-typed index into various LOD-indexed arrays.

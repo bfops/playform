@@ -10,9 +10,7 @@ use stopwatch;
 use common::entity_id;
 use common::protocol;
 
-use chunk;
 use client;
-use terrain_mesh;
 use view;
 
 #[allow(missing_docs)]

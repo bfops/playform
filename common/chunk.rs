@@ -14,7 +14,7 @@ pub const LG_WIDTH: u16 = 5;
 pub mod position {
   use cgmath;
 
-  #[derive(Debug, Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
+  #[derive(Debug, Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
   #[allow(missing_docs)]
   /// Positions are implicitly multiples of the chunk size, which is
   /// `WIDTH` times the voxel size.

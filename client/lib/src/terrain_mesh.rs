@@ -1,7 +1,6 @@
 //! Data structure for a small chunk of terrain.
 
-use cgmath;
-use cgmath::{Point3, Vector3, EuclideanSpace, Matrix, Rotation};
+use cgmath::{Point3, Vector3};
 use collision::{Aabb, Aabb3};
 use isosurface_extraction::dual_contouring;
 use rand;

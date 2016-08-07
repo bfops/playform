@@ -1,9 +1,6 @@
 use cgmath;
-use std;
 
 use common::voxel;
-
-use terrain_mesh;
 
 pub use common::chunk::{T, LG_WIDTH, WIDTH};
 

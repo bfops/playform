@@ -5,7 +5,6 @@ use stopwatch;
 
 use common::entity_id;
 
-use lod;
 use terrain_mesh;
 use vertex::ColoredVertex;
 use view;
