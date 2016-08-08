@@ -18,9 +18,9 @@ pub fn of_callback<F>(position: &position::T, lg_voxel_size: i16, mut f: F) -> T
   for z in 0 .. samples {
     let bounds =
       voxel::bounds::T {
-        x: position.as_point.x + x,
-        y: position.as_point.y + y,
-        z: position.as_point.z + z,
+        x: samples*position.as_point.x + x,
+        y: samples*position.as_point.y + y,
+        z: samples*position.as_point.z + z,
         lg_size: lg_voxel_size,
       };
     voxels.push(f(bounds));
