@@ -31,23 +31,31 @@ pub enum Load {
 pub type Chunks = fnv_map::T<(chunk::position::T, i16), chunk::T>;
 
 struct LoadState {
-  mesh_ids : terrain_mesh::Ids,
-  lod      : lod::T,
+  lod : lod::T,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+enum MeshId {
+  Chunk(chunk::position::T),
 }
 
 pub struct T {
   /// The chunks we have cached from the server.
   chunks            : Chunks,
   /// A record of all the chunks that have been loaded.
-  loaded_chunks     : fnv_map::T<chunk::position::T, LoadState>,
+  chunk_load_state  : fnv_map::T<chunk::position::T, LoadState>,
+  /// This maps mesh ids (one per chunk and one per inter-chunk seam) to their
+  /// VRAM-lookup entity IDs.
+  loaded_meshes     : fnv_map::T<MeshId, terrain_mesh::Ids>,
   max_load_distance : i32,
   queue             : std::collections::VecDeque<Load>,
 }
 
 pub fn new(max_load_distance: i32) -> T {
   T {
-    loaded_chunks     : fnv_map::new(),
     chunks            : fnv_map::new(),
+    chunk_load_state  : fnv_map::new(),
+    loaded_meshes     : fnv_map::new(),
     max_load_distance : max_load_distance,
     queue             : std::collections::VecDeque::new(),
   }
@@ -57,7 +65,7 @@ pub enum LoadResult { Success, ChunkMissing, AlreadyLoaded }
 
 impl T {
   pub fn load_state(&self, chunk_position: &chunk::position::T) -> Option<lod::T> {
-    self.loaded_chunks
+    self.chunk_load_state
       .get(&chunk_position)
       .map(|load_state| load_state.lod)
   }
@@ -137,27 +145,28 @@ impl T {
     let mut updates = Vec::new();
 
     use std::collections::hash_map::Entry::*;
-    // TODO: Rc instead of clone.
-    match self.loaded_chunks.entry(*chunk_position) {
-      Vacant(entry) => {
-        entry.insert(
-          LoadState {
-            mesh_ids : mesh_chunk.ids(),
-            lod      : lod,
-          }
-        );
+    self.chunk_load_state.insert(
+      *chunk_position,
+      LoadState {
+        lod: lod,
       },
-      Occupied(mut entry) => {
-        let load_state =
-          entry.insert(
-            LoadState {
-              mesh_ids : mesh_chunk.ids(),
-              lod      : lod,
-            }
-          );
-        updates.push(view::update::UnloadChunk { ids: load_state.mesh_ids });
-      },
-    };
+    );
+
+    {
+      let mut load_mesh = |id, mesh| {
+        match self.loaded_meshes.entry(id) {
+          Vacant(entry) => {
+            entry.insert(mesh);
+          },
+          Occupied(mut entry) => {
+            let previous_ids = entry.insert(mesh);
+            updates.push(view::update::UnloadMesh { ids: previous_ids });
+          },
+        };
+      };
+
+      load_mesh(MeshId::Chunk(*chunk_position), mesh_chunk.ids());
+    }
 
     if !mesh_chunk.ids.is_empty() {
       updates.push(
@@ -183,7 +192,7 @@ impl T {
     Rng        : rand::Rng,
   {
     let already_loaded =
-      match self.loaded_chunks.get(chunk_position) {
+      match self.chunk_load_state.get(chunk_position) {
         None             => false,
         Some(load_state) => load_state.lod == lod,
       };
@@ -272,11 +281,20 @@ impl T {
   ) where
     UpdateView : FnMut(view::update::T),
   {
-    match self.loaded_chunks.remove(chunk_position) {
-      None => {},
-      Some(load_state) => {
-        update_view(view::update::UnloadChunk { ids: load_state.mesh_ids });
-      },
+    let removed = self.chunk_load_state.remove(chunk_position);
+    if removed.is_none() {
+      return
     }
+
+    let mut remove_mesh = |id| {
+      match self.loaded_meshes.remove(&id) {
+        None => {},
+        Some(mesh) => {
+          update_view(view::update::UnloadMesh { ids: mesh });
+        },
+      }
+    };
+
+    remove_mesh(MeshId::Chunk(*chunk_position));
   }
 }
