@@ -140,7 +140,7 @@ impl T {
         lod,
         id_allocator,
         rng,
-        chunk::position::edges(chunk_position, lg_size),
+        chunk::position::inner_edges(chunk_position, lg_size),
       );
 
     let mut updates = Vec::new();

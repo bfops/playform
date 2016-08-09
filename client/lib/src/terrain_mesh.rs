@@ -175,31 +175,30 @@ pub fn of_edges<Rng: rand::Rng, Edges: Iterator<Item=edge::T>>(
           lg_size    : edge.lg_size,
         };
 
-      let _ =
-        dual_contouring::edge::extract(
-          &mut voxel_storage::T { chunks: chunks },
-          &edge,
-          &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
-            let id = id_allocator::allocate(id_allocator);
+      dual_contouring::edge::extract(
+        &mut voxel_storage::T { chunks: chunks },
+        &edge,
+        &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
+          let id = id_allocator::allocate(id_allocator);
 
-            chunk.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
-            chunk.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
-            chunk.materials.push(polygon.material as i32);
-            chunk.ids.terrain_ids.push(id);
-            let v = &polygon.vertices;
-            chunk.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
+          chunk.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
+          chunk.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
+          chunk.materials.push(polygon.material as i32);
+          chunk.ids.terrain_ids.push(id);
+          let v = &polygon.vertices;
+          chunk.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
 
-            if polygon.material == voxel::Material::Terrain && lod <= lod::MAX_GRASS_LOD {
-              chunk.grass.push(
-                Grass {
-                  polygon_id: id,
-                  tex_id: rng.gen_range(0, 9),
-                }
-              );
-              chunk.ids.grass_ids.push(id_allocator::allocate(id_allocator));
-            }
+          if polygon.material == voxel::Material::Terrain && lod <= lod::MAX_GRASS_LOD {
+            chunk.grass.push(
+              Grass {
+                polygon_id: id,
+                tex_id: rng.gen_range(0, 9),
+              }
+            );
+            chunk.ids.grass_ids.push(id_allocator::allocate(id_allocator));
           }
-        );
+        }
+      ).unwrap();
     }
   }
   chunk

@@ -48,6 +48,7 @@ pub mod position {
   pub struct InnerEdges<'a> {
     chunk     : &'a T,
     lg_size   : i16,
+    width     : u32,
     current   : cgmath::Vector3<i32>,
     direction : edge::Direction,
     done      : bool,
@@ -56,12 +57,14 @@ pub mod position {
   impl<'a> InnerEdges<'a> {
     #[allow(missing_docs)]
     pub fn new<'b: 'a>(chunk: &'b T, lg_size: i16) -> Self {
+      let width = 1 << (chunk::LG_WIDTH as u32 - lg_size as u32);
       InnerEdges {
         chunk     : chunk,
         lg_size   : lg_size,
+        width     : width,
         current   : cgmath::Vector3::new(0, 1, 1),
         direction : edge::Direction::X,
-        done      : false,
+        done      : width <= 1,
       }
     }
   }
@@ -73,27 +76,25 @@ pub mod position {
         return None
       }
 
-      let width = 1 << (chunk::LG_WIDTH as i16 - self.lg_size);
-
       macro_rules! load(
         ($x:ident, $y:ident, $z:ident) => {{
           let r =
             Some(edge::T {
-              low_corner : (self.chunk.as_point * width as i32 + self.current),
+              low_corner : (self.chunk.as_point * self.width as i32 + self.current),
               lg_size    : self.lg_size,
               direction  : self.direction,
             });
 
           self.current.$z += 1;
-          if (self.current.$z as u32) <= width - 1 { return r }
+          if (self.current.$z as u32) <= self.width - 1 { return r }
           self.current.$z = 1;
 
           self.current.$y += 1;
-          if (self.current.$y as u32) <= width - 1 { return r }
+          if (self.current.$y as u32) <= self.width - 1 { return r }
           self.current.$y = 1;
 
           self.current.$x += 1;
-          if (self.current.$x as u32) <= width - 2 { return r }
+          if (self.current.$x as u32) <= self.width - 2 { return r }
 
           r
         }}
@@ -121,7 +122,7 @@ pub mod position {
     }
   }
 
-  pub fn edges(position: &T, lg_size: i16) -> InnerEdges {
+  pub fn inner_edges(position: &T, lg_size: i16) -> InnerEdges {
     InnerEdges::new(position, lg_size)
   }
 }
