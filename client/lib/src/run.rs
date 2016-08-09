@@ -81,7 +81,7 @@ pub fn run(listen_url: &str, server_url: &str) {
           );
 
           let mut recorded = record_book::thread_local::clone();
-          recorded.chunk_loads.sort_by(|x, y| x.loaded_at.cmp(&y.loaded_at));
+          recorded.chunk_loads.sort_by(|x, y| x.loaded_time_ns.cmp(&y.loaded_time_ns));
 
           let mut file = std::fs::File::create("chunk_loads.out").unwrap();
 
@@ -90,7 +90,8 @@ pub fn run(listen_url: &str, server_url: &str) {
             if i > 0 {
               file.write_all(b", ").unwrap();
             }
-            file.write_fmt(format_args!("[{}; {}; {}; {}]", record.requested_at, record.responded_at, record.processed_at, record.loaded_at)).unwrap();
+            let record_book::ChunkLoad { request_time_ns, response_time_ns, stored_time_ns, loaded_time_ns } = *record;
+            file.write_fmt(format_args!("[{}; {}; {}; {}]", request_time_ns, response_time_ns, stored_time_ns, loaded_time_ns)).unwrap();
           }
           file.write_all(b"];\n").unwrap();
           file.write_fmt(format_args!("plot([1:{}], records);", recorded.chunk_loads.len())).unwrap();

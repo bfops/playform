@@ -323,10 +323,10 @@ impl T {
       Some(request_time) => {
         record_book::thread_local::push_chunk_load(
           record_book::ChunkLoad {
-            requested_at : request_time,
-            responded_at : response_time,
-            processed_at : processed_time,
-            loaded_at    : chunk_loaded,
+            request_time_ns  : request_time,
+            response_time_ns : response_time,
+            stored_time_ns   : processed_time,
+            loaded_time_ns   : chunk_loaded,
           }
         );
       },

@@ -1,20 +1,17 @@
 #[derive(Debug, Clone, Copy)]
-pub struct ChunkLoad
-{
-  pub requested_at: u64,
-  pub responded_at: u64,
-  pub processed_at: u64,
-  pub loaded_at: u64,
+pub struct ChunkLoad {
+  pub request_time_ns  : u64,
+  pub response_time_ns : u64,
+  pub stored_time_ns   : u64,
+  pub loaded_time_ns   : u64,
 }
 
 #[derive(Debug, Clone)]
-pub struct T
-{
+pub struct T {
   pub chunk_loads: Vec<ChunkLoad>,
 }
 
-pub fn new() -> T
-{
+pub fn new() -> T {
   T {
     chunk_loads: Vec::new(),
   }
