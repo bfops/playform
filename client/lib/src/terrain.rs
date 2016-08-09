@@ -234,7 +234,7 @@ impl T {
     player_position : &cgmath::Point3<f32>,
     position        : chunk::position::T,
     chunk           : chunk::T,
-    request_time_ns    : u64,
+    request_time_ns : u64,
     lg_voxel_size   : i16,
   ) where
     UpdateView : FnMut(view::update::T),
@@ -254,6 +254,11 @@ impl T {
     }
 
     let lod = lod::of_distance(distance);
+
+    if lod::LG_SAMPLE_SIZE[lod.0 as usize] != lg_voxel_size {
+      return
+    }
+
     self.force_load_chunk(
       id_allocator,
       rng,
