@@ -47,7 +47,7 @@ pub enum ClientToServer {
   StopJump(entity_id::T),
   #[allow(missing_docs)]
   /// Ask the server to send a block of terrain.
-  RequestChunk { requested_at: u64, client_id: ClientId, position: chunk::position::T, lg_voxel_size: i16 },
+  RequestChunk { request_time_ns: u64, client_id: ClientId, position: chunk::position::T, lg_voxel_size: i16 },
   /// Brush-remove where the player's looking.
   Add(entity_id::T),
   /// Brush-add at where the player's looking.
@@ -83,7 +83,7 @@ pub enum ServerToClient {
   /// Provide a chunk of terrain to a client.
   #[allow(missing_docs)]
   Chunk {
-    requested_at  : u64,
+    request_time_ns  : u64,
     chunk         : chunk::T,
     position      : chunk::position::T,
     lg_voxel_size : i16,

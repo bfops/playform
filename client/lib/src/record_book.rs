@@ -1,9 +1,9 @@
 #[derive(Debug, Clone, Copy)]
 pub struct ChunkLoad {
-  pub requested     : u64,
-  pub responded     : u64,
-  pub voxels_loaded : u64,
-  pub edges_loaded  : u64,
+  pub request_time_ns  : u64,
+  pub response_time_ns : u64,
+  pub stored_time_ns   : u64,
+  pub loaded_time_ns   : u64,
 }
 
 #[derive(Debug, Clone)]

@@ -73,15 +73,15 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrain
           }
         ));
       },
-      protocol::ServerToClient::Chunk { requested_at, chunk, position, lg_voxel_size } => {
-        debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - requested_at);
+      protocol::ServerToClient::Chunk { request_time_ns, chunk, position, lg_voxel_size } => {
+        debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - request_time_ns);
 
         enqueue_terrain_load(
           terrain::Load::Chunk {
-            requested_at  : requested_at,
-            chunk         : chunk,
-            position      : position,
-            lg_voxel_size : lg_voxel_size,
+            request_time_ns : request_time_ns,
+            chunk           : chunk,
+            position        : position,
+            lg_voxel_size   : lg_voxel_size,
           }
         );
       },
