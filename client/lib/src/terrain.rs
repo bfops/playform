@@ -133,13 +133,14 @@ impl T {
     Rng        : rand::Rng,
   {
     debug!("generate {:?} at {:?}", chunk_position, lod);
+    let lg_size = lod::LG_SAMPLE_SIZE[lod.0 as usize];
     let mesh_chunk =
-      terrain_mesh::generate(
+      terrain_mesh::of_edges(
         &self.chunks,
-        &chunk_position,
         lod,
         id_allocator,
         rng,
+        chunk::position::edges(chunk_position, lg_size),
       );
 
     let mut updates = Vec::new();

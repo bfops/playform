@@ -41,6 +41,20 @@ pub const THRESHOLDS: [i32; COUNT-1] = [2, 16, 32, 48];
 /// Ordering is "backwards": x > y means that x is bigger (lower level of detail) than y.
 pub struct T(pub u32);
 
+impl T {
+  pub fn lg_sample_size(self) -> i16 {
+    LG_SAMPLE_SIZE[self.0 as usize]
+  }
+
+  pub fn lg_edge_samples(self) -> u16 {
+    LG_EDGE_SAMPLES[self.0 as usize]
+  }
+
+  pub fn edge_samples(self) -> u16 {
+    EDGE_SAMPLES[self.0 as usize]
+  }
+}
+
 pub fn of_distance(distance: i32) -> T {
   assert!(distance >= 0);
   let mut lod = 0;

@@ -59,6 +59,8 @@ pub mod chunk;
 #[allow(missing_docs)]
 pub mod client;
 #[allow(missing_docs)]
+pub mod edge;
+#[allow(missing_docs)]
 pub mod hud;
 #[allow(missing_docs)]
 pub mod lod;
