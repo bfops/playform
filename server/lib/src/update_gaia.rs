@@ -22,10 +22,10 @@ pub enum LoadDestination {
 
 pub enum Message {
   LoadChunk {
-    requested_at  : u64,
-    position      : chunk::position::T,
-    lg_voxel_size : i16,
-    destination   : LoadDestination,
+    request_time_ns : u64,
+    position        : chunk::position::T,
+    lg_voxel_size   : i16,
+    destination     : LoadDestination,
   },
   LoadVoxel {
     bounds      : voxel::bounds::T,
@@ -41,9 +41,9 @@ pub fn update_gaia(
 ) {
   stopwatch::time("update_gaia", move || {
     match update {
-      Message::LoadChunk { requested_at, position, lg_voxel_size, destination } => {
+      Message::LoadChunk { request_time_ns, position, lg_voxel_size, destination } => {
         stopwatch::time("terrain.load_chunk", || {
-          load_chunk(server, requested_at, position, lg_voxel_size, destination);
+          load_chunk(server, request_time_ns, position, lg_voxel_size, destination);
         });
       },
       Message::LoadVoxel { bounds, destination } => {
@@ -75,7 +75,7 @@ pub fn update_gaia(
 #[inline(never)]
 fn load_chunk(
   server        : &server::T,
-  requested_at  : u64,
+  request_time_ns  : u64,
   position      : chunk::position::T,
   lg_voxel_size : i16,
   destination   : LoadDestination,
@@ -122,10 +122,10 @@ fn load_chunk(
       let client = clients.get_mut(&id).unwrap();
       client.send(
         protocol::ServerToClient::Chunk {
-          requested_at  : requested_at,
-          chunk         : chunk,
-          position      : position,
-          lg_voxel_size : lg_voxel_size,
+          request_time_ns : request_time_ns,
+          chunk           : chunk,
+          position        : position,
+          lg_voxel_size   : lg_voxel_size,
         }
       );
     },

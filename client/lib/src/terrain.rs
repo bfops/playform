@@ -18,10 +18,10 @@ use view;
 #[derive(Debug, Clone)]
 pub enum Load {
   Chunk {
-    chunk         : chunk::T,
-    position      : chunk::position::T,
-    lg_voxel_size : i16,
-    request_time_ns_at  : u64,
+    chunk           : chunk::T,
+    position        : chunk::position::T,
+    lg_voxel_size   : i16,
+    request_time_ns : u64,
   },
   Voxels {
     voxels : Vec<(voxel::bounds::T, voxel::T)>,
@@ -92,7 +92,7 @@ impl T {
             voxels,
           );
         },
-        Load::Chunk { chunk, request_time_ns_at, position, lg_voxel_size, .. } => {
+        Load::Chunk { chunk, request_time_ns, position, lg_voxel_size, .. } => {
           self.load_chunk(
             id_allocator,
             rng,
@@ -100,7 +100,7 @@ impl T {
             player_position,
             position,
             chunk,
-            request_time_ns_at,
+            request_time_ns,
             lg_voxel_size,
           );
         },
@@ -225,7 +225,7 @@ impl T {
     player_position : &cgmath::Point3<f32>,
     position        : chunk::position::T,
     chunk           : chunk::T,
-    request_time_ns_at    : u64,
+    request_time_ns    : u64,
     lg_voxel_size   : i16,
   ) where
     UpdateView : FnMut(view::update::T),
@@ -257,10 +257,10 @@ impl T {
 
     record_book::thread_local::push_chunk_load(
       record_book::ChunkLoad {
-        request_time_ns  :  request_time_ns_at,
-        response_time_ns :  response_time,
-        stored_time_ns   :  processed_time,
-        loaded_time_ns   :  chunk_loaded,
+        request_time_ns  : request_time_ns,
+        response_time_ns : response_time,
+        stored_time_ns   : processed_time,
+        loaded_time_ns   : chunk_loaded,
       },
     );
   }
