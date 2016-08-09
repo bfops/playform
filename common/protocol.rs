@@ -47,11 +47,11 @@ pub enum ClientToServer {
   /// Ask the server to send a block of terrain.
   RequestVoxels {
     /// The time, in nanoseconds, when the voxels were requested.
-    requested_at : u64,
+    request_time_ns : u64,
     /// The ID of the requesting client.
-    client_id    : ClientId,
+    client_id       : ClientId,
     /// The bounds of the voxels to fetch.
-    voxels       : Vec<voxel::bounds::T>,
+    voxels          : Vec<voxel::bounds::T>,
   },
   /// Brush-remove where the player's looking.
   Add(entity_id::T),

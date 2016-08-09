@@ -162,9 +162,9 @@ fn load_or_request_chunk<UpdateServer, UpdateView>(
     Err(voxels) => {
       update_server(
         protocol::ClientToServer::RequestVoxels {
-          requested_at : time::precise_time_ns(),
-          client_id    : client.id,
-          voxels       : voxels,
+          request_time_ns : time::precise_time_ns(),
+          client_id       : client.id,
+          voxels          : voxels,
         }
       );
       *client.pending_terrain_requests.lock().unwrap() += 1;
