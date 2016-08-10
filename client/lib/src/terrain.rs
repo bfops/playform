@@ -181,33 +181,43 @@ impl T {
 
       let chunks = &self.chunks;
       let max_load_distance = self.max_load_distance;
+      let desired_lod = |chunk_positions: &[chunk::position::T]| {
+        let mut lod = lod;
+        for p in chunk_positions {
+          let distance =
+            surroundings_loader::distance_between(
+              &p.as_point,
+              &player_position.as_point,
+            );
+
+          if distance > max_load_distance {
+            return None;
+          }
+
+          let this_lod = lod::of_distance(distance);
+
+          if !chunks.contains_key(&(*p, this_lod.lg_sample_size())) {
+            return None
+          }
+
+          // TODO: Remove this conditional block. It disables LOD seam fixing.
+          if lod != this_lod {
+            return None
+          }
+
+          lod = std::cmp::max(lod, this_lod);
+        }
+        Some(lod)
+      };
+
       let mut load_face = |d, chunk_position| {
         let id = MeshId::ChunkFace(chunk_position, d);
-        let neighbor = chunk_position - d.to_vec();
-        let neighbor_distance =
-          surroundings_loader::distance_between(
-            &neighbor.as_point,
-            &player_position.as_point,
-          );
 
-        if neighbor_distance > max_load_distance {
-          return
-        }
-
-        let neighbor_lod = lod::of_distance(neighbor_distance);
-
-        if !chunks.contains_key(&(neighbor, neighbor_lod.lg_sample_size())) ||
-           !chunks.contains_key(&(chunk_position, lod.lg_sample_size())) {
-          return
-        }
-
-        // DO NOT COMMIT // DO NOT PUSH // TODO: // TODO : // DEBUG :
-        // Remove this conditional block. It disables LOD seam fixing.
-        if lod != neighbor_lod {
-          return
-        }
-
-        let lod     = std::cmp::max(lod, neighbor_lod);
+        let lod =
+          match desired_lod(&[chunk_position, chunk_position - d.to_vec()]) {
+            None => return,
+            Some(lod) => lod,
+          };
         let lg_size = lod.lg_sample_size();
 
         load_mesh(
