@@ -176,7 +176,7 @@ pub mod position {
         &mut FaceEdges::Perpendicular { chunk, direction, lg_size, width, ref mut current } => {
           let (x, (y, z)) = (direction, direction.perpendicular());
           let (xv, yv, zv) = (x.to_vec(), y.to_vec(), z.to_vec());
-          let base = chunk.as_point * width as i32;
+          let base = (chunk.as_point + -x.to_vec()) * width as i32;
           r =
             edge::T {
               low_corner : base + xv*current.x + yv*current.y + zv*current.z,
@@ -190,15 +190,13 @@ pub mod position {
             if current.y > width as i32 - 1 {
               next =
                 Some(
-      // DO NOT COMMIT // DO NOT PUSH // TODO: // TODO : // DEBUG :
-                  FaceEdges::Done
-//                  FaceEdges::Parallel1 {
-//                    chunk     : chunk,
-//                    direction : direction,
-//                    lg_size   : lg_size,
-//                    width     : width,
-//                    current   : cgmath::Vector3::new(0, 0, 1),
-//                  }
+                  FaceEdges::Parallel1 {
+                    chunk     : chunk,
+                    direction : direction,
+                    lg_size   : lg_size,
+                    width     : width,
+                    current   : cgmath::Vector3::new(0, 0, 1),
+                  }
                 );
             }
           }
