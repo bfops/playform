@@ -180,7 +180,7 @@ pub mod position {
           r =
             edge::T {
               low_corner : base + xv*current.x + yv*current.y + zv*current.z,
-              direction  : x,
+              direction  : direction,
               lg_size    : lg_size,
             };
           current.z += 1;
@@ -256,11 +256,72 @@ pub mod position {
     }
   }
 
+  pub enum EdgeEdges {
+    Done,
+    Active {
+      chunk     : T,
+      direction : edge::Direction,
+      lg_size   : i16,
+      width     : u32,
+      current   : cgmath::Vector3<i32>,
+    },
+  }
+
+  impl EdgeEdges {
+    pub fn new(direction: edge::Direction, chunk: T, lg_size: i16) -> Self {
+      let width: u32 = 1 << (chunk::LG_WIDTH as i16 - lg_size);
+      if width <= 1 {
+        EdgeEdges::Done
+      } else {
+        EdgeEdges::Active {
+          chunk     : chunk,
+          direction : direction,
+          lg_size   : lg_size,
+          width     : width,
+          current   : cgmath::Vector3::new(0, 0, 0),
+        }
+      }
+    }
+  }
+
+  impl Iterator for EdgeEdges {
+    type Item = edge::T;
+    fn next(&mut self) -> Option<Self::Item> {
+      let mut next = None;
+      let r;
+      match self {
+        &mut EdgeEdges::Done => return None,
+        &mut EdgeEdges::Active { chunk, direction, lg_size, width, ref mut current } => {
+          let (x, (y, z)) = (direction, direction.perpendicular());
+          let (xv, yv, zv) = (x.to_vec(), y.to_vec(), z.to_vec());
+          let base = chunk.as_point * width as i32;
+          r =
+            edge::T {
+              low_corner : base + xv*current.x + yv*current.y + zv*current.z,
+              direction  : direction,
+              lg_size    : lg_size,
+            };
+          current.x += 1;
+          if current.x > (width - 2) as i32 {
+            next = Some(EdgeEdges::Done);
+          }
+        },
+      }
+      if let Some(next) = next {
+        *self = next;
+      }
+      Some(r)
+    }
+  }
   pub fn inner_edges(position: T, lg_size: i16) -> InnerEdges {
     InnerEdges::new(position, lg_size)
   }
 
   pub fn face_edges(d: edge::Direction, position: T, lg_size: i16) -> FaceEdges {
     FaceEdges::new(d, position, lg_size)
+  }
+
+  pub fn edge_edges(d: edge::Direction, position: T, lg_size: i16) -> EdgeEdges {
+    EdgeEdges::new(d, position, lg_size)
   }
 }

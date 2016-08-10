@@ -39,6 +39,8 @@ enum MeshId {
   ChunkInner(chunk::position::T),
   // x,y,z faces in the negative direction from a chunk position.
   ChunkFace(chunk::position::T, edge::Direction),
+  // the lowest-coordinate vertex of a chunk.
+  ChunkEdge(chunk::position::T, edge::Direction),
 }
 
 pub struct T {
@@ -210,41 +212,91 @@ impl T {
         Some(lod)
       };
 
-      let mut load_face = |d, chunk_position| {
-        let id = MeshId::ChunkFace(chunk_position, d);
+      {
+        let mut load_chunk_face = |d, chunk_position| {
+          let id = MeshId::ChunkFace(chunk_position, d);
 
-        let lod =
-          match desired_lod(&[chunk_position, chunk_position - d.to_vec()]) {
-            None => return,
-            Some(lod) => lod,
+          let lod =
+            match desired_lod(&[chunk_position, chunk_position - d.to_vec()]) {
+              None => return,
+              Some(lod) => lod,
+            };
+          let lg_size = lod.lg_sample_size();
+
+          load_mesh(
+            id,
+            terrain_mesh::of_edges(
+              chunks,
+              *player_position,
+              lod,
+              id_allocator,
+              rng,
+              chunk::position::face_edges(d, chunk_position, lg_size),
+            ),
+          );
+        };
+
+        load_chunk_face(edge::Direction::X, *chunk_position);
+        load_chunk_face(edge::Direction::Y, *chunk_position);
+        load_chunk_face(edge::Direction::Z, *chunk_position);
+
+        let mut load_chunk_face = |d: edge::Direction| {
+          // NOT recursive. calls load_chunk_face from before.
+          load_chunk_face(d, *chunk_position + d.to_vec());
+        };
+
+        load_chunk_face(edge::Direction::X);
+        load_chunk_face(edge::Direction::Y);
+        load_chunk_face(edge::Direction::Z);
+      }
+
+      {
+        let mut load_chunk_edge = |d: edge::Direction, chunk_position: chunk::position::T| {
+          let id = MeshId::ChunkEdge(chunk_position, d);
+
+          let lod = {
+            let (y, z) = d.perpendicular();
+            let (y, z) = (y.to_vec(), z.to_vec());
+            let chunks = [
+              chunk_position,
+              chunk_position - y,
+              chunk_position - z,
+              chunk_position - y - z,
+            ];
+            match desired_lod(&chunks) {
+              None => return,
+              Some(lod) => lod,
+            }
           };
-        let lg_size = lod.lg_sample_size();
+          let lg_size = lod.lg_sample_size();
 
-        load_mesh(
-          id,
-          terrain_mesh::of_edges(
-            chunks,
-            *player_position,
-            lod,
-            id_allocator,
-            rng,
-            chunk::position::face_edges(d, chunk_position, lg_size),
-          ),
-        );
-      };
+          load_mesh(
+            id,
+            terrain_mesh::of_edges(
+              chunks,
+              *player_position,
+              lod,
+              id_allocator,
+              rng,
+              chunk::position::edge_edges(d, chunk_position, lg_size),
+            ),
+          );
+        };
 
-      load_face(edge::Direction::X, *chunk_position);
-      load_face(edge::Direction::Y, *chunk_position);
-      load_face(edge::Direction::Z, *chunk_position);
-
-      let mut load_face = |d: edge::Direction, chunk_position: chunk::position::T| {
-        // NOT recursive. calls load_face from before.
-        load_face(d, chunk_position + d.to_vec());
-      };
-
-      load_face(edge::Direction::X, *chunk_position);
-      load_face(edge::Direction::Y, *chunk_position);
-      load_face(edge::Direction::Z, *chunk_position);
+        let (x, y, z) = (edge::Direction::X.to_vec(), edge::Direction::Y.to_vec(), edge::Direction::Z.to_vec());
+        load_chunk_edge(edge::Direction::X, *chunk_position);
+        load_chunk_edge(edge::Direction::X, *chunk_position + y);
+        load_chunk_edge(edge::Direction::X, *chunk_position + z);
+        load_chunk_edge(edge::Direction::X, *chunk_position + y + z);
+        load_chunk_edge(edge::Direction::Y, *chunk_position);
+        load_chunk_edge(edge::Direction::Y, *chunk_position + z);
+        load_chunk_edge(edge::Direction::Y, *chunk_position + x);
+        load_chunk_edge(edge::Direction::Y, *chunk_position + z + x);
+        load_chunk_edge(edge::Direction::Z, *chunk_position);
+        load_chunk_edge(edge::Direction::Z, *chunk_position + x);
+        load_chunk_edge(edge::Direction::Z, *chunk_position + y);
+        load_chunk_edge(edge::Direction::Z, *chunk_position + x + y);
+      }
     }
 
     update_view(view::update::Atomic(updates));
