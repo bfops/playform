@@ -69,9 +69,10 @@ pub fn run(listen_url: &str, server_url: &str) {
           &mut |_| { },
           &mut |up| { server.talk.tell(&up) },
           &mut |msg| {
-            if let client_lib::terrain::Load::Voxels { request_time: Some(_), .. } = msg {
+            if let client_lib::terrain::Load::Chunk { position, lg_voxel_size, .. } = msg {
               *loaded_count.lock().unwrap() += 1;
-              *client.pending_terrain_requests.lock().unwrap() -= 1;
+              let removed = client.pending_terrain_requests.lock().unwrap().remove(&(position, lg_voxel_size));
+              assert!(removed);
             }
           },
         );
