@@ -121,13 +121,13 @@ fn key_press<UpdateServer>(
             view::InputMode::Sun => view::InputMode::Camera,
           };
       },
-      Keycode::P => {
-        let mut load_position = client.load_position.lock().unwrap();
-        match *load_position {
-          None => *load_position = Some(*client.player_position.lock().unwrap()),
-          Some(_) => *load_position = None,
-        }
-      },
+//      Keycode::P => {
+//        let mut load_position = client.load_position.lock().unwrap();
+//        match *load_position {
+//          None => *load_position = Some(*client.player_position.lock().unwrap()),
+//          Some(_) => *load_position = None,
+//        }
+//      },
 //      Keycode::O => {
 //        let player_position = *client.player_position.lock().unwrap();
 //        let player_position = block_position::of_world_position(&player_position);

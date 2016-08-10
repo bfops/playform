@@ -67,18 +67,15 @@ fn update_surroundings<UpdateView, UpdateServer>(
 {
   let start = time::precise_time_ns();
   let mut i = 0;
-  let load_position = {
-    let load_position = *client.load_position.lock().unwrap();
-    load_position.unwrap_or_else(|| *client.player_position.lock().unwrap())
-  };
-  let load_position =
+  let player_position = *client.player_position.lock().unwrap();
+  let player_position =
     cgmath::Point3::new(
-      load_position.x.floor() as i32 >> chunk::LG_WIDTH,
-      load_position.y.floor() as i32 >> chunk::LG_WIDTH,
-      load_position.z.floor() as i32 >> chunk::LG_WIDTH,
+      player_position.x.floor() as i32 >> chunk::LG_WIDTH,
+      player_position.y.floor() as i32 >> chunk::LG_WIDTH,
+      player_position.z.floor() as i32 >> chunk::LG_WIDTH,
     );
   let mut surroundings_loader = client.surroundings_loader.lock().unwrap();
-  let mut updates = surroundings_loader.updates(&load_position) ;
+  let mut updates = surroundings_loader.updates(&player_position) ;
   let mut terrain = client.terrain.lock().unwrap();
   loop {
     if client.pending_terrain_requests.lock().unwrap().len() as u32 >= MAX_OUTSTANDING_TERRAIN_REQUESTS {
@@ -99,7 +96,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
     debug!("chunk surroundings");
     let distance =
       surroundings_loader::distance_between(
-        &load_position,
+        &player_position,
         &chunk_position,
       );
     let new_lod = lod::of_distance(distance);
@@ -112,6 +109,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
             &client.id_allocator,
             &mut *client.rng.lock().unwrap(),
             update_view,
+            &chunk::position::T { as_point: player_position },
             &chunk_position,
             new_lod,
           );
@@ -157,9 +155,9 @@ fn process_voxel_updates<UpdateView>(
 ) where
   UpdateView: FnMut(view::update::T),
 {
-  let terrain      = &mut *client.terrain.lock().unwrap();
-  let rng          = &mut *client.rng.lock().unwrap();
-  let player_position = *client.player_position.lock().unwrap();
+  let terrain = &mut *client.terrain.lock().unwrap();
+  let rng = &mut *client.rng.lock().unwrap();
+  let player_position = chunk::position::of_world_position(&*client.player_position.lock().unwrap());
   terrain.tick(&client.id_allocator, rng, update_view, &player_position);
 }
 

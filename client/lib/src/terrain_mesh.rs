@@ -10,8 +10,8 @@ use std::sync::{Arc, Mutex};
 use common::entity_id;
 use common::id_allocator;
 use common::voxel;
-// TODO: Move the server-only parts to the server, like BLOCK_WIDTH and sample_info.
 
+use chunk;
 use edge;
 use lod;
 use terrain;
@@ -96,20 +96,30 @@ mod voxel_storage {
   use cgmath;
   use isosurface_extraction::dual_contouring;
 
+  use common::surroundings_loader;
   use common::voxel;
 
   use chunk;
+  use lod;
   use terrain;
 
   pub struct T<'a> {
-    pub chunks: &'a terrain::Chunks,
+    pub chunks          : &'a terrain::Chunks,
+    pub player_position : chunk::position::T,
   }
 
   fn get_voxel<'a>(this: &mut T<'a>, bounds: &voxel::bounds::T) -> Option<&'a voxel::T> {
     trace!("fetching {:?}", bounds);
-    let chunk = chunk::position::containing(bounds);
+    // find the LOD that this voxel _should_ be loaded at, and find it at that LOD.
+    let chunk_position = chunk::position::containing(bounds);
+    let distance =
+      surroundings_loader::distance_between(
+        &chunk_position.as_point,
+        &this.player_position.as_point,
+      );
+    let corrected_lg_size = lod::of_distance(distance).lg_sample_size();
     this.chunks
-      .get(&(chunk, bounds.lg_size))
+      .get(&(chunk_position, corrected_lg_size))
       .map(|chunk| {
         // get the voxel position within the chunk
         // this is just a modulo by the chunk size.
@@ -151,11 +161,12 @@ mod voxel_storage {
 }
 
 pub fn of_edges<Rng: rand::Rng, Edges: Iterator<Item=edge::T>>(
-  chunks       : &terrain::Chunks,
-  lod          : lod::T,
-  id_allocator : &Mutex<id_allocator::T<entity_id::T>>,
-  rng          : &mut Rng,
-  edges        : Edges,
+  chunks          : &terrain::Chunks,
+  player_position : chunk::position::T,
+  lod             : lod::T,
+  id_allocator    : &Mutex<id_allocator::T<entity_id::T>>,
+  rng             : &mut Rng,
+  edges           : Edges,
 ) -> T
 {
   let mut chunk = empty();
@@ -176,7 +187,7 @@ pub fn of_edges<Rng: rand::Rng, Edges: Iterator<Item=edge::T>>(
         };
 
       dual_contouring::edge::extract(
-        &mut voxel_storage::T { chunks: chunks },
+        &mut voxel_storage::T { chunks: chunks, player_position: player_position },
         &edge,
         &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
           let id = id_allocator::allocate(id_allocator);

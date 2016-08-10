@@ -45,8 +45,8 @@ pub mod position {
     }
   }
 
-  pub struct InnerEdges<'a> {
-    chunk     : &'a T,
+  pub struct InnerEdges {
+    chunk     : T,
     lg_size   : i16,
     width     : u32,
     current   : cgmath::Vector3<i32>,
@@ -54,9 +54,9 @@ pub mod position {
     done      : bool,
   }
 
-  impl<'a> InnerEdges<'a> {
+  impl InnerEdges {
     #[allow(missing_docs)]
-    pub fn new<'b: 'a>(chunk: &'b T, lg_size: i16) -> Self {
+    pub fn new(chunk: T, lg_size: i16) -> Self {
       let width = 1 << (chunk::LG_WIDTH as u32 - lg_size as u32);
       InnerEdges {
         chunk     : chunk,
@@ -69,7 +69,7 @@ pub mod position {
     }
   }
 
-  impl<'a> Iterator for InnerEdges<'a> {
+  impl Iterator for InnerEdges {
     type Item = edge::T;
     fn next(&mut self) -> Option<Self::Item> {
       if self.done {
@@ -122,7 +122,147 @@ pub mod position {
     }
   }
 
-  pub fn inner_edges(position: &T, lg_size: i16) -> InnerEdges {
+  // the code for this is absolutely horrifying linguini, but I think it can
+  // all disappear once we get `impl Trait` in returns.
+  pub enum FaceEdges {
+    Done,
+    Perpendicular {
+      chunk     : T,
+      direction : edge::Direction,
+      lg_size   : i16,
+      width     : u32,
+      current   : cgmath::Vector3<i32>,
+    },
+    Parallel1 {
+      chunk     : T,
+      direction : edge::Direction,
+      lg_size   : i16,
+      width     : u32,
+      current   : cgmath::Vector3<i32>,
+    },
+    Parallel2 {
+      chunk     : T,
+      direction : edge::Direction,
+      lg_size   : i16,
+      width     : u32,
+      current   : cgmath::Vector3<i32>,
+    },
+  }
+
+  impl FaceEdges {
+    pub fn new(direction: edge::Direction, chunk: T, lg_size: i16) -> Self {
+      let width: u32 = 1 << (chunk::LG_WIDTH as i16 - lg_size);
+      if width <= 1 {
+        FaceEdges::Done
+      } else {
+        FaceEdges::Perpendicular {
+          chunk     : chunk,
+          direction : direction,
+          lg_size   : lg_size,
+          width     : width,
+          current   : cgmath::Vector3::new(width as i32 - 1, 1, 1),
+        }
+      }
+    }
+  }
+
+  impl Iterator for FaceEdges {
+    type Item = edge::T;
+    fn next(&mut self) -> Option<Self::Item> {
+      let mut next = None;
+      let r;
+      match self {
+        &mut FaceEdges::Done => return None,
+        &mut FaceEdges::Perpendicular { chunk, direction, lg_size, width, ref mut current } => {
+          let (x, (y, z)) = (direction, direction.perpendicular());
+          let (xv, yv, zv) = (x.to_vec(), y.to_vec(), z.to_vec());
+          let base = chunk.as_point * width as i32;
+          r =
+            edge::T {
+              low_corner : base + xv*current.x + yv*current.y + zv*current.z,
+              direction  : x,
+              lg_size    : lg_size,
+            };
+          current.z += 1;
+          if current.z > width as i32 - 1 {
+            current.z = 1;
+            current.y += 1;
+            if current.y > width as i32 - 1 {
+              next =
+                Some(
+      // DO NOT COMMIT // DO NOT PUSH // TODO: // TODO : // DEBUG :
+                  FaceEdges::Done
+//                  FaceEdges::Parallel1 {
+//                    chunk     : chunk,
+//                    direction : direction,
+//                    lg_size   : lg_size,
+//                    width     : width,
+//                    current   : cgmath::Vector3::new(0, 0, 1),
+//                  }
+                );
+            }
+          }
+        },
+        &mut FaceEdges::Parallel1 { chunk, direction, lg_size, width, ref mut current } => {
+          let (x, (y, z)) = (direction, direction.perpendicular());
+          let (xv, yv, zv) = (x.to_vec(), y.to_vec(), z.to_vec());
+          let base = chunk.as_point * width as i32;
+          r =
+            edge::T {
+              low_corner : base + xv*current.x + yv*current.y + zv*current.z,
+              direction  : y,
+              lg_size    : lg_size,
+            };
+          current.z += 1;
+          if current.z > width as i32 - 1 {
+            current.z = 1;
+            current.y += 1;
+            if current.y > width as i32 - 2 {
+              next =
+                Some(
+                  FaceEdges::Parallel2 {
+                    chunk     : chunk,
+                    direction : direction,
+                    lg_size   : lg_size,
+                    width     : width,
+                    current   : cgmath::Vector3::new(0, 1, 0),
+                  }
+                );
+            }
+          }
+        },
+        &mut FaceEdges::Parallel2 { chunk, direction, lg_size, width, ref mut current } => {
+          let (x, (y, z)) = (direction, direction.perpendicular());
+          let (xv, yv, zv) = (x.to_vec(), y.to_vec(), z.to_vec());
+          let base = chunk.as_point * width as i32;
+          r =
+            edge::T {
+              low_corner : base + xv*current.x + yv*current.y + zv*current.z,
+              direction  : z,
+              lg_size    : lg_size,
+            };
+          current.z += 1;
+          if current.z > width as i32 - 2 {
+            current.z = 0;
+            current.y += 1;
+            if current.y > width as i32 - 1 {
+              next = Some(FaceEdges::Done);
+            }
+          }
+        },
+      }
+      if let Some(next) = next {
+        *self = next;
+      }
+      Some(r)
+    }
+  }
+
+  pub fn inner_edges(position: T, lg_size: i16) -> InnerEdges {
     InnerEdges::new(position, lg_size)
+  }
+
+  pub fn face_edges(d: edge::Direction, position: T, lg_size: i16) -> FaceEdges {
+    FaceEdges::new(d, position, lg_size)
   }
 }

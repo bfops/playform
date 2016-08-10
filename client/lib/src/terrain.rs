@@ -1,4 +1,3 @@
-use cgmath;
 use rand;
 use std;
 use time;
@@ -10,6 +9,7 @@ use common::surroundings_loader;
 use common::voxel;
 
 use chunk;
+use edge;
 use lod;
 use record_book;
 use terrain_mesh;
@@ -36,7 +36,11 @@ struct LoadState {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 enum MeshId {
-  Chunk(chunk::position::T),
+  ChunkInner(chunk::position::T),
+  // x,y,z faces in the negative direction from a chunk position.
+  ChunkXFace(chunk::position::T),
+  ChunkYFace(chunk::position::T),
+  ChunkZFace(chunk::position::T),
 }
 
 pub struct T {
@@ -83,7 +87,7 @@ impl T {
     id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
     rng             : &mut Rng,
     update_view     : &mut UpdateView,
-    player_position : &cgmath::Point3<f32>,
+    player_position : &chunk::position::T,
   ) where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
@@ -123,29 +127,19 @@ impl T {
   #[inline(never)]
   fn force_load_chunk<Rng, UpdateView>(
     &mut self,
-    id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
-    rng            : &mut Rng,
-    update_view    : &mut UpdateView,
-    chunk_position : &chunk::position::T,
-    lod            : lod::T,
+    id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
+    rng             : &mut Rng,
+    update_view     : &mut UpdateView,
+    player_position : &chunk::position::T,
+    chunk_position  : &chunk::position::T,
+    lod             : lod::T,
   ) where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
   {
     debug!("generate {:?} at {:?}", chunk_position, lod);
-    let lg_size = lod::LG_SAMPLE_SIZE[lod.0 as usize];
-    let mesh_chunk =
-      terrain_mesh::of_edges(
-        &self.chunks,
-        lod,
-        id_allocator,
-        rng,
-        chunk::position::inner_edges(chunk_position, lg_size),
-      );
-
     let mut updates = Vec::new();
 
-    use std::collections::hash_map::Entry::*;
     self.chunk_load_state.insert(
       *chunk_position,
       LoadState {
@@ -154,27 +148,107 @@ impl T {
     );
 
     {
-      let mut load_mesh = |id, mesh| {
-        match self.loaded_meshes.entry(id) {
+      let loaded_meshes = &mut self.loaded_meshes;
+      let mut load_mesh = |id, mesh: terrain_mesh::T| {
+        use std::collections::hash_map::Entry::*;
+        match loaded_meshes.entry(id) {
           Vacant(entry) => {
-            entry.insert(mesh);
+            entry.insert(mesh.ids());
           },
           Occupied(mut entry) => {
-            let previous_ids = entry.insert(mesh);
+            let previous_ids = entry.insert(mesh.ids());
             updates.push(view::update::UnloadMesh { ids: previous_ids });
           },
         };
+        updates.push(
+          view::update::LoadMesh {
+            mesh : mesh,
+          }
+        );
       };
 
-      load_mesh(MeshId::Chunk(*chunk_position), mesh_chunk.ids());
-    }
+      let lg_size = lod::LG_SAMPLE_SIZE[lod.0 as usize];
 
-    if !mesh_chunk.ids.is_empty() {
-      updates.push(
-        view::update::LoadChunk {
-          mesh     : mesh_chunk,
-        }
+      load_mesh(
+        MeshId::ChunkInner(*chunk_position),
+        terrain_mesh::of_edges(
+          &self.chunks,
+          *player_position,
+          lod,
+          id_allocator,
+          rng,
+          chunk::position::inner_edges(*chunk_position, lg_size),
+        ),
       );
+
+      let chunks = &self.chunks;
+      let max_load_distance = self.max_load_distance;
+      let mut load_face = |d, chunk_position| {
+        let id =
+          match d {
+            edge::Direction::X => MeshId::ChunkXFace(chunk_position),
+            edge::Direction::Y => MeshId::ChunkYFace(chunk_position),
+            edge::Direction::Z => MeshId::ChunkZFace(chunk_position),
+          };
+        let neighbor = chunk::position::T { as_point: chunk_position.as_point + -d.to_vec() };
+        let neighbor_distance =
+          surroundings_loader::distance_between(
+            &neighbor.as_point,
+            &player_position.as_point,
+          );
+
+        if neighbor_distance > max_load_distance {
+          return
+        }
+
+        let neighbor_lod = lod::of_distance(neighbor_distance);
+
+        if !chunks.contains_key(&(neighbor, neighbor_lod.lg_sample_size())) {
+          return
+        }
+
+        // DO NOT COMMIT // DO NOT PUSH // TODO: // TODO : // DEBUG :
+        // Remove this conditional block. It disables LOD seam fixing.
+        if lod != neighbor_lod {
+          return
+        }
+
+        let lod     = std::cmp::max(lod, neighbor_lod);
+        let lg_size = lod.lg_sample_size();
+
+        load_mesh(
+          id,
+          terrain_mesh::of_edges(
+            chunks,
+            *player_position,
+            lod,
+            id_allocator,
+            rng,
+            chunk::position::face_edges(d, chunk_position, lg_size),
+          ),
+        );
+      };
+
+      load_face(edge::Direction::X, *chunk_position);
+      // DO NOT COMMIT // DO NOT PUSH // TODO: // TODO : // DEBUG :
+      let i = 0;
+      if i == 1 {
+        load_face(edge::Direction::Y, *chunk_position);
+        load_face(edge::Direction::Z, *chunk_position);
+
+        let mut load_face = |d: edge::Direction, chunk_position: chunk::position::T| {
+          let chunk_position =
+            chunk::position::T {
+              as_point: chunk_position.as_point + d.to_vec(),
+            };
+          // NOT recursive. calls load_face from before.
+          load_face(d, chunk_position);
+        };
+
+        load_face(edge::Direction::X, *chunk_position);
+        load_face(edge::Direction::Y, *chunk_position);
+        load_face(edge::Direction::Z, *chunk_position);
+      }
     }
 
     update_view(view::update::Atomic(updates));
@@ -183,11 +257,12 @@ impl T {
   /// Generate view updates to load as much of a chunk as is possible.
   pub fn try_load_chunk<Rng, UpdateView>(
     &mut self,
-    id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
-    rng            : &mut Rng,
-    update_view    : &mut UpdateView,
-    chunk_position : &chunk::position::T,
-    lod            : lod::T,
+    id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
+    rng             : &mut Rng,
+    update_view     : &mut UpdateView,
+    player_position : &chunk::position::T,
+    chunk_position  : &chunk::position::T,
+    lod             : lod::T,
   ) -> LoadResult where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
@@ -207,7 +282,7 @@ impl T {
       return LoadResult::ChunkMissing
     }
 
-    self.force_load_chunk(id_allocator, rng, update_view, chunk_position, lod);
+    self.force_load_chunk(id_allocator, rng, update_view, player_position, chunk_position, lod);
     LoadResult::Success
   }
 
@@ -217,7 +292,7 @@ impl T {
     _id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
     _rng             : &mut Rng,
     _update_view     : &mut UpdateView,
-    _player_position : &cgmath::Point3<f32>,
+    _player_position : &chunk::position::T,
     _voxel_updates   : Vec<(voxel::bounds::T, voxel::T)>,
   ) where
     UpdateView : FnMut(view::update::T),
@@ -232,7 +307,7 @@ impl T {
     id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
     rng             : &mut Rng,
     update_view     : &mut UpdateView,
-    player_position : &cgmath::Point3<f32>,
+    player_position : &chunk::position::T,
     position        : chunk::position::T,
     chunk           : chunk::T,
     request_time_ns : u64,
@@ -248,7 +323,7 @@ impl T {
     let distance =
       surroundings_loader::distance_between(
         &position.as_point,
-        &chunk::position::of_world_position(player_position).as_point,
+        &player_position.as_point,
       );
     if distance > self.max_load_distance {
       return
@@ -264,6 +339,7 @@ impl T {
       id_allocator,
       rng,
       update_view,
+      player_position,
       &position,
       lod,
     );
@@ -301,6 +377,9 @@ impl T {
       }
     };
 
-    remove_mesh(MeshId::Chunk(*chunk_position));
+    remove_mesh(MeshId::ChunkInner(*chunk_position));
+    remove_mesh(MeshId::ChunkXFace(*chunk_position));
+    remove_mesh(MeshId::ChunkYFace(*chunk_position));
+    remove_mesh(MeshId::ChunkZFace(*chunk_position));
   }
 }

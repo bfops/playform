@@ -28,7 +28,7 @@ pub enum T {
   SetSun(light::Sun),
 
   /// Add a terrain chunk to the view.
-  LoadChunk {
+  LoadMesh {
     mesh: terrain_mesh::T,
   },
   /// Remove a terrain entity.
@@ -61,7 +61,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
         },
       }
     },
-    T::LoadChunk { mesh } => {
+    T::LoadMesh { mesh } => {
       stopwatch::time("add_chunk", || {
         view.terrain_buffers.push(
           &mut view.gl,

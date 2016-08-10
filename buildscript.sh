@@ -8,6 +8,5 @@ while [[ $? == 0 ]]; do
   build-client.sh &&
   clear &&
   cargo build --release &&
-  rm -f default.terrain &&
-  (target/release/playform || true)
+  rm -f default.terrain
 done
