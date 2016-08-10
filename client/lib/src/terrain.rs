@@ -203,7 +203,8 @@ impl T {
 
         let neighbor_lod = lod::of_distance(neighbor_distance);
 
-        if !chunks.contains_key(&(neighbor, neighbor_lod.lg_sample_size())) {
+        if !chunks.contains_key(&(neighbor, neighbor_lod.lg_sample_size())) ||
+           !chunks.contains_key(&(chunk_position, lod.lg_sample_size())) {
           return
         }
 
@@ -233,22 +234,18 @@ impl T {
       load_face(edge::Direction::Y, *chunk_position);
       load_face(edge::Direction::Z, *chunk_position);
 
-      // DO NOT COMMIT // DO NOT PUSH // TODO: // TODO : // DEBUG :
-      let i = 0;
-      if i == 1 {
-        let mut load_face = |d: edge::Direction, chunk_position: chunk::position::T| {
-          let chunk_position =
-            chunk::position::T {
-              as_point: chunk_position.as_point + d.to_vec(),
-            };
-          // NOT recursive. calls load_face from before.
-          load_face(d, chunk_position);
-        };
+      let mut load_face = |d: edge::Direction, chunk_position: chunk::position::T| {
+        let chunk_position =
+          chunk::position::T {
+            as_point: chunk_position.as_point + d.to_vec(),
+          };
+        // NOT recursive. calls load_face from before.
+        load_face(d, chunk_position);
+      };
 
-        load_face(edge::Direction::X, *chunk_position);
-        load_face(edge::Direction::Y, *chunk_position);
-        load_face(edge::Direction::Z, *chunk_position);
-      }
+      load_face(edge::Direction::X, *chunk_position);
+      load_face(edge::Direction::Y, *chunk_position);
+      load_face(edge::Direction::Z, *chunk_position);
     }
 
     update_view(view::update::Atomic(updates));
