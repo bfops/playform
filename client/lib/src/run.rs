@@ -34,6 +34,7 @@ pub fn run(listen_url: &str, server_url: &str) {
       unsafe {
         thread_scoped::scoped(|| {
           while !*quit.lock().unwrap() {
+            info!("Outstanding terrain requests: {}", client.pending_terrain_requests.lock().unwrap().len());
             info!("Outstanding voxel updates: {}", client.terrain.lock().unwrap().queued_update_count());
             info!("Outstanding view0 updates: {}", view_updates0.lock().unwrap().len());
             info!("Outstanding view1 updates: {}", view_updates1.lock().unwrap().len());

@@ -241,17 +241,11 @@ impl T {
         };
 
         load_chunk_face(edge::Direction::X, *chunk_position);
+        load_chunk_face(edge::Direction::X, *chunk_position + edge::Direction::X.to_vec());
         load_chunk_face(edge::Direction::Y, *chunk_position);
+        load_chunk_face(edge::Direction::Y, *chunk_position + edge::Direction::Y.to_vec());
         load_chunk_face(edge::Direction::Z, *chunk_position);
-
-        let mut load_chunk_face = |d: edge::Direction| {
-          // NOT recursive. calls load_chunk_face from before.
-          load_chunk_face(d, *chunk_position + d.to_vec());
-        };
-
-        load_chunk_face(edge::Direction::X);
-        load_chunk_face(edge::Direction::Y);
-        load_chunk_face(edge::Direction::Z);
+        load_chunk_face(edge::Direction::Z, *chunk_position + edge::Direction::Z.to_vec());
       }
 
       {

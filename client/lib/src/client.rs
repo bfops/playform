@@ -18,7 +18,7 @@ use terrain;
 use view;
 
 // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-const MAX_LOAD_DISTANCE: i32 = 1 << 3;
+const MAX_LOAD_DISTANCE: i32 = 1 << 6;
 
 /// The main client state.
 pub struct T {
