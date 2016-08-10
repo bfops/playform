@@ -100,7 +100,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
         &chunk_position,
       );
     let new_lod = lod::of_distance(distance);
-    let lg_voxel_size = lod::LG_SAMPLE_SIZE[new_lod.0 as usize];
+    let lg_voxel_size = new_lod.lg_sample_size();
     let chunk_position = chunk::position::T { as_point: chunk_position };
     match load_type {
       LoadType::Load | LoadType::Downgrade => {

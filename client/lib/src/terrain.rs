@@ -39,8 +39,10 @@ enum MeshId {
   ChunkInner(chunk::position::T),
   // x,y,z faces in the negative direction from a chunk position.
   ChunkFace(chunk::position::T, edge::Direction),
-  // the lowest-coordinate vertex of a chunk.
+  // one of the edges that touches the lowest corner of a chunk.
   ChunkEdge(chunk::position::T, edge::Direction),
+  // the lowest-coordinate vertex of a chunk.
+  ChunkVertex(chunk::position::T),
 }
 
 pub struct T {
@@ -167,19 +169,21 @@ impl T {
         );
       };
 
-      let lg_size = lod::LG_SAMPLE_SIZE[lod.0 as usize];
+      let lg_size = lod.lg_sample_size();
 
-      load_mesh(
-        MeshId::ChunkInner(*chunk_position),
-        terrain_mesh::of_edges(
-          &self.chunks,
-          *player_position,
-          lod,
-          id_allocator,
-          rng,
-          chunk::position::inner_edges(*chunk_position, lg_size),
-        ),
-      );
+      {
+        load_mesh(
+          MeshId::ChunkInner(*chunk_position),
+          terrain_mesh::of_edges(
+            &self.chunks,
+            *player_position,
+            lod,
+            id_allocator,
+            rng,
+            chunk::position::inner_edges(*chunk_position, lg_size),
+          ),
+        );
+      }
 
       let chunks = &self.chunks;
       let max_load_distance = self.max_load_distance;
@@ -297,6 +301,51 @@ impl T {
         load_chunk_edge(edge::Direction::Z, *chunk_position + y);
         load_chunk_edge(edge::Direction::Z, *chunk_position + x + y);
       }
+
+      {
+        let (x, y, z) = (edge::Direction::X.to_vec(), edge::Direction::Y.to_vec(), edge::Direction::Z.to_vec());
+        let mut load_chunk_vertex = |chunk_position: chunk::position::T| {
+          let id = MeshId::ChunkVertex(chunk_position);
+          let lod = {
+            let chunks = [
+              chunk_position,
+              chunk_position - x,
+              chunk_position     - y,
+              chunk_position - x - y,
+              chunk_position         - z,
+              chunk_position - x     - z,
+              chunk_position     - y - z,
+              chunk_position - x - y - z,
+            ];
+            match desired_lod(&chunks) {
+              None => return,
+              Some(lod) => lod,
+            }
+          };
+          let lg_size = lod.lg_sample_size();
+
+          load_mesh(
+            id,
+            terrain_mesh::of_edges(
+              chunks,
+              *player_position,
+              lod,
+              id_allocator,
+              rng,
+              chunk::position::vertex_edges(chunk_position, lg_size),
+            ),
+          );
+        };
+
+        load_chunk_vertex(*chunk_position             );
+        load_chunk_vertex(*chunk_position + x         );
+        load_chunk_vertex(*chunk_position     + y     );
+        load_chunk_vertex(*chunk_position + x + y     );
+        load_chunk_vertex(*chunk_position         + z );
+        load_chunk_vertex(*chunk_position + x     + z );
+        load_chunk_vertex(*chunk_position     + y + z );
+        load_chunk_vertex(*chunk_position + x + y + z );
+      }
     }
 
     update_view(view::update::Atomic(updates));
@@ -325,7 +374,7 @@ impl T {
       return LoadResult::AlreadyLoaded
     }
 
-    let lg_voxel_size = lod::LG_SAMPLE_SIZE[lod.0 as usize];
+    let lg_voxel_size = lod.lg_sample_size();
     if !self.chunks.contains_key(&(*chunk_position, lg_voxel_size)) {
       return LoadResult::ChunkMissing
     }
@@ -373,15 +422,7 @@ impl T {
         &position.as_point,
         &player_position.as_point,
       );
-    if distance > self.max_load_distance {
-      return
-    }
-
     let lod = lod::of_distance(distance);
-
-    if lod::LG_SAMPLE_SIZE[lod.0 as usize] != lg_voxel_size {
-      return
-    }
 
     self.force_load_chunk(
       id_allocator,

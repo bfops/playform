@@ -180,7 +180,7 @@ pub mod position {
           r =
             edge::T {
               low_corner : base + xv*current.x + yv*current.y + zv*current.z,
-              direction  : direction,
+              direction  : x,
               lg_size    : lg_size,
             };
           current.z += 1;
@@ -313,6 +313,65 @@ pub mod position {
       Some(r)
     }
   }
+
+  pub enum VertexEdges {
+    Done,
+    Active {
+      chunk     : T,
+      lg_size   : i16,
+      direction : edge::Direction,
+      width     : u32,
+    },
+  }
+
+  impl VertexEdges {
+    pub fn new(chunk: T, lg_size: i16) -> Self {
+      let width: u32 = 1 << (chunk::LG_WIDTH as i16 - lg_size);
+      VertexEdges::Active {
+        chunk     : chunk,
+        lg_size   : lg_size,
+        direction : edge::Direction::X,
+        width     : width,
+      }
+    }
+  }
+
+  impl Iterator for VertexEdges {
+    type Item = edge::T;
+    fn next(&mut self) -> Option<Self::Item> {
+      let mut next = None;
+      let r;
+      match self {
+        &mut VertexEdges::Done => return None,
+        &mut VertexEdges::Active { chunk, lg_size, ref mut direction, width } => {
+          let v = direction.to_vec();
+          let base = chunk.as_point * width as i32;
+          r =
+            edge::T {
+              low_corner : base + -v,
+              direction  : *direction,
+              lg_size    : lg_size,
+            };
+          match *direction {
+            edge::Direction::X => {
+              *direction = edge::Direction::Y;
+            },
+            edge::Direction::Y => {
+              *direction = edge::Direction::Z;
+            },
+            edge::Direction::Z => {
+              next = Some(VertexEdges::Done);
+            },
+          }
+        },
+      }
+      if let Some(next) = next {
+        *self = next;
+      }
+      Some(r)
+    }
+  }
+
   pub fn inner_edges(position: T, lg_size: i16) -> InnerEdges {
     InnerEdges::new(position, lg_size)
   }
@@ -323,5 +382,9 @@ pub mod position {
 
   pub fn edge_edges(d: edge::Direction, position: T, lg_size: i16) -> EdgeEdges {
     EdgeEdges::new(d, position, lg_size)
+  }
+
+  pub fn vertex_edges(position: T, lg_size: i16) -> VertexEdges {
+    VertexEdges::new(position, lg_size)
   }
 }

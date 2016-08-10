@@ -18,7 +18,7 @@ use terrain;
 use view;
 
 // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-const MAX_LOAD_DISTANCE: i32 = 1 << 6;
+const MAX_LOAD_DISTANCE: i32 = 1 << 3;
 
 /// The main client state.
 pub struct T {
@@ -42,7 +42,8 @@ fn load_distance(mut polygon_budget: i32) -> i32 {
   let mut load_distance = 0;
   let mut prev_threshold = 0;
   let mut prev_square = 0;
-  for (&threshold, &quality) in lod::THRESHOLDS.iter().zip(lod::EDGE_SAMPLES.iter()) {
+  for (i, &threshold) in lod::THRESHOLDS.iter().enumerate() {
+    let quality = lod::T(i as u32).edge_samples();
     let polygons_per_chunk = (quality * quality * 4) as i32;
     for i in num::iter::range_inclusive(prev_threshold, threshold) {
       let i = 2 * i + 1;
@@ -63,7 +64,7 @@ fn load_distance(mut polygon_budget: i32) -> i32 {
   loop {
     let square = width * width;
     // The "to infinity and beyond" quality.
-    let quality = lod::EDGE_SAMPLES[lod::THRESHOLDS.len()];
+    let quality = lod::ALL.iter().last().unwrap().edge_samples();
     let polygons_per_chunk = (quality * quality * 4) as i32;
     let polygons_in_layer = (square - prev_square) * polygons_per_chunk;
     polygon_budget -= polygons_in_layer;

@@ -8,21 +8,15 @@ use chunk;
 /// Number of LODs
 pub const COUNT: usize = 5;
 
+pub const ALL: [T; COUNT] = [T(0), T(1), T(2), T(3), T(4)];
+
 /// lg(EDGE_SAMPLES)
 // NOTE: If there are duplicates here, weird invariants will fail.
 // Just remove the LODs if you don't want duplicates.
-pub const LG_EDGE_SAMPLES: [u16; COUNT] = [3, 2, 1, 1, 0];
-/// The number of voxels along an axis within a chunk, indexed by LOD.
-pub const EDGE_SAMPLES: [u16; COUNT] = [
-  1 << LG_EDGE_SAMPLES[0],
-  1 << LG_EDGE_SAMPLES[1],
-  1 << LG_EDGE_SAMPLES[2],
-  1 << LG_EDGE_SAMPLES[3],
-  1 << LG_EDGE_SAMPLES[4],
-];
+const LG_EDGE_SAMPLES: [u16; COUNT] = [3, 2, 1, 1, 0];
 
 /// The width of a voxel within a chunk, indexed by LOD.
-pub const LG_SAMPLE_SIZE: [i16; COUNT] = [
+const LG_SAMPLE_SIZE: [i16; COUNT] = [
   chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[0] as i16,
   chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[1] as i16,
   chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[2] as i16,
@@ -51,7 +45,7 @@ impl T {
   }
 
   pub fn edge_samples(self) -> u16 {
-    EDGE_SAMPLES[self.0 as usize]
+    1 << self.lg_edge_samples()
   }
 }
 
