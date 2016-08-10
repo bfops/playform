@@ -230,12 +230,12 @@ impl T {
       };
 
       load_face(edge::Direction::X, *chunk_position);
+      load_face(edge::Direction::Y, *chunk_position);
+      load_face(edge::Direction::Z, *chunk_position);
+
       // DO NOT COMMIT // DO NOT PUSH // TODO: // TODO : // DEBUG :
       let i = 0;
       if i == 1 {
-        load_face(edge::Direction::Y, *chunk_position);
-        load_face(edge::Direction::Z, *chunk_position);
-
         let mut load_face = |d: edge::Direction, chunk_position: chunk::position::T| {
           let chunk_position =
             chunk::position::T {
