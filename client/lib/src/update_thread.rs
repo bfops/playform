@@ -99,7 +99,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
       LoadType::Load => {
         stopwatch::time("update_thread.load_chunk", || {
           trace!("Loading distance {}", distance);
-          let new_lod = client::lod_index(distance);
+          let new_lod = lod::of_distance(distance as u32);
           let load_state = client.terrain.lock().unwrap().load_state(&chunk_position);
           if load_state == Some(new_lod) {
             debug!("Not re-loading {:?} at {:?}", chunk_position, new_lod);
@@ -110,7 +110,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
       },
       LoadType::Downgrade => {
         stopwatch::time("update_thread.update_chunk", || {
-          let new_lod = client::lod_index(distance);
+          let new_lod = lod::of_distance(distance as u32);
           let load_state = client.terrain.lock().unwrap().load_state(&chunk_position);
           let is_downgrade = load_state.map(|lod| new_lod < lod) == Some(true);
           if is_downgrade {

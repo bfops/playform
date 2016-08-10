@@ -18,18 +18,6 @@ use view;
 // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
 const MAX_LOAD_DISTANCE: i32 = 80;
 
-pub fn lod_index(distance: i32) -> lod::T {
-  assert!(distance >= 0);
-  let mut lod = 0;
-  while
-    lod < lod::THRESHOLDS.len()
-    && lod::THRESHOLDS[lod] < distance
-  {
-    lod += 1;
-  }
-  lod::T(num::traits::FromPrimitive::from_usize(lod).unwrap())
-}
-
 /// The main client state.
 pub struct T {
   pub id                       : protocol::ClientId,
@@ -49,12 +37,13 @@ pub struct T {
 fn load_distance(mut polygon_budget: i32) -> i32 {
   // TODO: This should try to account for VRAM not used on a per-poly basis.
 
-  let mut load_distance = 0;
-  let mut prev_threshold = 0;
-  let mut prev_square = 0;
-  for (&threshold, &quality) in lod::THRESHOLDS.iter().zip(lod::EDGE_SAMPLES.iter()) {
+  let mut load_distance: i32 = 0;
+  let mut prev_threshold: i32 = 0;
+  let mut prev_square: i32 = 0;
+  for (i, &threshold) in lod::THRESHOLDS.iter().enumerate() {
+    let quality = lod::T(i as u32).edge_samples();
     let polygons_per_chunk = (quality * quality * 4) as i32;
-    for i in num::iter::range_inclusive(prev_threshold, threshold) {
+    for i in num::iter::range_inclusive(prev_threshold, threshold as i32) {
       let i = 2 * i + 1;
       let square = i * i;
       let polygons_in_layer = (square - prev_square) * polygons_per_chunk;
@@ -66,14 +55,14 @@ fn load_distance(mut polygon_budget: i32) -> i32 {
       load_distance += 1;
       prev_square = square;
     }
-    prev_threshold = threshold + 1;
+    prev_threshold = threshold as i32 + 1;
   }
 
   let mut width = 2 * prev_threshold + 1;
   loop {
     let square = width * width;
     // The "to infinity and beyond" quality.
-    let quality = lod::EDGE_SAMPLES[lod::THRESHOLDS.len()];
+    let quality = lod::ALL.iter().last().unwrap().edge_samples();
     let polygons_per_chunk = (quality * quality * 4) as i32;
     let polygons_in_layer = (square - prev_square) * polygons_per_chunk;
     polygon_budget -= polygons_in_layer;
@@ -111,7 +100,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
   let surroundings_loader = {
     surroundings_loader::new(
       load_distance,
-      lod::THRESHOLDS.iter().cloned().collect(),
+      lod::THRESHOLDS.iter().map(|&x| x as i32).collect(),
     )
   };
 

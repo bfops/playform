@@ -146,8 +146,8 @@ pub fn generate<Rng: rand::Rng>(
     {
       let chunk2 = Arc::make_mut(&mut chunk);
 
-      let lg_edge_samples = lod::LG_EDGE_SAMPLES[lod.0 as usize];
-      let lg_sample_size = lod::LG_SAMPLE_SIZE[lod.0 as usize];
+      let lg_edge_samples = lod.lg_edge_samples();
+      let lg_sample_size = lod.lg_sample_size();
 
       let low = *chunk_position.as_pnt();
       let high = low + (&Vector3::new(1, 1, 1));

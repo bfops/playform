@@ -11,7 +11,6 @@ use common::surroundings_loader;
 use common::voxel;
 
 use chunk;
-use client;
 use lod;
 use record_book;
 use terrain_mesh;
@@ -72,10 +71,10 @@ impl T {
         Some(x) => x,
       };
 
-    let edge_samples = lod::EDGE_SAMPLES[lod.0 as usize] as u32 + 2;
+    let edge_samples = lod.edge_samples() + 2;
     let samples = edge_samples * edge_samples * edge_samples;
-    assert!(*chunk_voxels_loaded <= samples, "{:?}", chunk_position);
-    *chunk_voxels_loaded == samples
+    assert!(*chunk_voxels_loaded <= samples as u32, "{:?}", chunk_position);
+    *chunk_voxels_loaded == samples as u32
   }
 
   pub fn tick<Rng, UpdateView>(
@@ -175,7 +174,7 @@ impl T {
       );
       Ok(())
     } else {
-      let voxel_size = 1 << lod::LG_SAMPLE_SIZE[lod.0 as usize];
+      let voxel_size = 1 << lod.lg_sample_size();
       let voxels =
         terrain_mesh::voxels_in(
           &collision::Aabb3::new(
@@ -190,7 +189,7 @@ impl T {
               ((chunk_position.as_pnt().z + 1) << chunk::LG_WIDTH) + voxel_size,
             ),
           ),
-          lod::LG_SAMPLE_SIZE[lod.0 as usize],
+          lod.lg_sample_size(),
         );
       Err(voxels)
     }
@@ -229,7 +228,7 @@ impl T {
     for lod in 0..lod::COUNT as u32 {
       let lod = lod::T(lod);
 
-      let lg_size = lod::LG_SAMPLE_SIZE[lod.0 as usize];
+      let lg_size = lod.lg_sample_size();
       if lg_size == bounds.lg_size {
         updated_lods.push(lod);
       }
@@ -262,8 +261,8 @@ impl T {
         continue;
       }
 
-      let lod = client::lod_index(distance);
-      let lg_size = lod::LG_SAMPLE_SIZE[lod.0 as usize];
+      let lod = lod::of_distance(distance as u32);
+      let lg_size = lod.lg_sample_size();
       if lg_size != bounds.lg_size {
         debug!(
           "{:?} is not the desired LOD {:?}.",
