@@ -13,6 +13,7 @@ pub const LG_WIDTH: u16 = 3;
 /// A chunk position in "chunk coordinates".
 pub mod position {
   use cgmath;
+  use std;
 
   #[derive(Debug, Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
   #[allow(missing_docs)]
@@ -20,6 +21,24 @@ pub mod position {
   /// `WIDTH` times the voxel size.
   pub struct T {
     pub as_point : cgmath::Point3<i32>,
+  }
+
+  impl std::ops::Add<cgmath::Vector3<i32>> for T {
+    type Output = Self;
+    fn add(self, v: cgmath::Vector3<i32>) -> Self {
+      T {
+        as_point: self.as_point + v,
+      }
+    }
+  }
+
+  impl std::ops::Sub<cgmath::Vector3<i32>> for T {
+    type Output = Self;
+    fn sub(self, v: cgmath::Vector3<i32>) -> Self {
+      T {
+        as_point: self.as_point + -v,
+      }
+    }
   }
 }
 

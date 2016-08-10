@@ -1,6 +1,6 @@
 use cgmath;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Direction { X, Y, Z }
 
 impl Direction {

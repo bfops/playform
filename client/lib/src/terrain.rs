@@ -38,9 +38,7 @@ struct LoadState {
 enum MeshId {
   ChunkInner(chunk::position::T),
   // x,y,z faces in the negative direction from a chunk position.
-  ChunkXFace(chunk::position::T),
-  ChunkYFace(chunk::position::T),
-  ChunkZFace(chunk::position::T),
+  ChunkFace(chunk::position::T, edge::Direction),
 }
 
 pub struct T {
@@ -184,13 +182,8 @@ impl T {
       let chunks = &self.chunks;
       let max_load_distance = self.max_load_distance;
       let mut load_face = |d, chunk_position| {
-        let id =
-          match d {
-            edge::Direction::X => MeshId::ChunkXFace(chunk_position),
-            edge::Direction::Y => MeshId::ChunkYFace(chunk_position),
-            edge::Direction::Z => MeshId::ChunkZFace(chunk_position),
-          };
-        let neighbor = chunk::position::T { as_point: chunk_position.as_point + -d.to_vec() };
+        let id = MeshId::ChunkFace(chunk_position, d);
+        let neighbor = chunk_position - d.to_vec();
         let neighbor_distance =
           surroundings_loader::distance_between(
             &neighbor.as_point,
@@ -235,12 +228,8 @@ impl T {
       load_face(edge::Direction::Z, *chunk_position);
 
       let mut load_face = |d: edge::Direction, chunk_position: chunk::position::T| {
-        let chunk_position =
-          chunk::position::T {
-            as_point: chunk_position.as_point + d.to_vec(),
-          };
         // NOT recursive. calls load_face from before.
-        load_face(d, chunk_position);
+        load_face(d, chunk_position + d.to_vec());
       };
 
       load_face(edge::Direction::X, *chunk_position);
@@ -375,8 +364,11 @@ impl T {
     };
 
     remove_mesh(MeshId::ChunkInner(*chunk_position));
-    remove_mesh(MeshId::ChunkXFace(*chunk_position));
-    remove_mesh(MeshId::ChunkYFace(*chunk_position));
-    remove_mesh(MeshId::ChunkZFace(*chunk_position));
+    remove_mesh(MeshId::ChunkFace(*chunk_position, edge::Direction::X));
+    remove_mesh(MeshId::ChunkFace(*chunk_position, edge::Direction::Y));
+    remove_mesh(MeshId::ChunkFace(*chunk_position, edge::Direction::Z));
+    remove_mesh(MeshId::ChunkFace(*chunk_position + edge::Direction::X.to_vec(), edge::Direction::X));
+    remove_mesh(MeshId::ChunkFace(*chunk_position + edge::Direction::Y.to_vec(), edge::Direction::Y));
+    remove_mesh(MeshId::ChunkFace(*chunk_position + edge::Direction::Z.to_vec(), edge::Direction::Z));
   }
 }
