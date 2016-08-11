@@ -16,15 +16,6 @@ flat in int material;
 
 out vec4 frag_color;
 
-shaders::depth_fog::to_string(),
-shaders::world_fragment::to_string(),
-shaders::noise::cnoise(),
-shaders::grass::grass(),
-shaders::dirt::dirt(),
-shaders::bark::bark(),
-shaders::leaves::leaves(),
-shaders::stone::stone(),
-
 include(depth_fog.glsl)
 include(world_fragment.glsl)
 include(noise.glsl)
@@ -74,13 +65,13 @@ void main() {
       dot(normal, vec3(0, 1, 0)) *
       1.5;
     grassiness = clamp(grassiness, 0, 1);
-    base_color = vec4(mix(dirt(), grass(), grassiness), 1);
+    base_color = vec4(mix(dirt(world_position), grass(world_position), grassiness), 1);
   } else if (material == 2) {
-    base_color = vec4(bark(), 1);
+    base_color = vec4(bark(world_position), 1);
   } else if (material == 3) {
-    base_color = vec4(leaves(), 1);
+    base_color = vec4(leaves(world_position), 1);
   } else if (material == 4) {
-    base_color = vec4(stone(), 1);
+    base_color = vec4(stone(world_position), 1);
     normal = bump_map(4, 2, normal);
   } else if (material == 5) {
     base_color = vec4(0, 0, 0, 1);

@@ -16,15 +16,23 @@ use yaglw;
 use view::camera;
 
 pub fn shader_from_prefix<'a, 'b:'a>(gl: &'a GLContext, prefix: &'static str) -> yaglw::shader::Shader<'b> {
-  let read_file = |name| {
-    let mut s = String::new();
-    let mut file = try!(std::fs::File::open(name));
-    try!(std::io::Read::read_to_string(&mut file, &mut s));
-    let r: Result<_, std::io::Error> = Ok(s);
-    r
-  };
-  let vs = read_file(format!("shaders/{}.vs.glsl", prefix)).unwrap();
-  let fs = read_file(format!("shaders/{}.fs.glsl", prefix)).unwrap();
+  let read_preprocessed_shader =
+    |name| {
+      String::from_utf8(
+        std::process::Command::new("m4")
+        .arg(name)
+        .current_dir(std::path::Path::new("shaders/"))
+        .output()
+        .unwrap()
+        .stdout
+      ).unwrap()
+    };
+  let vs = read_preprocessed_shader(format!("{}.vs.glsl", prefix));
+  let fs = read_preprocessed_shader(format!("{}.fs.glsl", prefix));
+  debug!("loaded {} vertex shader:", prefix);
+  debug!("{}", vs);
+  debug!("loaded {} fragment shader:", prefix);
+  debug!("{}", fs);
   let components =
     vec!(
       (gl::VERTEX_SHADER, vs),

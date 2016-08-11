@@ -2,11 +2,11 @@ vec3 leaves(vec3 world_position) {
   float total_amp = 0.0;
   float noise = 0.0;
 
-  float freq[] = { 8.0, 16.0, 2.0 };
-  float  amp[] = { 1.0,  0.5, 0.8 };
-  for (int i = 0; i < sizeof(freq)/sizeof(freq[0]); ++i) {
-    const float c = cnoise(freq[i] * world_position);
-    noise += amp[i] * sign(dnoise) * pow(abs(dnoise), 0.2);
+  float freq[] = float[]( 8.0, 16.0, 2.0 );
+  float  amp[] = float[]( 1.0,  0.5, 0.8 );
+  for (int i = 0; i < freq.length(); ++i) {
+    float c = cnoise(freq[i] * world_position);
+    noise += amp[i] * sign(c) * pow(abs(c), 0.2);
     total_amp += amp[i];
   }
 

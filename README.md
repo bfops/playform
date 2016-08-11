@@ -25,6 +25,7 @@ Make sure you have:
   * SDL2\_ttf
   * libnanomsg
   * portaudio
+  * m4
 
 Playform has a separate server and client, which can be built and run in `server/bin` and `client/bin`,
 but there's also a server+client (singleplayer) bundled binary that builds in the root directory.
