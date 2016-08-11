@@ -44,10 +44,10 @@ One mob spawns that will play "tag" with you: tag it and it will chase you until
 
 ## License & Credit
 
-I'm not the most familiar with licensing. If I've done something wrong, let me know. My intent is that Playform itself is MIT licensed (see the LICENSE file).
-It includes some code that can be easily found online, and that code usually comes with links to the online source.
+I'm not intimately familiar with how licensing works: if I've done something wrong, please let me know. My intent is that Playform itself is MIT licensed (see the LICENSE file).
+It includes some snippets that can be easily found published online, and that code usually comes with links to the online source.
 
-Some of the Assets are not mine, and I don't own the rights to them. In particular, thanks to:
+Some of the assets are not mine, and I don't own the rights to them. In particular, thanks to:
 
   * [http://vector.me/browse/104477/free\_vector\_grass](http://vector.me/browse/104477/free_vector_grass) for the textures used for the grass billboards
   * [http://soundbible.com/1818-Rainforest-Ambience.html](http://soundbible.com/1818-Rainforest-Ambience.html) for the awesome ambient sound
