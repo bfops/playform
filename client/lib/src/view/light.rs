@@ -60,8 +60,6 @@ pub fn set_sun(shader: &mut Shader, gl: &mut GLContext, sun: &Sun) {
     let i = sun.intensity();
     gl::Uniform3f(sun_intensity_uniform, i.r, i.g, i.b);
   }
-
-  shader.use_shader(gl);
 }
 
 /// Sets the `ambient_light` uniform in some shader.
@@ -72,6 +70,4 @@ pub fn set_ambient_light(shader: &mut Shader, gl: &mut GLContext, sun: &Sun) {
     let a = sun.ambient_intensity();
     gl::Uniform3f(ambient_light_uniform, a.r, a.g, a.b);
   }
-
-  shader.use_shader(gl);
 }

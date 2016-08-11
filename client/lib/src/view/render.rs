@@ -17,6 +17,15 @@ fn set_eye_position(shader: &mut yaglw::shader::Shader, camera: &view::camera::T
   }
 }
 
+fn set_clip(shader: &mut yaglw::shader::Shader, near: f32, far: f32) {
+  unsafe {
+    let uniform = shader.get_uniform_location("near_clip");
+    gl::Uniform1f(uniform, near);
+    let uniform = shader.get_uniform_location("far_clip");
+    gl::Uniform1f(uniform, far);
+  }
+}
+
 fn draw_backdrop(
   rndr: &mut view::T,
 ) {
@@ -57,10 +66,11 @@ fn draw_grass_billboards(
     let time_ms_uniform = rndr.shaders.grass_billboard.shader.get_uniform_location("time_ms");
     gl::Uniform1f(time_ms_uniform, (time::precise_time_ns() / 1_000_000) as f32);
   }
+  set_ambient_light(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.sun);
   set_camera(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.camera);
+  set_clip(&mut rndr.shaders.grass_billboard.shader, rndr.near_clip, rndr.far_clip);
   set_eye_position(&mut rndr.shaders.grass_billboard.shader, &rndr.camera);
   set_sun(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.sun);
-  set_ambient_light(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.sun);
   let alpha_threshold_uniform =
     rndr.shaders.grass_billboard.shader.get_uniform_location("alpha_threshold");
   unsafe {
@@ -86,10 +96,11 @@ pub fn render(
 
   // draw the world
   rndr.shaders.terrain_shader.shader.use_shader(&mut rndr.gl);
-  set_sun(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.sun);
   set_ambient_light(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.sun);
   set_camera(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.camera);
+  set_clip(&mut rndr.shaders.grass_billboard.shader, rndr.near_clip, rndr.far_clip);
   set_eye_position(&mut rndr.shaders.terrain_shader.shader, &rndr.camera);
+  set_sun(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.sun);
   rndr.terrain_buffers.draw(&mut rndr.gl);
 
   rndr.shaders.mob_shader.shader.use_shader(&mut rndr.gl);

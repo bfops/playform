@@ -83,6 +83,9 @@ pub struct T<'a> {
 
   /// Whether to render HUD elements
   pub input_mode: InputMode,
+
+  pub near_clip: f32,
+  pub far_clip: f32,
 }
 
 fn load_grass_texture<'a, 'b:'a>(
@@ -123,9 +126,7 @@ pub fn new<'a>(
 ) -> T<'a> {
   let mut texture_unit_alloc = id_allocator::new();
 
-  let near = 0.1;
-  let far = 2048.0;
-  let mut shaders = shaders::new(&mut gl, window_size, near, far);
+  let mut shaders = shaders::new(&mut gl, window_size);
 
   let terrain_buffers = terrain_buffers::new(&mut gl);
   terrain_buffers.bind_vertex_positions(
@@ -212,6 +213,9 @@ pub fn new<'a>(
 
   let empty_gl_array = yaglw::vertex_buffer::ArrayHandle::new(&gl);
 
+  let near_clip = 0.1;
+  let far_clip = 2048.0;
+
   T {
     gl: gl,
     shaders: shaders,
@@ -233,7 +237,7 @@ pub fn new<'a>(
       let aspect = window_size.x as f32 / window_size.y as f32;
       let mut camera = camera::unit();
       // Initialize the projection matrix.
-      camera.fov = cgmath::perspective(fovy, aspect, near, far);
+      camera.fov = cgmath::perspective(fovy, aspect, near_clip, far_clip);
       // TODO: This should use player rotation from the server.
       camera.rotate_lateral(std::f32::consts::PI / 2.0);
       camera
@@ -247,5 +251,8 @@ pub fn new<'a>(
 
     show_hud: true,
     input_mode: InputMode::Camera,
+
+    near_clip: near_clip,
+    far_clip: far_clip,
   }
 }
