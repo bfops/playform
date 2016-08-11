@@ -98,13 +98,14 @@ pub fn render(
   rndr.shaders.terrain_shader.shader.use_shader(&mut rndr.gl);
   set_ambient_light(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.sun);
   set_camera(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.camera);
-  set_clip(&mut rndr.shaders.grass_billboard.shader, rndr.near_clip, rndr.far_clip);
+  set_clip(&mut rndr.shaders.terrain_shader.shader, rndr.near_clip, rndr.far_clip);
   set_eye_position(&mut rndr.shaders.terrain_shader.shader, &rndr.camera);
   set_sun(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.sun);
   rndr.terrain_buffers.draw(&mut rndr.gl);
 
   rndr.shaders.mob_shader.shader.use_shader(&mut rndr.gl);
   set_camera(&mut rndr.shaders.mob_shader.shader, &mut rndr.gl, &rndr.camera);
+  set_clip(&mut rndr.shaders.mob_shader.shader, rndr.near_clip, rndr.far_clip);
   rndr.mob_buffers.draw(&mut rndr.gl);
   rndr.player_buffers.draw(&mut rndr.gl);
 
