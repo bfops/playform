@@ -39,6 +39,53 @@ float cloud_density(vec3 seed) {
   return d;
 }
 
+float atmos_ray_density(vec3 origin, vec3 direction, float density_scale, float angle_scale) {
+  float lo = length(origin);
+  float ld = length(direction);
+  float sin_angle = dot(origin, direction)/(lo*ld);
+  return exp(-angle_scale*(sin_angle+1) - density_scale*length(origin));
+}
+
+// The scattering approach is heavily based on the GPU Gems article:
+// http://http.developer.nvidia.com/GPUGems2/gpugems2_chapter16.html.
+// a and b should be relative to the center of the atmosphere.
+float out_scatter(vec3 a, vec3 b, float dscale, float ascale) {
+  vec3 d = b-a;
+  return atmos_ray_density(a, d, dscale, ascale) - atmos_ray_density(b, d, dscale, ascale);
+}
+
+float phase(float cos_angle, float g) {
+  float c = cos_angle;
+  float g2 = g*g;
+  return 3*(1-g2)*(1+c*c)/(2*(2+g2)*pow(1+g2-2*g*c, 3.0/2.0));
+}
+
+float in_scatter(vec3 camera, vec3 look, vec3 atmos_center, vec3 sun_position, float dscale, float ascale, float k, float g) {
+  vec3 point = camera + look * 1000 - atmos_center;
+  float cos_angle = dot(sun_position - point, point - camera) / (length(sun_position-point) * length(point-camera));
+  return
+    k *
+    phase(cos_angle, g) *
+    exp(
+      - dscale*length(point)
+      - k * out_scatter(camera - atmos_center, point, dscale, ascale)
+      - k * out_scatter(point, sun_position - atmos_center, dscale, ascale)
+    );
+}
+
+vec3 sky_color(vec3 position, vec3 look) {
+  vec3 atmos_center = vec3(0, -6400000, 0);
+  vec3 sun_position = position + sun.direction * 150000000000.0;
+  float dscale = 1.0/100000;
+  float ascale = 1.0;
+  return
+    vec3(
+      in_scatter(position, look, atmos_center, sun_position, dscale, ascale, 0.1, 0),
+      in_scatter(position, look, atmos_center, sun_position, dscale, ascale, 0.6, 0),
+      in_scatter(position, look, atmos_center, sun_position, dscale, ascale, 0.8, 0)
+    );
+}
+
 void main() {
   vec3 direction = pixel_direction(gl_FragCoord.xy);
 
@@ -74,8 +121,7 @@ void main() {
     }
   }
 
-  float sunniness = exp(64 * (dot(sun.direction, direction) - cos(sun_angular_radius)));
-  vec3 infinity_color = mix(sun.intensity, vec3(1), sunniness);
+  vec3 infinity_color = sky_color(eye_position, direction);
   c += alpha * infinity_color;
 
   frag_color = min(vec4(c, 1), vec4(1));
