@@ -42,14 +42,33 @@ float cloud_density(vec3 seed) {
 // The scattering approach is heavily based on the GPU Gems article:
 // http://http.developer.nvidia.com/GPUGems2/gpugems2_chapter16.html.
 // a and b should be relative to the center of the atmosphere.
-float optical_depth(vec3 a, vec3 b, float dscale) {
+
+const float planet_scale = 1000;
+const float planet_radius = 6400;
+// assume (0, 0, 0) is on the surface of the earth.
+const vec3 planet_center = vec3(0, -planet_radius, 0);
+// thickness of the atmosphere, as a percentage of the planet radius.
+const float atmos_thickness_ratio = 0.050;
+const float atmos_thickness = planet_radius * atmos_thickness_ratio;
+// assume exponentials basically disappear within a few "decay steps".
+const float scale_height = atmos_thickness / 8;
+
+// p should be scaled to planet_scale units.
+float atmos_density(vec3 p) {
+  float dist_from_surface = length(p - planet_center) - planet_radius;
+  return exp(-dist_from_surface / scale_height);
+}
+
+float optical_depth(vec3 a, vec3 b) {
+  const int samples = 20;
+  vec3 d = b - a;
+  float l = min(length(d), 2 * (atmos_thickness + planet_radius)) / samples;
+  d = normalize(d) * l;
   float r = 0;
-  int samples = 10;
   for (int i = 1; i <= samples; ++i) {
-    vec3 p = a+i*(b-a)/(samples+1);
-    r += exp(-dscale*length(p));
+    vec3 p = vec3(a + i * d);
+    r += atmos_density(p) * l;
   }
-  r /= samples/2;
   return r;
 }
 
@@ -59,40 +78,29 @@ float phase(float cos_angle, float g) {
   return 3*(1-g2)*(1+c*c) / (2*(2+g2)*pow(1+g2-2*g*c, 3.0/2.0));
 }
 
-float in_scatter(vec3 camera, vec3 look, vec3 atmos_center, vec3 sun_position, float dscale, float k, float g) {
-  float sample_size = 100;
-  int samples = 10;
+float in_scatter(vec3 camera, vec3 look, float k, float g) {
+  const float sun_distance = 150000000;
+  vec3 sun_position = planet_center + sun.direction * sun_distance;
+
+  const int samples = 20;
+  const float l = atmos_thickness / samples;
   float r = 0;
   for (int i = 1; i <= samples; ++i) {
-    vec3 point = camera + look * i * sample_size;
+    vec3 point = camera + look * i * l;
     float cos_angle = dot(sun_position - point, point - camera) / (length(sun_position - point) * length(point - camera));
-    vec3 s = sun_position - atmos_center;
-    vec3 c = camera - atmos_center;
-    point -= atmos_center;
-    r +=
-      k *
-      phase(cos_angle, g) *
-      exp(
-        - dscale*length(point)
-        - k * optical_depth(camera, point, dscale)
-        - k * optical_depth(point, sun_position, dscale)
-      );
-        ;
+    float od = optical_depth(camera, point) + optical_depth(point, sun_position);
+    r += k * phase(cos_angle, g) * atmos_density(point) * exp(-k * od) * l;
   }
-//  r = r * 400 / (sample_size * samples);
   return r;
 }
 
 vec3 sky_color(vec3 position, vec3 look) {
-  position /= 1000000;
-  vec3 atmos_center = vec3(0, -6400, 0);
-  vec3 sun_position = position + sun.direction * 150000000.0;
-  float dscale = 1.0/1000000;
+  position /= planet_scale;
   return
     vec3(
-      -in_scatter(position, look, atmos_center, sun_position, dscale, 0.3, 0),
-      -in_scatter(position, look, atmos_center, sun_position, dscale, 0.5, 0),
-      -in_scatter(position, look, atmos_center, sun_position, dscale, 0.6, 0)
+      in_scatter(position, look, 0.04, 0),
+      in_scatter(position, look, 0.05, 0),
+      in_scatter(position, look, 0.001, 0)
 //    ) +
 //    vec3(
 //      in_scatter(position, look, atmos_center, sun_position, dscale, ascale, 0.4, -0.999),
