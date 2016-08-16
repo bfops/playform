@@ -39,6 +39,30 @@ float cloud_density(vec3 seed) {
   return d;
 }
 
+vec3 rayleigh_color(vec3 look) {
+  vec3 horizon =
+    vec3(
+      1 - exp(-4 * sun.direction.y),
+      1 / (exp(-sun.direction.y) + 1),
+      1 / (exp(-sun.direction.y) + 1)
+    );
+  vec3 sky =
+    vec3(
+      0.5 * exp(-4 * sun.direction.y),
+      1 - 0.6 * exp(-sun.direction.y),
+      1 - 0.6 * exp(-sun.direction.y)
+    );
+
+  float horizon_amount = 1 - exp(-2 * look.y * look.y);
+
+  return mix(sky, horizon, horizon_amount);
+}
+
+vec3 scatter_color(vec3 look) {
+  float mieness = exp(64 * (dot(sun.direction, look) - cos(sun_angular_radius)));
+  return mix(rayleigh_color(look), vec3(1), mieness);
+}
+
 void main() {
   vec3 direction = pixel_direction(gl_FragCoord.xy);
 
@@ -74,8 +98,7 @@ void main() {
     }
   }
 
-  float sunniness = exp(64 * (dot(sun.direction, direction) - cos(sun_angular_radius)));
-  vec3 infinity_color = mix(sun.intensity, vec3(1), sunniness);
+  vec3 infinity_color = scatter_color(direction);
   c += alpha * infinity_color;
 
   frag_color = min(vec4(c, 1), vec4(1));
