@@ -1,16 +1,16 @@
 #version 330 core
 
+include(pixel.glsl)
 include(depth_fog.glsl)
 include(noise.glsl)
+include(scatter.glsl)
 
 uniform vec2 window_size;
 
 uniform struct Sun {
   vec3 direction;
-  vec3 intensity;
+  float angular_radius;
 } sun;
-
-const float sun_angular_radius = 3.14/32;
 
 uniform mat4 projection_matrix;
 uniform vec3 eye_position;
@@ -18,15 +18,6 @@ uniform vec3 eye_position;
 uniform float time_ms;
 
 out vec4 frag_color;
-
-vec3 pixel_direction(vec2 pixel) {
-  // Scale to [0, 1]
-  pixel /= window_size;
-  // Scale to [-1, 1]
-  pixel = 2*pixel - 1;
-  vec4 p = inverse(projection_matrix) * vec4(pixel, -1, 1);
-  return normalize(vec3(p / p.w) - eye_position);
-}
 
 float cloud_noise(vec3 seed) {
   float f = cnoise(seed + vec3(0, time_ms / 8000, 0));
@@ -39,32 +30,8 @@ float cloud_density(vec3 seed) {
   return d;
 }
 
-vec3 rayleigh_color(vec3 look) {
-  vec3 horizon =
-    vec3(
-      1 - exp(-4 * sun.direction.y),
-      1 / (exp(-sun.direction.y) + 1),
-      1 / (exp(-sun.direction.y) + 1)
-    );
-  vec3 sky =
-    vec3(
-      0.5 * exp(-4 * sun.direction.y),
-      1 - 0.6 * exp(-sun.direction.y),
-      1 - 0.6 * exp(-sun.direction.y)
-    );
-
-  float horizon_amount = 1 - exp(-2 * look.y * look.y);
-
-  return mix(sky, horizon, horizon_amount);
-}
-
-vec3 scatter_color(vec3 look) {
-  float mieness = exp(64 * (dot(sun.direction, look) - cos(sun_angular_radius)));
-  return mix(rayleigh_color(look), vec3(1), mieness);
-}
-
 void main() {
-  vec3 direction = pixel_direction(gl_FragCoord.xy);
+  vec3 direction = pixel_direction(projection_matrix, eye_position, window_size, gl_FragCoord.xy);
 
   const int HEIGHTS = 2;
   float heights[HEIGHTS] = float[](150, 1000);
@@ -98,7 +65,11 @@ void main() {
     }
   }
 
-  vec3 infinity_color = scatter_color(direction);
+  // disables clouds
+  alpha = alpha - alpha + 1;
+  c = c - c + 0;
+
+  vec3 infinity_color = scatter_color(sun.direction, sun.angular_radius, direction);
   c += alpha * infinity_color;
 
   frag_color = min(vec4(c, 1), vec4(1));

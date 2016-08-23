@@ -7,7 +7,7 @@ use yaglw;
 
 use view;
 use view::camera::{set_camera};
-use view::light::{set_sun, set_ambient_light};
+use view::light::{set_sun};
 
 fn set_eye_position(shader: &mut yaglw::shader::Shader, camera: &view::camera::T) {
   unsafe {
@@ -23,6 +23,15 @@ fn set_clip(shader: &mut yaglw::shader::Shader, near: f32, far: f32) {
     gl::Uniform1f(uniform, near);
     let uniform = shader.get_uniform_location("far_clip");
     gl::Uniform1f(uniform, far);
+  }
+}
+
+fn set_window_size(shader: &mut yaglw::shader::Shader, s: cgmath::Vector2<i32>) {
+  unsafe {
+    let window_size_uniform = shader.get_uniform_location("window_size");
+    let window_size = cgmath::Vector2::new(s.x as f32, s.y as f32);
+    let ptr = &window_size as *const _ as *const _;
+    gl::Uniform2fv(window_size_uniform, 1, ptr);
   }
 }
 
@@ -47,10 +56,7 @@ fn draw_backdrop(
     let ptr = &projection_matrix as *const _ as *const _;
     gl::UniformMatrix4fv(projection_uniform, 1, 0, ptr);
 
-    let window_size_uniform = rndr.shaders.sky.shader.get_uniform_location("window_size");
-    let window_size = cgmath::Vector2::new(rndr.window_size.x as f32, rndr.window_size.y as f32);
-    let ptr = &window_size as *const _ as *const _;
-    gl::Uniform2fv(window_size_uniform, 1, ptr);
+    set_window_size(&mut rndr.shaders.sky.shader, rndr.window_size);
 
     gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
 
@@ -66,7 +72,7 @@ fn draw_grass_billboards(
     let time_ms_uniform = rndr.shaders.grass_billboard.shader.get_uniform_location("time_ms");
     gl::Uniform1f(time_ms_uniform, (time::precise_time_ns() / 1_000_000) as f32);
   }
-  set_ambient_light(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.sun);
+  set_window_size(&mut rndr.shaders.grass_billboard.shader, rndr.window_size);
   set_camera(&mut rndr.shaders.grass_billboard.shader, &mut rndr.gl, &rndr.camera);
   set_clip(&mut rndr.shaders.grass_billboard.shader, rndr.near_clip, rndr.far_clip);
   set_eye_position(&mut rndr.shaders.grass_billboard.shader, &rndr.camera);
@@ -96,8 +102,8 @@ pub fn render(
 
   // draw the world
   rndr.shaders.terrain_shader.shader.use_shader(&mut rndr.gl);
-  set_ambient_light(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.sun);
   set_camera(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.camera);
+  set_window_size(&mut rndr.shaders.terrain_shader.shader, rndr.window_size);
   set_clip(&mut rndr.shaders.terrain_shader.shader, rndr.near_clip, rndr.far_clip);
   set_eye_position(&mut rndr.shaders.terrain_shader.shader, &rndr.camera);
   set_sun(&mut rndr.shaders.terrain_shader.shader, &mut rndr.gl, &rndr.sun);

@@ -2,13 +2,16 @@
 
 include(depth_fog.glsl)
 include(world_fragment.glsl)
+include(scatter.glsl)
+include(pixel.glsl)
 
 uniform struct Sun {
   vec3 direction;
-  vec3 intensity;
+  float angular_radius;
 } sun;
 
-uniform vec3 ambient_light;
+uniform vec2 window_size;
+uniform mat4 projection_matrix;
 uniform vec3 eye_position;
 
 uniform sampler2D texture_in;
@@ -32,17 +35,19 @@ void main() {
     discard;
   }
   vec3 world_position = vec3(gl_FragCoord.xy * gl_FragCoord.w, gl_FragCoord.w);
-  vec4 fog_color = vec4(sun.intensity, 1);
+  vec3 look = pixel_direction(projection_matrix, eye_position, window_size, gl_FragCoord.xy);
+  vec3 ambient_light = rayleigh_color(sun.direction, look);
+  vec3 sun_intensity = scatter_color(sun.direction, sun.angular_radius, look);
   frag_color =
     world_fragment(
       sun.direction,
-      sun.intensity,
+      sun_intensity,
       normalize(world_position - eye_position),
       ambient_light,
       c,
       1.0 / 0.0,
       vs_normal,
-      fog_color,
+      vec4(ambient_light, 1),
       gl_FragCoord.z / gl_FragCoord.w
     );
 }

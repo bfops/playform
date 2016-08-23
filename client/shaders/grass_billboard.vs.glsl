@@ -3,6 +3,7 @@
 include(noise.glsl)
 include(adjust_depth_precision.glsl)
 
+uniform vec2 window_size;
 uniform float near_clip;
 uniform float far_clip;
 uniform mat4 projection_matrix;
