@@ -74,15 +74,24 @@ function r = in_scatter(sun_angle, camera_x, camera_y, look_x, look_y, k, g)
   global planet_center_y;
   global planet_radius;
   global atmos_thickness;
-  global atmos_radius;
+  sun_distance = 150000000;
+  sun_position_x = planet_center_x + cos(sun_angle) .* sun_distance;
+  sun_position_y = planet_center_y + sin(sun_angle) .* sun_distance;
 
-  sun_x = cos(sun_angle);
-  sun_y = sin(sun_angle);
-  sun_depth = atmos_radius .* sun_x + atmos_thickness .* sun_y;
-  look_depth = atmos_radius .* look_x + atmos_thickness .* look_y;
-  cos_theta = dot(sun_x, sun_y, look_x, look_y);
+  samples = 100;
+  l = atmos_thickness / samples;
   r = 0;
-  r += k .* (sun_depth + 1) .* (sun_depth.*sun_depth + look_depth.*look_depth - 2*sun_depth.*look_depth);
+  for i = [1:samples]
+    point_x = camera_x + look_x * i * l;
+    point_y = camera_y + look_y * i * l;
+    d1_x = sun_position_x - point_x;
+    d1_y = sun_position_y - point_y;
+    d2_x = point_x - camera_x;
+    d2_y = point_y - camera_y;
+    cos_angle = dot(d1_x, d1_y, d2_x, d2_y) ./ (vec_len(d1_x, d1_y) .* vec_len(d2_x, d2_y));
+    od = optical_depth(camera_x, camera_y, point_x, point_y) + optical_depth(point_x, point_y, sun_position_x, sun_position_y);
+    r += k .* phase(cos_angle, g) .* atmos_density(point_x, point_y) .* exp(-k .* od) * l;
+  endfor
 endfunction
 
 camera_x = 0;
@@ -102,52 +111,42 @@ plot(k, [noon_up; noon_horizon; sunset_up; sunset_horizon]);
 
 legend(["noon up"; "noon horizon"; "sunset up"; "sunset horizon"]);
 
-rows = 20;
-cols = 40;
+rows = 40;
+cols = 80;
 
 camera_x = 0;
 camera_y = ([0:(rows-1)]'/(rows-1))*2*atmos_thickness + planet_radius;
 camera_y_mat = repmat(camera_y, 1, cols);
 
-%figure 2;
-%theta = ([0:cols-1]/(cols-1)-1) * 3.14/2;
-%theta_mat = repmat(theta, rows, 1);
-%look_x = cos(theta_mat);
-%look_y = sin(theta_mat);
-%sun_angle = 3.14/2;
-%y = in_scatter(sun_angle, camera_x, camera_y_mat, look_x, look_y, 1, 0);
-%y = y ./ repmat(y(:,1), 1, cols);
-%plot(theta, y);
-%title("atmos density to sun vs view angle, sun at zenith");
-%
-%figure 3;
-%theta = ([0:cols-1]/(cols-1)-1) * 3.14/2;
-%theta_mat = repmat(theta, rows, 1);
-%look_x = cos(theta_mat);
-%look_y = sin(theta_mat);
-%sun_angle = 0;
-%y = in_scatter(sun_angle, camera_x, camera_y_mat, look_x, look_y, 1, 0);
-%y = y ./ repmat(y(:,1), 1, cols);
-%plot(theta, y);
-%title("atmos density to sun vs view angle, sun at horizon");
-%
-%figure 4;
-%theta = 2 * (2*[0:cols-1]/(cols-1)-1) * 3.14/2;
-%theta_mat = repmat(theta, rows, 1);
-%look_x = cos(theta_mat);
-%look_y = sin(theta_mat);
-%sun_angle = 3.14/2;
-%y = in_scatter(sun_angle, camera_x, camera_y_mat, look_x, look_y, 1, 0);
-%% normalize each line by their theta=0 values (i.e. when the camera is pointed straight up).
-%y = y ./ repmat(in_scatter(sun_angle, camera_x, camera_y, 0, 1, 1, 0), 1, cols);
-%y_approx = 1.5 .* (1 - sin(theta));
-%plot(theta, y);
-%title("atmospheric density vs view angle, normalized");
-%
-%figure 5;
-%sun_angle = 3.14/2;
-%y = log(in_scatter(sun_angle, camera_x, camera_y, 0, 1, 1, 0));
-%y_approx = planet_radius ./ planet_scale - camera_y ./ scale_height;
-%% graph the theta=0 values vs initial height.
-%plot(camera_y', [y'; y_approx']);
-%title("log(atmos density to sun) vs height, sun at zenith");
+figure 2;
+theta = (2*[0:cols-1]/(cols-1)-1) * 3.14/2;
+theta_mat = repmat(theta, rows, 1);
+look_x = cos(theta_mat);
+look_y = sin(theta_mat);
+sun_angle = 3.14/2;
+y = in_scatter(sun_angle, camera_x, camera_y_mat, look_x, look_y, 1, 0);
+y = y ./ repmat(in_scatter(sun_angle, camera_x, camera_y, 0, 1, 1, 0), 1, cols);
+plot(theta, y);
+title("in scattering vs view angle, sun at zenith, normalized");
+
+figure 4;
+theta = (2*[0:cols-1]/(cols-1)-1) * 3.14/2;
+theta_mat = repmat(theta, rows, 1);
+look_x = cos(theta_mat);
+look_y = sin(theta_mat);
+sun_angle = 3.14/4;
+y = in_scatter(sun_angle, camera_x, camera_y_mat, look_x, look_y, 1, 0);
+y = y ./ repmat(in_scatter(sun_angle, camera_x, camera_y, 0, 1, 1, 0), 1, cols);
+plot(theta, y);
+title("in scattering vs view angle, sun at 45, normalized");
+
+figure 3;
+theta = (2*[0:cols-1]/(cols-1)-1) * 3.14/2;
+theta_mat = repmat(theta, rows, 1);
+look_x = cos(theta_mat);
+look_y = sin(theta_mat);
+sun_angle = 0;
+y = in_scatter(sun_angle, camera_x, camera_y_mat, look_x, look_y, 1, 0);
+y = y ./ repmat(in_scatter(sun_angle, camera_x, camera_y, 0, 1, 1, 0), 1, cols);
+plot(theta, y);
+title("in scattering vs view angle, sun at horizon, normalized");
