@@ -106,33 +106,47 @@ noon_horizon = in_scatter(3.14/2, camera_x, camera_y, 1, 0, k, 0);
 sunset_up = in_scatter(0, camera_x, camera_y, 0, 1, k, 0);
 sunset_horizon = in_scatter(0, camera_x, camera_y, 1, 0, k, 0);
 
+figure 1;
+plot(k, [noon_up; noon_horizon; sunset_up; sunset_horizon]);
+
+legend(["noon up"; "noon horizon"; "sunset up"; "sunset horizon"]);
+
 rows = 40;
 cols = 80;
 
-look_angle = ([0:cols-1]/(cols-1)) * 3.14/2;
-look_angle_mat = repmat(look_angle, rows, 1);
-look_x = cos(look_angle_mat);
-look_y = sin(look_angle_mat);
-
-sun_angle = ([0:rows-1]'/(rows-1)) * 3.14/2;
-sun_angle_mat = repmat(sun_angle, 1, cols);
-
-figure 1;
-y = in_scatter(sun_angle_mat, 0, planet_radius, look_x, look_y, 1, 0);
-plot(look_angle, y);
-title("in scattering vs view angle");
+camera_x = 0;
+camera_y = ([0:(rows-1)]'/(rows-1))*2*atmos_thickness + planet_radius;
+camera_y_mat = repmat(camera_y, 1, cols);
 
 figure 2;
-mins = in_scatter(sun_angle_mat, 0, planet_radius, 1, 0, 1, 0);
-plot(sun_angle, mins');
-title("in scattering vs sun angle, looking at horizon");
-
-figure 3;
-maxs = in_scatter(sun_angle_mat, 0, planet_radius, 0, 1, 1, 0);
-plot(sun_angle, maxs');
-title("in scattering vs sun angle, looking straight up");
+theta = (2*[0:cols-1]/(cols-1)-1) * 3.14/2;
+theta_mat = repmat(theta, rows, 1);
+look_x = cos(theta_mat);
+look_y = sin(theta_mat);
+sun_angle = 3.14/2;
+y = in_scatter(sun_angle, camera_x, camera_y_mat, look_x, look_y, 1, 0);
+y = y ./ repmat(in_scatter(sun_angle, camera_x, camera_y, 0, 1, 1, 0), 1, cols);
+plot(theta, y);
+title("in scattering vs view angle, sun at zenith, normalized");
 
 figure 4;
-y = (y - mins) ./ (maxs - mins);
-plot(look_angle, y);
-title("in scattering vs view angle, normalized");
+theta = (2*[0:cols-1]/(cols-1)-1) * 3.14/2;
+theta_mat = repmat(theta, rows, 1);
+look_x = cos(theta_mat);
+look_y = sin(theta_mat);
+sun_angle = 3.14/4;
+y = in_scatter(sun_angle, camera_x, camera_y_mat, look_x, look_y, 1, 0);
+y = y ./ repmat(in_scatter(sun_angle, camera_x, camera_y, 0, 1, 1, 0), 1, cols);
+plot(theta, y);
+title("in scattering vs view angle, sun at 45, normalized");
+
+figure 3;
+theta = (2*[0:cols-1]/(cols-1)-1) * 3.14/2;
+theta_mat = repmat(theta, rows, 1);
+look_x = cos(theta_mat);
+look_y = sin(theta_mat);
+sun_angle = 0;
+y = in_scatter(sun_angle, camera_x, camera_y_mat, look_x, look_y, 1, 0);
+y = y ./ repmat(in_scatter(sun_angle, camera_x, camera_y, 0, 1, 1, 0), 1, cols);
+plot(theta, y);
+title("in scattering vs view angle, sun at horizon, normalized");
