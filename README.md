@@ -32,7 +32,7 @@ but there's also a server+client (singleplayer) bundled binary that builds in th
 
 `cargo build --release` and `cargo run --release` are pretty much required to run Playform with reasonable performance.
 
-## How to play
+## Controls
 
   * Move: WASD
   * Jump: Space
@@ -41,12 +41,12 @@ but there's also a server+client (singleplayer) bundled binary that builds in th
   * Dig tool: Right mouse button
   * Toggle HUD: H
 
-One mob spawns that will play "tag" with you: tag it and it will chase you until it tags you back. If you get too far away from it, it'll probably get lost and fall through the planet. It's a little needy.
+One mob (red rectangular block) spawns that will play "tag" with you: tag it and it will chase you until it tags you back. If you get too far away from it, it'll probably get lost and fall through the planet. It's a little needy that way.
 
 ## License & Credit
 
-I'm not intimately familiar with how licensing works: if I've done something wrong, please let me know. My intent is that Playform itself is MIT licensed (see the LICENSE file).
-It includes some snippets that can be easily found published online, and that code usually comes with links to the online source.
+I'm not intimately familiar with how licensing works: if I've done something wrong, please let me know. To state my intent in a non-legally-binding way: I want Playform itself (i.e. the code I've written in this repository) is MIT licensed (see the LICENSE file).
+It includes some snippets that can be easily found published online, and that code should come with links to the online source.
 
 Some of the assets are not mine, and I don't own the rights to them. In particular, thanks to:
 
