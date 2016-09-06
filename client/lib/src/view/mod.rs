@@ -93,7 +93,8 @@ fn load_grass_texture<'a, 'b:'a>(
 ) -> image::ImageResult<yaglw::texture::Texture2D<'b>> {
   let grass_texture = yaglw::texture::Texture2D::new(&gl);
   let fd = std::fs::File::open("textures/Free_Vector_Grass.png").unwrap();
-  let image = try!(image::load(fd, image::ImageFormat::PNG));
+  let buffered_file = std::io::BufReader::new(fd);
+  let image = try!(image::load(buffered_file, image::ImageFormat::PNG));
   let (w, h) = image.dimensions();
   let colortype = image.color();
   assert!(colortype == image::ColorType::RGBA(8));
