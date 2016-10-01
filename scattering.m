@@ -25,36 +25,39 @@ function r = atmos_density (p_x, p_y)
   r = exp(-dist_from_surface / scale_height);
 endfunction
 
-function [t1, t2] = intersect_time (o_x, o_y, r_x, r_y)
+function r = optical_depth(a_x, a_y, b_x, b_y)
+  global atmos_radius;
+  global planet_center_x;
+  global planet_center_y;
+
+  % "r" for "ray"
+  r_x = b_x - a_x;
+  r_y = b_y - a_y;
+
   a = dot(r_x, r_y, r_x, r_y);
-  d_x = o_x - c_x;
-  d_y = o_y - c_y;
+  d_x = a_x - planet_center_x;
+  d_y = a_y - planet_center_y;
   b = 2 .* dot(d_x, d_y, r_x, r_y);
   c = dot(d_x, d_y, d_x, d_y) - atmos_radius.*atmos_radius;
 
   s = b.*b - 4*a.*c;
-  i = s < 0;
+  sign = s < 0;
 
   t1 = ( sqrt(s) - b) ./ (2 .* a);
   t2 = (-sqrt(s) - b) ./ (2 .* a);
-endfunction
 
-function r = optical_depth(a_x, a_y, b_x, b_y)
-  global atmos_radius;
-  d_x = b_x - a_x;
-  d_y = b_y - a_y;
-  l = vec_len(d_x, d_y);
+  l = vec_len(r_x, r_y);
   samples = 100;
-  d_x = d_x ./ l;
-  d_y = d_y ./ l;
+  r_x = r_x ./ l;
+  r_y = r_y ./ l;
   l = min(l, 2 * atmos_radius) / samples;
-  d_x = d_x .* l;
-  d_y = d_y .* l;
+  r_x = r_x .* l;
+  r_y = r_y .* l;
 
   r = 0;
   for i = [1:samples]
-    p_x = a_x + i .* d_x;
-    p_y = a_y + i .* d_y;
+    p_x = a_x + i .* r_x;
+    p_y = a_y + i .* r_y;
     r = r + atmos_density(p_x, p_y) .* l;
   endfor
 endfunction
@@ -94,17 +97,30 @@ function r = in_scatter(sun_angle, camera_x, camera_y, look_x, look_y, k, g)
   endfor
 endfunction
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+rows = 40;
+cols = 80;
+
+camera_x = 0;
+camera_y_v = planet_radius .* (1 + [0:cols-1] ./ cols);
+camera_y = repmat(camera_y_v, rows, 1);
+
+look_angle = 3.14 ./ 2 .* [1:rows]' ./ rows;
+look_angle = repmat(look_angle, 1, cols);
+
+look_x = cos(look_angle);
+look_y = sin(look_angle);
+
+figure 1;
+y = optical_depth(camera_x, camera_y, camera_x + 2.* look_x .* planet_radius, camera_y + 2 .* look_y .* planet_radius);
+plot(camera_y_v', log(y));
+title("optical depth vs camera height, looking up");
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 camera_x = 0;
 camera_y = planet_radius;
-
-max_k = 1/1;
-k_samples = 1000;
-k = max_k*[1:k_samples]/k_samples;
-
-noon_up = in_scatter(3.14/2, camera_x, camera_y, 0, 1, k, 0);
-noon_horizon = in_scatter(3.14/2, camera_x, camera_y, 1, 0, k, 0);
-sunset_up = in_scatter(0, camera_x, camera_y, 0, 1, k, 0);
-sunset_horizon = in_scatter(0, camera_x, camera_y, 1, 0, k, 0);
 
 rows = 40;
 cols = 80;
@@ -117,22 +133,22 @@ look_y = sin(look_angle_mat);
 sun_angle = ([0:rows-1]'/(rows-1)) * 3.14/2;
 sun_angle_mat = repmat(sun_angle, 1, cols);
 
-figure 1;
-y = in_scatter(sun_angle_mat, 0, planet_radius, look_x, look_y, 1, 0);
+figure 3;
+y = in_scatter(sun_angle_mat, camera_x, camera_y, look_x, look_y, 1, 0);
 plot(look_angle, y);
 title("in scattering vs view angle");
 
-figure 2;
-mins = in_scatter(sun_angle_mat, 0, planet_radius, 1, 0, 1, 0);
+figure 4;
+mins = in_scatter(sun_angle_mat, camera_x, camera_y, 1, 0, 1, 0);
 plot(sun_angle, mins');
 title("in scattering vs sun angle, looking at horizon");
 
-figure 3;
-maxs = in_scatter(sun_angle_mat, 0, planet_radius, 0, 1, 1, 0);
+figure 5;
+maxs = in_scatter(sun_angle_mat, camera_x, camera_y, 0, 1, 1, 0);
 plot(sun_angle, maxs');
 title("in scattering vs sun angle, looking straight up");
 
-figure 4;
+figure 6;
 y = (y - mins) ./ (maxs - mins);
 plot(look_angle, y);
 title("in scattering vs view angle, normalized");
