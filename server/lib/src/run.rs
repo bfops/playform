@@ -82,7 +82,7 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
     }));
   }
 
-  for thread in threads.into_iter() {
+  for thread in threads {
     let stopwatch = thread.join();
     stopwatch.print();
   }

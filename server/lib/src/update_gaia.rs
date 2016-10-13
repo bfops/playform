@@ -73,7 +73,7 @@ fn load(
   let mut in_progress_terrain = server.terrain_loader.in_progress_terrain.lock().unwrap();
   match load_reason {
     LoadReason::Local(owner) => {
-      for voxel_bounds in voxel_bounds.into_iter() {
+      for voxel_bounds in voxel_bounds {
         server.terrain_loader.terrain.load(
           &voxel_bounds,
           |block| {
@@ -103,7 +103,7 @@ fn load(
     },
     LoadReason::ForClient(id) => {
       let mut voxels = Vec::new();
-      for voxel_bounds in voxel_bounds.into_iter() {
+      for voxel_bounds in voxel_bounds {
         server.terrain_loader.terrain.load(
           &voxel_bounds,
           |voxel| {
