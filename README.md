@@ -1,5 +1,12 @@
 [![Build Status](https://travis-ci.org/bfops/playform.svg?branch=master)](https://travis-ci.org/bfops/playform)
 
+## Current Status
+
+Two main things are in the works:
+
+  * Atmospheric scattering: to give the sky a more realistic color progression across the day (and especially during sunrise & sunset).
+  * Performance refactoring: load speed and voxel brushes are slower than they really should be. I'm working on it.
+
 ## Overview
 
 An interactive, modifiable voxel sandbox project in Rust, inspired in part by [Voxel Farm](http://procworld.blogspot.com/) and Minecraft. I try to keep a dev blog [here](http://playformdev.blogspot.com/).
