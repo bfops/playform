@@ -9,7 +9,7 @@ name = "dummy_client_lib"
 path = "./mod.rs"
 
 [dependencies]
-cgmath = "0.10.*"
+cgmath = "0.12.*"
 clippy = "*"
 log = "*"
 thread-scoped = "*"
