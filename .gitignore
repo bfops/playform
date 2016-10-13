@@ -15,9 +15,7 @@
 *.exe
 *-test
 /doc/
-/target/
-*/target/
-*/*/target/
+target/
 /.rust/
 
 Cargo.lock
