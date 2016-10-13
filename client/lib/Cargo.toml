@@ -10,7 +10,7 @@ path = "src/mod.rs"
 
 [dependencies]
 bincode = "*"
-cgmath = "0.10.*"
+cgmath = "0.12.*"
 clippy = "*"
 collision = "*"
 fnv = "*"

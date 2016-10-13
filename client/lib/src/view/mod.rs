@@ -234,7 +234,7 @@ pub fn new<'a>(
     window_size: window_size,
 
     camera: {
-      let fovy = cgmath::rad(FOV);
+      let fovy = cgmath::Rad(FOV);
       let aspect = window_size.x as f32 / window_size.y as f32;
       let mut camera = camera::unit();
       // Initialize the projection matrix.

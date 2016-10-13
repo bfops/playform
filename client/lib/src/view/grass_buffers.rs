@@ -96,8 +96,8 @@ pub fn new<'a, 'b:'a>(
 
     use cgmath::SquareMatrix;
     quad(&cgmath::Matrix3::from_value(1.0));
-    quad(&cgmath::Matrix3::from_axis_angle(normal, cgmath::rad(f32::consts::FRAC_PI_3)));
-    quad(&cgmath::Matrix3::from_axis_angle(normal, cgmath::rad(2.0 * f32::consts::FRAC_PI_3)));
+    quad(&cgmath::Matrix3::from_axis_angle(normal, cgmath::Rad(f32::consts::FRAC_PI_3)));
+    quad(&cgmath::Matrix3::from_axis_angle(normal, cgmath::Rad(2.0 * f32::consts::FRAC_PI_3)));
   }
 
   unsafe {

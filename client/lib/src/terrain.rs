@@ -234,7 +234,7 @@ impl T {
       }
     }
 
-    for chunk_position in updated_chunk_positions(&bounds).into_iter() {
+    for chunk_position in updated_chunk_positions(&bounds) {
       trace!("chunk_position {:?}", chunk_position);
       if new_voxel_loaded {
         for &updated_lod in &updated_lods {
@@ -304,7 +304,7 @@ impl T {
     }
 
     let processed_time = time::precise_time_ns();
-    for (chunk, lod) in update_chunks.into_iter() {
+    for (chunk, lod) in update_chunks {
       let _ =
         self.load_chunk(
           id_allocator,
