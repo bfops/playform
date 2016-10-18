@@ -52,8 +52,8 @@ One mob (red rectangular block) spawns that will play "tag" with you: tag it and
 
 ## License & Credit
 
-I'm not intimately familiar with how licensing works: if I've done something wrong, please let me know. To state my intent in a non-legally-binding way: I want Playform itself (i.e. the code I've written in this repository) is MIT licensed (see the LICENSE file).
-It includes some snippets that can be easily found published online, and that code should come with links to the online source.
+I'm not intimately familiar with how licensing works: if I've done something wrong, please let me know. To state my intent in a non-legally-binding way: I want Playform itself (i.e. the code I've written in this repository) to be MIT licensed (see the LICENSE file).
+It includes some snippets that can be easily found published online. I believe those snippets come with links to the online source.
 
 Some of the assets are not mine, and I don't own the rights to them. In particular, thanks to:
 
