@@ -134,7 +134,7 @@ plot(camera_y_v', log(y));
 title("optical depth vs camera height, various look angles");
 
 figure 2;
-plot(look_angle_v, y');
+plot(look_angle_v, y);
 title("optical depth vs look angle, various heights");
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -143,32 +143,44 @@ camera_x = 0;
 camera_y = planet_radius;
 
 rows = 40;
-cols = 80;
+cols = 200;
 
-look_angle = ([1:cols]./cols) * 3.14;
-look_angle_mat = repmat(look_angle, rows, 1);
-look_x = cos(look_angle_mat);
-look_y = sin(look_angle_mat);
+camera_y_v = planet_radius + atmos_radius.*([0:cols-1] ./ cols);
+camera_y = repmat(camera_y_v, rows, 1);
 
-sun_angle = ([0:rows-1]'/(rows-1)) * 3.14;
-sun_angle_mat = repmat(sun_angle, 1, cols);
+look_angle_v = ([1:rows]'./rows) * 3.14;
+look_angle = repmat(look_angle_v, 1, cols);
+look_x = cos(look_angle);
+look_y = sin(look_angle);
 
 figure 3;
-y = in_scatter(sun_angle_mat, camera_x, camera_y, look_x, look_y, 1, 0);
-plot(look_angle, y);
-title("in scattering vs view angle");
+y = in_scatter(0, camera_x, camera_y, look_x, look_y, 1, 0);
+plot(look_angle_v, y);
+title("in scattering vs look angle, sun at horizon, various heights");
 
 figure 4;
-mins = in_scatter(sun_angle_mat, camera_x, camera_y, 1, 0, 1, 0);
-plot(sun_angle, mins');
-title("in scattering vs sun angle, looking at horizon");
+y = in_scatter(3.14/2, camera_x, camera_y, look_x, look_y, 1, 0);
+plot(look_angle_v, y);
+title("in scattering vs look angle, sun at zenith, various heights");
 
 figure 5;
-maxs = in_scatter(sun_angle_mat, camera_x, camera_y, 0, 1, 1, 0);
-plot(sun_angle, maxs');
-title("in scattering vs sun angle, looking straight up");
+y = in_scatter(0, camera_x, camera_y, look_x, look_y, 1, 0);
+y = y ./ in_scatter(0, camera_x, camera_y, 0, 1, 1, 0);
+plot(look_angle_v, y);
+title("in scattering vs look angle, sun at horizon, various heights, normalized");
 
 figure 6;
-y = (y - mins) ./ (maxs - mins);
-plot(look_angle, y);
-title("in scattering vs view angle, normalized");
+y = in_scatter(3.14/2, camera_x, camera_y, look_x, look_y, 1, 0);
+y = y ./ in_scatter(3.14/2, camera_x, camera_y, 0, 1, 1, 0);
+plot(look_angle_v, y);
+title("in scattering vs look angle, sun at zenith, various heights, normalized");
+
+figure 7;
+y = in_scatter(0, camera_x, camera_y, 0, 1, 1, 0);
+plot(camera_y_v, log(y));
+title("log(in scattering) vs height, looking straight up, sun at horizon");
+
+figure 8;
+y = in_scatter(3.14/2, camera_x, camera_y, 0, 1, 1, 0);
+plot(camera_y_v, log(y));
+title("log(in scattering) vs height, looking straight up, sun at zenith");
