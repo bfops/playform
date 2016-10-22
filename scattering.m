@@ -25,34 +25,50 @@ function r = atmos_density (p_x, p_y)
   r = exp(-dist_from_surface / scale_height);
 endfunction
 
-function r = optical_depth(a_x, a_y, b_x, b_y)
+function a_x, a_y, r_x, r_y = clip_ray(a_x, a_y, r_x, r_y)
   global atmos_radius;
   global planet_center_x;
   global planet_center_y;
 
-  % "r" for "ray"
-  r_x = b_x - a_x;
-  r_y = b_y - a_y;
-
+  % find the times where the ray intersects the atmosphere
   a = dot(r_x, r_y, r_x, r_y);
   d_x = a_x - planet_center_x;
   d_y = a_y - planet_center_y;
   b = 2 .* dot(d_x, d_y, r_x, r_y);
   c = dot(d_x, d_y, d_x, d_y) - atmos_radius.*atmos_radius;
-
   s = b.*b - 4*a.*c;
-  sign = s < 0;
+  t1 = (-sqrt(s) - b) ./ (2 .* a);
+  t2 = ( sqrt(s) - b) ./ (2 .* a);
 
-  t1 = ( sqrt(s) - b) ./ (2 .* a);
-  t2 = (-sqrt(s) - b) ./ (2 .* a);
+  % if s < 0, we don't intersect. Set both times to 0.
+  sign = s >= 0;
+  t1 = t1 .* sign;
+  t2 = t2 .* sign;
 
-  l = vec_len(r_x, r_y);
+  % negative times mean either we're in the atmosphere, or it's entirely behind us.
+  t1 = max(t1, 0);
+  t2 = max(t2, 0);
+
+  % reset [a] and [r] to be inside the atmosphere.
+  a_x = a_x + r_x .* t1;
+  a_y = a_y + r_y .* t1;
+  r_x = r_x .* (t2 - t1);
+  r_y = r_y .* (t2 - t1);
+endfunction
+
+function r = optical_depth(a_x, a_y, b_x, b_y)
+  global atmos_radius;
+
+  % "r" for "ray"
+  r_x = b_x - a_x;
+  r_y = b_y - a_y;
+
+  %a_x, a_y, r_x, r_y = clip_ray(a_x, a_y, b_x, b_y);
+
   samples = 100;
-  r_x = r_x ./ l;
-  r_y = r_y ./ l;
-  l = min(l, 2 * atmos_radius) / samples;
-  r_x = r_x .* l;
-  r_y = r_y .* l;
+  l = vec_len(r_x, r_y) ./ samples;
+  r_x = r_x ./ samples;
+  r_y = r_y ./ samples;
 
   r = 0;
   for i = [1:samples]
@@ -103,19 +119,23 @@ rows = 40;
 cols = 80;
 
 camera_x = 0;
-camera_y_v = planet_radius .* (1 + [0:cols-1] ./ cols);
+camera_y_v = planet_radius + atmos_radius.*([0:cols-1] ./ cols);
 camera_y = repmat(camera_y_v, rows, 1);
 
-look_angle = 3.14 ./ 2 .* [1:rows]' ./ rows;
-look_angle = repmat(look_angle, 1, cols);
+look_angle_v = 3.14 .* [1:rows]' ./ rows;
+look_angle = repmat(look_angle_v, 1, cols);
 
 look_x = cos(look_angle);
 look_y = sin(look_angle);
 
+y = optical_depth(camera_x, camera_y, camera_x + look_x .* atmos_radius, camera_y + look_y .* atmos_radius);
 figure 1;
-y = optical_depth(camera_x, camera_y, camera_x + 2.* look_x .* planet_radius, camera_y + 2 .* look_y .* planet_radius);
 plot(camera_y_v', log(y));
-title("optical depth vs camera height, looking up");
+title("optical depth vs camera height, various look angles");
+
+figure 2;
+plot(look_angle_v, y');
+title("optical depth vs look angle, various heights");
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -125,12 +145,12 @@ camera_y = planet_radius;
 rows = 40;
 cols = 80;
 
-look_angle = ([0:cols-1]/(cols-1)) * 3.14/2;
+look_angle = ([1:cols]./cols) * 3.14;
 look_angle_mat = repmat(look_angle, rows, 1);
 look_x = cos(look_angle_mat);
 look_y = sin(look_angle_mat);
 
-sun_angle = ([0:rows-1]'/(rows-1)) * 3.14/2;
+sun_angle = ([0:rows-1]'/(rows-1)) * 3.14;
 sun_angle_mat = repmat(sun_angle, 1, cols);
 
 figure 3;
