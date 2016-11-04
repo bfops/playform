@@ -60,4 +60,3 @@ endfunction
 function r = dot(x1, y1, x2, y2)
   r = x1.*x2 + y1.*y2;
 endfunction
-

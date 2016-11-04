@@ -25,7 +25,7 @@ figure 2;
 title("optical depth vs camera height at various look angles, normalized");
 plot(camera_y_v, normalized);
 
-selected = normalized(1,:);
+selected = normalized(size(normalized,1),:);
 
 figure 3;
 title("optical depth vs camera height at various look angles, normalized, selected");
