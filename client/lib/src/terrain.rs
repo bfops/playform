@@ -133,13 +133,13 @@ impl T {
       },
       Occupied(mut entry) => {
         let (ids, _) = entry.insert((mesh_chunk.ids(), lod));
-        updates.push(view::update::UnloadChunk { ids: ids });
+        updates.push(view::update::UnloadMesh { ids: ids });
       },
     };
 
     if !mesh_chunk.ids.is_empty() {
       updates.push(
-        view::update::LoadChunk {
+        view::update::LoadMesh {
           mesh     : mesh_chunk,
         }
       );
@@ -342,7 +342,7 @@ impl T {
     match self.loaded_chunks.remove(chunk_position) {
       None => {},
       Some((ids, _)) => {
-        update_view(view::update::UnloadChunk { ids: ids });
+        update_view(view::update::UnloadMesh { ids: ids });
       },
     }
   }
