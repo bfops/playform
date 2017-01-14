@@ -16,7 +16,7 @@ use view;
 
 const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
 
-pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateServer, EnqueueTerrainUpdate>(
+pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateServer, EnqueueTerrainLoad>(
   quit                   : &Mutex<bool>,
   client                 : &client::T,
   recv_server            : &mut RecvServer,
@@ -24,14 +24,14 @@ pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateSe
   update_view1           : &mut UpdateView1,
   update_audio           : &mut UpdateAudio,
   update_server          : &mut UpdateServer,
-  enqueue_terrain_update : &mut EnqueueTerrainUpdate,
+  enqueue_terrain_update : &mut EnqueueTerrainLoad,
 ) where
   RecvServer           : FnMut() -> Option<protocol::ServerToClient>,
   UpdateView0          : FnMut(view::update::T),
   UpdateView1          : FnMut(view::update::T),
   UpdateAudio          : FnMut(audio_thread::Message),
   UpdateServer         : FnMut(protocol::ClientToServer),
-  EnqueueTerrainUpdate : FnMut(terrain::Load),
+  EnqueueTerrainLoad : FnMut(terrain::Load),
 {
   'update_loop: loop {
     let should_quit = *quit.lock().unwrap();
@@ -190,19 +190,19 @@ fn process_voxel_updates<UpdateView>(
 }
 
 #[inline(never)]
-fn process_server_updates<RecvServer, UpdateView, UpdateAudio, UpdateServer, EnqueueTerrainUpdate>(
+fn process_server_updates<RecvServer, UpdateView, UpdateAudio, UpdateServer, EnqueueTerrainLoad>(
   client: &client::T,
   recv_server: &mut RecvServer,
   update_view: &mut UpdateView,
   update_audio: &mut UpdateAudio,
   update_server: &mut UpdateServer,
-  enqueue_terrain_update: &mut EnqueueTerrainUpdate,
+  enqueue_terrain_update: &mut EnqueueTerrainLoad,
 ) where
   RecvServer           : FnMut() -> Option<protocol::ServerToClient>,
   UpdateView           : FnMut(view::update::T),
   UpdateAudio          : FnMut(audio_thread::Message),
   UpdateServer         : FnMut(protocol::ClientToServer),
-  EnqueueTerrainUpdate : FnMut(terrain::Load),
+  EnqueueTerrainLoad : FnMut(terrain::Load),
 {
   let start = time::precise_time_ns();
   let mut i = 0;
