@@ -24,7 +24,7 @@ pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateSe
   update_view1           : &mut UpdateView1,
   update_audio           : &mut UpdateAudio,
   update_server          : &mut UpdateServer,
-  enqueue_terrain_update : &mut EnqueueTerrainLoad,
+  enqueue_terrain_load : &mut EnqueueTerrainLoad,
 ) where
   RecvServer           : FnMut() -> Option<protocol::ServerToClient>,
   UpdateView0          : FnMut(view::update::T),
@@ -40,7 +40,7 @@ pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateSe
     } else {
       stopwatch::time("update_iteration", || {
         stopwatch::time("process_server_updates", || {
-          process_server_updates(client, recv_server, update_view0, update_audio, update_server, enqueue_terrain_update);
+          process_server_updates(client, recv_server, update_view0, update_audio, update_server, enqueue_terrain_load);
         });
 
         stopwatch::time("update_surroundings", || {
@@ -196,7 +196,7 @@ fn process_server_updates<RecvServer, UpdateView, UpdateAudio, UpdateServer, Enq
   update_view: &mut UpdateView,
   update_audio: &mut UpdateAudio,
   update_server: &mut UpdateServer,
-  enqueue_terrain_update: &mut EnqueueTerrainLoad,
+  enqueue_terrain_load: &mut EnqueueTerrainLoad,
 ) where
   RecvServer           : FnMut() -> Option<protocol::ServerToClient>,
   UpdateView           : FnMut(view::update::T),
@@ -212,7 +212,7 @@ fn process_server_updates<RecvServer, UpdateView, UpdateAudio, UpdateServer, Enq
       update_view,
       update_audio,
       update_server,
-      enqueue_terrain_update,
+      enqueue_terrain_load,
       up,
     );
 
