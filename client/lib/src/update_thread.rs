@@ -18,21 +18,21 @@ use view;
 const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
 
 pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateServer, EnqueueTerrainLoad>(
-  quit                   : &Mutex<bool>,
-  client                 : &client::T,
-  recv_server            : &mut RecvServer,
-  update_view0           : &mut UpdateView0,
-  update_view1           : &mut UpdateView1,
-  update_audio           : &mut UpdateAudio,
-  update_server          : &mut UpdateServer,
-  enqueue_terrain_load   : &mut EnqueueTerrainLoad,
+  quit                 : &Mutex<bool>,
+  client               : &client::T,
+  recv_server          : &mut RecvServer,
+  update_view0         : &mut UpdateView0,
+  update_view1         : &mut UpdateView1,
+  update_audio         : &mut UpdateAudio,
+  update_server        : &mut UpdateServer,
+  enqueue_terrain_load : &mut EnqueueTerrainLoad,
 ) where
-  RecvServer           : FnMut() -> Option<protocol::ServerToClient>,
-  UpdateView0          : FnMut(view::update::T),
-  UpdateView1          : FnMut(view::update::T),
-  UpdateAudio          : FnMut(audio_thread::Message),
-  UpdateServer         : FnMut(protocol::ClientToServer),
-  EnqueueTerrainLoad   : FnMut(terrain::Load),
+  RecvServer         : FnMut() -> Option<protocol::ServerToClient>,
+  UpdateView0        : FnMut(view::update::T),
+  UpdateView1        : FnMut(view::update::T),
+  UpdateAudio        : FnMut(audio_thread::Message),
+  UpdateServer       : FnMut(protocol::ClientToServer),
+  EnqueueTerrainLoad : FnMut(terrain::Load),
 {
   'update_loop: loop {
     let should_quit = *quit.lock().unwrap();
@@ -170,10 +170,10 @@ fn process_server_updates<RecvServer, UpdateView, UpdateAudio, UpdateServer, Enq
   update_server        : &mut UpdateServer,
   enqueue_terrain_load : &mut EnqueueTerrainLoad,
 ) where
-  RecvServer           : FnMut() -> Option<protocol::ServerToClient>,
-  UpdateView           : FnMut(view::update::T),
-  UpdateAudio          : FnMut(audio_thread::Message),
-  UpdateServer         : FnMut(protocol::ClientToServer),
+  RecvServer         : FnMut() -> Option<protocol::ServerToClient>,
+  UpdateView         : FnMut(view::update::T),
+  UpdateAudio        : FnMut(audio_thread::Message),
+  UpdateServer       : FnMut(protocol::ClientToServer),
   EnqueueTerrainLoad : FnMut(terrain::Load),
 {
   let start = time::precise_time_ns();
