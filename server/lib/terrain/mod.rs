@@ -61,10 +61,7 @@ impl T {
 
   /// Load the block of terrain at a given position.
   // TODO: Allow this to be performed in such a way that self is only briefly locked.
-  pub fn load(
-    &self,
-    bounds: &voxel::bounds::T,
-  ) -> voxel::T {
+  pub fn load(&self, bounds: &voxel::bounds::T) -> voxel::T {
     let mut voxels = self.voxels.lock().unwrap();
     let node = voxels.get_mut_or_create(bounds);
     match node.data {
