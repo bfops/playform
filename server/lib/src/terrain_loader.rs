@@ -151,9 +151,9 @@ impl T {
 
   pub fn unload(
     &self,
-    physics: &Mutex<Physics>,
-    block_position: &voxel::bounds::T,
-    owner: lod::OwnerId,
+    physics        : &Mutex<Physics>,
+    block_position : &voxel::bounds::T,
+    owner          : lod::OwnerId,
   ) {
     let lod_change;
     match self.lod_map.lock().unwrap().remove(*block_position, owner) {
