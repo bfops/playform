@@ -74,11 +74,11 @@ pub fn update_gaia(
 
 #[inline(never)]
 fn load_chunk(
-  server        : &server::T,
-  request_time_ns  : u64,
-  position      : chunk::position::T,
-  lg_voxel_size : i16,
-  destination   : LoadDestination,
+  server          : &server::T,
+  request_time_ns : u64,
+  position        : chunk::position::T,
+  lg_voxel_size   : i16,
+  destination     : LoadDestination,
 ) {
   // TODO: Just lock `terrain` for the check and then the move;
   // don't lock for the whole time where we're generating the block.
