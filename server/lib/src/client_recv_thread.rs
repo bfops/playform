@@ -20,7 +20,7 @@ use server::Client;
 use terrain;
 use voxel_data;
 use update_gaia;
-use update_gaia::LoadReason;
+use update_gaia::LoadDestination;
 
 fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
   (bounds.min + bounds.max.to_vec()) * 0.5
@@ -133,7 +133,7 @@ pub fn apply_client_update<UpdateGaia>(
         player.rotate_vertical(v.y);
       },
       protocol::ClientToServer::RequestVoxels { request_time_ns, client_id, voxels } => {
-        update_gaia(update_gaia::Message::Load(request_time_ns, voxels, LoadReason::ForClient(client_id)));
+        update_gaia(update_gaia::Message::Load(request_time_ns, voxels, LoadDestination::Client(client_id)));
       },
       protocol::ClientToServer::Add(player_id) => {
         let bounds = cast(server, player_id);

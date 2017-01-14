@@ -13,7 +13,7 @@ use lod;
 use physics::Physics;
 use terrain;
 use update_gaia;
-use update_gaia::LoadReason;
+use update_gaia::LoadDestination;
 
 // TODO: Consider factoring this logic such that what to load is separated from how it's loaded.
 
@@ -96,7 +96,7 @@ impl T {
         let mut generate_block = || {
           debug!("{:?} requested from gaia", position);
           load_block(
-            update_gaia::Message::Load(time::precise_time_ns(), vec!(*position), LoadReason::Local(owner))
+            update_gaia::Message::Load(time::precise_time_ns(), vec!(*position), LoadDestination::Local(owner))
           );
         };
         generate_block();

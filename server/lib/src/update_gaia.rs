@@ -14,13 +14,13 @@ use terrain_loader;
 use voxel_data;
 
 #[derive(Debug, Clone, Copy)]
-pub enum LoadReason {
+pub enum LoadDestination {
   Local(lod::OwnerId),
-  ForClient(protocol::ClientId),
+  Client(protocol::ClientId),
 }
 
 pub enum Message {
-  Load(u64, Vec<voxel::bounds::T>, LoadReason),
+  Load(u64, Vec<voxel::bounds::T>, LoadDestination),
   Brush(voxel_data::brush::T<Box<voxel_data::mosaic::T<common::voxel::Material> + Send>>),
 }
 
@@ -65,14 +65,14 @@ fn load(
   server: &server::T,
   request_time: u64,
   voxel_bounds: Vec<voxel::bounds::T>,
-  load_reason: LoadReason,
+  load_reason: LoadDestination,
 ) {
   // TODO: Just lock `terrain` for the check and then the move;
   // don't lock for the whole time where we're generating the block.
   let mut lod_map = server.terrain_loader.lod_map.lock().unwrap();
   let mut in_progress_terrain = server.terrain_loader.in_progress_terrain.lock().unwrap();
   match load_reason {
-    LoadReason::Local(owner) => {
+    LoadDestination::Local(owner) => {
       for voxel_bounds in voxel_bounds {
         let block = server.terrain_loader.terrain.load(&voxel_bounds);
         let bounds =
@@ -97,7 +97,7 @@ fn load(
         );
       }
     },
-    LoadReason::ForClient(id) => {
+    LoadDestination::Client(id) => {
       let mut voxels = Vec::new();
       for voxel_bounds in voxel_bounds {
         let voxel = server.terrain_loader.terrain.load(&voxel_bounds);
