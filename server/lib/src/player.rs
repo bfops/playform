@@ -233,7 +233,7 @@ impl T {
 
     let y_axis = Vector3::new(0.0, 1.0, 0.0);
     let walk_v =
-        Matrix3::from_axis_angle(y_axis, cgmath::rad(self.lateral_rotation))
+        Matrix3::from_axis_angle(y_axis, cgmath::Rad(self.lateral_rotation))
         * self.walk_accel;
     self.speed += walk_v;
     self.speed += self.accel;
@@ -271,7 +271,7 @@ impl T {
 
   /// Return the "right" axis (i.e. the x-axis rotated to match you).
   pub fn right(&self) -> Vector3<f32> {
-    Matrix3::from_axis_angle(Vector3::new(0.0, 1.0, 0.0), cgmath::rad(self.lateral_rotation))
+    Matrix3::from_axis_angle(Vector3::new(0.0, 1.0, 0.0), cgmath::Rad(self.lateral_rotation))
       * Vector3::new(1.0, 0.0, 0.0)
   }
 
@@ -279,8 +279,8 @@ impl T {
   pub fn forward(&self) -> Vector3<f32> {
     let y_axis = Vector3::new(0.0, 1.0, 0.0);
     let transform =
-      Matrix3::from_axis_angle(self.right(), cgmath::rad(self.vertical_rotation))
-        * Matrix3::from_axis_angle(y_axis, cgmath::rad(self.lateral_rotation));
+      Matrix3::from_axis_angle(self.right(), cgmath::Rad(self.vertical_rotation))
+        * Matrix3::from_axis_angle(y_axis, cgmath::Rad(self.lateral_rotation));
     let forward_orig = Vector3::new(0.0, 0.0, -1.0);
 
     transform * forward_orig

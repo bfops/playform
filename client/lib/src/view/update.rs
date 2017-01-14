@@ -107,7 +107,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
       }
     },
     T::Atomic(updates) => {
-      for up in updates.into_iter() {
+      for up in updates {
         apply_client_to_view(view, up);
       }
     },

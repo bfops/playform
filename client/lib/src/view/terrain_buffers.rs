@@ -170,7 +170,7 @@ impl<'a> T<'a> {
     id: entity_id::T,
   ) -> Option<(entity_id::T, usize)>
   {
-    let idx = *self.id_to_index.get(&id).unwrap();
+    let idx = (*self).id_to_index[&id];
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     self.index_to_id.swap_remove(idx);
     self.id_to_index.remove(&id);

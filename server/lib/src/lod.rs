@@ -95,7 +95,7 @@ impl Map {
             prev_lod = None;
           },
           Some(position) => {
-            let &mut (_, ref mut cur_lod) = block_load_state.owner_lods.get_mut(position).unwrap();
+            let &mut (_, ref mut cur_lod) = &mut block_load_state.owner_lods[position];
             prev_lod = Some(*cur_lod);
             if lod == *cur_lod {
               return (prev_lod, None);

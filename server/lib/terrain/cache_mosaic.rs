@@ -32,10 +32,10 @@ pub struct T<Material> {
 pub fn new<Material>(mosaic: Box<voxel::mosaic::T<Material> + Send>) -> T<Material> {
   T {
     mosaic          : mosaic,
-    density         : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
-    normal          : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
-    mosaic_density  : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
-    mosaic_material : lru_cache::LruCache::with_hash_state(1 << 10, Default::default()),
+    density         : lru_cache::LruCache::with_hasher(1 << 10, Default::default()),
+    normal          : lru_cache::LruCache::with_hasher(1 << 10, Default::default()),
+    mosaic_density  : lru_cache::LruCache::with_hasher(1 << 10, Default::default()),
+    mosaic_material : lru_cache::LruCache::with_hasher(1 << 10, Default::default()),
   }
 }
 

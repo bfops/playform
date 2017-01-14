@@ -57,7 +57,7 @@ impl T {
 
   /// Rotate about a given vector, by `r` radians.
   fn rotate(&mut self, v: &Vector3<f32>, r: f32) {
-    let mat = Matrix3::from_axis_angle(*v, -cgmath::rad(r));
+    let mat = Matrix3::from_axis_angle(*v, -cgmath::Rad(r));
     let mat =
       Matrix4::new(
         mat.x.x, mat.x.y, mat.x.z, 0.0,
@@ -90,7 +90,7 @@ impl T {
     let axis =
       Matrix3::from_axis_angle(
         Vector3::new(0.0, 1.0, 0.0),
-        cgmath::rad(self.lateral_rotation),
+        cgmath::Rad(self.lateral_rotation),
       );
     let axis = axis * (&Vector3::new(1.0, 0.0, 0.0));
     self.rotate(&axis, r);

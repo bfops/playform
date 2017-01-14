@@ -2,27 +2,44 @@
 
 pub mod color;
 pub mod grass_billboard;
+pub mod sky;
 pub mod terrain;
 pub mod texture;
-
-mod adjust_depth_precision;
-mod depth_fog;
-mod noise;
-mod world_fragment;
-
-mod bark;
-mod sky;
-mod dirt;
-mod grass;
-mod leaves;
-mod stone;
 
 use cgmath;
 use cgmath::{Vector2};
 use gl;
+use std;
 use yaglw::gl_context::GLContext;
+use yaglw;
 
 use view::camera;
+
+pub fn shader_from_prefix<'a, 'b:'a>(gl: &'a GLContext, prefix: &'static str) -> yaglw::shader::Shader<'b> {
+  let read_preprocessed_shader =
+    |name| {
+      String::from_utf8(
+        std::process::Command::new("m4")
+        .arg(name)
+        .current_dir(std::path::Path::new("shaders/"))
+        .output()
+        .unwrap()
+        .stdout
+      ).unwrap()
+    };
+  let vs = read_preprocessed_shader(format!("{}.vs.glsl", prefix));
+  let fs = read_preprocessed_shader(format!("{}.fs.glsl", prefix));
+  debug!("loaded {} vertex shader:", prefix);
+  debug!("{}", vs);
+  debug!("loaded {} fragment shader:", prefix);
+  debug!("{}", fs);
+  let components =
+    vec!(
+      (gl::VERTEX_SHADER, vs),
+      (gl::FRAGMENT_SHADER, fs),
+    );
+  yaglw::shader::Shader::new(gl, components.into_iter())
+}
 
 /// The game's custom shader structs.
 pub struct T<'a> {
@@ -41,13 +58,13 @@ pub struct T<'a> {
 }
 
 #[allow(missing_docs)]
-pub fn new<'a, 'b>(gl: &'b mut GLContext, window_size: Vector2<i32>, near: f32, far: f32) -> T<'a> where 'a: 'b {
-  let terrain_shader = self::terrain::new(gl, near, far);
-  let mob_shader = self::color::new(gl, near, far);
-  let mut hud_color_shader = self::color::new(gl, 0.0, 1.0);
-  let texture_shader = self::texture::new(gl);
-  let grass_billboard = self::grass_billboard::new(gl, near, far);
-  let sky = self::sky::new(gl);
+pub fn new<'a, 'b>(gl: &'b mut GLContext, window_size: Vector2<i32>) -> T<'a> where 'a: 'b {
+  let terrain_shader       = self::terrain::new(gl);
+  let mob_shader           = self::color::new(gl);
+  let mut hud_color_shader = self::color::new(gl);
+  let texture_shader       = self::texture::new(gl);
+  let grass_billboard      = self::grass_billboard::new(gl);
+  let sky                  = self::sky::new(gl);
 
   let hud_camera = {
     let mut c = camera::unit();

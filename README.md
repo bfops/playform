@@ -1,5 +1,12 @@
 [![Build Status](https://travis-ci.org/bfops/playform.svg?branch=master)](https://travis-ci.org/bfops/playform)
 
+## Current Status
+
+Two main things are in the works:
+
+  * Atmospheric scattering: to give the sky a more realistic color progression across the day (and especially during sunrise & sunset).
+  * Performance refactoring: load speed and voxel brushes are slower than they really should be. I'm working on it.
+
 ## Overview
 
 An interactive, modifiable voxel sandbox project in Rust, inspired in part by [Voxel Farm](http://procworld.blogspot.com/) and Minecraft. I try to keep a dev blog [here](http://playformdev.blogspot.com/).
@@ -25,13 +32,14 @@ Make sure you have:
   * SDL2\_ttf
   * libnanomsg
   * portaudio
+  * m4
 
 Playform has a separate server and client, which can be built and run in `server/bin` and `client/bin`,
 but there's also a server+client (singleplayer) bundled binary that builds in the root directory.
 
 `cargo build --release` and `cargo run --release` are pretty much required to run Playform with reasonable performance.
 
-## How to play
+## Controls
 
   * Move: WASD
   * Jump: Space
@@ -40,14 +48,14 @@ but there's also a server+client (singleplayer) bundled binary that builds in th
   * Dig tool: Right mouse button
   * Toggle HUD: H
 
-One mob spawns that will play "tag" with you: tag it and it will chase you until it tags you back. If you get too far away from it, it'll probably get lost and fall through the planet. It's a little needy.
+One mob (red rectangular block) spawns that will play "tag" with you: tag it and it will chase you until it tags you back. If you get too far away from it, it'll probably get lost and fall through the planet. It's a little needy that way.
 
 ## License & Credit
 
-I'm not the most familiar with licensing. If I've done something wrong, let me know. My intent is that Playform itself is MIT licensed (see the LICENSE file).
-It includes some code that can be easily found online, and that code usually comes with links to the online source.
+I'm not intimately familiar with how licensing works: if I've done something wrong, please let me know. To state my intent in a non-legally-binding way: I want Playform itself (i.e. the code I've written in this repository) to be MIT licensed (see the LICENSE file).
+It includes some snippets that can be easily found published online. I believe those snippets come with links to the online source.
 
-Some of the Assets are not mine, and I don't own the rights to them. In particular, thanks to:
+Some of the assets are not mine, and I don't own the rights to them. In particular, thanks to:
 
   * [http://vector.me/browse/104477/free\_vector\_grass](http://vector.me/browse/104477/free_vector_grass) for the textures used for the grass billboards
   * [http://soundbible.com/1818-Rainforest-Ambience.html](http://soundbible.com/1818-Rainforest-Ambience.html) for the awesome ambient sound

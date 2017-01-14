@@ -83,14 +83,18 @@ pub struct T<'a> {
 
   /// Whether to render HUD elements
   pub input_mode: InputMode,
+
+  pub near_clip: f32,
+  pub far_clip: f32,
 }
 
 fn load_grass_texture<'a, 'b:'a>(
   gl: &'a mut GLContext,
 ) -> image::ImageResult<yaglw::texture::Texture2D<'b>> {
   let grass_texture = yaglw::texture::Texture2D::new(&gl);
-  let fd = std::fs::File::open("Assets/Free_Vector_Grass.png").unwrap();
-  let image = try!(image::load(fd, image::ImageFormat::PNG));
+  let fd = std::fs::File::open("textures/Free_Vector_Grass.png").unwrap();
+  let buffered_file = std::io::BufReader::new(fd);
+  let image = try!(image::load(buffered_file, image::ImageFormat::PNG));
   let (w, h) = image.dimensions();
   let colortype = image.color();
   assert!(colortype == image::ColorType::RGBA(8));
@@ -123,9 +127,7 @@ pub fn new<'a>(
 ) -> T<'a> {
   let mut texture_unit_alloc = id_allocator::new();
 
-  let near = 0.1;
-  let far = 2048.0;
-  let mut shaders = shaders::new(&mut gl, window_size, near, far);
+  let mut shaders = shaders::new(&mut gl, window_size);
 
   let terrain_buffers = terrain_buffers::new(&mut gl);
   terrain_buffers.bind_vertex_positions(
@@ -212,6 +214,9 @@ pub fn new<'a>(
 
   let empty_gl_array = yaglw::vertex_buffer::ArrayHandle::new(&gl);
 
+  let near_clip = 0.1;
+  let far_clip = 2048.0;
+
   T {
     gl: gl,
     shaders: shaders,
@@ -229,11 +234,11 @@ pub fn new<'a>(
     window_size: window_size,
 
     camera: {
-      let fovy = cgmath::rad(FOV);
+      let fovy = cgmath::Rad(FOV);
       let aspect = window_size.x as f32 / window_size.y as f32;
       let mut camera = camera::unit();
       // Initialize the projection matrix.
-      camera.fov = cgmath::perspective(fovy, aspect, near, far);
+      camera.fov = cgmath::perspective(fovy, aspect, near_clip, far_clip);
       // TODO: This should use player rotation from the server.
       camera.rotate_lateral(std::f32::consts::PI / 2.0);
       camera
@@ -247,5 +252,8 @@ pub fn new<'a>(
 
     show_hud: true,
     input_mode: InputMode::Camera,
+
+    near_clip: near_clip,
+    far_clip: far_clip,
   }
 }

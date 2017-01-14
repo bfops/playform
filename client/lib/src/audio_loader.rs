@@ -12,8 +12,8 @@ pub enum SoundId {
 impl SoundId {
   pub fn to_asset_path(&self) -> String {
     match *self {
-      SoundId::Rainforest    => "Assets/rainforest_ambience-GlorySunz-1938133500.wav".to_owned(),
-      SoundId::Footstep(idx) => format!("Assets/Walking_On_Gravel-SoundBible{}.wav", idx),
+      SoundId::Rainforest    => "soudns/rainforest_ambience-GlorySunz-1938133500.wav".to_owned(),
+      SoundId::Footstep(idx) => format!("sounds/Walking_On_Gravel-SoundBible{}.wav", idx),
     }
   }
 }
