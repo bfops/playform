@@ -151,12 +151,12 @@ impl T {
 
   pub fn unload(
     &self,
-    physics        : &Mutex<Physics>,
-    block_position : &voxel::bounds::T,
-    owner          : lod::OwnerId,
+    physics  : &Mutex<Physics>,
+    position : &voxel::bounds::T,
+    owner    : lod::OwnerId,
   ) {
     let lod_change;
-    match self.lod_map.lock().unwrap().remove(*block_position, owner) {
+    match self.lod_map.lock().unwrap().remove(*position, owner) {
       (_, None) => return,
       (_, Some(c)) => lod_change = c,
     }
@@ -164,11 +164,11 @@ impl T {
     lod_change.loaded.map(|loaded_lod| {
       match loaded_lod {
         lod::Placeholder => {
-          self.in_progress_terrain.lock().unwrap().remove(physics, block_position);
+          self.in_progress_terrain.lock().unwrap().remove(physics, position);
         }
         lod::Full => {
           stopwatch::time("terrain_loader.unload", || {
-            match self.loaded.lock().unwrap().get(block_position) {
+            match self.loaded.lock().unwrap().get(position) {
               None => {
                 // Unloaded before the load request completed.
               },
