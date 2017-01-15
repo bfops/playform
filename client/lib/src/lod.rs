@@ -15,7 +15,7 @@ pub const ALL: [T; COUNT] = [T(0), T(1), T(2), T(3), T(4)];
 // Just remove the LODs if you don't want duplicates.
 const LG_EDGE_SAMPLES: [u16; COUNT] = [3, 2, 1, 1, 0];
 
-/// The width of a voxel within a chunk, indexed by LOD.
+/// The base-2 log of the width of a voxel within a chunk, indexed by LOD.
 const LG_SAMPLE_SIZE: [i16; COUNT] = [
   chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[0] as i16,
   chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[1] as i16,
