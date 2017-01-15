@@ -162,7 +162,7 @@ fn load_or_request_chunk<UpdateServer, UpdateView>(
     Err(voxels) => {
       update_server(
         protocol::ClientToServer::RequestVoxels {
-          request_time_ns : time::precise_time_ns(),
+          time_requested_ns : time::precise_time_ns(),
           client_id       : client.id,
           voxels          : voxels,
         }

@@ -74,13 +74,13 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrain
         ));
       },
       protocol::ServerToClient::Voxels { voxels, reason } => {
-        let request_time;
+        let time_requested;
         match reason {
           protocol::VoxelReason::Updated => {
-            request_time = None;
+            time_requested = None;
           },
           protocol::VoxelReason::Requested { at } => {
-            request_time = Some(at);
+            time_requested = Some(at);
             debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - at);
           },
         }
@@ -88,7 +88,7 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrain
         enqueue_terrain_load(
           terrain::Load::Voxels {
             voxels       : voxels,
-            request_time : request_time,
+            time_requested : time_requested,
           }
         );
       },

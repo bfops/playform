@@ -22,7 +22,7 @@ pub enum Load {
     voxels       : Vec<(voxel::bounds::T, voxel::T)>,
     /// Is Some if this is a response to a request from this client; is None if the server provides
     /// these voxels because they were updated.
-    request_time : Option<u64>,
+    time_requested : Option<u64>,
   },
 }
 
@@ -92,14 +92,14 @@ impl T {
     let start = time::precise_time_ns();
     while let Some(msg) = self.queue.pop_front() {
       match msg {
-        Load::Voxels { voxels, request_time } => {
+        Load::Voxels { voxels, time_requested } => {
           self.load_voxels(
             id_allocator,
             rng,
             update_view,
             player_position,
             voxels,
-            request_time,
+            time_requested,
           );
         },
       }
@@ -288,7 +288,7 @@ impl T {
     update_view     : &mut UpdateView,
     player_position : &cgmath::Point3<f32>,
     voxel_updates   : Vec<(voxel::bounds::T, voxel::T)>,
-    request_time    : Option<u64>,
+    time_requested    : Option<u64>,
   ) where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
@@ -319,12 +319,12 @@ impl T {
 
     let chunk_loaded = time::precise_time_ns();
 
-    match request_time {
+    match time_requested {
       None => {},
-      Some(request_time) => {
+      Some(time_requested) => {
         record_book::thread_local::push_chunk_load(
           record_book::ChunkLoad {
-            request_time_ns  : request_time,
+            time_requested_ns  : time_requested,
             response_time_ns : response_time,
             stored_time_ns   : processed_time,
             loaded_time_ns   : chunk_loaded,

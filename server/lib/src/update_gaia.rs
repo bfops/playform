@@ -31,9 +31,9 @@ pub fn update_gaia(
 ) {
   stopwatch::time("update_gaia", move || {
     match update {
-      Message::Load(request_time, voxel_bounds, load_reason) => {
+      Message::Load(time_requested, voxel_bounds, load_reason) => {
         stopwatch::time("terrain.load", || {
-          load(server, request_time, voxel_bounds, load_reason);
+          load(server, time_requested, voxel_bounds, load_reason);
         });
       },
       Message::Brush(mut brush) => {
@@ -63,7 +63,7 @@ pub fn update_gaia(
 #[inline(never)]
 fn load(
   server: &server::T,
-  request_time: u64,
+  time_requested: u64,
   voxel_bounds: Vec<voxel::bounds::T>,
   load_reason: LoadDestination,
 ) {
@@ -109,7 +109,7 @@ fn load(
       client.send(
         protocol::ServerToClient::Voxels {
           voxels : voxels,
-          reason : protocol::VoxelReason::Requested { at: request_time },
+          reason : protocol::VoxelReason::Requested { at: time_requested },
         }
       );
     },
