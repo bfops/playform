@@ -17,11 +17,11 @@ const LG_EDGE_SAMPLES: [u16; COUNT] = [3, 2, 1, 1, 0];
 
 /// The base-2 log of the width of a voxel within a chunk, indexed by LOD.
 const LG_SAMPLE_SIZE: [i16; COUNT] = [
-  chunk::LG_WIDTH - LG_EDGE_SAMPLES[0] as i16,
-  chunk::LG_WIDTH - LG_EDGE_SAMPLES[1] as i16,
-  chunk::LG_WIDTH - LG_EDGE_SAMPLES[2] as i16,
-  chunk::LG_WIDTH - LG_EDGE_SAMPLES[3] as i16,
-  chunk::LG_WIDTH - LG_EDGE_SAMPLES[4] as i16,
+  chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[0] as i16,
+  chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[1] as i16,
+  chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[2] as i16,
+  chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[3] as i16,
+  chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[4] as i16,
 ];
 
 pub const MAX_GRASS_LOD: T = T(3);
