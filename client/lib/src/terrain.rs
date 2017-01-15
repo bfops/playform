@@ -33,11 +33,11 @@ pub struct T {
   chunk_voxels_loaded : fnv_map::T<(chunk::position::T, lod::T), u32>,
   /// The voxels we have cached from the server.
   voxels              : voxel::tree::T,
-  max_load_distance   : i32,
+  max_load_distance   : u32,
   queue               : std::collections::VecDeque<Load>,
 }
 
-pub fn new(max_load_distance: i32) -> T {
+pub fn new(max_load_distance: u32) -> T {
   T {
     loaded_chunks       : fnv_map::new(),
     chunk_voxels_loaded : fnv_map::new(),
