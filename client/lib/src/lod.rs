@@ -27,7 +27,7 @@ const LG_SAMPLE_SIZE: [i16; COUNT] = [
 pub const MAX_GRASS_LOD: T = T(3);
 
 /// The distances at which LOD switches.
-pub const THRESHOLDS: [i32; COUNT-1] = [2, 16, 32, 48];
+pub const THRESHOLDS: [u32; COUNT-1] = [2, 16, 32, 48];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// A strongly-typed index into various LOD-indexed arrays.
@@ -49,8 +49,7 @@ impl T {
   }
 }
 
-pub fn of_distance(distance: i32) -> T {
-  assert!(distance >= 0);
+pub fn of_distance(distance: u32) -> T {
   let mut lod = 0;
   while
     lod < THRESHOLDS.len()

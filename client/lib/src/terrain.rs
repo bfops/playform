@@ -53,11 +53,11 @@ pub struct T {
   /// This maps mesh ids (one per chunk and one per inter-chunk seam) to their
   /// VRAM-lookup entity IDs.
   loaded_meshes     : fnv_map::T<MeshId, terrain_mesh::Ids>,
-  max_load_distance : i32,
+  max_load_distance : u32,
   queue             : std::collections::VecDeque<Load>,
 }
 
-pub fn new(max_load_distance: i32) -> T {
+pub fn new(max_load_distance: u32) -> T {
   T {
     chunks            : fnv_map::new(),
     chunk_load_state  : fnv_map::new(),

@@ -18,7 +18,7 @@ use terrain;
 use view;
 
 // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-const MAX_LOAD_DISTANCE: i32 = 1 << 6;
+const MAX_LOAD_DISTANCE: u32 = 80;
 
 /// The main client state.
 pub struct T {
@@ -27,7 +27,7 @@ pub struct T {
   pub player_position          : Mutex<Point3<f32>>,
   pub last_footstep            : Mutex<Point3<f32>>,
   pub load_position            : Mutex<Option<Point3<f32>>>,
-  pub max_load_distance        : i32,
+  pub max_load_distance        : u32,
   pub surroundings_loader      : Mutex<surroundings_loader::T>,
   pub id_allocator             : Mutex<id_allocator::T<entity_id::T>>,
   /// The terrain requests that are pending,
@@ -36,19 +36,19 @@ pub struct T {
   pub rng                      : Mutex<rand::XorShiftRng>,
 }
 
-fn load_distance(mut polygon_budget: i32) -> i32 {
+fn load_distance(mut polygon_budget: i32) -> u32 {
   // TODO: This should try to account for VRAM not used on a per-poly basis.
 
   let mut load_distance = 0;
   let mut prev_threshold = 0;
   let mut prev_square = 0;
   for (i, &threshold) in lod::THRESHOLDS.iter().enumerate() {
-    let quality = lod::T(i as u32).edge_samples();
-    let polygons_per_chunk = (quality * quality * 4) as i32;
+    let quality = lod::T(i as u32).edge_samples() as i32;
+    let polygons_per_chunk = quality * quality * 4;
     for i in num::iter::range_inclusive(prev_threshold, threshold) {
       let i = 2 * i + 1;
       let square = i * i;
-      let polygons_in_layer = (square - prev_square) * polygons_per_chunk;
+      let polygons_in_layer = (square - prev_square) as i32 * polygons_per_chunk;
       polygon_budget -= polygons_in_layer;
       if polygon_budget < 0 {
         break;
@@ -64,9 +64,9 @@ fn load_distance(mut polygon_budget: i32) -> i32 {
   loop {
     let square = width * width;
     // The "to infinity and beyond" quality.
-    let quality = lod::ALL.iter().last().unwrap().edge_samples();
-    let polygons_per_chunk = (quality * quality * 4) as i32;
-    let polygons_in_layer = (square - prev_square) * polygons_per_chunk;
+    let quality = lod::ALL.iter().last().unwrap().edge_samples() as i32;
+    let polygons_per_chunk = quality * quality * 4;
+    let polygons_in_layer = (square - prev_square) as i32 * polygons_per_chunk;
     polygon_budget -= polygons_in_layer;
 
     if polygon_budget < 0 {
@@ -102,7 +102,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
   let surroundings_loader = {
     surroundings_loader::new(
       load_distance,
-      lod::THRESHOLDS.iter().cloned().collect(),
+      lod::THRESHOLDS.iter().map(|&x| x as i32).collect(),
     )
   };
 
@@ -115,7 +115,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     id_allocator             : Mutex::new(id_allocator::new()),
     surroundings_loader      : Mutex::new(surroundings_loader),
     max_load_distance        : load_distance,
-    terrain                  : Mutex::new(terrain::new(load_distance)),
+    terrain                  : Mutex::new(terrain::new(load_distance as u32)),
     pending_terrain_requests : Mutex::new(fnv_set::new()),
     rng                      : Mutex::new(rng),
   }
