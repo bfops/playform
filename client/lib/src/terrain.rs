@@ -21,7 +21,7 @@ pub enum Load {
     chunk           : chunk::T,
     position        : chunk::position::T,
     lg_voxel_size   : i16,
-    request_time_ns : u64,
+    time_requested_ns : u64,
   },
   Voxels {
     voxels : Vec<(voxel::bounds::T, voxel::T)>,
@@ -106,7 +106,7 @@ impl T {
             voxels,
           );
         },
-        Load::Chunk { chunk, request_time_ns, position, lg_voxel_size, .. } => {
+        Load::Chunk { chunk, time_requested_ns, position, lg_voxel_size, .. } => {
           self.load_chunk(
             id_allocator,
             rng,
@@ -114,7 +114,7 @@ impl T {
             player_position,
             position,
             chunk,
-            request_time_ns,
+            time_requested_ns,
             lg_voxel_size,
           );
         },
@@ -401,7 +401,7 @@ impl T {
     player_position : &chunk::position::T,
     position        : chunk::position::T,
     chunk           : chunk::T,
-    request_time_ns : u64,
+    time_requested_ns : u64,
     lg_voxel_size   : i16,
   ) where
     UpdateView : FnMut(view::update::T),
@@ -431,7 +431,7 @@ impl T {
 
     record_book::thread_local::push_chunk_load(
       record_book::ChunkLoad {
-        request_time_ns  : request_time_ns,
+        time_requested_ns  : time_requested_ns,
         response_time_ns : response_time,
         stored_time_ns   : processed_time,
         loaded_time_ns   : chunk_loaded,

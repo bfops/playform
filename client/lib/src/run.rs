@@ -98,8 +98,8 @@ pub fn run(listen_url: &str, server_url: &str) {
             if i > 0 {
               file.write_all(b", ").unwrap();
             }
-            let record_book::ChunkLoad { request_time_ns, response_time_ns, stored_time_ns, loaded_time_ns } = *record;
-            file.write_fmt(format_args!("[{}; {}; {}; {}]", request_time_ns, response_time_ns, stored_time_ns, loaded_time_ns)).unwrap();
+            let record_book::ChunkLoad { time_requested_ns, response_time_ns, stored_time_ns, loaded_time_ns } = *record;
+            file.write_fmt(format_args!("[{}; {}; {}; {}]", time_requested_ns, response_time_ns, stored_time_ns, loaded_time_ns)).unwrap();
           }
           file.write_all(b"];\n").unwrap();
           file.write_fmt(format_args!("plot([1:{}], records);", recorded.chunk_loads.len())).unwrap();

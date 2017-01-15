@@ -124,7 +124,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
             if !request_already_exists {
               update_server(
                 protocol::ClientToServer::RequestChunk {
-                  request_time_ns : time::precise_time_ns(),
+                  time_requested_ns : time::precise_time_ns(),
                   client_id       : client.id,
                   position        : chunk_position,
                   lg_voxel_size   : lg_voxel_size,

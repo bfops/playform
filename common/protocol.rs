@@ -48,7 +48,7 @@ pub enum ClientToServer {
   #[allow(missing_docs)]
   /// Ask the server to send a block of terrain.
   RequestChunk {
-    request_time_ns : u64,
+    time_requested_ns : u64,
     client_id       : ClientId,
     position        : chunk::position::T,
     lg_voxel_size   : i16
@@ -88,7 +88,7 @@ pub enum ServerToClient {
   /// Provide a chunk of terrain to a client.
   #[allow(missing_docs)]
   Chunk {
-    request_time_ns : u64,
+    time_requested_ns : u64,
     chunk           : chunk::T,
     position        : chunk::position::T,
     lg_voxel_size   : i16,
