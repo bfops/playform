@@ -9,8 +9,9 @@ use common::protocol;
 use audio_loader;
 use audio_thread;
 use client;
-use server;
 use record_book;
+use server;
+use terrain;
 use update_thread::update_thread;
 use view::thread::view_thread;
 
@@ -76,7 +77,12 @@ pub fn run(listen_url: &str, server_url: &str) {
             &mut |up| { audio_updates.lock().unwrap().push_back(up) },
   	        &mut |up| { server.talk.tell(&up) },
             &mut |msg| {
-              *client.pending_terrain_requests.lock().unwrap() -= 1;
+              match msg {
+                terrain::Load::Voxels { request_time: None, .. } => {},
+                terrain::Load::Voxels { request_time: Some(_), .. } => {
+                  *client.pending_terrain_requests.lock().unwrap() -= 1;
+                }
+              };
               client.terrain.lock().unwrap().enqueue(msg);
             },
           );

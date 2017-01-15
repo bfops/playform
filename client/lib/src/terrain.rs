@@ -20,6 +20,8 @@ use view;
 pub enum Load {
   Voxels {
     voxels       : Vec<(voxel::bounds::T, voxel::T)>,
+    /// Is Some if this is a response to a request from this client; is None if the server provides
+    /// these voxels because they were updated.
     request_time : Option<u64>,
   },
 }
