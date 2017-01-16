@@ -150,7 +150,6 @@ impl<V: Debug + Copy + Eq + PartialOrd> Octree<V> {
   }
 
   // Split a leaf into two subtrees.
-  #[allow(ptr_arg)]
   fn bisect(
     parent: *mut Octree<V>,
     bounds: &Aabb3<f32>,

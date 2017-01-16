@@ -11,7 +11,6 @@ path = "./src/mod.rs"
 [dependencies]
 bincode = "*"
 cgmath = "0.12.*"
-clippy = "*"
 collision = "*"
 log = "*"
 nanomsg = "*"

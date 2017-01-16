@@ -5,16 +5,8 @@
 
 #![feature(box_syntax)]
 #![feature(fn_traits)]
-#![feature(plugin)]
 #![feature(test)]
 #![feature(unboxed_closures)]
-
-#![plugin(clippy)]
-#![allow(type_complexity)]
-#![allow(items_after_statements)]
-#![allow(enum_variant_names)]
-#![allow(doc_markdown)]
-#![allow(needless_borrow)]
 
 extern crate cgmath;
 extern crate collision;

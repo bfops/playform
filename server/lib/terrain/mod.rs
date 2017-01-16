@@ -1,20 +1,11 @@
 //! This crate contains the terrain data structures and generation.
 
-#![allow(let_and_return)]
-#![allow(match_ref_pats)]
-#![allow(type_complexity)]
-#![allow(unneeded_field_pattern)]
-#![allow(derive_hash_xor_eq)]
-
 #![deny(missing_docs)]
 #![deny(warnings)]
 
 #![feature(main)]
-#![feature(plugin)]
 #![feature(test)]
 #![feature(unboxed_closures)]
-
-#![plugin(clippy)]
 
 extern crate cgmath;
 extern crate collision;

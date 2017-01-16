@@ -10,7 +10,6 @@ path = "mod.rs"
 
 [dependencies]
 cgmath = "0.12.*"
-clippy = "*"
 collision = "*"
 fnv = "*"
 log = "*"

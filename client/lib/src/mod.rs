@@ -3,23 +3,9 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-#![feature(plugin)]
 #![feature(test)]
 #![feature(type_ascription)]
 #![feature(unboxed_closures)]
-
-#![plugin(clippy)]
-#![allow(mutex_atomic)]
-#![allow(match_ref_pats)]
-#![allow(match_same_arms)]
-#![allow(too_many_arguments)]
-#![allow(let_and_return)]
-#![allow(many_single_char_names)]
-#![allow(enum_variant_names)]
-#![allow(doc_markdown)]
-#![allow(assign_op_pattern)]
-#![allow(needless_borrow)]
-#![allow(new_without_default_derive)]
 
 extern crate bincode;
 extern crate cgmath;
