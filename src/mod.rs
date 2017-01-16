@@ -4,10 +4,6 @@
 #![deny(warnings)]
 #![feature(stmt_expr_attributes)]
 
-#![feature(plugin)]
-#![plugin(clippy)]
-#![allow(mutex_atomic)]
-
 #![feature(alloc_system)]
 extern crate alloc_system;
 

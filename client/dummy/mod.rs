@@ -3,12 +3,6 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-#![feature(plugin)]
-#![plugin(clippy)]
-#![allow(or_fun_call)]
-#![allow(mutex_atomic)]
-#![allow(needless_borrow)]
-
 extern crate cgmath;
 #[macro_use]
 extern crate log;

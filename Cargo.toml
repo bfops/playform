@@ -17,7 +17,6 @@ default = []
 dummy-client = ["dummy-client-lib"]
 
 [dependencies]
-clippy = "*"
 env_logger= "*"
 log = "*"
 nanomsg = "*"

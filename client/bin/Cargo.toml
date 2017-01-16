@@ -13,7 +13,6 @@ name = "client"
 path = "./mod.rs"
 
 [dependencies]
-clippy = "*"
 env_logger= "*"
 log = "*"
 time = "*"

@@ -13,7 +13,6 @@ name = "server"
 path = "./mod.rs"
 
 [dependencies]
-clippy = "*"
 env_logger= "*"
 log = "*"
 nanomsg = "*"
