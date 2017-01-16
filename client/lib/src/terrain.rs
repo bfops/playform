@@ -20,7 +20,9 @@ use view;
 pub enum Load {
   Voxels {
     voxels       : Vec<(voxel::bounds::T, voxel::T)>,
-    request_time : Option<u64>,
+    /// Is Some if this is a response to a request from this client; is None if the server provides
+    /// these voxels because they were updated.
+    time_requested : Option<u64>,
   },
 }
 
@@ -31,11 +33,11 @@ pub struct T {
   chunk_voxels_loaded : fnv_map::T<(chunk::position::T, lod::T), u32>,
   /// The voxels we have cached from the server.
   voxels              : voxel::tree::T,
-  max_load_distance   : i32,
+  max_load_distance   : u32,
   queue               : std::collections::VecDeque<Load>,
 }
 
-pub fn new(max_load_distance: i32) -> T {
+pub fn new(max_load_distance: u32) -> T {
   T {
     loaded_chunks       : fnv_map::new(),
     chunk_voxels_loaded : fnv_map::new(),
@@ -90,14 +92,14 @@ impl T {
     let start = time::precise_time_ns();
     while let Some(msg) = self.queue.pop_front() {
       match msg {
-        Load::Voxels { voxels, request_time } => {
+        Load::Voxels { voxels, time_requested } => {
           self.load_voxels(
             id_allocator,
             rng,
             update_view,
             player_position,
             voxels,
-            request_time,
+            time_requested,
           );
         },
       }
@@ -133,13 +135,13 @@ impl T {
       },
       Occupied(mut entry) => {
         let (ids, _) = entry.insert((mesh_chunk.ids(), lod));
-        updates.push(view::update::UnloadChunk { ids: ids });
+        updates.push(view::update::UnloadMesh { ids: ids });
       },
     };
 
     if !mesh_chunk.ids.is_empty() {
       updates.push(
-        view::update::LoadChunk {
+        view::update::LoadMesh {
           mesh     : mesh_chunk,
         }
       );
@@ -286,7 +288,7 @@ impl T {
     update_view     : &mut UpdateView,
     player_position : &cgmath::Point3<f32>,
     voxel_updates   : Vec<(voxel::bounds::T, voxel::T)>,
-    request_time    : Option<u64>,
+    time_requested    : Option<u64>,
   ) where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
@@ -317,12 +319,12 @@ impl T {
 
     let chunk_loaded = time::precise_time_ns();
 
-    match request_time {
+    match time_requested {
       None => {},
-      Some(request_time) => {
+      Some(time_requested) => {
         record_book::thread_local::push_chunk_load(
           record_book::ChunkLoad {
-            request_time_ns  : request_time,
+            time_requested_ns  : time_requested,
             response_time_ns : response_time,
             stored_time_ns   : processed_time,
             loaded_time_ns   : chunk_loaded,
@@ -342,7 +344,7 @@ impl T {
     match self.loaded_chunks.remove(chunk_position) {
       None => {},
       Some((ids, _)) => {
-        update_view(view::update::UnloadChunk { ids: ids });
+        update_view(view::update::UnloadMesh { ids: ids });
       },
     }
   }

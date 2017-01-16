@@ -16,7 +16,7 @@ use terrain;
 use view;
 
 // TODO: Remove this once our RAM usage doesn't skyrocket with load distance.
-const MAX_LOAD_DISTANCE: i32 = 2;
+const MAX_LOAD_DISTANCE: u32 = 2;
 
 /// The main client state.
 pub struct T {
@@ -27,26 +27,26 @@ pub struct T {
   pub load_position            : Mutex<Option<Point3<f32>>>,
   pub id_allocator             : Mutex<id_allocator::T<entity_id::T>>,
   pub surroundings_loader      : Mutex<surroundings_loader::T>,
-  pub max_load_distance        : i32,
+  pub max_load_distance        : u32,
   pub terrain                  : Mutex<terrain::T>,
   /// The number of terrain requests that are outstanding,
   pub pending_terrain_requests : Mutex<u32>,
   pub rng                      : Mutex<rand::XorShiftRng>,
 }
 
-fn load_distance(mut polygon_budget: i32) -> i32 {
+fn load_distance(mut polygon_budget: i32) -> u32 {
   // TODO: This should try to account for VRAM not used on a per-poly basis.
 
-  let mut load_distance: i32 = 0;
-  let mut prev_threshold: i32 = 0;
-  let mut prev_square: i32 = 0;
+  let mut load_distance = 0;
+  let mut prev_threshold = 0;
+  let mut prev_square = 0;
   for (i, &threshold) in lod::THRESHOLDS.iter().enumerate() {
-    let quality = lod::T(i as u32).edge_samples();
-    let polygons_per_chunk = (quality * quality * 4) as i32;
-    for i in num::iter::range_inclusive(prev_threshold, threshold as i32) {
+    let quality = lod::T(i as u32).edge_samples() as i32;
+    let polygons_per_chunk = quality * quality * 4;
+    for i in num::iter::range_inclusive(prev_threshold, threshold) {
       let i = 2 * i + 1;
       let square = i * i;
-      let polygons_in_layer = (square - prev_square) * polygons_per_chunk;
+      let polygons_in_layer = (square - prev_square) as i32 * polygons_per_chunk;
       polygon_budget -= polygons_in_layer;
       if polygon_budget < 0 {
         break;
@@ -55,16 +55,16 @@ fn load_distance(mut polygon_budget: i32) -> i32 {
       load_distance += 1;
       prev_square = square;
     }
-    prev_threshold = threshold as i32 + 1;
+    prev_threshold = threshold + 1;
   }
 
   let mut width = 2 * prev_threshold + 1;
   loop {
     let square = width * width;
     // The "to infinity and beyond" quality.
-    let quality = lod::ALL.iter().last().unwrap().edge_samples();
-    let polygons_per_chunk = (quality * quality * 4) as i32;
-    let polygons_in_layer = (square - prev_square) * polygons_per_chunk;
+    let quality = lod::ALL.iter().last().unwrap().edge_samples() as i32;
+    let polygons_per_chunk = quality * quality * 4;
+    let polygons_in_layer = (square - prev_square) as i32 * polygons_per_chunk;
     polygon_budget -= polygons_in_layer;
 
     if polygon_budget < 0 {
@@ -113,7 +113,7 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     id_allocator             : Mutex::new(id_allocator::new()),
     surroundings_loader      : Mutex::new(surroundings_loader),
     max_load_distance        : load_distance,
-    terrain                  : Mutex::new(terrain::new(load_distance)),
+    terrain                  : Mutex::new(terrain::new(load_distance as u32)),
     pending_terrain_requests : Mutex::new(0),
     rng                      : Mutex::new(rng),
   }

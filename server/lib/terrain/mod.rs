@@ -1,20 +1,11 @@
 //! This crate contains the terrain data structures and generation.
 
-#![allow(let_and_return)]
-#![allow(match_ref_pats)]
-#![allow(type_complexity)]
-#![allow(unneeded_field_pattern)]
-#![allow(derive_hash_xor_eq)]
-
 #![deny(missing_docs)]
 #![deny(warnings)]
 
 #![feature(main)]
-#![feature(plugin)]
 #![feature(test)]
 #![feature(unboxed_closures)]
-
-#![plugin(clippy)]
 
 extern crate cgmath;
 extern crate collision;
@@ -60,24 +51,19 @@ impl T {
 
   /// Load the block of terrain at a given position.
   // TODO: Allow this to be performed in such a way that self is only briefly locked.
-  pub fn load<F>(
-    &self,
-    bounds: &voxel::bounds::T,
-    mut f: F
-  ) where
-    F: FnMut(&voxel::T)
-  {
+  pub fn load(&self, bounds: &voxel::bounds::T) -> voxel::T {
     let mut voxels = self.voxels.lock().unwrap();
     let node = voxels.get_mut_or_create(bounds);
     match node.data {
       None => {
         let mut mosaic = self.mosaic.lock().unwrap();
         let voxel = voxel::unwrap(voxel::of_field(&mut *mosaic, bounds));
-        f(&voxel);
+        let r = voxel;
         node.data = Some(voxel);
+        r
       },
-      Some(ref data) => {
-        f(data);
+      Some(data) => {
+        data
       },
     }
   }

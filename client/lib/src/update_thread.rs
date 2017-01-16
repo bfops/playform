@@ -16,22 +16,22 @@ use view;
 
 const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
 
-pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateServer, EnqueueTerrainUpdate>(
-  quit                   : &Mutex<bool>,
-  client                 : &client::T,
-  recv_server            : &mut RecvServer,
-  update_view0           : &mut UpdateView0,
-  update_view1           : &mut UpdateView1,
-  update_audio           : &mut UpdateAudio,
-  update_server          : &mut UpdateServer,
-  enqueue_terrain_update : &mut EnqueueTerrainUpdate,
+pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateServer, EnqueueTerrainLoad>(
+  quit                 : &Mutex<bool>,
+  client               : &client::T,
+  recv_server          : &mut RecvServer,
+  update_view0         : &mut UpdateView0,
+  update_view1         : &mut UpdateView1,
+  update_audio         : &mut UpdateAudio,
+  update_server        : &mut UpdateServer,
+  enqueue_terrain_load : &mut EnqueueTerrainLoad,
 ) where
-  RecvServer           : FnMut() -> Option<protocol::ServerToClient>,
-  UpdateView0          : FnMut(view::update::T),
-  UpdateView1          : FnMut(view::update::T),
-  UpdateAudio          : FnMut(audio_thread::Message),
-  UpdateServer         : FnMut(protocol::ClientToServer),
-  EnqueueTerrainUpdate : FnMut(terrain::Load),
+  RecvServer         : FnMut() -> Option<protocol::ServerToClient>,
+  UpdateView0        : FnMut(view::update::T),
+  UpdateView1        : FnMut(view::update::T),
+  UpdateAudio        : FnMut(audio_thread::Message),
+  UpdateServer       : FnMut(protocol::ClientToServer),
+  EnqueueTerrainLoad : FnMut(terrain::Load),
 {
   'update_loop: loop {
     let should_quit = *quit.lock().unwrap();
@@ -40,7 +40,7 @@ pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateSe
     } else {
       stopwatch::time("update_iteration", || {
         stopwatch::time("process_server_updates", || {
-          process_server_updates(client, recv_server, update_view0, update_audio, update_server, enqueue_terrain_update);
+          process_server_updates(client, recv_server, update_view0, update_audio, update_server, enqueue_terrain_load);
         });
 
         stopwatch::time("update_surroundings", || {
@@ -162,7 +162,7 @@ fn load_or_request_chunk<UpdateServer, UpdateView>(
     Err(voxels) => {
       update_server(
         protocol::ClientToServer::RequestVoxels {
-          request_time_ns : time::precise_time_ns(),
+          time_requested_ns : time::precise_time_ns(),
           client_id       : client.id,
           voxels          : voxels,
         }
@@ -190,19 +190,19 @@ fn process_voxel_updates<UpdateView>(
 }
 
 #[inline(never)]
-fn process_server_updates<RecvServer, UpdateView, UpdateAudio, UpdateServer, EnqueueTerrainUpdate>(
-  client: &client::T,
-  recv_server: &mut RecvServer,
-  update_view: &mut UpdateView,
-  update_audio: &mut UpdateAudio,
-  update_server: &mut UpdateServer,
-  enqueue_terrain_update: &mut EnqueueTerrainUpdate,
+fn process_server_updates<RecvServer, UpdateView, UpdateAudio, UpdateServer, EnqueueTerrainLoad>(
+  client               : &client::T,
+  recv_server          : &mut RecvServer,
+  update_view          : &mut UpdateView,
+  update_audio         : &mut UpdateAudio,
+  update_server        : &mut UpdateServer,
+  enqueue_terrain_load : &mut EnqueueTerrainLoad,
 ) where
-  RecvServer           : FnMut() -> Option<protocol::ServerToClient>,
-  UpdateView           : FnMut(view::update::T),
-  UpdateAudio          : FnMut(audio_thread::Message),
-  UpdateServer         : FnMut(protocol::ClientToServer),
-  EnqueueTerrainUpdate : FnMut(terrain::Load),
+  RecvServer         : FnMut() -> Option<protocol::ServerToClient>,
+  UpdateView         : FnMut(view::update::T),
+  UpdateAudio        : FnMut(audio_thread::Message),
+  UpdateServer       : FnMut(protocol::ClientToServer),
+  EnqueueTerrainLoad : FnMut(terrain::Load),
 {
   let start = time::precise_time_ns();
   let mut i = 0;
@@ -212,7 +212,7 @@ fn process_server_updates<RecvServer, UpdateView, UpdateAudio, UpdateServer, Enq
       update_view,
       update_audio,
       update_server,
-      enqueue_terrain_update,
+      enqueue_terrain_load,
       up,
     );
 

@@ -9,8 +9,9 @@ use common::protocol;
 use audio_loader;
 use audio_thread;
 use client;
-use server;
 use record_book;
+use server;
+use terrain;
 use update_thread::update_thread;
 use view::thread::view_thread;
 
@@ -33,6 +34,7 @@ pub fn run(listen_url: &str, server_url: &str) {
       unsafe {
         thread_scoped::scoped(|| {
           while !*quit.lock().unwrap() {
+            info!("Outstanding terrain requests: {}", *client.pending_terrain_requests.lock().unwrap());
             info!("Outstanding voxel updates: {}", client.terrain.lock().unwrap().queued_update_count());
             info!("Outstanding view0 updates: {}", view_updates0.lock().unwrap().len());
             info!("Outstanding view1 updates: {}", view_updates1.lock().unwrap().len());
@@ -75,7 +77,12 @@ pub fn run(listen_url: &str, server_url: &str) {
             &mut |up| { audio_updates.lock().unwrap().push_back(up) },
   	        &mut |up| { server.talk.tell(&up) },
             &mut |msg| {
-              *client.pending_terrain_requests.lock().unwrap() -= 1;
+              match msg {
+                terrain::Load::Voxels { time_requested: None, .. } => {},
+                terrain::Load::Voxels { time_requested: Some(_), .. } => {
+                  *client.pending_terrain_requests.lock().unwrap() -= 1;
+                }
+              };
               client.terrain.lock().unwrap().enqueue(msg);
             },
           );
@@ -90,8 +97,8 @@ pub fn run(listen_url: &str, server_url: &str) {
             if i > 0 {
               file.write_all(b", ").unwrap();
             }
-            let record_book::ChunkLoad { request_time_ns, response_time_ns, stored_time_ns, loaded_time_ns } = *record;
-            file.write_fmt(format_args!("[{}; {}; {}; {}]", request_time_ns, response_time_ns, stored_time_ns, loaded_time_ns)).unwrap();
+            let record_book::ChunkLoad { time_requested_ns, response_time_ns, stored_time_ns, loaded_time_ns } = *record;
+            file.write_fmt(format_args!("[{}; {}; {}; {}]", time_requested_ns, response_time_ns, stored_time_ns, loaded_time_ns)).unwrap();
           }
           file.write_all(b"];\n").unwrap();
           file.write_fmt(format_args!("plot([1:{}], records);", recorded.chunk_loads.len())).unwrap();

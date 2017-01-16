@@ -1,9 +1,9 @@
 //! Position data structure for terrain blocks.
 
 /// lg(WIDTH)
-pub const LG_WIDTH: i16 = 3;
+pub const LG_WIDTH: u16 = 3;
 /// The width of a chunk of terrain.
-pub const WIDTH: i32 = 1 << LG_WIDTH;
+pub const WIDTH: u32 = 1 << LG_WIDTH;
 
 pub mod position {
   use cgmath::{Point3, Vector3};
@@ -47,16 +47,6 @@ pub mod position {
       let T(ref mut pnt) = *self;
       pnt
     }
-
-    #[allow(missing_docs)]
-    #[allow(dead_code)]
-    pub fn to_world_position(&self) -> Point3<f32> {
-      Point3::new(
-        (self.as_pnt().x * chunk::WIDTH) as f32,
-        (self.as_pnt().y * chunk::WIDTH) as f32,
-        (self.as_pnt().z * chunk::WIDTH) as f32,
-      )
-    }
   }
 
   #[allow(missing_docs)]
@@ -75,7 +65,7 @@ pub mod position {
       let x = x.floor() as i32;
       let x =
         if x < 0 {
-          x - (chunk::WIDTH - 1)
+          x - (chunk::WIDTH as i32 - 1)
         } else {
           x
         };

@@ -10,7 +10,6 @@ path = "mod.rs"
 
 [dependencies]
 cgmath = "0.12.*"
-clippy = "*"
 collision = "*"
 fnv = "*"
 log = "*"
@@ -26,9 +25,6 @@ version = "*"
 
 [dependencies.voxel-data]
 git = "https://github.com/bfops/rust-voxel-data"
-
-[dependencies.isosurface-extraction]
-git = "https://github.com/bfops/rust-isosurface-extraction"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"

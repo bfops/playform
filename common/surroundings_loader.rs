@@ -62,7 +62,7 @@ pub enum LoadType {
 pub struct T {
   last_position: Option<Point3<i32>>,
 
-  max_load_distance: i32,
+  max_load_distance: u32,
   to_load: Option<surroundings_iter::T>,
 
   to_recheck: VecDeque<Point3<i32>>,
@@ -72,11 +72,9 @@ pub struct T {
 
 #[allow(missing_docs)]
 pub fn new(
-  max_load_distance: i32,
+  max_load_distance: u32,
   lod_thresholds: Vec<i32>,
 ) -> T {
-  assert!(max_load_distance >= 0);
-
   T {
     last_position: None,
 
@@ -94,7 +92,7 @@ impl T {
     let position_changed = self.last_position != Some(*position);
     if position_changed {
       stopwatch::time("surroundings_loader.extend", || {
-        self.to_load = Some(surroundings_iter::new(&position, self.max_load_distance));
+        self.to_load = Some(surroundings_iter::new(&position, self.max_load_distance as i32));
         self.last_position.map(|last_position| {
           for &distance in &self.lod_thresholds {
             self.to_recheck.extend(
@@ -102,7 +100,7 @@ impl T {
             );
           }
           self.to_recheck.extend(
-            cube_diff(&last_position, &position, self.max_load_distance).into_iter()
+            cube_diff(&last_position, &position, self.max_load_distance as i32).into_iter()
           );
         });
 
@@ -126,11 +124,11 @@ pub struct Updates<'a> {
 }
 
 /// Find the minimum cube shell radius it would take from one point to intersect the other.
-pub fn distance_between(p1: &Point3<i32>, p2: &Point3<i32>) -> i32 {
+pub fn distance_between(p1: &Point3<i32>, p2: &Point3<i32>) -> u32 {
   let dx = (p1.x - p2.x).abs();
   let dy = (p1.y - p2.y).abs();
   let dz = (p1.z - p2.z).abs();
-  max(max(dx, dy), dz)
+  max(max(dx, dy), dz) as u32
 }
 
 impl<'a> Iterator for Updates<'a> {

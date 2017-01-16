@@ -3,12 +3,6 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-#![feature(plugin)]
-#![plugin(clippy)]
-#![allow(or_fun_call)]
-#![allow(mutex_atomic)]
-#![allow(needless_borrow)]
-
 extern crate cgmath;
 #[macro_use]
 extern crate log;
@@ -69,7 +63,7 @@ pub fn run(listen_url: &str, server_url: &str) {
           &mut |_| { },
           &mut |up| { server.talk.tell(&up) },
           &mut |msg| {
-            if let client_lib::terrain::Load::Voxels { request_time: Some(_), .. } = msg {
+            if let client_lib::terrain::Load::Voxels { time_requested: Some(_), .. } = msg {
               *loaded_count.lock().unwrap() += 1;
               *client.pending_terrain_requests.lock().unwrap() -= 1;
             }

@@ -47,7 +47,7 @@ pub enum ClientToServer {
   /// Ask the server to send a block of terrain.
   RequestVoxels {
     /// The time, in nanoseconds, when the voxels were requested.
-    request_time_ns : u64,
+    time_requested_ns : u64,
     /// The ID of the requesting client.
     client_id       : ClientId,
     /// The bounds of the voxels to fetch.

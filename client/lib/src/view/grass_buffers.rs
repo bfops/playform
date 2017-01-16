@@ -201,7 +201,7 @@ impl<'a> T<'a> {
   // Note: `id` must be present in the buffers.
   /// Remove some entity from VRAM.
   pub fn swap_remove(&mut self, gl: &mut GLContext, id: entity_id::T) {
-    let idx = *self.id_to_index.get(&id).unwrap();
+    let idx = (*self).id_to_index[&id];
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     self.index_to_id.swap_remove(idx);
     self.id_to_index.remove(&id);
@@ -228,7 +228,7 @@ impl<'a> T<'a> {
         None => return,
         Some(id) => id,
       };
-    let entry_idx = self.id_to_index.get(&grass_id).unwrap();
+    let entry_idx = self.id_to_index[grass_id];
     // update the underlying byte buffer directly and only touch the polygon
     // index field.
     self.per_tuft.byte_buffer.bind(gl);
