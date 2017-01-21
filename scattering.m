@@ -11,11 +11,11 @@ function r = in_scatter(sun_angle, camera_x, camera_y, look_x, look_y, k, g)
   global planet_center_y;
   global planet_radius;
   global atmos_thickness;
-  sun_distance = 150000000;
+  global sun_distance;
   sun_position_x = planet_center_x + cos(sun_angle) .* sun_distance;
   sun_position_y = planet_center_y + sin(sun_angle) .* sun_distance;
 
-  samples = 100;
+  samples = 20;
   l = atmos_thickness / samples;
   r = 0;
   for i = [1:samples]

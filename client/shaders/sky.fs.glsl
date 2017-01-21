@@ -48,10 +48,10 @@ const float planet_radius = 6400;
 // assume (0, 0, 0) is on the surface of the earth.
 const vec3 planet_center = vec3(0, -planet_radius, 0);
 // thickness of the atmosphere, as a percentage of the planet radius.
-const float atmos_thickness_ratio = 0.050;
+const float atmos_thickness_ratio = 0.025;
 const float atmos_thickness = planet_radius * atmos_thickness_ratio;
 // assume exponentials basically disappear within a few "decay steps".
-const float scale_height = atmos_thickness / 8;
+const float scale_height = atmos_thickness / 4;
 
 // p should be scaled to planet_scale units.
 float atmos_density(vec3 p) {
@@ -59,17 +59,39 @@ float atmos_density(vec3 p) {
   return exp(-dist_from_surface / scale_height);
 }
 
+float optical_ray_depth(vec3 a, float theta) {
+  float c_7 = -3.2346e3;
+  float c_6 = 5.5524e4;
+  float c_5 = -4.0592e5;
+  float c_4 = 1.6382e6;
+  float c_3 = -3.9419e6;
+  float c_2 = 5.6557e6;
+  float c_1 = -4.4809e6;
+  float c_0 = 1.5129e6;
+  float theta_0 = 1;
+  float theta_1 = theta_0 * theta;
+  float theta_2 = theta_1 * theta;
+  float theta_3 = theta_2 * theta;
+  float theta_4 = theta_3 * theta;
+  float theta_5 = theta_4 * theta;
+  float theta_6 = theta_5 * theta;
+  float theta_7 = theta_6 * theta;
+  return atmos_density(a) * (c_0*theta_0 + c_1*theta_1 + c_2*theta_2 + c_3*theta_3 + c_4*theta_4 + c_5*theta_5 + c_6*theta_6 + c_7*theta_7);
+}
+
 float optical_depth(vec3 a, vec3 b) {
-  const int samples = 20;
-  vec3 d = b - a;
-  float l = min(length(d), 2 * (atmos_thickness + planet_radius)) / samples;
-  d = normalize(d) * l;
-  float r = 0;
-  for (int i = 1; i <= samples; ++i) {
-    vec3 p = vec3(a + i * d);
-    r += atmos_density(p) * l;
+  vec3 d = normalize(b - a);
+  float a_theta;
+  float b_theta;
+  {
+    vec3 a_d = a - planet_center;
+    a_theta = 3.14 - acos(dot(a_d, d) / length(a_d));
   }
-  return r;
+  {
+    vec3 b_d = b - planet_center;
+    b_theta = 3.14 - acos(dot(b_d, d) / length(b_d));
+  }
+  return optical_ray_depth(a, a_theta) - optical_ray_depth(b, b_theta);
 }
 
 float phase(float cos_angle, float g) {
@@ -95,18 +117,27 @@ float in_scatter(vec3 camera, vec3 look, float k, float g) {
 }
 
 vec3 sky_color(vec3 position, vec3 look) {
+  float red = 650;
+  float green = 510;
+  float blue = 470;
+
+  float red_k = 0.001;
+  float green_k = red_k * pow(green/red, -4);
+  float blue_k = red_k * pow(blue/red, -4);
+
   position /= planet_scale;
+  position = position - position + vec3(0, planet_center.y + planet_radius, 0);
   return
     vec3(
-      in_scatter(position, look, 0.04, 0),
-      in_scatter(position, look, 0.05, 0),
-      in_scatter(position, look, 0.001, 0)
+      in_scatter(position, look, red_k, 0),
+      in_scatter(position, look, green_k, 0),
+      in_scatter(position, look, blue_k, 0)
 //    ) +
 //    vec3(
 //      in_scatter(position, look, atmos_center, sun_position, dscale, ascale, 0.4, -0.999),
 //      in_scatter(position, look, atmos_center, sun_position, dscale, ascale, 0.4, -0.999),
 //      in_scatter(position, look, atmos_center, sun_position, dscale, ascale, 0.4, -0.999)
-    );
+      );
 }
 
 void main() {

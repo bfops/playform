@@ -1,3 +1,5 @@
+global sun_distance = 150000000;
+
 global planet_scale = 1000;
 global planet_radius = 6400;
 
