@@ -14,17 +14,7 @@ look_y = sin(look_angle);
 sun_angle = linspace(0, pi/2, rows)';
 sun_angle = repmat(sun_angle, 1, cols);
 
-rayleigh = 0;
-
-red = 650;
-green = 510;
-blue = 470;
-
 # we'll make one chart for each color, and then one beyond either extreme.
-
-red_k = 0.001;
-green_k = red_k * ((green/red) ^ -4);
-blue_k = red_k * ((blue/red) ^ -4);
 
 k = red_k;
 figure 2;

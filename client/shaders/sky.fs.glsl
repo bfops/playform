@@ -53,6 +53,8 @@ const float atmos_thickness = planet_radius * atmos_thickness_ratio;
 // assume exponentials basically disappear within a few "decay steps".
 const float scale_height = atmos_thickness / 4;
 
+const float sun_distance = 150000000;
+
 // p should be scaled to planet_scale units.
 float atmos_density(vec3 p) {
   float dist_from_surface = length(p - planet_center) - planet_radius;
@@ -60,23 +62,15 @@ float atmos_density(vec3 p) {
 }
 
 float optical_ray_depth(vec3 a, float theta) {
-  float c_7 = -3.2346e3;
-  float c_6 = 5.5524e4;
-  float c_5 = -4.0592e5;
-  float c_4 = 1.6382e6;
-  float c_3 = -3.9419e6;
-  float c_2 = 5.6557e6;
-  float c_1 = -4.4809e6;
-  float c_0 = 1.5129e6;
+  float c_3 = -5.5539e2;
+  float c_2 = 4.2581e3;
+  float c_1 = -1.0777e4;
+  float c_0 = 9.0507e3;
   float theta_0 = 1;
   float theta_1 = theta_0 * theta;
   float theta_2 = theta_1 * theta;
   float theta_3 = theta_2 * theta;
-  float theta_4 = theta_3 * theta;
-  float theta_5 = theta_4 * theta;
-  float theta_6 = theta_5 * theta;
-  float theta_7 = theta_6 * theta;
-  return atmos_density(a) * (c_0*theta_0 + c_1*theta_1 + c_2*theta_2 + c_3*theta_3 + c_4*theta_4 + c_5*theta_5 + c_6*theta_6 + c_7*theta_7);
+  return atmos_density(a) * (c_0*theta_0 + c_1*theta_1 + c_2*theta_2 + c_3*theta_3);
 }
 
 float optical_depth(vec3 a, vec3 b) {
@@ -101,19 +95,18 @@ float phase(float cos_angle, float g) {
 }
 
 float in_scatter(vec3 camera, vec3 look, float k, float g) {
-  const float sun_distance = 150000000;
   vec3 sun_position = planet_center + sun.direction * sun_distance;
 
-  const int samples = 20;
+  const int samples = 4;
   const float l = atmos_thickness / samples;
   float r = 0;
   for (int i = 1; i <= samples; ++i) {
     vec3 point = camera + look * i * l;
-    float cos_angle = dot(sun_position - point, point - camera) / (length(sun_position - point) * length(point - camera));
-    float od = optical_depth(camera, point) + optical_depth(point, sun_position);
-    r += k * phase(cos_angle, g) * atmos_density(point) * exp(-k * od) * l;
+    float out_scattering = 4*3.14 * k * (optical_depth(camera, point) + optical_depth(point, sun_position));
+    r += atmos_density(point) * exp(-out_scattering) * l;
   }
-  return r;
+  float cos_angle = dot(sun_position - camera, look) / (length(look) * length(sun_position - camera));
+  return k * phase(cos_angle, g) * r;
 }
 
 vec3 sky_color(vec3 position, vec3 look) {
@@ -121,23 +114,23 @@ vec3 sky_color(vec3 position, vec3 look) {
   float green = 510;
   float blue = 470;
 
-  float red_k = 0.001;
+  float red_k = 0.0001;
   float green_k = red_k * pow(green/red, -4);
   float blue_k = red_k * pow(blue/red, -4);
 
   position /= planet_scale;
-  position = position - position + vec3(0, planet_center.y + planet_radius, 0);
+  position = position - position + vec3(0, planet_center.y+planet_radius, 0);
+
+  float sunniness = exp(64 * (dot(sun.direction, look) - cos(sun_angular_radius)));
+  vec3 infinity_color = mix(sun.intensity, vec3(1), sunniness);
+
   return
-    vec3(
+    20 * vec3(
       in_scatter(position, look, red_k, 0),
       in_scatter(position, look, green_k, 0),
       in_scatter(position, look, blue_k, 0)
-//    ) +
-//    vec3(
-//      in_scatter(position, look, atmos_center, sun_position, dscale, ascale, 0.4, -0.999),
-//      in_scatter(position, look, atmos_center, sun_position, dscale, ascale, 0.4, -0.999),
-//      in_scatter(position, look, atmos_center, sun_position, dscale, ascale, 0.4, -0.999)
-      );
+    ) +
+    vec3(sunniness);
 }
 
 void main() {

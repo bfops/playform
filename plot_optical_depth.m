@@ -31,9 +31,6 @@ figure 3;
 plot(camera_y_v, [selected; atmos_density(camera_x, camera_y_v)]);
 title("optical depth vs camera height at various look angles, normalized, selected");
 
-p = polyfit(look_angle_v, mins, 7);
-disp(p);
-estimate = polyval(p, look_angle_v);
 figure 4;
-plot(look_angle_v, [mins estimate]);
+plot(look_angle_v, mins);
 title("normalization factors vs look angle");
