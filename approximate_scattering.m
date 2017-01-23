@@ -15,7 +15,7 @@ function r = approximate_in_scatter(sun_angle, camera_x, camera_y, look_x, look_
   sun_position_x = planet_center_x + cos(sun_angle) .* sun_distance;
   sun_position_y = planet_center_y + sin(sun_angle) .* sun_distance;
 
-  samples = 4;
+  samples = 20;
   l = atmos_thickness / samples;
   r = 0;
   for i = [1:samples]

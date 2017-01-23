@@ -97,7 +97,7 @@ float phase(float cos_angle, float g) {
 float in_scatter(vec3 camera, vec3 look, float k, float g) {
   vec3 sun_position = planet_center + sun.direction * sun_distance;
 
-  const int samples = 4;
+  const int samples = 5;
   const float l = atmos_thickness / samples;
   float r = 0;
   for (int i = 1; i <= samples; ++i) {
@@ -114,7 +114,7 @@ vec3 sky_color(vec3 position, vec3 look) {
   float green = 510;
   float blue = 470;
 
-  float red_k = 0.0001;
+  float red_k = 0.00018;
   float green_k = red_k * pow(green/red, -4);
   float blue_k = red_k * pow(blue/red, -4);
 
