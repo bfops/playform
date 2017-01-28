@@ -9,7 +9,6 @@ extern crate alloc_system;
 
 extern crate env_logger;
 extern crate nanomsg;
-#[macro_use]
 extern crate log;
 extern crate thread_scoped;
 
