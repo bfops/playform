@@ -6,6 +6,7 @@ use sdl2;
 use sdl2::event::Event;
 use sdl2::video;
 use sdl2_sys;
+use std;
 use stopwatch;
 use time;
 use yaglw::gl_context::GLContext;
@@ -44,7 +45,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   UpdateServer: FnMut(protocol::ClientToServer),
 {
   let sdl = sdl2::init().unwrap();
-  let _sdl_event = sdl.event().unwrap();
+  let sdl_event = sdl.event().unwrap();
   let video = sdl.video().unwrap();
   let gl_attr = video.gl_attr();
 
@@ -57,10 +58,8 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
       "Playform",
       0, 0,
     );
-
   let window = window.fullscreen_desktop();
   let window = window.opengl();
-
   let window = window.build().unwrap();
 
   assert_eq!(gl_attr.context_profile(), video::GLProfile::Core);
@@ -111,7 +110,10 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
         }
         last_update = now;
 
-        for event in event_pump.poll_iter() {
+        event_pump.pump_events();
+        let events: Vec<Event> = sdl_event.peek_events(1 << 6);
+        sdl_event.flush_events(0, std::u32::MAX);
+        for event in events {
           match event {
             Event::Quit{..} => {
               return ViewIteration::Quit
