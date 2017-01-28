@@ -21,6 +21,8 @@ mod terrain {
   pub use ::terrain::*;
 }
 
+const SAVE_TERRAIN: bool = false;
+
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
   let gaia_updates = Mutex::new(std::collections::VecDeque::new());
@@ -94,10 +96,12 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
     tree_ram_usage(&server.terrain_loader.terrain.voxels.lock().unwrap()) as f32 / (1 << 20) as f32,
   );
 
-  println!("Saving terrain to {}", terrain_path.to_str().unwrap());
-  stopwatch::time("save_terrain", || {
-    save_terrain(&server.terrain_loader.terrain, &terrain_path);
-  });
+  if SAVE_TERRAIN {
+    println!("Saving terrain to {}", terrain_path.to_str().unwrap());
+    stopwatch::time("save_terrain", || {
+      save_terrain(&server.terrain_loader.terrain, &terrain_path);
+    });
+  }
 
   stopwatch::clone().print();
 }

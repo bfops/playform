@@ -12,7 +12,6 @@ extern crate cgmath;
 extern crate collision;
 extern crate fnv;
 extern crate isosurface_extraction;
-#[macro_use]
 extern crate log;
 extern crate nanomsg;
 extern crate num;
