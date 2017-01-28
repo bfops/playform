@@ -103,10 +103,10 @@ float in_scatter(vec3 camera, vec3 look, float k, float g) {
   for (int i = 1; i <= samples; ++i) {
     vec3 point = camera + look * i * l;
     float out_scattering = 4*3.14 * k * (optical_depth(camera, point) + optical_depth(point, sun_position));
-    r += atmos_density(point) * exp(-out_scattering) * l;
+    float cos_angle = dot(sun_position - camera, camera - point) / (length(camera - point) * length(sun_position - camera));
+    r += phase(cos_angle, g) * atmos_density(point) * exp(-out_scattering) * l;
   }
-  float cos_angle = dot(sun_position - camera, look) / (length(look) * length(sun_position - camera));
-  return k * phase(cos_angle, g) * r;
+  return k * r;
 }
 
 vec3 sky_color(vec3 position, vec3 look) {
@@ -121,16 +121,18 @@ vec3 sky_color(vec3 position, vec3 look) {
   position /= planet_scale;
   position = position - position + vec3(0, planet_center.y+planet_radius, 0);
 
-  float sunniness = exp(64 * (dot(sun.direction, look) - cos(sun_angular_radius)));
-  vec3 infinity_color = mix(sun.intensity, vec3(1), sunniness);
-
-  return
-    20 * vec3(
+  return 20 * (
+    vec3(
       in_scatter(position, look, red_k, 0),
       in_scatter(position, look, green_k, 0),
       in_scatter(position, look, blue_k, 0)
     ) +
-    vec3(sunniness);
+    vec3(
+      in_scatter(position, look, 0.001, -0.999),
+      in_scatter(position, look, 0.001, -0.999),
+      in_scatter(position, look, 0.001, -0.999)
+    )
+  );
 }
 
 void main() {

@@ -7,7 +7,7 @@ function r = optical_depth(a_x, a_y, b_x, b_y)
   r_x = b_x - a_x;
   r_y = b_y - a_y;
 
-  [a_x, a_y, r_x, r_y] = clip_atmos_ray(a_x, a_y, b_x, b_y);
+  [a_x, a_y, r_x, r_y] = clip_atmos_ray(a_x, a_y, r_x, r_y);
 
   samples = 1000;
   l = vec_len(r_x, r_y) ./ samples;
