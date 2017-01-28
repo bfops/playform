@@ -14,15 +14,20 @@ use common::id_allocator;
 
 use terrain_mesh::Triangle;
 
-const VERTICES_PER_TRIANGLE: u32 = 3;
-
 #[cfg(test)]
 use std::mem;
+
+const VERTICES_PER_TRIANGLE: u32 = 3;
 
 // VRAM bytes
 pub const BYTE_BUDGET: usize = 64_000_000;
 pub const POLYGON_COST: usize = 100;
 pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
+
+// Instead of storing individual vertices, normals, etc. in VRAM, store them in chunks.
+// This makes it much faster to unload things.
+pub const VRAM_CHUNK_LENGTH: usize = 1024;
+pub const CHUNK_BUDGET: usize = POLYGON_BUDGET / VRAM_CHUNK_LENGTH;
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
 pub struct T<'a> {
@@ -35,9 +40,9 @@ pub struct T<'a> {
 
   // Per-triangle buffers
 
-  vertex_positions: BufferTexture<'a, Triangle<Point3<GLfloat>>>,
-  normals: BufferTexture<'a, Triangle<Vector3<GLfloat>>>,
-  materials: BufferTexture<'a, GLint>,
+  vertex_positions: BufferTexture<'a, [Triangle<Point3<GLfloat>>; VRAM_CHUNK_LENGTH]>,
+  normals: BufferTexture<'a, [Triangle<Vector3<GLfloat>>; VRAM_CHUNK_LENGTH]>,
+  materials: BufferTexture<'a, [GLint; VRAM_CHUNK_LENGTH]>,
 }
 
 #[test]
@@ -65,9 +70,9 @@ pub fn new<'a, 'b>(
       empty_array
     },
     length: 0,
-    vertex_positions: BufferTexture::new(gl, gl::R32F, POLYGON_BUDGET),
-    normals: BufferTexture::new(gl, gl::R32F, POLYGON_BUDGET),
-    materials: BufferTexture::new(gl, gl::R32UI, POLYGON_BUDGET),
+    vertex_positions: BufferTexture::new(gl, gl::R32F, CHUNK_BUDGET),
+    normals: BufferTexture::new(gl, gl::R32F, CHUNK_BUDGET),
+    materials: BufferTexture::new(gl, gl::R32UI, CHUNK_BUDGET),
   }
 }
 
@@ -132,14 +137,26 @@ impl<'a> T<'a> {
   pub fn push(
     &mut self,
     gl: &mut GLContext,
-    vertices: &[Triangle<Point3<GLfloat>>],
-    normals: &[Triangle<Vector3<GLfloat>>],
-    ids: &[entity_id::T],
-    materials: &[GLint],
+    vertices: Vec<Triangle<Point3<GLfloat>>>,
+    normals: Vec<Triangle<Vector3<GLfloat>>>,
+    ids: Vec<entity_id::T>,
+    materials: Vec<GLint>,
   ) {
     assert_eq!(vertices.len(), ids.len());
     assert_eq!(normals.len(), ids.len());
     assert_eq!(materials.len(), ids.len());
+
+    let diff = VRAM_CHUNK_LENGTH as isize - ids.len() as isize;
+    if diff < 0 {
+      warn!("Skipping chunk of size {}", ids.len());
+    } else if diff > 0 {
+      let diff = diff as usize;
+      let point = Point3::new(0.0, 0.0, 0.0);
+      let normal = Vector3::new(0.0, 0.0, 0.0);
+      vertices.extend(&[Triangle { v1: point, v2: point, v3: point }; diff]);
+      normals.extend(&[Triangle { v1: normal, v2: normal, v3: normal }; diff]);
+      materials.extend(&[0; diff]);
+    }
 
     self.vertex_positions.buffer.byte_buffer.bind(gl);
     let success = self.vertex_positions.buffer.push(gl, vertices);

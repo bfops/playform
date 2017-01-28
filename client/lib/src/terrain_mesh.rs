@@ -249,13 +249,9 @@ pub struct Ids {
 impl Ids {
   pub fn new() -> Self {
     Ids {
-      terrain_ids : Vec::new(),
-      grass_ids   : Vec::new(),
+      chunk_id  : Vec::new(),
+      grass_ids : Vec::new(),
     }
-  }
-
-  pub fn is_empty(&self) -> bool {
-    self.terrain_ids.is_empty() && self.grass_ids.is_empty()
   }
 }
 

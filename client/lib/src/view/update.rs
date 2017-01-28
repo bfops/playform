@@ -67,7 +67,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
           &mut view.gl,
           mesh.vertex_coordinates.as_ref(),
           mesh.normals.as_ref(),
-          mesh.ids.terrain_ids.as_ref(),
+          mesh.ids.chunk_id,
           mesh.materials.as_ref(),
         );
         let mut grass = Vec::with_capacity(mesh.grass.len());
@@ -89,18 +89,16 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
         );
       })
     },
-    T::UnloadMesh { ids: terrain_mesh::Ids { terrain_ids, grass_ids } } => {
-      for id in terrain_ids {
-        match view.terrain_buffers.swap_remove(&mut view.gl, id) {
-          None => {},
-          Some((swapped_id, idx)) => {
-            view.grass_buffers.update_polygon_index(
-              &mut view.gl,
-              swapped_id,
-              idx as u32,
+    T::UnloadMesh { ids: terrain_mesh::Ids { chunk_id, grass_ids } } => {
+      match view.terrain_buffers.swap_remove(&mut view.gl, id) {
+        None => {},
+        Some((swapped_id, idx)) => {
+          view.grass_buffers.update_polygon_index(
+            &mut view.gl,
+            swapped_id,
+            idx as u32,
             );
-          },
-        }
+        },
       }
       for id in grass_ids {
         view.grass_buffers.swap_remove(&mut view.gl, id);
