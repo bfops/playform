@@ -139,16 +139,16 @@ impl<'a> T<'a> {
     gl: &mut GLContext,
     vertices: Vec<Triangle<Point3<GLfloat>>>,
     normals: Vec<Triangle<Vector3<GLfloat>>>,
-    ids: Vec<entity_id::T>,
+    chunk_id: entity_id::T,
     materials: Vec<GLint>,
   ) {
-    assert_eq!(vertices.len(), ids.len());
-    assert_eq!(normals.len(), ids.len());
-    assert_eq!(materials.len(), ids.len());
+    let len = vertices.len();
+    assert_eq!(normals.len(), len);
+    assert_eq!(materials.len(), len);
 
-    let diff = VRAM_CHUNK_LENGTH as isize - ids.len() as isize;
+    let diff = VRAM_CHUNK_LENGTH as isize - len as isize;
     if diff < 0 {
-      warn!("Skipping chunk of size {}", ids.len());
+      warn!("Skipping chunk of size {}", len);
     } else if diff > 0 {
       let diff = diff as usize;
       let point = Point3::new(0.0, 0.0, 0.0);
@@ -157,6 +157,15 @@ impl<'a> T<'a> {
       normals.extend(&[Triangle { v1: normal, v2: normal, v3: normal }; diff]);
       materials.extend(&[0; diff]);
     }
+
+    // The length of each vector is now VRAM_CHUNK_LENGTH.
+
+    let vertices: &[Triangle<Point3<GLfloat>>; VRAM_CHUNK_LENGTH] =
+      unsafe { std::mem::transmute(vertices.as_ptr()) };
+    let normals: &[Triangle<Vector3<GLfloat>>; VRAM_CHUNK_LENGTH] =
+      unsafe { std::mem::transmute(normals.as_ptr()) };
+    let materials: &[GLint; VRAM_CHUNK_LENGTH] =
+      unsafe { std::mem::transmute(materials.as_ptr()) };
 
     self.vertex_positions.buffer.byte_buffer.bind(gl);
     let success = self.vertex_positions.buffer.push(gl, vertices);
@@ -172,7 +181,7 @@ impl<'a> T<'a> {
     }
 
     self.materials.buffer.byte_buffer.bind(gl);
-    let success = self.materials.buffer.push(gl, materials);
+    let success = self.materials.buffer.push(gl, &[*materials]);
     assert!(success);
 
     self.length += VERTICES_PER_TRIANGLE as usize * ids.len();

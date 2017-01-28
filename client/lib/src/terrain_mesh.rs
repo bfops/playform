@@ -240,16 +240,16 @@ pub struct Grass {
 
 #[derive(Debug, Clone)]
 pub struct Ids {
-  /// Entity IDs for each triangle.
-  pub terrain_ids: Vec<entity_id::T>,
+  /// Entity ID for the terrain buffers.
+  pub chunk_id: entity_id::T,
   /// Entity IDs for each grass tuft.
   pub grass_ids: Vec<entity_id::T>,
 }
 
 impl Ids {
-  pub fn new() -> Self {
+  pub fn new(chunk_id: entity_id::T) -> Self {
     Ids {
-      chunk_id  : Vec::new(),
+      chunk_id  : chunk_id,
       grass_ids : Vec::new(),
     }
   }

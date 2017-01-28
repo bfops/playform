@@ -65,10 +65,10 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
       stopwatch::time("add_chunk", || {
         view.terrain_buffers.push(
           &mut view.gl,
-          mesh.vertex_coordinates.as_ref(),
-          mesh.normals.as_ref(),
+          mesh.vertex_coordinates,
+          mesh.normals,
           mesh.ids.chunk_id,
-          mesh.materials.as_ref(),
+          mesh.materials,
         );
         let mut grass = Vec::with_capacity(mesh.grass.len());
         let mut polygon_indices = Vec::with_capacity(mesh.grass.len());
