@@ -27,7 +27,7 @@ pub enum T {
 
   /// Add a terrain chunk to the view.
   LoadMesh {
-    mesh: terrain_mesh::T,
+    mesh: Box<terrain_mesh::T>,
   },
   /// Remove a terrain entity.
   UnloadMesh {
@@ -62,18 +62,21 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
       }
     },
     T::LoadMesh { mesh } => {
-      stopwatch::time("add_chunk", || {
+      stopwatch::time("add_chunk", move || {
+        let mesh = *mesh;
+        let terrain_mesh::T { vertex_coordinates, normals, ids, materials, grass, .. } =  mesh;
         view.terrain_buffers.push(
           &mut view.gl,
-          mesh.vertex_coordinates,
-          mesh.normals,
-          mesh.ids.chunk_id,
-          mesh.materials,
+          vertex_coordinates,
+          normals,
+          ids.chunk_id,
+          materials,
         );
-        let mut grass = Vec::with_capacity(mesh.grass.len());
-        let mut polygon_indices = Vec::with_capacity(mesh.grass.len());
-        for g in &mesh.grass {
-          grass.push(
+        let mut grass_entries = Vec::with_capacity(grass.len());
+        let mut polygon_indices = Vec::with_capacity(grass.len());
+        for g in &grass {
+          let g: &terrain_mesh::Grass = g;
+          grass_entries.push(
             view::grass_buffers::Entry {
               polygon_idx : view.terrain_buffers.lookup_opengl_index(g.polygon_id).unwrap(),
               tex_id      : g.tex_id,
@@ -83,14 +86,14 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
         }
         view.grass_buffers.push(
           &mut view.gl,
-          grass.as_ref(),
+          grass_entries.as_ref(),
           polygon_indices.as_ref(),
-          mesh.ids.grass_ids.as_ref(),
+          ids.grass_ids.as_ref(),
         );
       })
     },
     T::UnloadMesh { ids: terrain_mesh::Ids { chunk_id, grass_ids } } => {
-      match view.terrain_buffers.swap_remove(&mut view.gl, id) {
+      match view.terrain_buffers.swap_remove(&mut view.gl, chunk_id) {
         None => {},
         Some((swapped_id, idx)) => {
           view.grass_buffers.update_polygon_index(

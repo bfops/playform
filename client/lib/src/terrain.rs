@@ -139,10 +139,10 @@ impl T {
       },
     };
 
-    if !mesh_chunk.ids.is_empty() {
+    if !mesh_chunk.is_empty() {
       updates.push(
         view::update::LoadMesh {
-          mesh     : mesh_chunk,
+          mesh : Box::new(mesh_chunk),
         }
       );
     }

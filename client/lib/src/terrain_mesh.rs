@@ -6,7 +6,7 @@ use isosurface_extraction::dual_contouring;
 use num::iter::range_inclusive;
 use rand;
 use std::f32;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use stopwatch;
 
 use common::entity_id;
@@ -142,10 +142,9 @@ pub fn generate<Rng: rand::Rng>(
 ) -> T
 {
   stopwatch::time("terrain_mesh::generate", || {
-    let mut chunk = empty();
+    let id = id_allocator::allocate(id_allocator);
+    let mut chunk = empty(id);
     {
-      let chunk2 = Arc::make_mut(&mut chunk);
-
       let lg_edge_samples = lod.lg_edge_samples();
       let lg_sample_size = lod.lg_sample_size();
 
@@ -185,23 +184,20 @@ pub fn generate<Rng: rand::Rng>(
                 &mut voxel_storage::T { voxels: voxels },
                 &edge,
                 &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
-                  let id = id_allocator::allocate(id_allocator);
-
-                  chunk2.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
-                  chunk2.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
-                  chunk2.materials.push(polygon.material as i32);
-                  chunk2.ids.terrain_ids.push(id);
+                  chunk.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
+                  chunk.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
+                  chunk.materials.push(polygon.material as i32);
                   let v = &polygon.vertices;
-                  chunk2.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
+                  chunk.bounds.push(make_bounds(&v[0], &v[1], &v[2]));
 
                   if polygon.material == voxel::Material::Terrain && lod <= lod::MAX_GRASS_LOD {
-                    chunk2.grass.push(
+                    chunk.grass.push(
                       Grass {
                         polygon_id: id,
                         tex_id: rng.gen_range(0, 9),
                       }
                     );
-                    chunk2.ids.grass_ids.push(id_allocator::allocate(id_allocator));
+                    chunk.ids.grass_ids.push(id_allocator::allocate(id_allocator));
                   }
                 }
               );
@@ -255,9 +251,9 @@ impl Ids {
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// A small continguous chunk of terrain.
-pub struct T2 {
+pub struct T {
   // These Vecs must all be ordered the same way; each entry is the next triangle.
 
   /// Position of each vertex.
@@ -268,29 +264,31 @@ pub struct T2 {
   pub materials: Vec<i32>,
   // TODO: Change this back to a hashmap once initial capacity is zero for those.
   /// Per-triangle bounding boxes.
-  pub bounds: Vec<(entity_id::T, Aabb3<f32>)>,
+  pub bounds: Vec<Aabb3<f32>>,
   pub grass: Vec<Grass>,
   pub ids: Ids,
 }
 
-impl T2 {
+impl T {
   pub fn ids(&self) -> Ids {
     self.ids.clone()
   }
+
+  pub fn is_empty(&self) -> bool {
+    self.vertex_coordinates.is_empty()
+  }
 }
 
-pub type T = Arc<T2>;
-
 /// Construct an empty `T`.
-pub fn empty() -> T {
-  Arc::new(T2 {
+pub fn empty(chunk_id: entity_id::T) -> T {
+  T {
     vertex_coordinates: Vec::new(),
     normals: Vec::new(),
 
-    ids: Ids::new(),
+    ids: Ids::new(chunk_id),
     materials: Vec::new(),
     bounds: Vec::new(),
 
     grass: Vec::new(),
-  })
+  }
 }
