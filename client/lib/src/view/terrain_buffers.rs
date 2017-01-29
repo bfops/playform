@@ -149,7 +149,7 @@ impl<'a> T<'a> {
 
     let diff = VRAM_CHUNK_LENGTH as isize - len as isize;
     if diff < 0 {
-      warn!("Skipping chunk of size {}", len);
+      panic!("Chunk of size {}", len);
     } else if diff > 0 {
       let diff = diff as usize;
       vertices.reserve_exact(diff);
@@ -159,14 +159,15 @@ impl<'a> T<'a> {
         vertices.set_len(diff);
         normals.set_len(diff);
         materials.set_len(diff);
-      }
-      let vertices_ptr = &mut vertices[len] as *mut _;
-      let normals_ptr = &mut normals[len] as *mut _;
-      let materials_ptr = &mut materials[len] as *mut _;
-      let vertices_size = &vertices[VRAM_CHUNK_LENGTH] as *const _ as usize - vertices_ptr as usize;
-      let normals_size = &normals[VRAM_CHUNK_LENGTH] as *const _ as usize - normals_ptr as usize;
-      let materials_size = &materials[VRAM_CHUNK_LENGTH] as *const _ as usize - materials_ptr as usize;
-      unsafe {
+        let vertices_ptr = vertices.as_mut_ptr().offset(len as isize);
+        let normals_ptr = normals.as_mut_ptr().offset(len as isize);
+        let materials_ptr = materials.as_mut_ptr().offset(len as isize);
+        let vertices_end = vertices_ptr.offset(diff as isize);
+        let normals_end = normals_ptr.offset(diff as isize);
+        let materials_end = materials_ptr.offset(diff as isize);
+        let vertices_size = vertices_end as usize - vertices_ptr as usize;
+        let normals_size = normals_end as usize - normals_ptr as usize;
+        let materials_size = materials_end as usize - materials_ptr as usize;
         std::ptr::write_bytes(vertices_ptr, 0, vertices_size);
         std::ptr::write_bytes(normals_ptr, 0, normals_size);
         std::ptr::write_bytes(materials_ptr, 0, materials_size);
@@ -207,10 +208,11 @@ impl<'a> T<'a> {
     &mut self,
     gl: &mut GLContext,
     id: entity_id::T,
-  ) -> Option<(entity_id::T, usize)>
+  ) -> Option<(usize, usize)>
   {
-    let idx = (*self).id_to_index[&id];
-    let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
+    let idx = self.id_to_index[&id];
+    let swapped_idx = self.index_to_id.len() - 1;
+    let swapped_id = self.index_to_id[swapped_idx];
     self.index_to_id.swap_remove(idx);
     self.id_to_index.remove(&id);
 
@@ -219,7 +221,7 @@ impl<'a> T<'a> {
         None
       } else {
         self.id_to_index.insert(swapped_id, idx);
-        Some((swapped_id, idx))
+        Some((idx, swapped_idx))
       };
 
     self.length -= 1;

@@ -9,8 +9,6 @@ use yaglw::gl_context::GLContext;
 use common::entity_id;
 use common::fnv_map;
 
-use terrain_mesh;
-
 // VRAM bytes
 pub const BYTE_BUDGET: usize = 64_000_000;
 pub const TUFT_COST: usize = 8;
@@ -19,6 +17,7 @@ pub const TUFT_BUDGET: usize = BYTE_BUDGET / TUFT_COST;
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct Entry {
+  /// The shader uses this to find the polygon to place the grass on.
   pub polygon_idx : u32,
   pub tex_id      : u32,
 }
@@ -28,8 +27,8 @@ pub struct T<'a> {
   id_to_index: fnv_map::T<entity_id::T, usize>,
   index_to_id: Vec<entity_id::T>,
 
-  to_polygon_id: fnv_map::T<entity_id::T, entity_id::T>,
-  of_polygon_id: fnv_map::T<entity_id::T, entity_id::T>,
+  to_polygon_idx: fnv_map::T<entity_id::T, u32>,
+  of_polygon_idx: fnv_map::T<u32, entity_id::T>,
 
   gl_array: yaglw::vertex_buffer::ArrayHandle<'a>,
   _instance_vertices: yaglw::vertex_buffer::GLBuffer<'a, Vertex>,
@@ -153,14 +152,14 @@ pub fn new<'a, 'b:'a>(
       gl,
       shader,
     );
-  assert!(attrib_span == std::mem::size_of::<terrain_mesh::Grass>() as u32);
+  assert!(attrib_span == std::mem::size_of::<Entry>() as u32);
 
   T {
     id_to_index: fnv_map::new(),
     index_to_id: Vec::new(),
 
-    to_polygon_id: fnv_map::new(),
-    of_polygon_id: fnv_map::new(),
+    to_polygon_idx: fnv_map::new(),
+    of_polygon_idx: fnv_map::new(),
 
     gl_array: gl_array,
     _instance_vertices: instance_vertices,
@@ -174,10 +173,10 @@ impl<'a> T<'a> {
     &mut self,
     gl: &mut GLContext,
     grass: &[Entry],
-    polygon_ids: &[entity_id::T],
+    polygon_idxs: &[u32],
     grass_ids: &[entity_id::T],
   ) {
-    assert!(grass.len() == polygon_ids.len());
+    assert!(grass.len() == polygon_idxs.len());
     assert!(grass.len() == grass_ids.len());
 
     self.per_tuft.byte_buffer.bind(gl);
@@ -191,9 +190,9 @@ impl<'a> T<'a> {
       self.index_to_id.push(*id);
     }
 
-    for (id, polygon_id) in grass_ids.iter().zip(polygon_ids.iter()) {
-      self.to_polygon_id.insert(*id, *polygon_id);
-      self.of_polygon_id.insert(*polygon_id, *id);
+    for (id, polygon_idx) in grass_ids.iter().zip(polygon_idxs.iter()) {
+      self.to_polygon_idx.insert(*id, *polygon_idx);
+      self.of_polygon_idx.insert(*polygon_idx, *id);
     }
   }
 
@@ -213,18 +212,18 @@ impl<'a> T<'a> {
     self.per_tuft.byte_buffer.bind(gl);
     self.per_tuft.swap_remove(gl, idx, 1);
 
-    let polygon_id = self.to_polygon_id.remove(&id).unwrap();
-    self.of_polygon_id.remove(&polygon_id).unwrap();
+    let polygon_idx = self.to_polygon_idx.remove(&id).unwrap();
+    self.of_polygon_idx.remove(&polygon_idx).unwrap();
   }
 
   pub fn update_polygon_index(
     &self,
     gl: &mut GLContext,
-    polygon_id: entity_id::T,
+    polygon_idx: u32,
     new_index: u32,
   ) {
     let grass_id =
-      match self.of_polygon_id.get(&polygon_id) {
+      match self.of_polygon_idx.get(&polygon_idx) {
         None => return,
         Some(id) => id,
       };

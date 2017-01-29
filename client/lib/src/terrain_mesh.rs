@@ -37,28 +37,6 @@ pub fn tri<T>(v1: T, v2: T, v3: T) -> Triangle<T> {
   }
 }
 
-fn make_bounds(
-  v1: &Point3<f32>,
-  v2: &Point3<f32>,
-  v3: &Point3<f32>,
-) -> Aabb3<f32> {
-  let min_x = f32::min(v1.x, f32::min(v2.x, v3.x));
-  let max_x = f32::max(v1.x, f32::max(v2.x, v3.x));
-
-  let min_y = f32::min(v1.y, f32::min(v2.y, v3.y));
-  let max_y = f32::max(v1.y, f32::max(v2.y, v3.y));
-
-  let min_z = f32::min(v1.z, f32::min(v2.z, v3.z));
-  let max_z = f32::max(v1.z, f32::max(v2.z, v3.z));
-
-  Aabb3::new(
-    // TODO: Remove this - 1.0. It's a temporary hack until voxel collisions work,
-    // to avoid zero-height Aabb3s.
-    Point3::new(min_x, min_y - 1.0, min_z),
-    Point3::new(max_x, max_y, max_z),
-  )
-}
-
 pub fn voxels_in(bounds: &Aabb3<i32>, lg_size: i16) -> Vec<voxel::bounds::T> {
   let delta = bounds.max() - (bounds.min());
 
@@ -142,8 +120,8 @@ pub fn generate<Rng: rand::Rng>(
 ) -> T
 {
   stopwatch::time("terrain_mesh::generate", || {
-    let id = id_allocator::allocate(id_allocator);
-    let mut chunk = empty(id);
+    let chunk_id = id_allocator::allocate(id_allocator);
+    let mut chunk = empty(chunk_id);
     {
       let lg_edge_samples = lod.lg_edge_samples();
       let lg_sample_size = lod.lg_sample_size();
@@ -187,13 +165,10 @@ pub fn generate<Rng: rand::Rng>(
                   chunk.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
                   chunk.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
                   chunk.materials.push(polygon.material as i32);
-                  let v = &polygon.vertices;
-                  chunk.bounds.push(make_bounds(&v[0], &v[1], &v[2]));
 
                   if polygon.material == voxel::Material::Terrain && lod <= lod::MAX_GRASS_LOD {
                     chunk.grass.push(
                       Grass {
-                        polygon_id: id,
                         tex_id: rng.gen_range(0, 9),
                       }
                     );
@@ -230,8 +205,7 @@ pub fn generate<Rng: rand::Rng>(
 
 #[derive(Debug, Clone)]
 pub struct Grass {
-  pub polygon_id : entity_id::T,
-  pub tex_id     : u32,
+  pub tex_id : u32,
 }
 
 #[derive(Debug, Clone)]
@@ -264,7 +238,6 @@ pub struct T {
   pub materials: Vec<i32>,
   // TODO: Change this back to a hashmap once initial capacity is zero for those.
   /// Per-triangle bounding boxes.
-  pub bounds: Vec<Aabb3<f32>>,
   pub grass: Vec<Grass>,
   pub ids: Ids,
 }
@@ -287,7 +260,6 @@ pub fn empty(chunk_id: entity_id::T) -> T {
 
     ids: Ids::new(chunk_id),
     materials: Vec::new(),
-    bounds: Vec::new(),
 
     grass: Vec::new(),
   }

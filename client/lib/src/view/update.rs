@@ -11,6 +11,7 @@ use view;
 use view::light;
 use view::mob_buffers::VERTICES_PER_MOB;
 use view::player_buffers::VERTICES_PER_PLAYER;
+use view::terrain_buffers;
 
 /// Messages from the client to the view.
 pub enum T {
@@ -65,6 +66,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
       stopwatch::time("add_chunk", move || {
         let mesh = *mesh;
         let terrain_mesh::T { vertex_coordinates, normals, ids, materials, grass, .. } =  mesh;
+        assert_eq!(grass.len(), vertex_coordinates.len());
         view.terrain_buffers.push(
           &mut view.gl,
           vertex_coordinates,
@@ -74,15 +76,16 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
         );
         let mut grass_entries = Vec::with_capacity(grass.len());
         let mut polygon_indices = Vec::with_capacity(grass.len());
-        for g in &grass {
+        for (i, g) in grass.iter().enumerate() {
           let g: &terrain_mesh::Grass = g;
+          let polygon_idx = view.terrain_buffers.lookup_opengl_index(ids.chunk_id).unwrap() * terrain_buffers::VRAM_CHUNK_LENGTH as u32 + i as u32;
           grass_entries.push(
             view::grass_buffers::Entry {
-              polygon_idx : view.terrain_buffers.lookup_opengl_index(g.polygon_id).unwrap(),
+              polygon_idx : polygon_idx,
               tex_id      : g.tex_id,
             }
           );
-          polygon_indices.push(g.polygon_id);
+          polygon_indices.push(polygon_idx);
         }
         view.grass_buffers.push(
           &mut view.gl,
@@ -95,12 +98,16 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
     T::UnloadMesh { ids: terrain_mesh::Ids { chunk_id, grass_ids } } => {
       match view.terrain_buffers.swap_remove(&mut view.gl, chunk_id) {
         None => {},
-        Some((swapped_id, idx)) => {
-          view.grass_buffers.update_polygon_index(
-            &mut view.gl,
-            swapped_id,
-            idx as u32,
+        Some((idx, swapped_idx)) => {
+          let swapped_base = swapped_idx * terrain_buffers::VRAM_CHUNK_LENGTH;
+          let base = idx * terrain_buffers::VRAM_CHUNK_LENGTH;
+          for i in 0..terrain_buffers::VRAM_CHUNK_LENGTH {
+            view.grass_buffers.update_polygon_index(
+              &mut view.gl,
+              (swapped_base + i) as u32,
+              (base + i) as u32,
             );
+          }
         },
       }
       for id in grass_ids {
