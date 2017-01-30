@@ -65,7 +65,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
     T::LoadMesh { mesh } => {
       stopwatch::time("add_chunk", move || {
         let mesh = *mesh;
-        let terrain_mesh::T { vertex_coordinates, normals, ids, materials, grass, .. } =  mesh;
+        let terrain_mesh::T { vertex_coordinates, normals, ids, materials, grass, .. } = mesh;
         assert_eq!(grass.len(), vertex_coordinates.len());
         view.terrain_buffers.push(
           &mut view.gl,

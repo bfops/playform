@@ -156,21 +156,15 @@ impl<'a> T<'a> {
       normals.reserve_exact(diff);
       materials.reserve_exact(diff);
       unsafe {
-        vertices.set_len(diff);
-        normals.set_len(diff);
-        materials.set_len(diff);
+        vertices.set_len(VRAM_CHUNK_LENGTH);
+        normals.set_len(VRAM_CHUNK_LENGTH);
+        materials.set_len(VRAM_CHUNK_LENGTH);
         let vertices_ptr = vertices.as_mut_ptr().offset(len as isize);
         let normals_ptr = normals.as_mut_ptr().offset(len as isize);
         let materials_ptr = materials.as_mut_ptr().offset(len as isize);
-        let vertices_end = vertices_ptr.offset(diff as isize);
-        let normals_end = normals_ptr.offset(diff as isize);
-        let materials_end = materials_ptr.offset(diff as isize);
-        let vertices_size = vertices_end as usize - vertices_ptr as usize;
-        let normals_size = normals_end as usize - normals_ptr as usize;
-        let materials_size = materials_end as usize - materials_ptr as usize;
-        std::ptr::write_bytes(vertices_ptr, 0, vertices_size);
-        std::ptr::write_bytes(normals_ptr, 0, normals_size);
-        std::ptr::write_bytes(materials_ptr, 0, materials_size);
+        std::ptr::write_bytes(vertices_ptr, 0, diff);
+        std::ptr::write_bytes(normals_ptr, 0, diff);
+        std::ptr::write_bytes(materials_ptr, 0, diff);
       }
     }
 
