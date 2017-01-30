@@ -27,7 +27,7 @@ pub enum T {
 
   /// Add a terrain chunk to the view.
   LoadMesh {
-    mesh: terrain_mesh::T,
+    mesh: Box<terrain_mesh::T>,
   },
   /// Remove a terrain entity.
   UnloadMesh {

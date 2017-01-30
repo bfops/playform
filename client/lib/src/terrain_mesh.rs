@@ -6,7 +6,7 @@ use isosurface_extraction::dual_contouring;
 use num::iter::range_inclusive;
 use rand;
 use std::f32;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use stopwatch;
 
 use common::entity_id;
@@ -35,28 +35,6 @@ pub fn tri<T>(v1: T, v2: T, v3: T) -> Triangle<T> {
     v2: v2,
     v3: v3,
   }
-}
-
-fn make_bounds(
-  v1: &Point3<f32>,
-  v2: &Point3<f32>,
-  v3: &Point3<f32>,
-) -> Aabb3<f32> {
-  let min_x = f32::min(v1.x, f32::min(v2.x, v3.x));
-  let max_x = f32::max(v1.x, f32::max(v2.x, v3.x));
-
-  let min_y = f32::min(v1.y, f32::min(v2.y, v3.y));
-  let max_y = f32::max(v1.y, f32::max(v2.y, v3.y));
-
-  let min_z = f32::min(v1.z, f32::min(v2.z, v3.z));
-  let max_z = f32::max(v1.z, f32::max(v2.z, v3.z));
-
-  Aabb3::new(
-    // TODO: Remove this - 1.0. It's a temporary hack until voxel collisions work,
-    // to avoid zero-height Aabb3s.
-    Point3::new(min_x, min_y - 1.0, min_z),
-    Point3::new(max_x, max_y, max_z),
-  )
 }
 
 pub fn voxels_in(bounds: &Aabb3<i32>, lg_size: i16) -> Vec<voxel::bounds::T> {
@@ -143,90 +121,84 @@ pub fn generate<Rng: rand::Rng>(
 {
   stopwatch::time("terrain_mesh::generate", || {
     let mut chunk = empty();
+    let lg_edge_samples = lod.lg_edge_samples();
+    let lg_sample_size = lod.lg_sample_size();
+
+    let low = *chunk_position.as_pnt();
+    let high = low + (&Vector3::new(1, 1, 1));
+    let low =
+      Point3::new(
+        low.x << lg_edge_samples,
+        low.y << lg_edge_samples,
+        low.z << lg_edge_samples,
+      );
+    let high =
+      Point3::new(
+        high.x << lg_edge_samples,
+        high.y << lg_edge_samples,
+        high.z << lg_edge_samples,
+      );
+
+    trace!("low {:?}", low);
+    trace!("high {:?}", high);
+
     {
-      let chunk2 = Arc::make_mut(&mut chunk);
+      let mut edges = |direction, low_x, high_x, low_y, high_y, low_z, high_z| {
+        for x in range_inclusive(low_x, high_x) {
+        for y in range_inclusive(low_y, high_y) {
+        for z in range_inclusive(low_z, high_z) {
+          trace!("edge: {:?} {:?}", direction, Point3::new(x, y, z));
+          let edge =
+            dual_contouring::edge::T {
+              low_corner: Point3::new(x, y, z),
+              direction: direction,
+              lg_size: lg_sample_size,
+            };
 
-      let lg_edge_samples = lod.lg_edge_samples();
-      let lg_sample_size = lod.lg_sample_size();
+          let _ =
+            dual_contouring::edge::extract(
+              &mut voxel_storage::T { voxels: voxels },
+              &edge,
+              &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
+                let id = id_allocator::allocate(id_allocator);
 
-      let low = *chunk_position.as_pnt();
-      let high = low + (&Vector3::new(1, 1, 1));
-      let low =
-        Point3::new(
-          low.x << lg_edge_samples,
-          low.y << lg_edge_samples,
-          low.z << lg_edge_samples,
-        );
-      let high =
-        Point3::new(
-          high.x << lg_edge_samples,
-          high.y << lg_edge_samples,
-          high.z << lg_edge_samples,
-        );
+                chunk.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
+                chunk.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
+                chunk.materials.push(polygon.material as i32);
+                chunk.ids.terrain_ids.push(id);
 
-      trace!("low {:?}", low);
-      trace!("high {:?}", high);
-
-      {
-        let mut edges = |direction, low_x, high_x, low_y, high_y, low_z, high_z| {
-          for x in range_inclusive(low_x, high_x) {
-          for y in range_inclusive(low_y, high_y) {
-          for z in range_inclusive(low_z, high_z) {
-            trace!("edge: {:?} {:?}", direction, Point3::new(x, y, z));
-            let edge =
-              dual_contouring::edge::T {
-                low_corner: Point3::new(x, y, z),
-                direction: direction,
-                lg_size: lg_sample_size,
-              };
-
-            let _ =
-              dual_contouring::edge::extract(
-                &mut voxel_storage::T { voxels: voxels },
-                &edge,
-                &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
-                  let id = id_allocator::allocate(id_allocator);
-
-                  chunk2.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
-                  chunk2.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
-                  chunk2.materials.push(polygon.material as i32);
-                  chunk2.ids.terrain_ids.push(id);
-                  let v = &polygon.vertices;
-                  chunk2.bounds.push((id, make_bounds(&v[0], &v[1], &v[2])));
-
-                  if polygon.material == voxel::Material::Terrain && lod <= lod::MAX_GRASS_LOD {
-                    chunk2.grass.push(
-                      Grass {
-                        polygon_id: id,
-                        tex_id: rng.gen_range(0, 9),
-                      }
-                    );
-                    chunk2.ids.grass_ids.push(id_allocator::allocate(id_allocator));
-                  }
+                if polygon.material == voxel::Material::Terrain && lod <= lod::MAX_GRASS_LOD {
+                  chunk.grass.push(
+                    Grass {
+                      polygon_id: id,
+                      tex_id: rng.gen_range(0, 9),
+                    }
+                  );
+                  chunk.ids.grass_ids.push(id_allocator::allocate(id_allocator));
                 }
-              );
-          }}}
-        };
+              }
+            );
+        }}}
+      };
 
-        edges(
-          dual_contouring::edge::Direction::X,
-          low.x, high.x - 1,
-          low.y, high.y - 1,
-          low.z, high.z - 1,
-        );
-        edges(
-          dual_contouring::edge::Direction::Y,
-          low.x, high.x - 1,
-          low.y, high.y - 1,
-          low.z, high.z - 1,
-        );
-        edges(
-          dual_contouring::edge::Direction::Z,
-          low.x, high.x - 1,
-          low.y, high.y - 1,
-          low.z, high.z - 1,
-        );
-      }
+      edges(
+        dual_contouring::edge::Direction::X,
+        low.x, high.x - 1,
+        low.y, high.y - 1,
+        low.z, high.z - 1,
+      );
+      edges(
+        dual_contouring::edge::Direction::Y,
+        low.x, high.x - 1,
+        low.y, high.y - 1,
+        low.z, high.z - 1,
+      );
+      edges(
+        dual_contouring::edge::Direction::Z,
+        low.x, high.x - 1,
+        low.y, high.y - 1,
+        low.z, high.z - 1,
+      );
     }
     chunk
   })
@@ -261,7 +233,7 @@ impl Ids {
 
 #[derive(Debug, Clone)]
 /// A small continguous chunk of terrain.
-pub struct T2 {
+pub struct T {
   // These Vecs must all be ordered the same way; each entry is the next triangle.
 
   /// Position of each vertex.
@@ -270,31 +242,25 @@ pub struct T2 {
   pub normals: Vec<Triangle<Vector3<f32>>>,
   /// Material IDs for each triangle.
   pub materials: Vec<i32>,
-  // TODO: Change this back to a hashmap once initial capacity is zero for those.
-  /// Per-triangle bounding boxes.
-  pub bounds: Vec<(entity_id::T, Aabb3<f32>)>,
   pub grass: Vec<Grass>,
   pub ids: Ids,
 }
 
-impl T2 {
+impl T {
   pub fn ids(&self) -> Ids {
     self.ids.clone()
   }
 }
 
-pub type T = Arc<T2>;
-
 /// Construct an empty `T`.
 pub fn empty() -> T {
-  Arc::new(T2 {
+  T {
     vertex_coordinates: Vec::new(),
     normals: Vec::new(),
 
     ids: Ids::new(),
     materials: Vec::new(),
-    bounds: Vec::new(),
 
     grass: Vec::new(),
-  })
+  }
 }
