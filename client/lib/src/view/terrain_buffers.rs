@@ -27,7 +27,7 @@ pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
 
 // Instead of storing individual vertices, normals, etc. in VRAM, store them in chunks.
 // This makes it much faster to unload things.
-pub const VRAM_CHUNK_LENGTH: usize = 1024;
+pub const VRAM_CHUNK_LENGTH: usize = 1 << 10;
 pub const CHUNK_BUDGET: usize = POLYGON_BUDGET / VRAM_CHUNK_LENGTH;
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
@@ -187,6 +187,7 @@ impl<'a> T<'a> {
 
     self.id_to_index.insert(chunk_id, self.index_to_id.len());
     self.index_to_id.push(chunk_id);
+    assert_eq!(self.id_to_index.len(), self.index_to_id.len());
 
     self.materials.buffer.byte_buffer.bind(gl);
     let success = self.materials.buffer.push(gl, materials);
@@ -195,7 +196,6 @@ impl<'a> T<'a> {
     self.length += 1;
   }
 
-  // Note: `id` must be present in the buffers.
   /// Remove some entity from VRAM.
   /// Returns the swapped ID and its VRAM index, if any.
   pub fn swap_remove(
@@ -204,7 +204,11 @@ impl<'a> T<'a> {
     id: entity_id::T,
   ) -> Option<(usize, usize)>
   {
-    let idx = self.id_to_index[&id];
+    let idx =
+      match self.id_to_index.get(&id) {
+        Some(idx) => *idx,
+        None => return None,
+      };
     let swapped_idx = self.index_to_id.len() - 1;
     let swapped_id = self.index_to_id[swapped_idx];
     self.index_to_id.swap_remove(idx);
