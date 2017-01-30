@@ -108,7 +108,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
               (base + i) as u32,
             );
           }
-        },
+        }
       }
       for id in grass_ids {
         view.grass_buffers.swap_remove(&mut view.gl, id);

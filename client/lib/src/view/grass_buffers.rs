@@ -217,7 +217,7 @@ impl<'a> T<'a> {
   }
 
   pub fn update_polygon_index(
-    &self,
+    &mut self,
     gl: &mut GLContext,
     polygon_idx: u32,
     new_index: u32,
@@ -225,9 +225,11 @@ impl<'a> T<'a> {
     let grass_id =
       match self.of_polygon_idx.get(&polygon_idx) {
         None => return,
-        Some(id) => id,
+        Some(id) => *id,
       };
-    let entry_idx = self.id_to_index[grass_id];
+    self.of_polygon_idx.insert(new_index, grass_id);
+    self.to_polygon_idx.insert(grass_id, new_index);
+    let entry_idx = self.id_to_index[&grass_id];
     // update the underlying byte buffer directly and only touch the polygon
     // index field.
     self.per_tuft.byte_buffer.bind(gl);
