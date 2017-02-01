@@ -1,7 +1,7 @@
 //! The state associated with perceiving the world state.
 
-#[allow(missing_docs)]
 pub mod camera;
+pub mod chunk_stats;
 #[allow(missing_docs)]
 pub mod grass_buffers;
 #[allow(missing_docs)]
