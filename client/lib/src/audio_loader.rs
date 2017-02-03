@@ -1,27 +1,34 @@
+//! Load audio assets into memory
+
 use hound;
 
 use common::fnv_map;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[allow(unused)]
+#[allow(missing_docs)]
 pub enum SoundId {
+  #[allow(missing_docs)]
   Rainforest,
+  #[allow(missing_docs)]
   Footstep(u8),
 }
 
 impl SoundId {
+  #[allow(missing_docs)]
   pub fn to_asset_path(&self) -> String {
     match *self {
-      SoundId::Rainforest    => "soudns/rainforest_ambience-GlorySunz-1938133500.wav".to_owned(),
+      SoundId::Rainforest    => "sounds/rainforest_ambience-GlorySunz-1938133500.wav".to_owned(),
       SoundId::Footstep(idx) => format!("sounds/Walking_On_Gravel-SoundBible{}.wav", idx),
     }
   }
 }
 
+#[allow(missing_docs)]
 pub struct T {
   loaded: fnv_map::T<SoundId, Vec<f32>>,
 }
 
+#[allow(missing_docs)]
 pub fn new() -> T {
   T {
     loaded: fnv_map::new(),
@@ -29,6 +36,7 @@ pub fn new() -> T {
 }
 
 impl T {
+  #[allow(missing_docs)]
   pub fn load(&mut self, id: SoundId) -> &Vec<f32> {
     self.loaded
       .entry(id)

@@ -15,6 +15,9 @@ use yaglw;
 
 use view::camera;
 
+/// Load a shader from a filename prefix.
+/// e.g. shader_from_prefix("foo") will load a vertex shader from shaders/foo.vs.glsl and fragment shader
+/// from shaders/foo.fs.glsl.
 pub fn shader_from_prefix<'a, 'b:'a>(gl: &'a GLContext, prefix: &'static str) -> yaglw::shader::Shader<'b> {
   let read_preprocessed_shader =
     |name| {

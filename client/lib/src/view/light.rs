@@ -23,11 +23,13 @@ impl Sun {
     angle.sin_cos()
   }
 
+  /// A vector pointing toward the sun.
   pub fn direction(&self) -> Vector3<f32> {
     let (s, c) = self.sin_cos();
     Vector3::new(c, s, 0.0)
   }
 
+  /// The intensity of direct lighting from the sun.
   pub fn intensity(&self) -> Color3<f32> {
     let (s, c) = self.sin_cos();
     Color3::of_rgb(
@@ -37,6 +39,7 @@ impl Sun {
     )
   }
 
+  /// The intensity of ambient lighting from the sun.
   pub fn ambient_intensity(&self) -> Color3<f32> {
     let (s, _) = self.sin_cos();
     let ambient_light = f32::max(0.4, s / 2.0);

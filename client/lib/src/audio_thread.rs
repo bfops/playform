@@ -1,3 +1,5 @@
+//! thread for playing audio messages
+
 use portaudio;
 use std;
 use std::sync::{Mutex};
@@ -5,12 +7,15 @@ use std::sync::{Mutex};
 use audio;
 use audio_loader;
 
-#[allow(unused)]
+#[allow(missing_docs)]
 pub enum Message {
+  /// play a sound in a loop
   PlayLoop(audio_loader::SoundId),
+  /// play a sound once
   PlayOneShot(audio_loader::SoundId),
 }
 
+#[allow(missing_docs)]
 pub fn audio_thread<RecvMessage>(
   quit: &Mutex<bool>,
   recv_message: &mut RecvMessage,

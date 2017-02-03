@@ -20,15 +20,17 @@ use std::mem;
 
 const VERTICES_PER_TRIANGLE: usize = 3;
 
-// VRAM bytes
+/// Maximum number of bytes to be used in VRAM
 pub const BYTE_BUDGET: usize = 64_000_000;
-pub const POLYGON_COST: usize = 100;
+const POLYGON_COST: usize = 100;
+/// Maximum number of polygons to be used in VRAM
 pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
 
 // Instead of storing individual vertices, normals, etc. in VRAM, store them in chunks.
 // This makes it much faster to unload things.
+/// The number of polygons loaded contiguously into VRAM.
 pub const VRAM_CHUNK_LENGTH: usize = 1 << 10;
-pub const CHUNK_BUDGET: usize = POLYGON_BUDGET / VRAM_CHUNK_LENGTH;
+const CHUNK_BUDGET: usize = POLYGON_BUDGET / VRAM_CHUNK_LENGTH;
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
 pub struct T<'a> {
@@ -104,6 +106,7 @@ impl<'a> T<'a> {
     }
   }
 
+  #[allow(missing_docs)]
   pub fn bind_vertex_positions(
     &self,
     gl: &mut GLContext,
@@ -114,6 +117,7 @@ impl<'a> T<'a> {
     self.bind(texture_unit_alloc, shader, "positions", self.vertex_positions.handle.gl_id);
   }
 
+  #[allow(missing_docs)]
   pub fn bind_normals(
     &self,
     gl: &mut GLContext,
@@ -124,6 +128,7 @@ impl<'a> T<'a> {
     self.bind(texture_unit_alloc, shader, "normals", self.normals.handle.gl_id);
   }
 
+  #[allow(missing_docs)]
   pub fn bind_materials(
     &self,
     gl: &mut GLContext,

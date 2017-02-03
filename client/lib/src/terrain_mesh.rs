@@ -37,6 +37,7 @@ pub fn tri<T>(v1: T, v2: T, v3: T) -> Triangle<T> {
   }
 }
 
+/// return a vector of all the voxels of a certain size that are contained within an AABB
 pub fn voxels_in(bounds: &Aabb3<i32>, lg_size: i16) -> Vec<voxel::bounds::T> {
   let delta = bounds.max() - (bounds.min());
 
@@ -111,6 +112,7 @@ mod voxel_storage {
   }
 }
 
+#[allow(missing_docs)]
 pub fn generate<Rng: rand::Rng>(
   voxels: &voxel::tree::T,
   chunk_position: &chunk::position::T,
@@ -201,11 +203,14 @@ pub fn generate<Rng: rand::Rng>(
   })
 }
 
+/// All the information required to construct a grass tuft in vram
 #[derive(Debug, Clone)]
 pub struct Grass {
+  /// index of the grass texture
   pub tex_id : u32,
 }
 
+/// unique identifiers for every independent piece of a chunk loaded into vram
 #[derive(Debug, Clone)]
 pub struct Ids {
   /// Entity ID for the terrain buffers.
@@ -215,6 +220,7 @@ pub struct Ids {
 }
 
 impl Ids {
+  #[allow(missing_docs)]
   pub fn new(chunk_id: entity_id::T) -> Self {
     Ids {
       chunk_id  : chunk_id,
@@ -234,17 +240,16 @@ pub struct T {
   pub normals: Vec<Triangle<Vector3<f32>>>,
   /// Material IDs for each triangle.
   pub materials: Vec<i32>,
+  /// grass tufts in this chunk
   pub grass: Vec<Grass>,
+  #[allow(missing_docs)]
   pub ids: Ids,
 }
 
 impl T {
-  pub fn ids(&self) -> Ids {
-    self.ids.clone()
-  }
-
+  /// is there nothing to be loaded in this chunk
   pub fn is_empty(&self) -> bool {
-    self.vertex_coordinates.is_empty()
+    self.vertex_coordinates.is_empty() && self.grass.is_empty()
   }
 }
 
