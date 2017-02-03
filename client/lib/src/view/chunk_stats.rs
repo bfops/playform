@@ -19,10 +19,9 @@ pub fn new() -> T {
 
 impl T {
   /// record a chunk
-  pub fn add(&mut self, polygon_count: u32) {
-    let polygon_count = polygon_count as usize;
+  pub fn add(&mut self, polygon_count: usize) {
     if polygon_count >= MAX_POLYGON_COUNT {
-      //warn!("Chunk too big to record in stats: {}" polygon_count);
+      warn!("Chunk too big to record in stats: {}", polygon_count);
       return
     }
 

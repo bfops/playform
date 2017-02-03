@@ -18,7 +18,9 @@ use client;
 use hud::make_hud;
 use process_event::process_event;
 use view;
-use view::update;
+
+use super::chunk_stats;
+use super::update;
 
 #[allow(missing_docs)]
 pub const FRAMES_PER_SECOND: u64 = 30;
@@ -86,6 +88,8 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
 
   sdl.mouse().set_relative_mouse_mode(true);
 
+  let mut chunk_stats = chunk_stats::new();
+
   make_hud(&mut view);
 
   let render_interval = {
@@ -139,9 +143,9 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
           let start = time::precise_time_ns();
           loop {
             if let Some(update) = recv0() {
-              update::apply_client_to_view(&mut view, update);
+              update::apply_client_to_view(&mut view, &mut chunk_stats, update);
             } else if let Some(update) = recv1() {
-              update::apply_client_to_view(&mut view, update);
+              update::apply_client_to_view(&mut view, &mut chunk_stats, update);
             } else {
               info!("Out of view updates");
               break
@@ -170,6 +174,9 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
       ViewIteration::Continue => {},
     }
   }
+
+  debug!("Printing chunk stats");
+  chunk_stats.output_to("vram_chunk_loads.out");
 
   debug!("view exiting.");
 }

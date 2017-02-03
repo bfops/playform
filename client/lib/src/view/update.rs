@@ -8,10 +8,12 @@ use common::entity_id;
 use terrain_mesh;
 use vertex::ColoredVertex;
 use view;
-use view::light;
-use view::mob_buffers::VERTICES_PER_MOB;
-use view::player_buffers::VERTICES_PER_PLAYER;
-use view::terrain_buffers;
+
+use super::chunk_stats;
+use super::light;
+use super::mob_buffers::VERTICES_PER_MOB;
+use super::player_buffers::VERTICES_PER_PLAYER;
+use super::terrain_buffers;
 
 /// Messages from the client to the view.
 pub enum T {
@@ -39,7 +41,7 @@ unsafe impl Send for T {}
 pub use self::T::*;
 
 #[allow(missing_docs)]
-pub fn apply_client_to_view(view: &mut view::T, up: T) {
+pub fn apply_client_to_view(view: &mut view::T, chunk_stats: &mut chunk_stats::T, up: T) {
   match up {
     T::MoveCamera(position) => {
       view.camera.translate_to(position);
@@ -62,6 +64,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
       stopwatch::time("add_chunk", move || {
         let mesh = *mesh;
         let terrain_mesh::T { vertex_coordinates, normals, ids, materials, grass, .. } = mesh;
+        chunk_stats.add(vertex_coordinates.len());
         view.terrain_buffers.push(
           &mut view.gl,
           vertex_coordinates,
@@ -111,7 +114,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
     },
     T::Atomic(updates) => {
       for up in updates {
-        apply_client_to_view(view, up);
+        apply_client_to_view(view, chunk_stats, up);
       }
     },
   };
