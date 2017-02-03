@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use cgmath;
 use cgmath::{Point3, EuclideanSpace, InnerSpace, ElementWise};
 use collision::{Aabb3};
@@ -15,10 +17,11 @@ use terrain;
 use vertex::ColoredVertex;
 use view;
 
-pub const TRIANGLES_PER_BOX: u32 = 12;
-pub const VERTICES_PER_TRIANGLE: u32 = 3;
-pub const TRIANGLE_VERTICES_PER_BOX: u32 = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
+const TRIANGLES_PER_BOX: u32 = 12;
+const VERTICES_PER_TRIANGLE: u32 = 3;
+const TRIANGLE_VERTICES_PER_BOX: u32 = TRIANGLES_PER_BOX * VERTICES_PER_TRIANGLE;
 
+/// dispatch a server message among the subsystems
 pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrainLoad>(
   client               : &client::T,
   update_view          : &mut UpdateView,

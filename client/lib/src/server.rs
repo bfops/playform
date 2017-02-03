@@ -1,3 +1,5 @@
+//! A low-level interface to send and receive server-client protocol messages
+
 use std;
 
 use common::socket::{SendSocket, ReceiveSocket};
@@ -64,6 +66,7 @@ pub mod recv {
   }
 }
 
+#[allow(missing_docs)]
 #[derive(Clone)]
 pub struct T {
   pub talk   : send::T,
@@ -72,6 +75,7 @@ pub struct T {
 
 unsafe impl Send for T {}
 
+#[allow(missing_docs)]
 pub fn new(
   server_url: &str,
   listen_url: &str,

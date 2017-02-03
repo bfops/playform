@@ -1,3 +1,6 @@
+//! Each tuft of grass in the grass buffer is associated with a terrain polygon. It is associated using
+//! an index into the VRAM buffer of terrain polygons.
+
 use cgmath;
 use cgmath::{Point3, EuclideanSpace};
 use gl;
@@ -12,14 +15,17 @@ use common::fnv_map;
 use terrain_mesh;
 
 // VRAM bytes
-pub const BYTE_BUDGET: usize = 64_000_000;
-pub const TUFT_COST: usize = 8;
-pub const TUFT_BUDGET: usize = BYTE_BUDGET / TUFT_COST;
+const BYTE_BUDGET: usize = 64_000_000;
+const TUFT_COST: usize = 8;
+const TUFT_BUDGET: usize = BYTE_BUDGET / TUFT_COST;
 
 #[derive(Debug, Clone)]
 #[repr(C)]
+/// A single tuft of grass to be loaded
 pub struct Entry {
+  /// Index of a polygon in terrain VRAM buffers that sits under this grass tuft
   pub polygon_idx : u32,
+  /// Id of which grass texture to use for a given tuft
   pub tex_id      : u32,
 }
 
@@ -217,6 +223,7 @@ impl<'a> T<'a> {
     self.of_polygon_id.remove(&polygon_id).unwrap();
   }
 
+  /// Update the index of the underlying polygon that a grass tuft is associated with.
   pub fn update_polygon_index(
     &self,
     gl: &mut GLContext,
@@ -242,6 +249,7 @@ impl<'a> T<'a> {
     }
   }
 
+  #[allow(missing_docs)]
   pub fn draw(&self, _gl: &mut GLContext) {
     unsafe {
       gl::BindVertexArray(self.gl_array.gl_id);

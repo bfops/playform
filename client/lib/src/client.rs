@@ -20,17 +20,27 @@ const MAX_LOAD_DISTANCE: u32 = 80;
 
 /// The main client state.
 pub struct T {
+  #[allow(missing_docs)]
   pub id                       : protocol::ClientId,
+  /// id for the player in vram
   pub player_id                : entity_id::T,
+  /// position of the player in world coordinates
   pub player_position          : Mutex<Point3<f32>>,
+  /// the location where we last played a footstep sound
   pub last_footstep            : Mutex<Point3<f32>>,
+  /// world position to center terrain loading around
   pub load_position            : Mutex<Option<Point3<f32>>>,
+  #[allow(missing_docs)]
   pub id_allocator             : Mutex<id_allocator::T<entity_id::T>>,
+  #[allow(missing_docs)]
   pub surroundings_loader      : Mutex<surroundings_loader::T>,
+  #[allow(missing_docs)]
   pub max_load_distance        : u32,
+  #[allow(missing_docs)]
   pub terrain                  : Mutex<terrain::T>,
   /// The number of terrain requests that are outstanding,
   pub pending_terrain_requests : Mutex<u32>,
+  #[allow(missing_docs)]
   pub rng                      : Mutex<rand::XorShiftRng>,
 }
 
