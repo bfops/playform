@@ -11,6 +11,7 @@ use common::fnv_map;
 use vertex::ColoredVertex;
 use view;
 
+/// Number of vertices in a mob mesh.
 pub const VERTICES_PER_MOB: usize = 36;
 
 /// This data structure keeps tracks of mob data in VRAM.

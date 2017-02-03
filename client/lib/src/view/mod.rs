@@ -1,24 +1,14 @@
 //! The state associated with perceiving the world state.
 
-#[allow(missing_docs)]
 pub mod camera;
-#[allow(missing_docs)]
 pub mod grass_buffers;
-#[allow(missing_docs)]
 pub mod light;
-#[allow(missing_docs)]
 pub mod mob_buffers;
-#[allow(missing_docs)]
 pub mod player_buffers;
-#[allow(missing_docs)]
 mod render;
-#[allow(missing_docs)]
 pub mod shaders;
-#[allow(missing_docs)]
 pub mod terrain_buffers;
-#[allow(missing_docs)]
 pub mod thread;
-#[allow(missing_docs)]
 pub mod update;
 
 pub use self::render::render;
@@ -84,7 +74,9 @@ pub struct T<'a> {
   /// Whether to render HUD elements
   pub input_mode: InputMode,
 
+  /// Distance to near clip plane
   pub near_clip: f32,
+  /// Distance to far clip plane
   pub far_clip: f32,
 }
 

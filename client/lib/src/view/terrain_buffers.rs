@@ -19,9 +19,10 @@ const VERTICES_PER_TRIANGLE: u32 = 3;
 #[cfg(test)]
 use std::mem;
 
-// VRAM bytes
+/// Maximum number of bytes to be used in VRAM
 pub const BYTE_BUDGET: usize = 64_000_000;
-pub const POLYGON_COST: usize = 100;
+const POLYGON_COST: usize = 100;
+/// Maximum number of polygons to be used in VRAM
 pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
@@ -98,6 +99,7 @@ impl<'a> T<'a> {
     }
   }
 
+  #[allow(missing_docs)]
   pub fn bind_vertex_positions(
     &self,
     gl: &mut GLContext,
@@ -108,6 +110,7 @@ impl<'a> T<'a> {
     self.bind(texture_unit_alloc, shader, "positions", self.vertex_positions.handle.gl_id);
   }
 
+  #[allow(missing_docs)]
   pub fn bind_normals(
     &self,
     gl: &mut GLContext,
@@ -118,6 +121,7 @@ impl<'a> T<'a> {
     self.bind(texture_unit_alloc, shader, "normals", self.normals.handle.gl_id);
   }
 
+  #[allow(missing_docs)]
   pub fn bind_materials(
     &self,
     gl: &mut GLContext,

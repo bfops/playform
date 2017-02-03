@@ -1,3 +1,5 @@
+//! The main thread that processes updates from the client and the server and dispatches updates to other systems.
+
 use std::sync::Mutex;
 use stopwatch;
 use time;
@@ -16,6 +18,7 @@ use view;
 
 const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
 
+#[allow(missing_docs)]
 pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateServer, EnqueueTerrainLoad>(
   quit                 : &Mutex<bool>,
   client               : &client::T,

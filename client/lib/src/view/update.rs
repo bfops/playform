@@ -26,13 +26,9 @@ pub enum T {
   SetSun(light::Sun),
 
   /// Add a terrain chunk to the view.
-  LoadMesh {
-    mesh: Box<terrain_mesh::T>,
-  },
+  LoadMesh (Box<terrain_mesh::T>),
   /// Remove a terrain entity.
-  UnloadMesh {
-    ids: terrain_mesh::Ids,
-  },
+  UnloadMesh(terrain_mesh::Ids),
   /// Treat a series of updates as an atomic operation.
   Atomic(Vec<T>),
 }
@@ -61,7 +57,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
         },
       }
     },
-    T::LoadMesh { mesh } => {
+    T::LoadMesh(mesh) => {
       stopwatch::time("add_chunk", || {
         view.terrain_buffers.push(
           &mut view.gl,
@@ -89,7 +85,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
         );
       })
     },
-    T::UnloadMesh { ids: terrain_mesh::Ids { terrain_ids, grass_ids } } => {
+    T::UnloadMesh(terrain_mesh::Ids { terrain_ids, grass_ids }) => {
       for id in terrain_ids {
         match view.terrain_buffers.swap_remove(&mut view.gl, id) {
           None => {},

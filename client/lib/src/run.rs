@@ -1,3 +1,5 @@
+//! entry point
+
 use std;
 use std::io::Write;
 use std::sync::{Mutex};

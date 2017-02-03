@@ -1,7 +1,9 @@
+//! own a set of playing audio tracks and combine them into a single buffer
+
 use std;
 use std::sync::atomic;
 
-#[allow(unused)]
+/// one independent audio track
 pub struct Track {
   // TODO: Make this a ref.
   data: Vec<f32>,
@@ -10,7 +12,7 @@ pub struct Track {
 }
 
 impl Track {
-  #[allow(unused)]
+  #[allow(missing_docs)]
   pub fn new(data: Vec<f32>, repeat: bool) -> Self {
     Track {
       data: data,
@@ -21,6 +23,7 @@ impl Track {
 }
 
 impl Track {
+  #[allow(missing_docs)]
   pub fn is_done(&self) -> bool {
     !self.repeat && (self.idx >= self.data.len())
   }
@@ -43,6 +46,7 @@ impl Iterator for Track {
   }
 }
 
+/// all the playing sounds
 pub struct TracksPlaying {
   tracks: Vec<Track>,
   ready: atomic::AtomicBool,
@@ -52,6 +56,7 @@ pub struct TracksPlaying {
 unsafe impl Sync for TracksPlaying {}
 
 impl TracksPlaying {
+  #[allow(missing_docs)]
   pub fn new(buffer_len: usize) -> Self {
     TracksPlaying {
       tracks: Vec::new(),
@@ -60,10 +65,12 @@ impl TracksPlaying {
     }
   }
 
+  /// add a new independently playing audio track
   pub fn push(&mut self, t: Track) {
     self.tracks.push(t);
   }
 
+  /// fill the buffer with the next sample of all the tracks, mixed together
   pub fn refresh_buffer(&mut self) {
     if self.ready.load(atomic::Ordering::Acquire) {
       return
@@ -94,7 +101,7 @@ impl TracksPlaying {
     self.ready.store(true, atomic::Ordering::Release);
   }
 
-  #[allow(unused)]
+  /// invoke a callback with the most recent audio sample
   pub fn with_buffer<F>(&mut self, f: F)
     where F: FnOnce(&mut [f32])
   {

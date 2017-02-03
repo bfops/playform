@@ -5,6 +5,7 @@ pub const LG_WIDTH: u16 = 3;
 /// The width of a chunk of terrain.
 pub const WIDTH: u32 = 1 << LG_WIDTH;
 
+#[allow(missing_docs)]
 pub mod position {
   use cgmath::{Point3, Vector3};
   use std::ops::Add;
@@ -18,6 +19,7 @@ pub mod position {
   /// The position is implicitly in units of chunk::WIDTH.
   pub struct T(Point3<i32>);
 
+  /// chunk position that contains a given voxel
   #[inline(never)]
   pub fn containing_voxel(bounds: &voxel::bounds::T) -> T {
     if bounds.lg_size < 0 {

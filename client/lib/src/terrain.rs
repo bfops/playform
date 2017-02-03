@@ -1,3 +1,5 @@
+//! Keep track of terrain load state, and store voxels cached from the server.
+
 use cgmath;
 use collision;
 use rand;
@@ -16,6 +18,7 @@ use record_book;
 use terrain_mesh;
 use view;
 
+#[allow(missing_docs)]
 #[derive(Debug, Clone)]
 pub enum Load {
   Voxels {
@@ -26,6 +29,7 @@ pub enum Load {
   },
 }
 
+#[allow(missing_docs)]
 pub struct T {
   /// A record of all the chunks that have been loaded.
   loaded_chunks       : fnv_map::T<chunk::position::T, (terrain_mesh::Ids, lod::T)>,
@@ -37,6 +41,7 @@ pub struct T {
   queue               : std::collections::VecDeque<Load>,
 }
 
+#[allow(missing_docs)]
 pub fn new(max_load_distance: u32) -> T {
   T {
     loaded_chunks       : fnv_map::new(),
@@ -48,16 +53,19 @@ pub fn new(max_load_distance: u32) -> T {
 }
 
 impl T {
+  /// return the LOD at which a chunk is loaded
   pub fn load_state(&self, chunk_position: &chunk::position::T) -> Option<lod::T> {
     self.loaded_chunks
       .get(&chunk_position)
       .map(|&(_, lod)| lod)
   }
 
+  /// get the count of queued messages
   pub fn queued_update_count(&self) -> usize {
     self.queue.len()
   }
 
+  /// enqueue an unordered series of individual voxel loads
   pub fn enqueue(&mut self, msg: Load) {
     self.queue.push_back(msg);
   }
@@ -79,6 +87,7 @@ impl T {
     *chunk_voxels_loaded == samples as u32
   }
 
+  /// Iterate through some enqueued voxel loads and load any updated chunks.
   pub fn tick<Rng, UpdateView>(
     &mut self,
     id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
@@ -131,25 +140,23 @@ impl T {
     // TODO: Rc instead of clone.
     match self.loaded_chunks.entry(*chunk_position) {
       Vacant(entry) => {
-        entry.insert((mesh_chunk.ids(), lod));
+        entry.insert((mesh_chunk.ids.clone(), lod));
       },
       Occupied(mut entry) => {
-        let (ids, _) = entry.insert((mesh_chunk.ids(), lod));
-        updates.push(view::update::UnloadMesh { ids: ids });
+        let (ids, _) = entry.insert((mesh_chunk.ids.clone(), lod));
+        updates.push(view::update::UnloadMesh(ids));
       },
     };
 
-    if !mesh_chunk.ids.is_empty() {
-      updates.push(
-        view::update::LoadMesh {
-          mesh : Box::new(mesh_chunk),
-        }
-      );
+    if !mesh_chunk.is_empty() {
+      updates.push(view::update::LoadMesh(Box::new(mesh_chunk)));
     }
 
     update_view(view::update::Atomic(updates));
   }
 
+  /// try to load a chunk into VRAM.
+  /// if some voxels are missing, returns an Err of all the voxels that need to be fetched from the server.
   pub fn load_chunk<Rng, UpdateView>(
     &mut self,
     id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
@@ -334,6 +341,7 @@ impl T {
     }
   }
 
+  /// unload a chunk
   pub fn unload<UpdateView>(
     &mut self,
     update_view    : &mut UpdateView,
@@ -344,7 +352,7 @@ impl T {
     match self.loaded_chunks.remove(chunk_position) {
       None => {},
       Some((ids, _)) => {
-        update_view(view::update::UnloadMesh { ids: ids });
+        update_view(view::update::UnloadMesh(ids));
       },
     }
   }
