@@ -148,6 +148,8 @@ impl<'a> T<'a> {
     normals   : &[Triangle<Vector3<GLfloat>>; VRAM_CHUNK_LENGTH],
     materials : &[GLint; VRAM_CHUNK_LENGTH],
   ) {
+    debug!("Insert {:?}", chunk_id);
+
     let vertices  = unsafe { std::slice::from_raw_parts(vertices.as_ptr()  as *const _, 1) };
     let normals   = unsafe { std::slice::from_raw_parts(normals.as_ptr()   as *const _, 1) };
     let materials = unsafe { std::slice::from_raw_parts(materials.as_ptr() as *const _, 1) };
@@ -160,7 +162,8 @@ impl<'a> T<'a> {
     let success = self.normals.buffer.push(gl, normals);
     assert!(success);
 
-    self.id_to_index.insert(chunk_id, self.index_to_id.len());
+    let previous = self.id_to_index.insert(chunk_id, self.index_to_id.len());
+    assert!(previous.is_none());
     self.index_to_id.push(chunk_id);
     assert_eq!(self.id_to_index.len(), self.index_to_id.len());
 
@@ -184,6 +187,8 @@ impl<'a> T<'a> {
     let swapped_id = self.index_to_id[swapped_idx];
     self.index_to_id.swap_remove(idx);
     self.id_to_index.remove(&id);
+
+    debug!("Swap-remove {:?} {:?} with {:?} {:?}", id, idx, swapped_id, swapped_idx);
 
     let r =
       if id == swapped_id {

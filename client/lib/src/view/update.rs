@@ -63,7 +63,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
       stopwatch::time("add_chunk", move || {
         let mesh = *mesh;
         let terrain_mesh::T { chunked_terrain, grass } = mesh;
-        for i in 0 .. chunked_terrain.vertex_coordinates.len() {
+        for i in 0 .. chunked_terrain.len() {
           view.terrain_buffers.push(
             &mut view.gl,
             chunked_terrain.ids[i],

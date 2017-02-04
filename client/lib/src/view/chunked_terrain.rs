@@ -25,8 +25,13 @@ pub struct T {
 
 impl T {
   /// is there nothing to be loaded in this chunk?
+  pub fn len(&self) -> usize {
+    self.ids.len()
+  }
+
+  /// is there nothing to be loaded in this chunk?
   pub fn is_empty(&self) -> bool {
-    self.ids.is_empty()
+    self.len() == 0
   }
 }
 
