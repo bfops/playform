@@ -29,7 +29,7 @@ pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
 // Instead of storing individual vertices, normals, etc. in VRAM, store them in chunks.
 // This makes it much faster to unload things.
 /// The number of polygons loaded contiguously into VRAM.
-pub const VRAM_CHUNK_LENGTH: usize = 1 << 10;
+pub const VRAM_CHUNK_LENGTH: usize = 1 << 5;
 const CHUNK_BUDGET: usize = POLYGON_BUDGET / VRAM_CHUNK_LENGTH;
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
@@ -142,45 +142,15 @@ impl<'a> T<'a> {
   /// Add a series of entites into VRAM.
   pub fn push(
     &mut self,
-    gl: &mut GLContext,
-    mut vertices: Vec<Triangle<Point3<GLfloat>>>,
-    mut normals: Vec<Triangle<Vector3<GLfloat>>>,
-    chunk_id: entity_id::T,
-    mut materials: Vec<GLint>,
+    gl        : &mut GLContext,
+    chunk_id  : entity_id::T,
+    vertices  : &[Triangle<Point3<GLfloat>>; VRAM_CHUNK_LENGTH],
+    normals   : &[Triangle<Vector3<GLfloat>>; VRAM_CHUNK_LENGTH],
+    materials : &[GLint; VRAM_CHUNK_LENGTH],
   ) {
-    let len = vertices.len();
-    assert_eq!(normals.len(), len);
-    assert_eq!(materials.len(), len);
-
-    let diff = VRAM_CHUNK_LENGTH as isize - len as isize;
-    if diff < 0 {
-      panic!("Chunk of size {}", len);
-    } else if diff > 0 {
-      let diff = diff as usize;
-      vertices.reserve_exact(diff);
-      normals.reserve_exact(diff);
-      materials.reserve_exact(diff);
-      unsafe {
-        vertices.set_len(VRAM_CHUNK_LENGTH);
-        normals.set_len(VRAM_CHUNK_LENGTH);
-        materials.set_len(VRAM_CHUNK_LENGTH);
-        let vertices_ptr = vertices.as_mut_ptr().offset(len as isize);
-        let normals_ptr = normals.as_mut_ptr().offset(len as isize);
-        let materials_ptr = materials.as_mut_ptr().offset(len as isize);
-        std::ptr::write_bytes(vertices_ptr, 0, diff);
-        std::ptr::write_bytes(normals_ptr, 0, diff);
-        std::ptr::write_bytes(materials_ptr, 0, diff);
-      }
-    }
-
-    // The length of each vector is now VRAM_CHUNK_LENGTH.
-
-    let vertices: &[[Triangle<Point3<GLfloat>>; VRAM_CHUNK_LENGTH]] =
-      unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const _, 1) };
-    let normals: &[[Triangle<Vector3<GLfloat>>; VRAM_CHUNK_LENGTH]] =
-      unsafe { std::slice::from_raw_parts(normals.as_ptr() as *const _, 1) };
-    let materials: &[[GLint; VRAM_CHUNK_LENGTH]] =
-      unsafe { std::slice::from_raw_parts(materials.as_ptr() as *const _, 1) };
+    let vertices  = unsafe { std::slice::from_raw_parts(vertices.as_ptr()  as *const _, 1) };
+    let normals   = unsafe { std::slice::from_raw_parts(normals.as_ptr()   as *const _, 1) };
+    let materials = unsafe { std::slice::from_raw_parts(materials.as_ptr() as *const _, 1) };
 
     self.vertex_positions.buffer.byte_buffer.bind(gl);
     let success = self.vertex_positions.buffer.push(gl, vertices);

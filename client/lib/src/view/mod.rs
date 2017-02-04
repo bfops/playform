@@ -1,7 +1,7 @@
 //! The state associated with perceiving the world state.
 
 mod camera;
-mod chunk_stats;
+pub mod chunked_terrain;
 mod grass_buffers;
 pub mod light;
 mod mob_buffers;

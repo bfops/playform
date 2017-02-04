@@ -5,7 +5,6 @@ use collision::{Aabb, Aabb3};
 use isosurface_extraction::dual_contouring;
 use num::iter::range_inclusive;
 use rand;
-use std::f32;
 use std::sync::Mutex;
 use stopwatch;
 
@@ -15,7 +14,11 @@ use common::voxel;
 // TODO: Move the server-only parts to the server, like BLOCK_WIDTH and sample_info.
 
 use chunk;
+use chunk_stats;
 use lod;
+use terrain_mesh;
+
+use view::chunked_terrain;
 
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
 /// [T; 3], but serializable.
@@ -114,18 +117,22 @@ mod voxel_storage {
 
 #[allow(missing_docs)]
 pub fn generate<Rng: rand::Rng>(
-  voxels: &voxel::tree::T,
-  chunk_position: &chunk::position::T,
-  lod: lod::T,
-  id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
-  rng: &mut Rng,
-) -> T
+  voxels         : &voxel::tree::T,
+  chunk_stats    : &mut chunk_stats::T,
+  chunk_position : &chunk::position::T,
+  lod            : lod::T,
+  id_allocator   : &Mutex<id_allocator::T<entity_id::T>>,
+  rng            : &mut Rng,
+) -> terrain_mesh::T
 {
   stopwatch::time("terrain_mesh::generate", || {
-    let chunk_id = id_allocator::allocate(id_allocator);
-    let mut chunk = empty(chunk_id);
     let lg_edge_samples = lod.lg_edge_samples();
     let lg_sample_size = lod.lg_sample_size();
+
+    let mut vertex_coordinates = Vec::new();
+    let mut normals = Vec::new();
+    let mut materials = Vec::new();
+    let mut grass = terrain_mesh::Grass::new();
 
     let low = *chunk_position.as_pnt();
     let high = low + (&Vector3::new(1, 1, 1));
@@ -163,17 +170,14 @@ pub fn generate<Rng: rand::Rng>(
               &mut voxel_storage::T { voxels: voxels },
               &edge,
               &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
-                chunk.vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
-                chunk.normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
-                chunk.materials.push(polygon.material as i32);
+                let polygon_offset = vertex_coordinates.len();
+                vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
+                normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
+                materials.push(polygon.material as i32);
 
                 if polygon.material == voxel::Material::Terrain && lod <= lod::MAX_GRASS_LOD {
-                  chunk.grass.push(
-                    Grass {
-                      tex_id: rng.gen_range(0, 9),
-                    }
-                  );
-                  chunk.ids.grass_ids.push(id_allocator::allocate(id_allocator));
+                  grass.tex_ids.push(rng.gen_range(0, 9));
+                  grass.ids.push(id_allocator::allocate(id_allocator));
                 }
               }
             );
@@ -199,69 +203,65 @@ pub fn generate<Rng: rand::Rng>(
         low.z, high.z - 1,
       );
     }
-    chunk
+
+    let id_allocator = &mut *id_allocator.lock().unwrap();
+    chunk_stats.add(vertex_coordinates.len());
+    terrain_mesh::T {
+      chunked_terrain : chunked_terrain::of_parts(id_allocator, vertex_coordinates, normals, materials),
+      grass           : grass,
+    }
   })
 }
 
 /// All the information required to construct a grass tuft in vram
 #[derive(Debug, Clone)]
 pub struct Grass {
-  /// index of the grass texture
-  pub tex_id : u32,
-}
-
-/// unique identifiers for every independent piece of a chunk loaded into vram
-#[derive(Debug, Clone)]
-pub struct Ids {
-  /// Entity ID for the terrain buffers.
-  pub chunk_id: entity_id::T,
-  /// Entity IDs for each grass tuft.
-  pub grass_ids: Vec<entity_id::T>,
-}
-
-impl Ids {
+  /// subtexture indices
+  pub tex_ids : Vec<u32>,
   #[allow(missing_docs)]
-  pub fn new(chunk_id: entity_id::T) -> Self {
-    Ids {
-      chunk_id  : chunk_id,
-      grass_ids : Vec::new(),
+  pub ids : Vec<entity_id::T>,
+}
+
+impl Grass {
+  #[allow(missing_docs)]
+  pub fn new() -> Self {
+    Grass {
+      tex_ids : Vec::new(),
+      ids     : Vec::new(),
     }
+  }
+
+  #[allow(missing_docs)]
+  pub fn len(&self) -> usize {
+    self.ids.len()
+  }
+
+  #[allow(missing_docs)]
+  pub fn is_empty(&self) -> bool {
+    self.len() == 0
   }
 }
 
-#[derive(Debug)]
 /// A small continguous chunk of terrain.
 pub struct T {
-  // These Vecs must all be ordered the same way; each entry is the next triangle.
-
-  /// Position of each vertex.
-  pub vertex_coordinates: Vec<Triangle<Point3<f32>>>,
-  /// Vertex normals. These should be normalized!
-  pub normals: Vec<Triangle<Vector3<f32>>>,
-  /// Material IDs for each triangle.
-  pub materials: Vec<i32>,
-  /// grass tufts in this chunk
-  pub grass: Vec<Grass>,
   #[allow(missing_docs)]
-  pub ids: Ids,
+  pub chunked_terrain: chunked_terrain::T,
+  #[allow(missing_docs)]
+  pub grass: Grass,
 }
 
 impl T {
-  /// is there nothing to be loaded in this chunk
+  /// is there nothing to be loaded in this chunk?
   pub fn is_empty(&self) -> bool {
-    self.vertex_coordinates.is_empty() && self.grass.is_empty()
+    self.chunked_terrain.is_empty() && self.grass.is_empty()
   }
 }
 
-/// Construct an empty `T`.
-pub fn empty(chunk_id: entity_id::T) -> T {
-  T {
-    vertex_coordinates: Vec::new(),
-    normals: Vec::new(),
-
-    ids: Ids::new(chunk_id),
-    materials: Vec::new(),
-
-    grass: Vec::new(),
-  }
+#[allow(missing_docs)]
+#[derive(Debug, Clone)]
+pub struct Ids {
+  #[allow(missing_docs)]
+  pub chunk_ids : Vec<entity_id::T>,
+  #[allow(missing_docs)]
+  pub grass_ids : Vec<entity_id::T>,
 }

@@ -10,6 +10,7 @@ use common::surroundings_loader::LoadType;
 
 use audio_thread;
 use chunk;
+use chunk_stats;
 use client;
 use lod;
 use server_update::apply_server_update;
@@ -36,6 +37,8 @@ pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateSe
   UpdateServer       : FnMut(protocol::ClientToServer),
   EnqueueTerrainLoad : FnMut(terrain::Load),
 {
+  let mut chunk_stats = chunk_stats::new();
+
   'update_loop: loop {
     let should_quit = *quit.lock().unwrap();
     if should_quit {
@@ -47,20 +50,24 @@ pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateSe
         });
 
         stopwatch::time("update_surroundings", || {
-          update_surroundings(client, update_view1, update_server);
+          update_surroundings(client, &mut chunk_stats, update_view1, update_server);
         });
 
         stopwatch::time("process_voxel_updates", || {
-          process_voxel_updates(client, update_view1);
+          process_voxel_updates(client, &mut chunk_stats, update_view1);
         });
       })
     }
   }
+
+  debug!("Printing chunk stats");
+  chunk_stats.output_to("vram_chunk_loads.out");
 }
 
 #[inline(never)]
 fn update_surroundings<UpdateView, UpdateServer>(
   client        : &client::T,
+  chunk_stats   : &mut chunk_stats::T,
   update_view   : &mut UpdateView,
   update_server : &mut UpdateServer,
 ) where
@@ -107,7 +114,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
           if load_state == Some(new_lod) {
             debug!("Not re-loading {:?} at {:?}", chunk_position, new_lod);
           } else {
-            load_or_request_chunk(client, update_server, update_view, &chunk_position, new_lod);
+            load_or_request_chunk(client, chunk_stats, update_server, update_view, &chunk_position, new_lod);
           }
         })
       },
@@ -117,7 +124,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
           let load_state = client.terrain.lock().unwrap().load_state(&chunk_position);
           let is_downgrade = load_state.map(|lod| new_lod < lod) == Some(true);
           if is_downgrade {
-            load_or_request_chunk(client, update_server, update_view, &chunk_position, new_lod);
+            load_or_request_chunk(client, chunk_stats, update_server, update_view, &chunk_position, new_lod);
           } else {
             trace!("Not updating {:?} at {:?}", chunk_position, new_lod);
           }
@@ -142,6 +149,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
 
 fn load_or_request_chunk<UpdateServer, UpdateView>(
   client         : &client::T,
+  chunk_stats    : &mut chunk_stats::T,
   update_server  : &mut UpdateServer,
   update_view    : &mut UpdateView,
   chunk_position : &chunk::position::T,
@@ -156,6 +164,7 @@ fn load_or_request_chunk<UpdateServer, UpdateView>(
     terrain.load_chunk(
       &client.id_allocator,
       &mut *rng,
+      chunk_stats,
       update_view,
       chunk_position,
       lod,
@@ -178,6 +187,7 @@ fn load_or_request_chunk<UpdateServer, UpdateView>(
 #[inline(never)]
 fn process_voxel_updates<UpdateView>(
   client      : &client::T,
+  chunk_stats : &mut chunk_stats::T,
   update_view : &mut UpdateView,
 ) where
   UpdateView: FnMut(view::update::T),
@@ -187,6 +197,7 @@ fn process_voxel_updates<UpdateView>(
   terrain.tick(
     &client.id_allocator,
     rng,
+    chunk_stats,
     update_view,
     &*client.player_position.lock().unwrap(),
   );

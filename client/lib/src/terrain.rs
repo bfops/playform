@@ -13,6 +13,7 @@ use common::surroundings_loader;
 use common::voxel;
 
 use chunk;
+use chunk_stats;
 use lod;
 use record_book;
 use terrain_mesh;
@@ -92,6 +93,7 @@ impl T {
     &mut self,
     id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
     rng             : &mut Rng,
+    chunk_stats     : &mut chunk_stats::T,
     update_view     : &mut UpdateView,
     player_position : &cgmath::Point3<f32>,
   ) where
@@ -105,6 +107,7 @@ impl T {
           self.load_voxels(
             id_allocator,
             rng,
+            chunk_stats,
             update_view,
             player_position,
             voxels,
@@ -124,6 +127,7 @@ impl T {
     &mut self,
     id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
     rng            : &mut Rng,
+    chunk_stats    : &mut chunk_stats::T,
     update_view    : &mut UpdateView,
     chunk_position : &chunk::position::T,
     lod            : lod::T,
@@ -132,18 +136,24 @@ impl T {
     Rng        : rand::Rng,
   {
     debug!("generate {:?} at {:?}", chunk_position, lod);
-    let mesh_chunk = terrain_mesh::generate(&self.voxels, &chunk_position, lod, id_allocator, rng);
+    let mesh_chunk: terrain_mesh::T = terrain_mesh::generate(&self.voxels, chunk_stats, &chunk_position, lod, id_allocator, rng);
 
     let mut updates = Vec::new();
+
+    let ids =
+      terrain_mesh::Ids {
+        chunk_ids: mesh_chunk.chunked_terrain.ids.clone(),
+        grass_ids: mesh_chunk.grass.ids.clone(),
+      };
 
     use std::collections::hash_map::Entry::*;
     // TODO: Rc instead of clone.
     match self.loaded_chunks.entry(*chunk_position) {
       Vacant(entry) => {
-        entry.insert((mesh_chunk.ids.clone(), lod));
+        entry.insert((ids, lod));
       },
       Occupied(mut entry) => {
-        let (ids, _) = entry.insert((mesh_chunk.ids.clone(), lod));
+        let (ids, _) = entry.insert((ids, lod));
         updates.push(view::update::UnloadMesh(ids));
       },
     };
@@ -161,6 +171,7 @@ impl T {
     &mut self,
     id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
     rng            : &mut Rng,
+    chunk_stats    : &mut chunk_stats::T,
     update_view    : &mut UpdateView,
     chunk_position : &chunk::position::T,
     lod            : lod::T,
@@ -177,6 +188,7 @@ impl T {
       self.force_load_chunk(
         id_allocator,
         rng,
+        chunk_stats,
         update_view,
         chunk_position,
         lod,
@@ -292,6 +304,7 @@ impl T {
     &mut self,
     id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
     rng             : &mut Rng,
+    chunk_stats     : &mut chunk_stats::T,
     update_view     : &mut UpdateView,
     player_position : &cgmath::Point3<f32>,
     voxel_updates   : Vec<(voxel::bounds::T, voxel::T)>,
@@ -318,6 +331,7 @@ impl T {
         self.load_chunk(
           id_allocator,
           rng,
+          chunk_stats,
           update_view,
           &chunk,
           lod,

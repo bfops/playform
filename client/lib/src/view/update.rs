@@ -9,7 +9,6 @@ use terrain_mesh;
 use vertex::ColoredVertex;
 use view;
 
-use super::chunk_stats;
 use super::light;
 use super::mob_buffers::VERTICES_PER_MOB;
 use super::player_buffers::VERTICES_PER_PLAYER;
@@ -41,7 +40,7 @@ unsafe impl Send for T {}
 pub use self::T::*;
 
 #[allow(missing_docs)]
-pub fn apply_client_to_view(view: &mut view::T, chunk_stats: &mut chunk_stats::T, up: T) {
+pub fn apply_client_to_view(view: &mut view::T, up: T) {
   match up {
     T::MoveCamera(position) => {
       view.camera.translate_to(position);
@@ -63,24 +62,26 @@ pub fn apply_client_to_view(view: &mut view::T, chunk_stats: &mut chunk_stats::T
     T::LoadMesh(mesh) => {
       stopwatch::time("add_chunk", move || {
         let mesh = *mesh;
-        let terrain_mesh::T { vertex_coordinates, normals, ids, materials, grass, .. } = mesh;
-        chunk_stats.add(vertex_coordinates.len());
-        view.terrain_buffers.push(
-          &mut view.gl,
-          vertex_coordinates,
-          normals,
-          ids.chunk_id,
-          materials,
-        );
+        let terrain_mesh::T { chunked_terrain, grass } = mesh;
+        for i in 0 .. chunked_terrain.vertex_coordinates.len() {
+          view.terrain_buffers.push(
+            &mut view.gl,
+            chunked_terrain.ids[i],
+            &chunked_terrain.vertex_coordinates[i],
+            &chunked_terrain.normals[i],
+            &chunked_terrain.materials[i],
+          );
+        }
         let mut grass_entries = Vec::with_capacity(grass.len());
         let mut polygon_indices = Vec::with_capacity(grass.len());
-        for (i, g) in grass.iter().enumerate() {
-          let g: &terrain_mesh::Grass = g;
-          let polygon_idx = view.terrain_buffers.lookup_opengl_index(ids.chunk_id).unwrap() * terrain_buffers::VRAM_CHUNK_LENGTH as u32 + i as u32;
+        for (i, tex_id) in grass.tex_ids.iter().enumerate() {
+          let chunk_id = chunked_terrain.ids[i / terrain_buffers::VRAM_CHUNK_LENGTH];
+          let chunk_idx = view.terrain_buffers.lookup_opengl_index(chunk_id).unwrap();
+          let polygon_idx = chunk_idx * terrain_buffers::VRAM_CHUNK_LENGTH as u32 + i as u32;
           grass_entries.push(
             view::grass_buffers::Entry {
               polygon_idx : polygon_idx,
-              tex_id      : g.tex_id,
+              tex_id      : *tex_id,
             }
           );
           polygon_indices.push(polygon_idx);
@@ -89,22 +90,24 @@ pub fn apply_client_to_view(view: &mut view::T, chunk_stats: &mut chunk_stats::T
           &mut view.gl,
           grass_entries.as_ref(),
           polygon_indices.as_ref(),
-          ids.grass_ids.as_ref(),
+          grass.ids.as_ref(),
         );
       })
     },
-    T::UnloadMesh(terrain_mesh::Ids { chunk_id, grass_ids }) => {
-      match view.terrain_buffers.swap_remove(&mut view.gl, chunk_id) {
-        None => {},
-        Some((idx, swapped_idx)) => {
-          let swapped_base = swapped_idx * terrain_buffers::VRAM_CHUNK_LENGTH;
-          let base = idx * terrain_buffers::VRAM_CHUNK_LENGTH;
-          for i in 0..terrain_buffers::VRAM_CHUNK_LENGTH {
-            view.grass_buffers.update_polygon_index(
-              &mut view.gl,
-              (swapped_base + i) as u32,
-              (base + i) as u32,
-            );
+    T::UnloadMesh(terrain_mesh::Ids { chunk_ids, grass_ids }) => {
+      for chunk_id in chunk_ids {
+        match view.terrain_buffers.swap_remove(&mut view.gl, chunk_id) {
+          None => {},
+          Some((idx, swapped_idx)) => {
+            let swapped_base = swapped_idx * terrain_buffers::VRAM_CHUNK_LENGTH;
+            let base = idx * terrain_buffers::VRAM_CHUNK_LENGTH;
+            for i in 0..terrain_buffers::VRAM_CHUNK_LENGTH {
+              view.grass_buffers.update_polygon_index(
+                &mut view.gl,
+                (swapped_base + i) as u32,
+                (base + i) as u32,
+              );
+            }
           }
         }
       }
@@ -114,7 +117,7 @@ pub fn apply_client_to_view(view: &mut view::T, chunk_stats: &mut chunk_stats::T
     },
     T::Atomic(updates) => {
       for up in updates {
-        apply_client_to_view(view, chunk_stats, up);
+        apply_client_to_view(view, up);
       }
     },
   };
