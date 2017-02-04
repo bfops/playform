@@ -178,6 +178,7 @@ pub fn generate<Rng: rand::Rng>(
                 if polygon.material == voxel::Material::Terrain && lod <= lod::MAX_GRASS_LOD {
                   grass.tex_ids.push(rng.gen_range(0, 9));
                   grass.ids.push(id_allocator::allocate(id_allocator));
+                  grass.polygon_offsets.push(polygon_offset);
                 }
               }
             );
@@ -220,14 +221,17 @@ pub struct Grass {
   pub tex_ids : Vec<u32>,
   #[allow(missing_docs)]
   pub ids : Vec<entity_id::T>,
+  /// offset, relative to the beginning of the chunk, of the terrain polygon that a grass tuft rests on
+  pub polygon_offsets : Vec<usize>,
 }
 
 impl Grass {
   #[allow(missing_docs)]
   pub fn new() -> Self {
     Grass {
-      tex_ids : Vec::new(),
-      ids     : Vec::new(),
+      tex_ids         : Vec::new(),
+      ids             : Vec::new(),
+      polygon_offsets : Vec::new(),
     }
   }
 

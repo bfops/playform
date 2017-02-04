@@ -26,7 +26,7 @@ pub struct T {
 impl T {
   /// is there nothing to be loaded in this chunk?
   pub fn is_empty(&self) -> bool {
-    self.vertex_coordinates.is_empty()
+    self.ids.is_empty()
   }
 }
 

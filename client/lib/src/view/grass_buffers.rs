@@ -196,6 +196,7 @@ impl<'a> T<'a> {
     }
 
     for (id, polygon_idx) in grass_ids.iter().zip(polygon_idxs.iter()) {
+      println!("Insert {:?} {:?}", *id, *polygon_idx);
       self.to_polygon_idx.insert(*id, *polygon_idx);
       self.of_polygon_idx.insert(*polygon_idx, *id);
     }
@@ -217,8 +218,12 @@ impl<'a> T<'a> {
     self.per_tuft.byte_buffer.bind(gl);
     self.per_tuft.swap_remove(gl, idx, 1);
 
+    println!("Try to remove {:?}", id);
+    println!("foo");
     let polygon_idx = self.to_polygon_idx.remove(&id).unwrap();
+    println!("asdf");
     self.of_polygon_idx.remove(&polygon_idx).unwrap();
+    println!("Remove {:?} {:?}", id, polygon_idx);
   }
 
   /// Update the index of the underlying polygon that a grass tuft is associated with.
@@ -233,6 +238,7 @@ impl<'a> T<'a> {
         None => return,
         Some(id) => *id,
       };
+    println!("Update {:?} {:?}", grass_id, new_index);
     self.of_polygon_idx.insert(new_index, grass_id);
     self.to_polygon_idx.insert(grass_id, new_index);
     let entry_idx = self.id_to_index[&grass_id];

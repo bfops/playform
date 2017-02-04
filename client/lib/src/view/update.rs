@@ -74,14 +74,16 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
         }
         let mut grass_entries = Vec::with_capacity(grass.len());
         let mut polygon_indices = Vec::with_capacity(grass.len());
-        for (i, tex_id) in grass.tex_ids.iter().enumerate() {
-          let chunk_id = chunked_terrain.ids[i / terrain_buffers::VRAM_CHUNK_LENGTH];
+        for i in 0..grass.len() {
+          let chunk_offset = grass.polygon_offsets[i] / terrain_buffers::VRAM_CHUNK_LENGTH;
+          let polygon_offset = grass.polygon_offsets[i] % terrain_buffers::VRAM_CHUNK_LENGTH;
+          let chunk_id = chunked_terrain.ids[chunk_offset];
           let chunk_idx = view.terrain_buffers.lookup_opengl_index(chunk_id).unwrap();
-          let polygon_idx = chunk_idx * terrain_buffers::VRAM_CHUNK_LENGTH as u32 + i as u32;
+          let polygon_idx = chunk_idx * terrain_buffers::VRAM_CHUNK_LENGTH as u32 + polygon_offset as u32;
           grass_entries.push(
             view::grass_buffers::Entry {
               polygon_idx : polygon_idx,
-              tex_id      : *tex_id,
+              tex_id      : grass.tex_ids[i],
             }
           );
           polygon_indices.push(polygon_idx);
@@ -95,6 +97,10 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
       })
     },
     T::UnloadMesh(terrain_mesh::Ids { chunk_ids, grass_ids }) => {
+      // Removing grass needs to happen before the calls to [update_polygon_index], or we will remove the wrong things.
+      for id in grass_ids {
+        view.grass_buffers.swap_remove(&mut view.gl, id);
+      }
       for chunk_id in chunk_ids {
         match view.terrain_buffers.swap_remove(&mut view.gl, chunk_id) {
           None => {},
@@ -110,9 +116,6 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
             }
           }
         }
-      }
-      for id in grass_ids {
-        view.grass_buffers.swap_remove(&mut view.gl, id);
       }
     },
     T::Atomic(updates) => {

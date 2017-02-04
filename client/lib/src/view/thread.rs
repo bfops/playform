@@ -57,8 +57,9 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   let mut window =
     video.window(
       "Playform",
-      800, 600,
+      0, 0,
     );
+  let window = window.fullscreen_desktop();
   let window = window.opengl();
   let window = window.build().unwrap();
 
