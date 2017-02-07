@@ -7,7 +7,7 @@ extern crate env_logger;
 #[macro_use]
 extern crate log;
 
-extern crate client_lib;
+extern crate dummy_client_lib as client_lib;
 
 use std::borrow::Borrow;
 use std::env;

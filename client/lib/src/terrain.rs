@@ -71,6 +71,18 @@ impl T {
     self.queue.push_back(msg);
   }
 
+  pub fn add_to_cache(&mut self, voxels: Vec<(voxels::bounds::T, voxel::T)>) {
+    for (bounds, voxel) in &voxels {
+      let voxel = Some(voxel);
+      let node = self.voxels.get_mut_or_create(bounds);
+      let voxel = &mut node.data;
+      if voxel.is_some() {
+        panic!("added an already-existing voxel to the cache");
+      }
+      *voxel = voxel;
+    }
+  }
+
   fn all_voxels_loaded(
     &self,
     chunk_position: chunk::position::T,

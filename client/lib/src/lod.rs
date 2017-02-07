@@ -4,17 +4,16 @@ use num;
 
 use chunk;
 
-// TODO: terrain_mesh is now chunk-agnostic. Some/all of these values should be moved.
 /// Number of LODs
-pub const COUNT: usize = 5;
+pub const COUNT: usize = 6;
 
 /// exhaustive list of all the LODs
-pub const ALL: [T; COUNT] = [T(0), T(1), T(2), T(3), T(4)];
+pub const ALL: [T; COUNT] = [T(0), T(1), T(2), T(3), T(4), T(5)];
 
 /// lg(EDGE_SAMPLES)
 // NOTE: If there are duplicates here, weird invariants will fail.
 // Just remove the LODs if you don't want duplicates.
-const LG_EDGE_SAMPLES: [u16; COUNT] = [3, 2, 1, 1, 0];
+const LG_EDGE_SAMPLES: [u16; COUNT] = [4, 3, 2, 1, 1, 0];
 
 /// The base-2 log of the width of a voxel within a chunk, indexed by LOD.
 const LG_SAMPLE_SIZE: [i16; COUNT] = [
@@ -23,13 +22,14 @@ const LG_SAMPLE_SIZE: [i16; COUNT] = [
   chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[2] as i16,
   chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[3] as i16,
   chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[4] as i16,
+  chunk::LG_WIDTH as i16 - LG_EDGE_SAMPLES[5] as i16,
 ];
 
 /// max LOD where grass will display
-pub const MAX_GRASS_LOD: T = T(3);
+pub const MAX_GRASS_LOD: T = T(4);
 
 /// The distances at which LOD switches.
-pub const THRESHOLDS: [u32; COUNT-1] = [1, 15, 31, 47];
+pub const THRESHOLDS: [u32; COUNT-1] = [1, 7, 15, 23, 31];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// A strongly-typed index into various LOD-indexed arrays.

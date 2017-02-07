@@ -1,7 +1,7 @@
 //! Position data structure for terrain blocks.
 
 /// lg(WIDTH)
-pub const LG_WIDTH: u16 = 3;
+pub const LG_WIDTH: u16 = 4;
 /// The width of a chunk of terrain.
 pub const WIDTH: u32 = 1 << LG_WIDTH;
 

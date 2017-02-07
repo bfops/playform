@@ -17,7 +17,7 @@ use server_update::apply_server_update;
 use terrain;
 use view;
 
-const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1;
+const MAX_OUTSTANDING_TERRAIN_REQUESTS: u32 = 1 << 7;
 
 #[allow(missing_docs)]
 pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateServer, EnqueueTerrainLoad>(

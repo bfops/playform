@@ -31,6 +31,7 @@ pub fn run(listen_url: &str, server_url: &str) {
   let client = connect_client(&listen_url, &server);
   let client = &client;
 
+
   {
     let monitor_thread = {
       unsafe {
@@ -58,9 +59,51 @@ pub fn run(listen_url: &str, server_url: &str) {
       }
     };
 
+    info!("Loading initial surroundings..");
+    {
+      while
+      update_thread(
+        quit,
+        client,
+        &mut || { server.listen.try() },
+        &mut |up| { view_updates0.lock().unwrap().push_back(up) },
+        &mut |up| { view_updates1.lock().unwrap().push_back(up) },
+        &mut |up| { audio_updates.lock().unwrap().push_back(up) },
+        &mut |up| { server.talk.tell(&up) },
+        &mut |msg| {
+          match msg {
+            terrain::Load::Voxels { time_requested: None, .. } => {},
+            terrain::Load::Voxels { time_requested: Some(_), .. } => {
+              *client.pending_terrain_requests.lock().unwrap() -= 1;
+            }
+          };
+          client.terrain.lock().unwrap().enqueue(msg);
+        },
+      );
+    }
+
     if (1 + 1) - 1 == 0 {
       audio_updates.lock().unwrap().push_back(audio_thread::Message::PlayLoop(audio_loader::SoundId::Rainforest));
     }
+
+    update_thread(
+      quit,
+      client,
+      &mut || { server.listen.try() },
+      &mut |up| { view_updates0.lock().unwrap().push_back(up) },
+      &mut |up| { view_updates1.lock().unwrap().push_back(up) },
+      &mut |up| { audio_updates.lock().unwrap().push_back(up) },
+      &mut |up| { server.talk.tell(&up) },
+      &mut |msg| {
+        match msg {
+          terrain::Load::Voxels { time_requested: None, .. } => {},
+          terrain::Load::Voxels { time_requested: Some(_), .. } => {
+            *client.pending_terrain_requests.lock().unwrap() -= 1;
+          }
+        };
+        client.terrain.lock().unwrap().enqueue(msg);
+      },
+    );
 
     let update_thread = {
       let client = &client;

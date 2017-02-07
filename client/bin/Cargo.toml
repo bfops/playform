@@ -17,8 +17,8 @@ env_logger= "*"
 log = "*"
 time = "*"
 
-[dependencies.client-lib]
-path = "../lib"
+[dependencies.dummy-client-lib]
+path = "../dummy"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
