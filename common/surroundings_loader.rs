@@ -33,16 +33,19 @@ mod surroundings_iter {
   }
 
   pub type T =
-    std::iter::FlatMap<
-      std::ops::Range<i32>,
-      std::vec::IntoIter<Point3<i32>>,
-      CubeShellClosure,
+    std::iter::Peekable<
+      std::iter::FlatMap<
+        std::ops::Range<i32>,
+        std::vec::IntoIter<Point3<i32>>,
+        CubeShellClosure,
+      >
     >;
 
   pub fn new(center: &Point3<i32>, max_distance: i32) -> T {
     (0 .. max_distance).flat_map(CubeShellClosure {
       center: *center,
     })
+    .peekable()
   }
 }
 
@@ -111,6 +114,17 @@ impl T {
     Updates {
       loader: self,
       position: *position,
+    }
+  }
+
+  /// Are there any available updates?
+  pub fn has_updates(&mut self) -> bool {
+    if !self.to_recheck.is_empty() {
+      return true
+    }
+    match self.to_load {
+      None => false,
+      Some(ref mut iter) => iter.peek().is_some()
     }
   }
 }

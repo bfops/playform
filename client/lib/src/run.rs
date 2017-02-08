@@ -61,7 +61,27 @@ pub fn run(listen_url: &str, server_url: &str) {
 
     info!("Loading initial surroundings..");
     {
-      while
+      while client.surroundings_loader.lock().unwrap().has_updates() {
+        process_server_updates(
+          client,
+          &mut || { server.listen.try() }, update_server, enqueue_terrain_load);
+          &mut |up| { view_updates0.lock().unwrap().push_back(up) },
+          &mut |up| { audio_updates.lock().unwrap().push_back(up) },
+          &mut |up| { server.talk.tell(&up) },
+          &mut |msg| {
+            match msg {
+              terrain::Load::Voxels { time_requested: None, .. } => {},
+              terrain::Load::Voxels { time_requested: Some(_), .. } => {
+                *client.pending_terrain_requests.lock().unwrap() -= 1;
+              }
+            };
+            client.terrain.lock().unwrap().enqueue(msg);
+          },
+        );
+        update_surroundings(
+          client,
+          &mut chunk_stats, update_view1, update_server);
+      }
       update_thread(
         quit,
         client,
