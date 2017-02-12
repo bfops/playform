@@ -133,7 +133,9 @@ impl Map {
     owner: OwnerId,
   ) -> (Option<T>, Option<LODChange>) {
     match self.loaded.entry(position) {
-      fnv_map::Entry::Vacant(_) => (None, None),
+      fnv_map::Entry::Vacant(_) => {
+        (None, None)
+      },
       fnv_map::Entry::Occupied(mut entry) => {
         let mut remove = false;
         let r = {
@@ -199,6 +201,7 @@ impl Map {
 }
 
 /// A before and after T struct.
+#[derive(Debug)]
 pub struct LODChange {
   /// The target T.
   pub desired: Option<T>,

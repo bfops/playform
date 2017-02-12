@@ -93,13 +93,10 @@ impl T {
         in_progress_terrain.insert(id_allocator, physics, position);
       },
       lod::Full => {
-        let mut generate_block = || {
-          debug!("{:?} requested from gaia", position);
-          load_block(
-            update_gaia::Message::Load(time::precise_time_ns(), vec!(*position), LoadDestination::Local(owner))
-          );
-        };
-        generate_block();
+        debug!("{:?} requested from gaia", position);
+        load_block(
+          update_gaia::Message::Load(time::precise_time_ns(), vec!(*position), LoadDestination::Local(owner))
+        );
       },
     };
   }
@@ -142,9 +139,13 @@ impl T {
 
     stopwatch::time("terrain_loader.load.physics", || {
       let mut physics = physics.lock().unwrap();
+      let mut ids = Vec::with_capacity(block.bounds.len());
       for &(ref id, ref bounds) in &block.bounds {
         physics.insert_terrain(*id, bounds);
+        ids.push(*id);
       }
+      let prev = loaded.insert(*position, ids);
+      assert!(prev.is_none());
     });
   }
 
@@ -167,14 +168,14 @@ impl T {
         }
         lod::Full => {
           stopwatch::time("terrain_loader.unload", || {
-            match self.loaded.lock().unwrap().get(position) {
+            match self.loaded.lock().unwrap().remove(position) {
               None => {
                 // Unloaded before the load request completed.
               },
               Some(ids) => {
                 let mut physics = physics.lock().unwrap();
                 for id in ids {
-                  physics.remove_terrain(*id);
+                  physics.remove_terrain(id);
                 }
               },
             }
