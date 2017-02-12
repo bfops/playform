@@ -93,7 +93,7 @@ pub enum ServerToClient {
   /// Update a player's position.
   UpdatePlayer(entity::id::Player, Aabb3<f32>),
   /// Update the client's view of a mob with a given mesh.
-  UpdateMob(entity::id::T<()>, Aabb3<f32>),
+  UpdateMob(entity::id::Mob, Aabb3<f32>),
   /// The sun as a [0, 1) portion of its cycle.
   UpdateSun(f32),
 

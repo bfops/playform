@@ -6,7 +6,6 @@ use rand;
 use rand::{Rng, SeedableRng};
 use std::sync::Mutex;
 
-use common::entity;
 use common::id_allocator;
 use common::protocol;
 use common::surroundings_loader;
@@ -23,7 +22,7 @@ pub struct T {
   #[allow(missing_docs)]
   pub id                       : protocol::ClientId,
   /// id for the player in vram
-  pub player_id                : entity::id::Player,
+  pub player_id                : view::entity::id::Player,
   /// position of the player in world coordinates
   pub player_position          : Mutex<Point3<f32>>,
   /// the location where we last played a footstep sound
@@ -31,9 +30,9 @@ pub struct T {
   /// world position to center terrain loading around
   pub load_position            : Mutex<Option<Point3<f32>>>,
   #[allow(missing_docs)]
-  pub terrain_allocator        : Mutex<id_allocator::T<entity::id::Terrain>>,
+  pub terrain_allocator        : Mutex<id_allocator::T<view::entity::id::Terrain>>,
   #[allow(missing_docs)]
-  pub grass_allocator          : Mutex<id_allocator::T<entity::id::Grass>>,
+  pub grass_allocator          : Mutex<id_allocator::T<view::entity::id::Grass>>,
   #[allow(missing_docs)]
   pub surroundings_loader      : Mutex<surroundings_loader::T>,
   #[allow(missing_docs)]
@@ -92,7 +91,7 @@ fn load_distance(mut polygon_budget: i32) -> u32 {
 }
 
 #[allow(missing_docs)]
-pub fn new(client_id: protocol::ClientId, player_id: entity::id::Player, position: Point3<f32>) -> T {
+pub fn new(client_id: protocol::ClientId, player_id: view::entity::id::Player, position: Point3<f32>) -> T {
   let mut rng: rand::XorShiftRng = rand::SeedableRng::from_seed([1, 2, 3, 4]);
   let s1 = rng.next_u32();
   let s2 = rng.next_u32();

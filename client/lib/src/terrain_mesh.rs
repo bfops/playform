@@ -178,7 +178,7 @@ pub fn generate<Rng: rand::Rng>(
 
                 if polygon.material == voxel::Material::Terrain && lod <= lod::MAX_GRASS_LOD {
                   grass.tex_ids.push(rng.gen_range(0, 9));
-                  grass.ids.push(id_allocator::allocate(grass_allocator));
+                  grass.ids.push(grass_allocator.lock().unwrap().allocate());
                   grass.polygon_offsets.push(polygon_offset);
                 }
               }

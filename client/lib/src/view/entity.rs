@@ -1,13 +1,9 @@
-use common;
+//! Entity types from common, extended with client-specific entity types.
 
 mod types {
   #[allow(missing_docs)]
   #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
   pub struct Terrain;
-
-  #[allow(missing_docs)]
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-  pub struct Mob;
 
   #[allow(missing_docs)]
   #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
@@ -20,8 +16,6 @@ pub mod id {
 
   #[allow(missing_docs)]
   pub type Terrain = T<super::types::Terrain>;
-  #[allow(missing_docs)]
-  pub type Mob = T<super::types::Mob>;
   #[allow(missing_docs)]
   pub type Grass = T<super::types::Grass>;
 }

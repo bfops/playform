@@ -2,9 +2,11 @@
 
 /// Phantom types to use with `id`.
 mod types {
-  #[allow(missing_docs)]
   #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
   pub struct Player;
+
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+  pub struct Mob;
 }
 
 #[allow(missing_docs)]
@@ -32,31 +34,19 @@ pub mod id {
     }
   }
 
-  pub type Player = T<super::types::Player>;
-
-  pub mod allocator {
-    use std;
-
-    /// Data structure to produce unique IDs.
-    pub struct T<U> {
-      units : std::marker::PhantomData<U>,
-      next  : u32,
-    }
-
-    pub fn new<U>() -> T<U> {
-      T {
-        units : std::marker::PhantomData,
-        next  : 0,
-      }
-    }
-
-    impl<U> T<U> {
-      /// Produce an Id that hasn't been produced yet by this object.
-      pub fn allocate(&mut self) -> super::T<U> {
-        let ret = super::of_u32(self.next);
-        self.next = self.next + 1;
-        ret
-      }
+  impl<U> std::default::Default for T<U> {
+    fn default() -> Self {
+      of_u32(0)
     }
   }
+
+  impl<U> std::ops::Add<u32> for T<U> {
+    type Output = T<U>;
+    fn add(self, rhs: u32) -> T<U> {
+      of_u32(self.value + rhs)
+    }
+  }
+
+  pub type Player = T<super::types::Player>;
+  pub type Mob = T<super::types::Mob>;
 }

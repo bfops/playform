@@ -162,7 +162,8 @@ fn load_or_request_chunk<UpdateServer, UpdateView>(
   let rng = &mut *client.rng.lock().unwrap();
   let r =
     terrain.load_chunk(
-      &client.id_allocator,
+      &client.terrain_allocator,
+      &client.grass_allocator,
       &mut *rng,
       chunk_stats,
       update_view,
