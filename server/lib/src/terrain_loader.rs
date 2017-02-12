@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use stopwatch;
 use time;
 
-use common::entity_id;
+use common::entity;
 use common::fnv_map;
 use common::id_allocator;
 use common::voxel;
@@ -24,7 +24,7 @@ pub struct T {
   pub terrain             : terrain::T,
   pub in_progress_terrain : Mutex<in_progress_terrain::T>,
   pub lod_map             : Mutex<lod::Map>,
-  pub loaded              : Mutex<fnv_map::T<voxel::bounds::T, Vec<entity_id::T>>>,
+  pub loaded              : Mutex<fnv_map::T<voxel::bounds::T, Vec<entity::id::T>>>,
 }
 
 impl T {
@@ -108,7 +108,7 @@ impl T {
     physics             : &Mutex<physics::T>,
     lod_map             : &mut lod::Map,
     in_progress_terrain : &mut in_progress_terrain::T,
-    loaded              : &mut fnv_map::T<voxel::bounds::T, Vec<entity_id::T>>,
+    loaded              : &mut fnv_map::T<voxel::bounds::T, Vec<entity::id::T>>,
   ) {
     let lod = lod::Full;
     let (_, change) = lod_map.insert(*position, lod, owner);
@@ -187,5 +187,5 @@ impl T {
 }
 
 pub struct LoadedTerrain {
-  pub bounds: Vec<(entity_id::T, Aabb3<f32>)>,
+  pub bounds: Vec<(entity::id::T, Aabb3<f32>)>,
 }

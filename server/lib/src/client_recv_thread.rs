@@ -8,7 +8,7 @@ use std::ops::DerefMut;
 use std::time::Duration;
 use stopwatch;
 
-use common::entity_id;
+use common::entity;
 use common::id_allocator;
 use common::protocol;
 use common::socket::SendSocket;
@@ -28,7 +28,7 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
 
 fn cast(
   server: &server::T,
-  player_id: entity_id::T,
+  player_id: entity::id::T,
 ) -> Option<voxel::bounds::T> {
   let ray;
   {

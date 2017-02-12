@@ -5,7 +5,7 @@ use collision::{Aabb3};
 use std::default::Default;
 use std::ops::Add;
 
-use entity_id;
+use entity;
 use voxel;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -37,13 +37,13 @@ pub enum ClientToServer {
   /// Ask the server to create a new player.
   AddPlayer(ClientId),
   /// Add a vector the player's acceleration.
-  Walk(entity_id::T, Vector3<f32>),
+  Walk(entity::id::Player, Vector3<f32>),
   /// Rotate the player by some amount.
-  RotatePlayer(entity_id::T, Vector2<f32>),
+  RotatePlayer(entity::id::Player, Vector2<f32>),
   /// [Try to] start a jump for the player.
-  StartJump(entity_id::T),
+  StartJump(entity::id::Player),
   /// [Try to] stop a jump for the player.
-  StopJump(entity_id::T),
+  StopJump(entity::id::Player),
   /// Ask the server to send a block of terrain.
   RequestVoxels {
     /// The time, in nanoseconds, when the voxels were requested.
@@ -54,9 +54,9 @@ pub enum ClientToServer {
     voxels          : Vec<voxel::bounds::T>,
   },
   /// Brush-remove where the player's looking.
-  Add(entity_id::T),
+  Add(entity::id::Player),
   /// Brush-add at where the player's looking.
-  Remove(entity_id::T),
+  Remove(entity::id::Player),
 }
 
 /// Why a block is being sent to a client.
@@ -75,8 +75,8 @@ pub enum VoxelReason {
 /// Collision events. First ID is "collider", rest of IDs are collidee(s).
 #[allow(missing_docs)]
 pub enum Collision {
-  PlayerTerrain(entity_id::T, entity_id::T),
-  PlayerMisc(entity_id::T, entity_id::T),
+  PlayerTerrain(entity::id::Player, entity::id::T<()>),
+  PlayerMisc(entity::id::Player, entity::id::T<()>),
 }
 
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
@@ -88,12 +88,12 @@ pub enum ServerToClient {
   Ping,
 
   /// Complete an AddPlayer request.
-  PlayerAdded(entity_id::T, Point3<f32>),
+  PlayerAdded(entity::id::Player, Point3<f32>),
 
   /// Update a player's position.
-  UpdatePlayer(entity_id::T, Aabb3<f32>),
+  UpdatePlayer(entity::id::Player, Aabb3<f32>),
   /// Update the client's view of a mob with a given mesh.
-  UpdateMob(entity_id::T, Aabb3<f32>),
+  UpdateMob(entity::id::T<()>, Aabb3<f32>),
   /// The sun as a [0, 1) portion of its cycle.
   UpdateSun(f32),
 
