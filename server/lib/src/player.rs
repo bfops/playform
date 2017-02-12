@@ -83,7 +83,7 @@ impl T {
   /// Translates the player by a vector.
   /// If the player collides with something with a small height jump, the player will shift upward.
   /// Returns the actual amount moved by.
-  pub fn translate(
+  fn translate(
     &mut self,
     physics: &Mutex<physics::T>,
     mut v: Vector3<f32>,

@@ -64,22 +64,6 @@ impl T {
     self.misc_bounds.get_mut(&id)
   }
 
-  fn reinsert(
-    octree     : &mut Octree<entity::id::Misc>,
-    id         : entity::id::Misc,
-    bounds     : &mut Aabb3<f32>,
-    new_bounds : &Aabb3<f32>,
-  ) -> Option<(Aabb3<f32>, entity::id::Misc)> {
-    match octree.intersect(new_bounds, Some(id)) {
-      None => {
-        octree.reinsert(id, bounds, new_bounds);
-        *bounds = *new_bounds;
-        None
-      },
-      collision => collision,
-    }
-  }
-
   pub fn translate_misc(&mut self, id: entity::id::Misc, amount: Vector3<f32>) -> Option<(Aabb3<f32>, Collision)> {
     let bounds = self.misc_bounds.get_mut(&id).unwrap();
     let new_bounds =
@@ -88,11 +72,16 @@ impl T {
         bounds.max + amount,
       );
     match self.terrain_octree.intersect(&new_bounds, None) {
-      None =>
-        match T::reinsert(&mut self.misc_octree, id, bounds, &new_bounds) {
-          None => None,
+      None => {
+        match self.misc_octree.intersect(&new_bounds, Some(id)) {
+          None => {
+            self.misc_octree.reinsert(id, bounds, &new_bounds);
+            *bounds = new_bounds;
+            None
+          },
           Some((bounds, misc_id)) => Some ((bounds, Collision::Misc(misc_id))),
-        },
+        }
+      },
       Some((bounds, terrain_id)) => {
         Some((bounds, Collision::Terrain(terrain_id)))
       },
