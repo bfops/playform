@@ -3,6 +3,7 @@
 mod camera;
 pub mod chunked_terrain;
 mod grass_buffers;
+pub mod entity;
 pub mod light;
 mod mob_buffers;
 mod player_buffers;

@@ -9,8 +9,8 @@ use std::f32;
 use yaglw;
 use yaglw::gl_context::GLContext;
 
-use common::entity_id;
 use common::fnv_map;
+use view;
 
 // VRAM bytes
 const BYTE_BUDGET: usize = 64_000_000;
@@ -29,11 +29,11 @@ pub struct Entry {
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
 pub struct T<'a> {
-  id_to_index: fnv_map::T<entity_id::T, usize>,
-  index_to_id: Vec<entity_id::T>,
+  id_to_index: fnv_map::T<view::entity::id::Grass, usize>,
+  index_to_id: Vec<view::entity::id::Grass>,
 
-  to_polygon_idx: fnv_map::T<entity_id::T, u32>,
-  of_polygon_idx: fnv_map::T<u32, entity_id::T>,
+  to_polygon_idx: fnv_map::T<view::entity::id::Grass, u32>,
+  of_polygon_idx: fnv_map::T<u32, view::entity::id::Grass>,
 
   gl_array: yaglw::vertex_buffer::ArrayHandle<'a>,
   _instance_vertices: yaglw::vertex_buffer::GLBuffer<'a, Vertex>,
@@ -179,7 +179,7 @@ impl<'a> T<'a> {
     gl: &mut GLContext,
     grass: &[Entry],
     polygon_idxs: &[u32],
-    grass_ids: &[entity_id::T],
+    grass_ids: &[view::entity::id::Grass],
   ) {
     assert!(grass.len() == polygon_idxs.len());
     assert!(grass.len() == grass_ids.len());
@@ -207,8 +207,8 @@ impl<'a> T<'a> {
 
   // TODO: Make this take many ids as a parameter, to reduce `bind`s.
   // Note: `id` must be present in the buffers.
-  /// Remove some entity from VRAM.
-  pub fn swap_remove(&mut self, gl: &mut GLContext, id: entity_id::T) {
+  /// Remove some view::entity from VRAM.
+  pub fn swap_remove(&mut self, gl: &mut GLContext, id: view::entity::id::Grass) {
     let idx = (*self).id_to_index[&id];
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     self.index_to_id.swap_remove(idx);

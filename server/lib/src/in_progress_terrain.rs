@@ -1,16 +1,20 @@
 use collision::{Aabb3};
 use std::sync::Mutex;
 
-use common::entity_id;
 use common::fnv_map;
 use common::id_allocator;
 use common::voxel;
 
+<<<<<<< HEAD
 use physics;
+=======
+use entity;
+use physics::Physics;
+>>>>>>> WIP
 
 // TODO: Rename this to something more memorable.
 pub struct T {
-  pub blocks: fnv_map::T<voxel::bounds::T, entity_id::T>,
+  pub blocks: fnv_map::T<voxel::bounds::T, entity::id::Misc>,
 }
 
 impl T {
@@ -23,7 +27,7 @@ impl T {
   /// Mark a block as in-progress by making it solid.
   pub fn insert(
     &mut self,
-    id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
+    id_allocator: &Mutex<id_allocator::T<entity::id::Misc>>,
     physics: &Mutex<physics::T>,
     block_position: &voxel::bounds::T,
   ) -> bool {

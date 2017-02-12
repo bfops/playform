@@ -6,11 +6,11 @@ use std::ops::DerefMut;
 use std::sync::Mutex;
 use stopwatch;
 
-use common::entity_id;
 use common::id_allocator;
 use common::surroundings_loader;
 use common::voxel;
 
+use entity;
 use lod;
 use physics;
 use server;
@@ -22,11 +22,10 @@ const MAX_STEP_HEIGHT: f32 = 1.0;
 
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 pub enum Collision {
-  Terrain(entity_id::T),
-  Misc(entity_id::T),
+  Terrain(entity::id::Terrain),
+  Misc(entity::id::Misc),
 }
 
-// TODO: Add ObservablePlayer struct as a subset.
 pub struct T {
   pub position: Point3<f32>,
   // speed; units are world coordinates
@@ -39,7 +38,7 @@ pub struct T {
   pub jump_fuel: u32,
   // are we currently trying to jump? (e.g. holding the key).
   pub is_jumping: bool,
-  pub entity_id: entity_id::T,
+  pub entity_id: entity::id::Player,
 
   // rotation around the y-axis, in radians
   pub lateral_rotation: f32,
@@ -55,7 +54,7 @@ pub struct T {
 
 impl T {
   pub fn new(
-    entity_id: entity_id::T,
+    entity_id: entity::id::T,
     owner_allocator: &Mutex<id_allocator::T<lod::OwnerId>>,
   ) -> T {
     let surroundings_owner = id_allocator::allocate(owner_allocator);

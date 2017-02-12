@@ -9,11 +9,12 @@ use yaglw::gl_context::GLContext;
 use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
 
-use common::entity_id;
 use common::fnv_map;
 use common::id_allocator;
 
 use terrain_mesh::Triangle;
+
+use super::entity;
 
 #[cfg(test)]
 use std::mem;
@@ -34,8 +35,8 @@ const CHUNK_BUDGET: usize = POLYGON_BUDGET / VRAM_CHUNK_LENGTH;
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
 pub struct T<'a> {
-  id_to_index: fnv_map::T<entity_id::T, usize>,
-  index_to_id: Vec<entity_id::T>,
+  id_to_index: fnv_map::T<entity::id::Terrain, usize>,
+  index_to_id: Vec<entity::id::Terrain>,
 
   // TODO: Use yaglw's ArrayHandle.
   empty_array: GLuint,
@@ -83,7 +84,7 @@ impl<'a> T<'a> {
   /// Lookup the OpenGL index for an entity.
   pub fn lookup_opengl_index(
     &self,
-    id: entity_id::T,
+    id: entity::id::Terrain,
   ) -> Option<u32> {
     self.id_to_index.get(&id).map(|&x| x as u32)
   }
@@ -143,7 +144,7 @@ impl<'a> T<'a> {
   pub fn push(
     &mut self,
     gl        : &mut GLContext,
-    chunk_id  : entity_id::T,
+    chunk_id  : entity::id::Terrain,
     vertices  : &[Triangle<Point3<GLfloat>>; VRAM_CHUNK_LENGTH],
     normals   : &[Triangle<Vector3<GLfloat>>; VRAM_CHUNK_LENGTH],
     materials : &[GLint; VRAM_CHUNK_LENGTH],
@@ -179,7 +180,7 @@ impl<'a> T<'a> {
   pub fn swap_remove(
     &mut self,
     gl: &mut GLContext,
-    id: entity_id::T,
+    id: entity::id::Terrain,
   ) -> Option<(usize, usize)>
   {
     let idx = self.id_to_index[&id];

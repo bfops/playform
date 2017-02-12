@@ -8,7 +8,6 @@ use rand;
 use std::sync::Mutex;
 use stopwatch;
 
-use common::entity_id;
 use common::id_allocator;
 use common::voxel;
 // TODO: Move the server-only parts to the server, like BLOCK_WIDTH and sample_info.
@@ -18,6 +17,7 @@ use chunk_stats;
 use lod;
 use terrain_mesh;
 
+use view;
 use view::chunked_terrain;
 
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
@@ -117,12 +117,13 @@ mod voxel_storage {
 
 #[allow(missing_docs)]
 pub fn generate<Rng: rand::Rng>(
-  voxels         : &voxel::tree::T,
-  chunk_stats    : &mut chunk_stats::T,
-  chunk_position : &chunk::position::T,
-  lod            : lod::T,
-  id_allocator   : &Mutex<id_allocator::T<entity_id::T>>,
-  rng            : &mut Rng,
+  voxels          : &voxel::tree::T,
+  chunk_stats     : &mut chunk_stats::T,
+  chunk_position  : &chunk::position::T,
+  lod             : lod::T,
+  chunk_allocator : &Mutex<id_allocator::T<view::entity::id::Terrain>>,
+  grass_allocator : &Mutex<id_allocator::T<view::entity::id::Grass>>,
+  rng             : &mut Rng,
 ) -> terrain_mesh::T
 {
   stopwatch::time("terrain_mesh::generate", || {
@@ -177,7 +178,7 @@ pub fn generate<Rng: rand::Rng>(
 
                 if polygon.material == voxel::Material::Terrain && lod <= lod::MAX_GRASS_LOD {
                   grass.tex_ids.push(rng.gen_range(0, 9));
-                  grass.ids.push(id_allocator::allocate(id_allocator));
+                  grass.ids.push(id_allocator::allocate(grass_allocator));
                   grass.polygon_offsets.push(polygon_offset);
                 }
               }
@@ -205,10 +206,10 @@ pub fn generate<Rng: rand::Rng>(
       );
     }
 
-    let id_allocator = &mut *id_allocator.lock().unwrap();
+    let chunk_allocator = &mut *chunk_allocator.lock().unwrap();
     chunk_stats.add(vertex_coordinates.len());
     terrain_mesh::T {
-      chunked_terrain : chunked_terrain::of_parts(id_allocator, vertex_coordinates, normals, materials),
+      chunked_terrain : chunked_terrain::of_parts(chunk_allocator, vertex_coordinates, normals, materials),
       grass           : grass,
     }
   })
@@ -220,7 +221,7 @@ pub struct Grass {
   /// subtexture indices
   pub tex_ids : Vec<u32>,
   #[allow(missing_docs)]
-  pub ids : Vec<entity_id::T>,
+  pub ids : Vec<view::entity::id::Grass>,
   /// offset, relative to the beginning of the chunk, of the terrain polygon that a grass tuft rests on
   pub polygon_offsets : Vec<usize>,
 }
@@ -265,7 +266,7 @@ impl T {
 #[derive(Debug, Clone)]
 pub struct Ids {
   #[allow(missing_docs)]
-  pub chunk_ids : Vec<entity_id::T>,
+  pub chunk_ids : Vec<view::entity::id::Terrain>,
   #[allow(missing_docs)]
-  pub grass_ids : Vec<entity_id::T>,
+  pub grass_ids : Vec<view::entity::id::Grass>,
 }

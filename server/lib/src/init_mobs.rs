@@ -1,7 +1,7 @@
 use cgmath::{Point3, EuclideanSpace, InnerSpace, Vector3};
 use collision::{Aabb3};
 
-use common::entity_id;
+use common::entity;
 use common::id_allocator;
 use common::surroundings_loader;
 
@@ -22,7 +22,7 @@ pub fn init_mobs(
     fn to_player(world: &server::T, mob: &mob::Mob) -> Option<Vector3<f32>> {
       let mob_posn = center(world.physics.lock().unwrap().get_bounds(mob.entity_id).unwrap());
 
-      let players: Vec<entity_id::T> = world.players.lock().unwrap().keys().cloned().collect();
+      let players: Vec<entity::id::T> = world.players.lock().unwrap().keys().cloned().collect();
       let mut players = players.into_iter();
 
       players.next().map(|id| {

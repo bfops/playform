@@ -75,8 +75,8 @@ pub enum VoxelReason {
 /// Collision events. First ID is "collider", rest of IDs are collidee(s).
 #[allow(missing_docs)]
 pub enum Collision {
-  PlayerTerrain(entity::id::Player, entity::id::T<()>),
-  PlayerMisc(entity::id::Player, entity::id::T<()>),
+  PlayerTerrain(entity::id::Player),
+  PlayerMisc(entity::id::Player),
 }
 
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]

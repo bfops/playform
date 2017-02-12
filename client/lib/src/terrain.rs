@@ -6,7 +6,6 @@ use rand;
 use std;
 use time;
 
-use common::entity_id;
 use common::{fnv_set, fnv_map};
 use common::id_allocator;
 use common::surroundings_loader;
@@ -91,7 +90,7 @@ impl T {
   /// Iterate through some enqueued voxel loads and load any updated chunks.
   pub fn tick<Rng, UpdateView>(
     &mut self,
-    id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
+    id_allocator    : &std::sync::Mutex<id_allocator::T<view::entity::id::Terrain>>,
     rng             : &mut Rng,
     chunk_stats     : &mut chunk_stats::T,
     update_view     : &mut UpdateView,
@@ -125,7 +124,7 @@ impl T {
   #[inline(never)]
   fn force_load_chunk<Rng, UpdateView>(
     &mut self,
-    id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
+    id_allocator   : &std::sync::Mutex<id_allocator::T<view::entity::id::Terrain>>,
     rng            : &mut Rng,
     chunk_stats    : &mut chunk_stats::T,
     update_view    : &mut UpdateView,
@@ -169,7 +168,7 @@ impl T {
   /// if some voxels are missing, returns an Err of all the voxels that need to be fetched from the server.
   pub fn load_chunk<Rng, UpdateView>(
     &mut self,
-    id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
+    id_allocator   : &std::sync::Mutex<id_allocator::T<view::entity::id::Terrain>>,
     rng            : &mut Rng,
     chunk_stats    : &mut chunk_stats::T,
     update_view    : &mut UpdateView,
@@ -302,7 +301,7 @@ impl T {
   #[inline(never)]
   fn load_voxels<Rng, UpdateView>(
     &mut self,
-    id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
+    id_allocator    : &std::sync::Mutex<id_allocator::T<view::entity::id::Terrain>>,
     rng             : &mut Rng,
     chunk_stats     : &mut chunk_stats::T,
     update_view     : &mut UpdateView,

@@ -5,7 +5,6 @@ use yaglw::vertex_buffer::{GLArray, GLBuffer, VertexAttribData};
 use yaglw::vertex_buffer::{DrawMode, GLType};
 use yaglw::gl_context::GLContext;
 
-use common::entity_id;
 use common::fnv_map;
 
 use vertex::ColoredVertex;
@@ -16,8 +15,8 @@ pub const VERTICES_PER_MOB: usize = 36;
 
 /// This data structure keeps tracks of mob data in VRAM.
 pub struct T<'a> {
-  id_to_index: fnv_map::T<entity_id::T, usize>,
-  index_to_id: Vec<entity_id::T>,
+  id_to_index: fnv_map::T<view::entity::id::Mob, usize>,
+  index_to_id: Vec<view::entity::id::Mob>,
 
   triangles: GLArray<'a, ColoredVertex>,
 }
@@ -53,7 +52,7 @@ impl<'a> T<'a> {
   pub fn insert(
     &mut self,
     gl: &mut GLContext,
-    id: entity_id::T,
+    id: view::entity::id::Mob,
     triangles: &[ColoredVertex; VERTICES_PER_MOB],
   ) -> bool {
     match self.id_to_index.entry(id) {

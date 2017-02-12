@@ -195,7 +195,8 @@ fn process_voxel_updates<UpdateView>(
   let terrain = &mut *client.terrain.lock().unwrap();
   let rng = &mut *client.rng.lock().unwrap();
   terrain.tick(
-    &client.id_allocator,
+    &client.terrain_allocator,
+    &client.grass_allocator,
     rng,
     chunk_stats,
     update_view,

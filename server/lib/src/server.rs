@@ -5,12 +5,12 @@ use std::sync::Mutex;
 use time;
 
 use common::protocol;
-use common::entity_id;
 use common::fnv_map;
 use common::id_allocator;
 use common::interval_timer::IntervalTimer;
 use common::socket::SendSocket;
 
+use entity;
 use init_mobs::init_mobs;
 use lod;
 use mob;
@@ -40,10 +40,10 @@ impl Client {
 
 // TODO: Audit for s/Mutex/RwLock.
 pub struct T {
-  pub players: Mutex<fnv_map::T<entity_id::T, player::T>>,
-  pub mobs: Mutex<fnv_map::T<entity_id::T, mob::Mob>>,
+  pub players: Mutex<fnv_map::T<entity::id::Player, player::T>>,
+  pub mobs: Mutex<fnv_map::T<entity::id::Misc, mob::Mob>>,
 
-  pub id_allocator: Mutex<id_allocator::T<entity_id::T>>,
+  pub id_allocator: Mutex<id_allocator::T<entity::id::T>>,
   pub owner_allocator: Mutex<id_allocator::T<lod::OwnerId>>,
   pub client_allocator: Mutex<id_allocator::T<protocol::ClientId>>,
 

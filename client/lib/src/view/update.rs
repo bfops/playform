@@ -3,12 +3,11 @@
 use cgmath::Point3;
 use stopwatch;
 
-use common::entity_id;
-
 use terrain_mesh;
 use vertex::ColoredVertex;
 use view;
 
+use super::entity;
 use super::light;
 use super::mob_buffers::VERTICES_PER_MOB;
 use super::player_buffers::VERTICES_PER_PLAYER;
@@ -20,9 +19,9 @@ pub enum T {
   MoveCamera(Point3<f32>),
 
   /// Update a player mesh.
-  UpdatePlayer(entity_id::T, [ColoredVertex; VERTICES_PER_PLAYER]),
+  UpdatePlayer(entity::id::Player, [ColoredVertex; VERTICES_PER_PLAYER]),
   /// Update a mob mesh.
-  UpdateMob(entity_id::T, [ColoredVertex; VERTICES_PER_MOB]),
+  UpdateMob(entity::id::Mob, [ColoredVertex; VERTICES_PER_MOB]),
 
   /// Update the sun.
   SetSun(light::Sun),

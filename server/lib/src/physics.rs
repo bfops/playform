@@ -1,15 +1,15 @@
 use cgmath::{Vector3};
 use collision::{Aabb3};
 
-use common::entity_id;
 use common::fnv_map;
 
+use entity;
 use octree::Octree;
 
 pub struct T {
-  pub terrain_octree : Octree<entity_id::T>,
-  pub misc_octree    : Octree<entity_id::T>,
-  pub bounds         : fnv_map::T<entity_id::T, Aabb3<f32>>,
+  pub terrain_octree: Octree<entity::id::Misc>,
+  pub misc_octree: Octree<entity::id::Misc>,
+  pub bounds: fnv_map::T<entity::id::Misc, Aabb3<f32>>,
 }
 
 impl T {
@@ -21,17 +21,17 @@ impl T {
     }
   }
 
-  pub fn insert_terrain(&mut self, id: entity_id::T, bounds: &Aabb3<f32>) {
+  pub fn insert_terrain(&mut self, id: entity::id::Misc, bounds: &Aabb3<f32>) {
     self.terrain_octree.insert(bounds, id);
     self.bounds.insert(id, *bounds);
   }
 
-  pub fn insert_misc(&mut self, id: entity_id::T, bounds: &Aabb3<f32>) {
+  pub fn insert_misc(&mut self, id: entity::id::Misc, bounds: &Aabb3<f32>) {
     self.misc_octree.insert(bounds, id);
     self.bounds.insert(id, *bounds);
   }
 
-  pub fn remove_terrain(&mut self, id: entity_id::T) {
+  pub fn remove_terrain(&mut self, id: entity::id::Misc) {
     match self.bounds.get(&id) {
       None => {},
       Some(bounds) => {
@@ -40,7 +40,7 @@ impl T {
     }
   }
 
-  pub fn remove_misc(&mut self, id: entity_id::T) {
+  pub fn remove_misc(&mut self, id: entity::id::Misc) {
     match self.bounds.get(&id) {
       None => {},
       Some(bounds) => {
@@ -49,16 +49,16 @@ impl T {
     }
   }
 
-  pub fn get_bounds(&self, id: entity_id::T) -> Option<&Aabb3<f32>> {
+  pub fn get_bounds(&self, id: entity::id::Misc) -> Option<&Aabb3<f32>> {
     self.bounds.get(&id)
   }
 
   pub fn reinsert(
-    octree: &mut Octree<entity_id::T>,
-    id: entity_id::T,
+    octree: &mut Octree<entity::id::Misc>,
+    id: entity::id::Misc,
     bounds: &mut Aabb3<f32>,
     new_bounds: &Aabb3<f32>,
-  ) -> Option<(Aabb3<f32>, entity_id::T)> {
+  ) -> Option<(Aabb3<f32>, entity::id::Misc)> {
     match octree.intersect(new_bounds, Some(id)) {
       None => {
         octree.reinsert(id, bounds, new_bounds);
@@ -69,7 +69,7 @@ impl T {
     }
   }
 
-  pub fn translate_misc(&mut self, id: entity_id::T, amount: Vector3<f32>) -> Option<(Aabb3<f32>, entity_id::T)> {
+  pub fn translate_misc(&mut self, id: entity::id::Misc, amount: Vector3<f32>) -> Option<(Aabb3<f32>, entity::id::Misc)> {
     let bounds = self.bounds.get_mut(&id).unwrap();
     let new_bounds =
       Aabb3::new(

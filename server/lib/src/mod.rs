@@ -24,6 +24,7 @@ extern crate time;
 extern crate voxel_data;
 
 mod client_recv_thread;
+mod entity;
 mod in_progress_terrain;
 mod init_mobs;
 mod lod;

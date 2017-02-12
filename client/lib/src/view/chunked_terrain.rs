@@ -4,10 +4,10 @@ use gl::types::*;
 use cgmath::{Point3, Vector3};
 use std;
 use terrain_mesh;
-use common::entity_id;
 use common::id_allocator;
 
 use super::terrain_buffers::VRAM_CHUNK_LENGTH;
+use super::entity;
 
 #[allow(missing_docs)]
 pub struct T {
@@ -20,7 +20,7 @@ pub struct T {
   /// Material IDs for each triangle.
   pub materials: Vec<[i32; VRAM_CHUNK_LENGTH]>,
   /// per-chunk ids
-  pub ids: Vec<entity_id::T>
+  pub ids: Vec<entity::id::Terrain>
 }
 
 impl T {
@@ -51,7 +51,7 @@ fn zero_pad_to<T>(v: &mut Vec<T>, len: usize) {
 
 #[allow(missing_docs)]
 pub fn of_parts(
-  id_allocator  : &mut id_allocator::T<entity_id::T>,
+  id_allocator  : &mut id_allocator::T<entity::id::Terrain>,
   mut vertices  : Vec<terrain_mesh::Triangle<Point3<GLfloat>>>,
   mut normals   : Vec<terrain_mesh::Triangle<Vector3<GLfloat>>>,
   mut materials : Vec<GLint>,

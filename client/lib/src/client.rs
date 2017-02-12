@@ -6,7 +6,7 @@ use rand;
 use rand::{Rng, SeedableRng};
 use std::sync::Mutex;
 
-use common::entity_id;
+use common::entity;
 use common::id_allocator;
 use common::protocol;
 use common::surroundings_loader;
@@ -23,7 +23,7 @@ pub struct T {
   #[allow(missing_docs)]
   pub id                       : protocol::ClientId,
   /// id for the player in vram
-  pub player_id                : entity_id::T,
+  pub player_id                : entity::id::Player,
   /// position of the player in world coordinates
   pub player_position          : Mutex<Point3<f32>>,
   /// the location where we last played a footstep sound
@@ -31,7 +31,9 @@ pub struct T {
   /// world position to center terrain loading around
   pub load_position            : Mutex<Option<Point3<f32>>>,
   #[allow(missing_docs)]
-  pub id_allocator             : Mutex<id_allocator::T<entity_id::T>>,
+  pub terrain_allocator        : Mutex<id_allocator::T<entity::id::Terrain>>,
+  #[allow(missing_docs)]
+  pub grass_allocator          : Mutex<id_allocator::T<entity::id::Grass>>,
   #[allow(missing_docs)]
   pub surroundings_loader      : Mutex<surroundings_loader::T>,
   #[allow(missing_docs)]
@@ -90,7 +92,7 @@ fn load_distance(mut polygon_budget: i32) -> u32 {
 }
 
 #[allow(missing_docs)]
-pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Point3<f32>) -> T {
+pub fn new(client_id: protocol::ClientId, player_id: entity::id::Player, position: Point3<f32>) -> T {
   let mut rng: rand::XorShiftRng = rand::SeedableRng::from_seed([1, 2, 3, 4]);
   let s1 = rng.next_u32();
   let s2 = rng.next_u32();
@@ -120,7 +122,8 @@ pub fn new(client_id: protocol::ClientId, player_id: entity_id::T, position: Poi
     player_position          : Mutex::new(position),
     last_footstep            : Mutex::new(position),
     load_position            : Mutex::new(None),
-    id_allocator             : Mutex::new(id_allocator::new()),
+    terrain_allocator        : Mutex::new(id_allocator::new()),
+    grass_allocator          : Mutex::new(id_allocator::new()),
     surroundings_loader      : Mutex::new(surroundings_loader),
     max_load_distance        : load_distance,
     terrain                  : Mutex::new(terrain::new(load_distance as u32)),

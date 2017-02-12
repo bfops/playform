@@ -1,22 +1,28 @@
 //! Uniquely identify entities
 
 /// Phantom types to use with `id`.
-pub mod types {
+mod types {
   #[allow(missing_docs)]
-  #[derive(Debug, Clone, Copy, RustcEncodable, RustcDecodable)]
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
   pub struct Player;
 }
 
 #[allow(missing_docs)]
 pub mod id {
   use std;
-  use std::ops::Add;
 
   #[allow(missing_docs)]
-  #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
   pub struct T<U> {
     units: std::marker::PhantomData<U>,
     value: u32,
+  }
+
+  fn of_u32<U>(value: u32) -> T<U> {
+    T {
+      value: value,
+      units: std::marker::PhantomData,
+    }
   }
 
   impl<U> T<U> {
@@ -26,18 +32,31 @@ pub mod id {
     }
   }
 
-  impl<U> Add<T<U>> for T<U> {
-    type Output = T<U>;
+  pub type Player = T<super::types::Player>;
 
-    fn add(self, rhs: T<U>) -> T<U> {
-      let T { units: _, value } = self;
-      let T { units: _, value: rhs } = rhs;
+  pub mod allocator {
+    use std;
+
+    /// Data structure to produce unique IDs.
+    pub struct T<U> {
+      units : std::marker::PhantomData<U>,
+      next  : u32,
+    }
+
+    pub fn new<U>() -> T<U> {
       T {
-        value: value + rhs,
-        units: std::marker::PhantomData,
+        units : std::marker::PhantomData,
+        next  : 0,
+      }
+    }
+
+    impl<U> T<U> {
+      /// Produce an Id that hasn't been produced yet by this object.
+      pub fn allocate(&mut self) -> super::T<U> {
+        let ret = super::of_u32(self.next);
+        self.next = self.next + 1;
+        ret
       }
     }
   }
-
-  pub type Player = T<super::types::Player>;
 }
