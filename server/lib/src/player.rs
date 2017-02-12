@@ -12,7 +12,7 @@ use common::surroundings_loader;
 use common::voxel;
 
 use lod;
-use physics::Physics;
+use physics;
 use server;
 use update_gaia;
 use update_world::load_placeholders;
@@ -83,7 +83,7 @@ impl T {
   /// Returns the actual amount moved by.
   pub fn translate(
     &mut self,
-    physics: &Mutex<Physics>,
+    physics: &Mutex<physics::T>,
     v: Vector3<f32>,
   ) -> (Aabb3<f32>, Vec<Collision>)
   {
@@ -104,7 +104,7 @@ impl T {
     loop {
       match physics.terrain_octree.intersect(&new_bounds, None) {
         None => {
-          if let Some((_, id)) = Physics::reinsert(&mut physics.misc_octree, self.entity_id, bounds, &new_bounds) {
+          if let Some((_, id)) = physics::T::reinsert(&mut physics.misc_octree, self.entity_id, bounds, &new_bounds) {
             collided = true;
             collisions.push(Collision::Misc(id));
           } else {

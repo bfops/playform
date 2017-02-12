@@ -6,7 +6,7 @@ use common::fnv_map;
 use common::id_allocator;
 use common::voxel;
 
-use physics::Physics;
+use physics;
 
 // TODO: Rename this to something more memorable.
 pub struct T {
@@ -24,7 +24,7 @@ impl T {
   pub fn insert(
     &mut self,
     id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
-    physics: &Mutex<Physics>,
+    physics: &Mutex<physics::T>,
     block_position: &voxel::bounds::T,
   ) -> bool {
     match self.blocks.entry(*block_position) {
@@ -46,7 +46,7 @@ impl T {
   /// Unmark an in-progress block, either because loading is done, or the block was unloaded.
   pub fn remove(
     &mut self,
-    physics: &Mutex<Physics>,
+    physics: &Mutex<physics::T>,
     block_position: &voxel::bounds::T,
   ) -> bool {
     self.blocks.remove(block_position)

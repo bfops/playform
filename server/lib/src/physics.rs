@@ -6,18 +6,18 @@ use common::fnv_map;
 
 use octree::Octree;
 
-pub struct Physics {
-  pub terrain_octree: Octree<entity_id::T>,
-  pub misc_octree: Octree<entity_id::T>,
-  pub bounds: fnv_map::T<entity_id::T, Aabb3<f32>>,
+pub struct T {
+  pub terrain_octree : Octree<entity_id::T>,
+  pub misc_octree    : Octree<entity_id::T>,
+  pub bounds         : fnv_map::T<entity_id::T, Aabb3<f32>>,
 }
 
-impl Physics {
-  pub fn new(world_bounds: Aabb3<f32>) -> Physics {
-    Physics {
-      terrain_octree: Octree::new(&world_bounds),
-      misc_octree: Octree::new(&world_bounds),
-      bounds: fnv_map::new(),
+impl T {
+  pub fn new(world_bounds: Aabb3<f32>) -> T {
+    T {
+      terrain_octree : Octree::new(&world_bounds),
+      misc_octree    : Octree::new(&world_bounds),
+      bounds         : fnv_map::new(),
     }
   }
 
@@ -78,7 +78,7 @@ impl Physics {
       );
     let terrain_collision = self.terrain_octree.intersect(&new_bounds, None);
     if terrain_collision.is_none() {
-      Physics::reinsert(&mut self.misc_octree, id, bounds, &new_bounds)
+      T::reinsert(&mut self.misc_octree, id, bounds, &new_bounds)
     } else {
       terrain_collision
     }

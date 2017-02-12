@@ -10,7 +10,7 @@ use common::voxel;
 
 use in_progress_terrain;
 use lod;
-use physics::Physics;
+use physics;
 use terrain;
 use update_gaia;
 use update_gaia::LoadDestination;
@@ -42,7 +42,7 @@ impl T {
   pub fn load<LoadBlock>(
     &self,
     id_allocator : &Mutex<id_allocator::T<entity_id::T>>,
-    physics      : &Mutex<Physics>,
+    physics      : &Mutex<physics::T>,
     position     : &voxel::bounds::T,
     new_lod      : lod::T,
     owner        : lod::OwnerId,
@@ -105,7 +105,7 @@ impl T {
     block               : &LoadedTerrain,
     position            : &voxel::bounds::T,
     owner               : lod::OwnerId,
-    physics             : &Mutex<Physics>,
+    physics             : &Mutex<physics::T>,
     lod_map             : &mut lod::Map,
     in_progress_terrain : &mut in_progress_terrain::T,
     loaded              : &mut fnv_map::T<voxel::bounds::T, Vec<entity_id::T>>,
@@ -151,7 +151,7 @@ impl T {
 
   pub fn unload(
     &self,
-    physics  : &Mutex<Physics>,
+    physics  : &Mutex<physics::T>,
     position : &voxel::bounds::T,
     owner    : lod::OwnerId,
   ) {

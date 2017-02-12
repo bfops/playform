@@ -14,7 +14,7 @@ use common::socket::SendSocket;
 use init_mobs::init_mobs;
 use lod;
 use mob;
-use physics::Physics;
+use physics;
 use player;
 use sun::Sun;
 use terrain_loader;
@@ -47,7 +47,7 @@ pub struct T {
   pub owner_allocator: Mutex<id_allocator::T<lod::OwnerId>>,
   pub client_allocator: Mutex<id_allocator::T<protocol::ClientId>>,
 
-  pub physics: Mutex<Physics>,
+  pub physics: Mutex<physics::T>,
   pub terrain_loader: terrain_loader::T,
   pub rng: Mutex<rand::StdRng>,
 
@@ -62,7 +62,7 @@ pub fn new() -> T {
   let world_width: u32 = 1 << 11;
   let world_width = world_width as f32;
   let physics =
-    Physics::new(
+    physics::T::new(
       Aabb3::new(
         Point3 { x: -world_width, y: -512.0, z: -world_width },
         Point3 { x: world_width, y: 512.0, z: world_width },
