@@ -41,7 +41,7 @@ impl T {
 
   pub fn load<LoadBlock>(
     &self,
-    id_allocator : &Mutex<id_allocator::T<entity_id::Terrain>>,
+    id_allocator : &Mutex<id_allocator::T<entity::id::Misc>>,
     physics      : &Mutex<physics::T>,
     position     : &voxel::bounds::T,
     new_lod      : lod::T,

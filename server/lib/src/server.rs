@@ -40,21 +40,24 @@ impl Client {
 
 // TODO: Audit for s/Mutex/RwLock.
 pub struct T {
-  pub players: Mutex<fnv_map::T<entity::id::Player, player::T>>,
-  pub mobs: Mutex<fnv_map::T<entity::id::Misc, mob::Mob>>,
+  pub players           : Mutex<fnv_map::T<entity::id::Player, player::T>>,
+  pub mobs              : Mutex<fnv_map::T<entity::id::Mob, mob::Mob>>,
 
-  pub id_allocator: Mutex<id_allocator::T<entity::id::T>>,
-  pub owner_allocator: Mutex<id_allocator::T<lod::OwnerId>>,
-  pub client_allocator: Mutex<id_allocator::T<protocol::ClientId>>,
+  pub player_allocator  : Mutex<id_allocator::T<entity::id::Player>>,
+  pub mob_allocator     : Mutex<id_allocator::T<entity::id::Mob>>,
+  pub terrain_allocator : Mutex<id_allocator::T<entity::id::Terrain>>,
+  pub misc_allocator    : Mutex<id_allocator::T<entity::id::Misc>>,
+  pub owner_allocator   : Mutex<id_allocator::T<lod::OwnerId>>,
+  pub client_allocator  : Mutex<id_allocator::T<protocol::ClientId>>,
 
-  pub physics: Mutex<physics::T>,
-  pub terrain_loader: terrain_loader::T,
-  pub rng: Mutex<rand::StdRng>,
+  pub physics           : Mutex<physics::T>,
+  pub terrain_loader    : terrain_loader::T,
+  pub rng               : Mutex<rand::StdRng>,
 
-  pub clients: Mutex<fnv_map::T<protocol::ClientId, Client>>,
+  pub clients           : Mutex<fnv_map::T<protocol::ClientId, Client>>,
 
-  pub sun: Mutex<Sun>,
-  pub update_timer: Mutex<IntervalTimer>,
+  pub sun               : Mutex<Sun>,
+  pub update_timer      : Mutex<IntervalTimer>,
 }
 
 #[allow(missing_docs)]
@@ -69,16 +72,16 @@ pub fn new() -> T {
       )
     );
 
-  let id_allocator = id_allocator::new();
-  let owner_allocator = Mutex::new(id_allocator::new());
-
   let server = T {
-    players: Mutex::new(fnv_map::new()),
-    mobs: Mutex::new(fnv_map::new()),
+    players           : Mutex::new(fnv_map::new()),
+    mobs              : Mutex::new(fnv_map::new()),
 
-    id_allocator: Mutex::new(id_allocator),
-    owner_allocator: owner_allocator,
-    client_allocator: Mutex::new(id_allocator::new()),
+    player_allocator  : Mutex::new(id_allocator::new()),
+    mob_allocator     : Mutex::new(id_allocator::new()),
+    terrain_allocator : Mutex::new(id_allocator::new()),
+    misc_allocator    : Mutex::new(id_allocator::new()),
+    owner_allocator   : Mutex::new(id_allocator::new()),
+    client_allocator  : Mutex::new(id_allocator::new()),
 
     physics: Mutex::new(physics),
     terrain_loader: terrain_loader::T::new(),

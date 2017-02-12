@@ -4,7 +4,6 @@ use collision::{Aabb3};
 use stopwatch;
 
 use common;
-use common::id_allocator;
 use common::protocol;
 use common::voxel;
 
@@ -80,7 +79,7 @@ fn load(
             voxel::Volume(voxel::Material::Empty) => Vec::new(),
             _ => {
               let (low, high) = voxel_bounds.corners();
-              let id = id_allocator::allocate(&server.id_allocator);
+              let id = server.terrain_allocator.lock().unwrap().allocate();
               vec!((id, Aabb3::new(low, high)))
             },
           };

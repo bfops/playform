@@ -13,7 +13,8 @@ pub struct Mob {
   pub speed               : Vector3<f32>,
   pub behavior            : Behavior,
 
-  pub entity_id           : entity::id::Misc,
+  pub entity_id           : entity::id::Mob,
+  pub physics_id          : entity::id::Misc,
   pub owner_id            : lod::OwnerId,
   pub surroundings_loader : surroundings_loader::T,
 }

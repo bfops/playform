@@ -8,7 +8,6 @@ use std::ops::DerefMut;
 use std::time::Duration;
 use stopwatch;
 
-use common::id_allocator;
 use common::protocol;
 use common::socket::SendSocket;
 use common::voxel;
@@ -28,7 +27,7 @@ fn center(bounds: &Aabb3<f32>) -> Point3<f32> {
 
 fn cast(
   server: &server::T,
-  player_id: entity::id::Misc,
+  player_id: entity::id::Player,
 ) -> Option<voxel::bounds::T> {
   let ray;
   {
@@ -65,7 +64,7 @@ pub fn apply_client_update<UpdateGaia>(
             socket: SendSocket::new(client_url.as_ref(), Some(Duration::from_secs(30))),
           };
 
-        let client_id = id_allocator::allocate(&server.client_allocator);
+        let client_id = server.client_allocator.lock().unwrap().allocate();
         client.send(protocol::ServerToClient::LeaseId(client_id));
 
         server.clients.lock().unwrap().insert(client_id, client);
@@ -78,8 +77,9 @@ pub fn apply_client_update<UpdateGaia>(
       },
       protocol::ClientToServer::AddPlayer(client_id) => {
         let mut player =
-          player::T::new(
-            id_allocator::allocate(&server.id_allocator),
+          player::new(
+            server.player_allocator.lock().unwrap().allocate(),
+            server.misc_allocator.lock().unwrap().allocate(),
             &server.owner_allocator,
           );
 
@@ -87,7 +87,7 @@ pub fn apply_client_update<UpdateGaia>(
         let min = Point3::new(0.0, 64.0, 4.0);
         let max = min + (&Vector3::new(1.0, 2.0, 1.0));
         let bounds = Aabb3::new(min, max);
-        server.physics.lock().unwrap().insert_misc(player.entity_id, &bounds);
+        server.physics.lock().unwrap().insert_misc(player.physics_id, &bounds);
 
         player.position = center(&bounds);
         player.rotate_lateral(PI / 2.0);

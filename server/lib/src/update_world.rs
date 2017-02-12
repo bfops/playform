@@ -31,8 +31,8 @@ pub fn update_world<RequestBlock>(
           collisions.into_iter()
           .map(|c| {
             match c {
-              player::Collision::Terrain(id) => protocol::Collision::PlayerTerrain(player.entity_id, id),
-              player::Collision::Misc(id)    => protocol::Collision::PlayerMisc(player.entity_id, id),
+              player::Collision::Terrain(_) => protocol::Collision::PlayerTerrain(player.entity_id),
+              player::Collision::Misc(_)    => protocol::Collision::PlayerMisc(player.entity_id),
             }
           })
           .map(|c| {
@@ -106,11 +106,11 @@ fn translate_mob(
   let bounds;
   {
     let mut physics = server.physics.lock().unwrap();
-    if physics.translate_misc(mob.entity_id, *delta_p).is_some() {
+    if physics.translate_misc(mob.physics_id, *delta_p).is_some() {
       mob.speed += delta_p.neg();
       return;
     } else {
-      bounds = *physics.get_bounds(mob.entity_id).unwrap();
+      bounds = *physics.get_bounds(mob.physics_id).unwrap();
     }
   }
 
@@ -135,7 +135,7 @@ pub fn load_placeholders<RequestBlock>(
   match load_type {
     LoadType::Load | LoadType::Downgrade => {
       server.terrain_loader.load(
-        &server.id_allocator,
+        &server.misc_allocator,
         &server.physics,
         &pos,
         lod::Placeholder,

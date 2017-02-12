@@ -1,5 +1,3 @@
-use common;
-
 mod types {
   #[allow(missing_docs)]
   #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
