@@ -14,8 +14,8 @@ pub struct T {
 }
 
 pub enum Collision {
-  Terrain(entity::id::Terrain),
   Misc(entity::id::Misc),
+  Terrain(entity::id::Terrain),
 }
 
 impl T {
@@ -60,10 +60,6 @@ impl T {
     self.misc_bounds.get(&id)
   }
 
-  pub fn get_mut_bounds(&mut self, id: entity::id::Misc) -> Option<&mut Aabb3<f32>> {
-    self.misc_bounds.get_mut(&id)
-  }
-
   pub fn translate_misc(&mut self, id: entity::id::Misc, amount: Vector3<f32>) -> Option<(Aabb3<f32>, Collision)> {
     let bounds = self.misc_bounds.get_mut(&id).unwrap();
     let new_bounds =
@@ -72,18 +68,20 @@ impl T {
         bounds.max + amount,
       );
     match self.terrain_octree.intersect(&new_bounds, None) {
+      Some((bounds, terrain_id)) => {
+        Some((bounds, Collision::Terrain(terrain_id)))
+      },
       None => {
         match self.misc_octree.intersect(&new_bounds, Some(id)) {
+          Some((bounds, misc_id)) => {
+            Some ((bounds, Collision::Misc(misc_id)))
+          },
           None => {
             self.misc_octree.reinsert(id, bounds, &new_bounds);
             *bounds = new_bounds;
             None
           },
-          Some((bounds, misc_id)) => Some ((bounds, Collision::Misc(misc_id))),
         }
-      },
-      Some((bounds, terrain_id)) => {
-        Some((bounds, Collision::Terrain(terrain_id)))
       },
     }
   }

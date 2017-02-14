@@ -86,22 +86,23 @@ impl T {
   fn translate(
     &mut self,
     physics: &Mutex<physics::T>,
-    mut v: Vector3<f32>,
+    requested_shift: Vector3<f32>,
   ) -> (Aabb3<f32>, Vec<Collision>)
   {
     let mut physics = physics.lock().unwrap();
     let physics = physics.deref_mut();
     let init_bounds = *physics.get_bounds(self.physics_id).unwrap();
-    let init_move =
+    let requested_bounds =
       Aabb3::new(
-        init_bounds.min + v,
-        init_bounds.max + v,
+        init_bounds.min + requested_shift,
+        init_bounds.max + requested_shift,
       );
 
+    let mut shift = requested_shift;
     let mut collisions = Vec::new();
     let mut collided = false;
     loop {
-      match physics.translate_misc(self.physics_id, v) {
+      match physics.translate_misc(self.physics_id, shift) {
         None => {
           break
         },
@@ -115,7 +116,7 @@ impl T {
           collided = true;
 
           // Step to the top of whatever we hit.
-          let step_height = collision_bounds.max.y - init_move.min.y;
+          let step_height = collision_bounds.max.y - requested_bounds.min.y;
           assert!(step_height > 0.0);
 
           if step_height > MAX_STEP_HEIGHT {
@@ -123,7 +124,7 @@ impl T {
             break
           }
 
-          v = v + Vector3::new(0.0, step_height, 0.0);
+          shift += Vector3::new(0.0, step_height, 0.0);
         },
       }
     }
@@ -132,19 +133,20 @@ impl T {
     self.position += shifted.min - init_bounds.min;
 
     if collided {
-      if v.y < 0.0 {
+      if requested_shift.y < 0.0 {
         self.jump_fuel = MAX_JUMP_FUEL;
       }
 
-      self.speed += -v;
+      self.speed.y -= requested_shift.y;
     } else {
-      if v.y < 0.0 {
+      if requested_shift.y < 0.0 {
         self.jump_fuel = 0;
       }
     }
 
     (shifted, collisions)
   }
+
 
   pub fn update<RequestBlock>(
     &mut self,
@@ -209,7 +211,7 @@ impl T {
     }
 
     let delta_p = self.speed;
-    let mut new_bounds = *server.physics.lock().unwrap().get_mut_bounds(self.physics_id).unwrap();
+    let mut new_bounds = *server.physics.lock().unwrap().get_bounds(self.physics_id).unwrap();
     let mut collisions = Vec::new();
     if delta_p.x != 0.0 {
       let (b, c) = self.translate(&server.physics, Vector3::new(delta_p.x, 0.0, 0.0));
