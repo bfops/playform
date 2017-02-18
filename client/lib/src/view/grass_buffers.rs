@@ -228,8 +228,8 @@ impl<'a> T<'a> {
   pub fn update_polygon_index(
     &mut self,
     gl: &mut GLContext,
-    polygon_idx: u32,
-    new_index: u32,
+    polygon_idx: terrain_buffers::PolygonIndex,
+    new_index: terrain_buffer::PolygonIndex,
   ) {
     let grass_id =
       match self.of_polygon_idx.remove(&polygon_idx) {

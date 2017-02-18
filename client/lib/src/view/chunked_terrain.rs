@@ -9,18 +9,36 @@ use common::id_allocator;
 use super::terrain_buffers::VRAM_CHUNK_LENGTH;
 use super::entity;
 
+pub struct Grass {
+  /// subtexture indices
+  pub tex_ids : Vec<u32>,
+  #[allow(missing_docs)]
+  pub ids : Vec<entity::id::Grass>,
+  /// offset, relative to the beginning of the chunk, of the terrain polygon that a grass tuft rests on
+  pub chunk_ids : Vec<entity::id::Terrain>,
+  pub polygon_offsets : Vec<index::T<Chunk<terrain_buffers::Polygon>, terrain_buffers::Polygon>>,
+}
+
+impl Grass {
+  #[allow(missing_docs)]
+  pub fn len(&self) -> usize {
+    self.ids.len()
+  }
+}
+
 #[allow(missing_docs)]
 pub struct T {
   // Every vector should be the same length
 
   /// Position of each vertex.
-  pub vertex_coordinates: Vec<[terrain_mesh::Triangle<Point3<f32>>; VRAM_CHUNK_LENGTH]>,
+  pub vertex_coordinates: Vec<Chunk<terrain_mesh::Triangle<Point3<f32>>>>,
   /// Vertex normals. These should be normalized!
-  pub normals: Vec<[terrain_mesh::Triangle<Vector3<f32>>; VRAM_CHUNK_LENGTH]>,
+  pub normals: Vec<terrain_buffers::Chunk<terrain_mesh::Triangle<Vector3<f32>>>>,
   /// Material IDs for each triangle.
-  pub materials: Vec<[i32; VRAM_CHUNK_LENGTH]>,
+  pub materials: Vec<terrain_buffers::Chunk<i32>>,
   /// per-chunk ids
-  pub ids: Vec<entity::id::Terrain>
+  pub ids: Vec<entity::id::Terrain>,
+  pub grass : Grass,
 }
 
 impl T {
@@ -55,10 +73,11 @@ pub fn of_parts(
   mut vertices  : Vec<terrain_mesh::Triangle<Point3<GLfloat>>>,
   mut normals   : Vec<terrain_mesh::Triangle<Vector3<GLfloat>>>,
   mut materials : Vec<GLint>,
+  grass         : terrain_mesh::Grass,
 ) -> T {
   assert_eq!(vertices.len(), normals.len());
   assert_eq!(vertices.len(), materials.len());
-  let len = round_up(vertices.len(), VRAM_CHUNK_LENGTH);
+  let len = round_up(vertices.len(), terrain_buffers::CHUNK_LENGTH);
   zero_pad_to(&mut vertices, len);
   zero_pad_to(&mut normals, len);
   zero_pad_to(&mut materials, len);
@@ -69,10 +88,25 @@ pub fn of_parts(
   std::mem::forget(vertices);
   std::mem::forget(normals);
   std::mem::forget(materials);
+  let ids = (0..vec_len).map(|_| id_allocator.allocate()).collect();
   T {
     vertex_coordinates : unsafe { Vec::from_raw_parts(vertices_ptr  as *mut _, vec_len, vec_len) },
     normals            : unsafe { Vec::from_raw_parts(normals_ptr   as *mut _, vec_len, vec_len) },
     materials          : unsafe { Vec::from_raw_parts(materials_ptr as *mut _, vec_len, vec_len) },
-    ids                : (0..vec_len).map(|_| id_allocator.allocate()).collect(),
+    ids                : ids,
+    grass              : {
+      let chunk_ids = Vec::with_capacity(grass.len());
+      let polygon_offsets = Vec::with_capacity(grass.len());
+      for i in grass.polygon_offsets {
+        chunk_ids.push(ids[i / terrain_buffers::CHUNK_LENGTH]);
+        polygon_offsets.push(ids[i % terrain_buffers::CHUNK_LENGTH]);
+      }
+      Grass {
+        tex_ids         : grass.tex_ids,
+        ids             : grass.ids,
+        polygon_offsets : polygon_offsets,
+        chunk_ids       : chunk_ids,
+      }
+    },
   }
 }

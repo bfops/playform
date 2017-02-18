@@ -208,10 +208,7 @@ pub fn generate<Rng: rand::Rng>(
 
     let chunk_allocator = &mut *chunk_allocator.lock().unwrap();
     chunk_stats.add(vertex_coordinates.len());
-    terrain_mesh::T {
-      chunked_terrain : chunked_terrain::of_parts(chunk_allocator, vertex_coordinates, normals, materials),
-      grass           : grass,
-    }
+    chunked_terrain::of_parts(chunk_allocator, vertex_coordinates, normals, materials, grass)
   })
 }
 
@@ -244,21 +241,6 @@ impl Grass {
   #[allow(missing_docs)]
   pub fn is_empty(&self) -> bool {
     self.len() == 0
-  }
-}
-
-/// A small continguous chunk of terrain.
-pub struct T {
-  #[allow(missing_docs)]
-  pub chunked_terrain: chunked_terrain::T,
-  #[allow(missing_docs)]
-  pub grass: Grass,
-}
-
-impl T {
-  /// is there nothing to be loaded in this chunk?
-  pub fn is_empty(&self) -> bool {
-    self.chunked_terrain.is_empty() && self.grass.is_empty()
   }
 }
 

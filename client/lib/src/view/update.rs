@@ -7,6 +7,9 @@ use terrain_mesh;
 use vertex::ColoredVertex;
 use view;
 
+use common::index;
+
+use super::chunked_terrain;
 use super::entity;
 use super::light;
 use super::mob_buffers::VERTICES_PER_MOB;
@@ -27,7 +30,7 @@ pub enum T {
   SetSun(light::Sun),
 
   /// Add a terrain chunk to the view.
-  LoadMesh (Box<terrain_mesh::T>),
+  LoadMesh (Box<chunked_terrain::T>),
   /// Remove a terrain entity.
   UnloadMesh(terrain_mesh::Ids),
   /// Treat a series of updates as an atomic operation.
@@ -61,34 +64,33 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
     T::LoadMesh(mesh) => {
       stopwatch::time("add_chunk", move || {
         let mesh = *mesh;
-        let terrain_mesh::T { chunked_terrain, grass } = mesh;
-        for i in 0 .. chunked_terrain.len() {
+        for i in 0 .. mesh.len() {
           view.terrain_buffers.push(
             &mut view.gl,
-            chunked_terrain.ids[i],
-            &chunked_terrain.vertex_coordinates[i],
-            &chunked_terrain.normals[i],
-            &chunked_terrain.materials[i],
+            mesh.ids[i],
+            &mesh.vertex_coordinates[i],
+            &mesh.normals[i],
+            &mesh.materials[i],
           );
         }
-        let mut grass_entries = Vec::with_capacity(grass.len());
-        for i in 0..grass.len() {
-          let chunk_offset = grass.polygon_offsets[i] / terrain_buffers::VRAM_CHUNK_LENGTH;
-          let polygon_offset = grass.polygon_offsets[i] % terrain_buffers::VRAM_CHUNK_LENGTH;
-          let chunk_id = chunked_terrain.ids[chunk_offset];
+        let mut grass_entries = Vec::with_capacity(mesh.grass.len());
+        let mut polygon_indices = Vec::with_capacity(mesh.grass.len());
+        for i in 0 .. mesh.grass.len() {
+          let chunk_id = mesh.grass.chunk_ids[i];
+          let polygon_offset = mesh.grass.polygon_offsets[i];
           let chunk_idx = view.terrain_buffers.lookup_opengl_index(chunk_id).unwrap();
-          let polygon_idx = chunk_idx * terrain_buffers::VRAM_CHUNK_LENGTH as u32 + polygon_offset as u32;
+          let polygon_idx = chunk_idx.subindex(polygon_offset);
           grass_entries.push(
             view::grass_buffers::Entry {
-              polygon_idx : polygon_idx,
-              tex_id      : grass.tex_ids[i],
+              polygon_idx : polygon_idx.to_u32(),
+              tex_id      : mesh.grass.tex_ids[i],
             }
           );
         }
         view.grass_buffers.push(
           &mut view.gl,
           grass_entries.as_ref(),
-          grass.ids.as_ref(),
+          mesh.grass.ids.as_ref(),
         );
       })
     },
@@ -101,13 +103,11 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
         match view.terrain_buffers.swap_remove(&mut view.gl, chunk_id) {
           None => {},
           Some((idx, swapped_idx)) => {
-            let swapped_base = swapped_idx * terrain_buffers::VRAM_CHUNK_LENGTH;
-            let base = idx * terrain_buffers::VRAM_CHUNK_LENGTH;
-            for i in 0..terrain_buffers::VRAM_CHUNK_LENGTH {
+            for i in index::all() {
               view.grass_buffers.update_polygon_index(
                 &mut view.gl,
-                (swapped_base + i) as u32,
-                (base + i) as u32,
+                swapped_idx.subindex(i)
+                idx.subindex(i)
               );
             }
           }

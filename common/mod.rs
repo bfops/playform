@@ -28,6 +28,7 @@ pub mod entity;
 pub mod fnv_map;
 pub mod fnv_set;
 pub mod id_allocator;
+pub mod index;
 pub mod interval_timer;
 pub mod protocol;
 pub mod range_abs;
