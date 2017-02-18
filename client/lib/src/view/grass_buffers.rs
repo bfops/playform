@@ -178,10 +178,8 @@ impl<'a> T<'a> {
     &mut self,
     gl: &mut GLContext,
     grass: &[Entry],
-    polygon_idxs: &[u32],
     grass_ids: &[view::entity::id::Grass],
   ) {
-    assert!(grass.len() == polygon_idxs.len());
     assert!(grass.len() == grass_ids.len());
 
     self.per_tuft.byte_buffer.bind(gl);
@@ -196,11 +194,11 @@ impl<'a> T<'a> {
       self.index_to_id.push(*id);
     }
 
-    for (id, polygon_idx) in grass_ids.iter().zip(polygon_idxs.iter()) {
-      debug!("Insert {:?} {:?}", *id, *polygon_idx);
-      let previous = self.to_polygon_idx.insert(*id, *polygon_idx);
+    for (id, grass) in grass_ids.iter().zip(grass.iter()) {
+      debug!("Insert {:?} {:?}", *id, grass.polygon_idx);
+      let previous = self.to_polygon_idx.insert(*id, grass.polygon_idx);
       assert!(previous.is_none());
-      let previous = self.of_polygon_idx.insert(*polygon_idx, *id);
+      let previous = self.of_polygon_idx.insert(grass.polygon_idx, *id);
       assert!(previous.is_none());
     }
   }

@@ -72,7 +72,6 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
           );
         }
         let mut grass_entries = Vec::with_capacity(grass.len());
-        let mut polygon_indices = Vec::with_capacity(grass.len());
         for i in 0..grass.len() {
           let chunk_offset = grass.polygon_offsets[i] / terrain_buffers::VRAM_CHUNK_LENGTH;
           let polygon_offset = grass.polygon_offsets[i] % terrain_buffers::VRAM_CHUNK_LENGTH;
@@ -85,12 +84,10 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
               tex_id      : grass.tex_ids[i],
             }
           );
-          polygon_indices.push(polygon_idx);
         }
         view.grass_buffers.push(
           &mut view.gl,
           grass_entries.as_ref(),
-          polygon_indices.as_ref(),
           grass.ids.as_ref(),
         );
       })
