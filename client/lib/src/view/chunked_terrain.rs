@@ -4,18 +4,23 @@ use gl::types::*;
 use cgmath::{Point3, Vector3};
 use std;
 use terrain_mesh;
-use common::id_allocator;
 
-use super::terrain_buffers::VRAM_CHUNK_LENGTH;
+use common::id_allocator;
+use common::index;
+
+use super::terrain_buffers;
+use super::terrain_buffers::Chunk;
 use super::entity;
 
+/// Information required to load a grass tuft into vram, transformed to refer to vram terrain chunks.
 pub struct Grass {
   /// subtexture indices
   pub tex_ids : Vec<u32>,
   #[allow(missing_docs)]
   pub ids : Vec<entity::id::Grass>,
-  /// offset, relative to the beginning of the chunk, of the terrain polygon that a grass tuft rests on
-  pub chunk_ids : Vec<entity::id::Terrain>,
+  /// id of the vram terrain chunk for each polygon that the grass tufts rest on
+  pub polygon_chunk_ids : Vec<entity::id::Terrain>,
+  /// offset, relative to the beginning of the (vram) chunk, of the terrain polygon that a grass tuft rests on
   pub polygon_offsets : Vec<index::T<Chunk<terrain_buffers::Polygon>, terrain_buffers::Polygon>>,
 }
 
@@ -81,32 +86,33 @@ pub fn of_parts(
   zero_pad_to(&mut vertices, len);
   zero_pad_to(&mut normals, len);
   zero_pad_to(&mut materials, len);
-  let vec_len = len / VRAM_CHUNK_LENGTH;
+  let vec_len = len / terrain_buffers::CHUNK_LENGTH;
   let vertices_ptr  = vertices.as_mut_ptr();
   let normals_ptr   = normals.as_mut_ptr();
   let materials_ptr = materials.as_mut_ptr();
   std::mem::forget(vertices);
   std::mem::forget(normals);
   std::mem::forget(materials);
-  let ids = (0..vec_len).map(|_| id_allocator.allocate()).collect();
+  let ids: Vec<_> = (0..vec_len).map(|_| id_allocator.allocate()).collect();
+  let grass = {
+    let mut polygon_chunk_ids = Vec::with_capacity(grass.len());
+    let mut polygon_offsets = Vec::with_capacity(grass.len());
+    for i in grass.polygon_offsets {
+      polygon_chunk_ids.push(ids[i / terrain_buffers::CHUNK_LENGTH]);
+      polygon_offsets.push(index::of_u32((i % terrain_buffers::CHUNK_LENGTH) as u32));
+    }
+    Grass {
+      tex_ids           : grass.tex_ids,
+      ids               : grass.ids,
+      polygon_offsets   : polygon_offsets,
+      polygon_chunk_ids : polygon_chunk_ids,
+    }
+  };
   T {
     vertex_coordinates : unsafe { Vec::from_raw_parts(vertices_ptr  as *mut _, vec_len, vec_len) },
     normals            : unsafe { Vec::from_raw_parts(normals_ptr   as *mut _, vec_len, vec_len) },
     materials          : unsafe { Vec::from_raw_parts(materials_ptr as *mut _, vec_len, vec_len) },
     ids                : ids,
-    grass              : {
-      let chunk_ids = Vec::with_capacity(grass.len());
-      let polygon_offsets = Vec::with_capacity(grass.len());
-      for i in grass.polygon_offsets {
-        chunk_ids.push(ids[i / terrain_buffers::CHUNK_LENGTH]);
-        polygon_offsets.push(ids[i % terrain_buffers::CHUNK_LENGTH]);
-      }
-      Grass {
-        tex_ids         : grass.tex_ids,
-        ids             : grass.ids,
-        polygon_offsets : polygon_offsets,
-        chunk_ids       : chunk_ids,
-      }
-    },
+    grass              : grass,
   }
 }

@@ -3,18 +3,27 @@
 use std;
 
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Debug)]
 pub struct T<Buffer, Element> {
   phantom : std::marker::PhantomData<(Buffer, Element)>,
   index   : u32,
 }
 
-fn of_u32<Buffer, Element>(index: u32) -> T<Buffer, Element> {
+/// Assert that an index is a valid element index in a buffer.
+pub fn of_u32<Buffer, Element>(index: u32) -> T<Buffer, Element> {
   T {
     phantom : std::marker::PhantomData,
     index   : index,
   }
 }
+
+impl<Buffer, Element> Clone for T<Buffer, Element> where Buffer: Sized, Element: Sized {
+  fn clone(&self) -> Self {
+    of_u32(self.index)
+  }
+}
+
+impl<Buffer, Element> Copy for T<Buffer, Element> where Buffer: Sized, Element: Sized { }
 
 fn length<Buffer, Element>() -> u32 {
   let this_size = std::mem::size_of::<Buffer>() as u32;
@@ -54,5 +63,10 @@ impl<Buffer, Element> T<Buffer, Element> {
   pub fn subindex<Subindex>(self, subindex: T<Element, Subindex>) -> T<Buffer, Subindex> {
     let downcast: T<Buffer, Subindex> = self.downcast();
     of_u32(downcast.index + subindex.index)
+  }
+
+  /// Strip type information from this index.
+  pub fn to_u32(self) -> u32 {
+    self.index
   }
 }

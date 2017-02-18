@@ -138,14 +138,14 @@ impl T {
     Rng        : rand::Rng,
   {
     debug!("generate {:?} at {:?}", chunk_position, lod);
-    let mesh_chunk: terrain_mesh::T =
+    let mesh_chunk: view::chunked_terrain::T =
       terrain_mesh::generate(&self.voxels, chunk_stats, &chunk_position, lod, terrain_allocator, grass_allocator, rng);
 
     let mut updates = Vec::new();
 
     let ids =
       terrain_mesh::Ids {
-        chunk_ids: mesh_chunk.chunked_terrain.ids.clone(),
+        chunk_ids: mesh_chunk.ids.clone(),
         grass_ids: mesh_chunk.grass.ids.clone(),
       };
 

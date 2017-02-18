@@ -124,7 +124,7 @@ pub fn generate<Rng: rand::Rng>(
   chunk_allocator : &Mutex<id_allocator::T<view::entity::id::Terrain>>,
   grass_allocator : &Mutex<id_allocator::T<view::entity::id::Grass>>,
   rng             : &mut Rng,
-) -> terrain_mesh::T
+) -> view::chunked_terrain::T
 {
   stopwatch::time("terrain_mesh::generate", || {
     let lg_edge_samples = lod.lg_edge_samples();

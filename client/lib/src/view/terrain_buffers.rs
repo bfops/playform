@@ -28,12 +28,20 @@ const POLYGON_COST: usize = 100;
 /// Maximum number of polygons to be used in VRAM
 pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
 
-/// Instead of storing individual vertices, normals, etc. in VRAM, store them in chunks.
-/// This makes it much faster to unload things.
+/// Number of elements in a chunk in vram.
 pub const CHUNK_LENGTH: usize = 1 << 5;
 /// The number of polygons loaded contiguously into VRAM.
 const CHUNK_BUDGET: usize = POLYGON_BUDGET / CHUNK_LENGTH;
+/// Instead of storing individual vertices, normals, etc. in VRAM, store them in chunks.
+/// This makes it much faster to unload things.
 pub struct Chunk<V>([V; CHUNK_LENGTH]);
+
+impl<V> Chunk<V> {
+  #[allow(missing_docs)]
+  pub fn as_ptr(&self) -> *const V {
+    self.0.as_ptr()
+  }
+}
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
 pub struct T<'a> {
@@ -42,7 +50,7 @@ pub struct T<'a> {
 
   // TODO: Use yaglw's ArrayHandle.
   empty_array: GLuint,
-  length: index<Chunk<Triangle<Point3<GLfloat>>>>,
+  length: u32,
 
   // Per-triangle buffers
 
@@ -51,8 +59,11 @@ pub struct T<'a> {
   materials: BufferTexture<'a, Chunk<GLint>>,
 }
 
-struct IndexPhantom;
+/// Phantom type for this buffer.
+#[derive(Debug)]
+pub struct IndexPhantom;
 /// Phantom type for Polygons
+#[derive(Debug)]
 pub struct Polygon([u8; 1]);
 #[allow(missing_docs)]
 pub type ChunkIndex = index::T<IndexPhantom, Chunk<Polygon>>;
@@ -96,7 +107,7 @@ impl<'a> T<'a> {
     &self,
     id: entity::id::Terrain,
   ) -> Option<ChunkIndex> {
-    self.id_to_index.get(&id).map(|&x| x as u32)
+    self.id_to_index.get(&id).map(|&x| x as u32).map(|i| index::of_u32(i))
   }
 
   fn bind(
@@ -155,9 +166,9 @@ impl<'a> T<'a> {
     &mut self,
     gl        : &mut GLContext,
     chunk_id  : entity::id::Terrain,
-    vertices  : &[Triangle<Point3<GLfloat>>; CHUNK_LENGTH],
-    normals   : &[Triangle<Vector3<GLfloat>>; CHUNK_LENGTH],
-    materials : &[GLint; CHUNK_LENGTH],
+    vertices  : &Chunk<Triangle<Point3<GLfloat>>>,
+    normals   : &Chunk<Triangle<Vector3<GLfloat>>>,
+    materials : &Chunk<GLint>,
   ) {
     debug!("Insert {:?}", chunk_id);
 
@@ -206,7 +217,7 @@ impl<'a> T<'a> {
         None
       } else {
         self.id_to_index.insert(swapped_id, idx);
-        Some((idx, swapped_idx))
+        Some((index::of_u32(idx as u32), index::of_u32(swapped_idx as u32)))
       };
 
     self.length -= 1;
@@ -227,8 +238,7 @@ impl<'a> T<'a> {
   pub fn draw(&self, _gl: &mut GLContext) {
     unsafe {
       gl::BindVertexArray(self.empty_array);
-      let length: index<Triangle<GLfloat>> = length.
-      gl::DrawArrays(gl::TRIANGLES, 0, (self.length * CHUNK_LENGTH * VERTICES_PER_TRIANGLE) as GLint);
+      gl::DrawArrays(gl::TRIANGLES, 0, (self.length * CHUNK_LENGTH as u32 * VERTICES_PER_TRIANGLE as u32) as GLint);
     }
   }
 }

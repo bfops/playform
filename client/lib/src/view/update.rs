@@ -14,7 +14,6 @@ use super::entity;
 use super::light;
 use super::mob_buffers::VERTICES_PER_MOB;
 use super::player_buffers::VERTICES_PER_PLAYER;
-use super::terrain_buffers;
 
 /// Messages from the client to the view.
 pub enum T {
@@ -74,9 +73,8 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
           );
         }
         let mut grass_entries = Vec::with_capacity(mesh.grass.len());
-        let mut polygon_indices = Vec::with_capacity(mesh.grass.len());
         for i in 0 .. mesh.grass.len() {
-          let chunk_id = mesh.grass.chunk_ids[i];
+          let chunk_id = mesh.grass.polygon_chunk_ids[i];
           let polygon_offset = mesh.grass.polygon_offsets[i];
           let chunk_idx = view.terrain_buffers.lookup_opengl_index(chunk_id).unwrap();
           let polygon_idx = chunk_idx.subindex(polygon_offset);
@@ -106,8 +104,8 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
             for i in index::all() {
               view.grass_buffers.update_polygon_index(
                 &mut view.gl,
-                swapped_idx.subindex(i)
-                idx.subindex(i)
+                swapped_idx.subindex(i),
+                idx.subindex(i),
               );
             }
           }
