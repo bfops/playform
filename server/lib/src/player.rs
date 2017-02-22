@@ -6,13 +6,13 @@ use std::ops::DerefMut;
 use std::sync::Mutex;
 use stopwatch;
 
-use common::entity_id;
 use common::id_allocator;
 use common::surroundings_loader;
 use common::voxel;
 
+use entity;
 use lod;
-use physics::Physics;
+use physics;
 use server;
 use update_gaia;
 use update_world::load_placeholders;
@@ -22,11 +22,10 @@ const MAX_STEP_HEIGHT: f32 = 1.0;
 
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 pub enum Collision {
-  Terrain(entity_id::T),
-  Misc(entity_id::T),
+  Terrain(entity::id::Terrain),
+  Misc(entity::id::Misc),
 }
 
-// TODO: Add ObservablePlayer struct as a subset.
 pub struct T {
   pub position: Point3<f32>,
   // speed; units are world coordinates
@@ -39,7 +38,8 @@ pub struct T {
   pub jump_fuel: u32,
   // are we currently trying to jump? (e.g. holding the key).
   pub is_jumping: bool,
-  pub entity_id: entity_id::T,
+  pub entity_id: entity::id::Player,
+  pub physics_id: entity::id::Misc,
 
   // rotation around the y-axis, in radians
   pub lateral_rotation: f32,
@@ -53,72 +53,70 @@ pub struct T {
   solid_owner: lod::OwnerId,
 }
 
-impl T {
-  pub fn new(
-    entity_id: entity_id::T,
-    owner_allocator: &Mutex<id_allocator::T<lod::OwnerId>>,
-  ) -> T {
-    let surroundings_owner = id_allocator::allocate(owner_allocator);
-    let solid_owner = id_allocator::allocate(owner_allocator);
-    T {
-      position            : Point3::new(0.0, 0.0, 0.0),
-      speed               : Vector3::new(0.0, 0.0, 0.0),
-      accel               : Vector3::new(0.0, -0.1, 0.0),
-      walk_accel          : Vector3::new(0.0, 0.0, 0.0),
-      jump_fuel           : 0,
-      is_jumping          : false,
-      entity_id           : entity_id,
-      lateral_rotation    : 0.0,
-      vertical_rotation   : 0.0,
+pub fn new(
+  entity_id: entity::id::Player,
+  physics_id: entity::id::Misc,
+  owner_allocator: &Mutex<id_allocator::T<lod::OwnerId>>,
+) -> T {
+  let surroundings_owner = owner_allocator.lock().unwrap().allocate();
+  let solid_owner = owner_allocator.lock().unwrap().allocate();
+  T {
+    position            : Point3::new(0.0, 0.0, 0.0),
+    speed               : Vector3::new(0.0, 0.0, 0.0),
+    accel               : Vector3::new(0.0, -0.1, 0.0),
+    walk_accel          : Vector3::new(0.0, 0.0, 0.0),
+    jump_fuel           : 0,
+    is_jumping          : false,
+    entity_id           : entity_id,
+    physics_id          : physics_id,
+    lateral_rotation    : 0.0,
+    vertical_rotation   : 0.0,
 
-      surroundings_loader : surroundings_loader::new(8, Vec::new()),
-      solid_boundary      : surroundings_loader::new(8, Vec::new()),
-      surroundings_owner  : surroundings_owner,
-      solid_owner         : solid_owner,
-    }
+    surroundings_loader : surroundings_loader::new(8, Vec::new()),
+    solid_boundary      : surroundings_loader::new(8, Vec::new()),
+    surroundings_owner  : surroundings_owner,
+    solid_owner         : solid_owner,
   }
+}
 
+impl T {
   /// Translates the player by a vector.
   /// If the player collides with something with a small height jump, the player will shift upward.
   /// Returns the actual amount moved by.
-  pub fn translate(
+  fn translate(
     &mut self,
-    physics: &Mutex<Physics>,
-    v: Vector3<f32>,
+    physics: &Mutex<physics::T>,
+    requested_shift: Vector3<f32>,
   ) -> (Aabb3<f32>, Vec<Collision>)
   {
     let mut physics = physics.lock().unwrap();
     let physics = physics.deref_mut();
-    let bounds = physics.bounds.get_mut(&self.entity_id).unwrap();
-    let init_bounds =
+    let init_bounds = *physics.get_bounds(self.physics_id).unwrap();
+    let requested_bounds =
       Aabb3::new(
-        bounds.min + (&v),
-        bounds.max + (&v),
+        init_bounds.min + requested_shift,
+        init_bounds.max + requested_shift,
       );
 
-    let mut new_bounds = init_bounds;
+    let mut shift = requested_shift;
     let mut collisions = Vec::new();
     let mut collided = false;
-    // The height of the player's "step".
-    let mut step_height = 0.0;
     loop {
-      match physics.terrain_octree.intersect(&new_bounds, None) {
+      match physics.translate_misc(self.physics_id, shift) {
         None => {
-          if let Some((_, id)) = Physics::reinsert(&mut physics.misc_octree, self.entity_id, bounds, &new_bounds) {
-            collided = true;
-            collisions.push(Collision::Misc(id));
-          } else {
-            self.position += v;
-            self.position += Vector3::new(0.0, step_height, 0.0);
-          }
           break
         },
-        Some((collision_bounds, id)) => {
+        Some((_, physics::Collision::Misc(id))) => {
+          collided = true;
+          collisions.push(Collision::Misc(id));
+          break
+        },
+        Some((collision_bounds, physics::Collision::Terrain(id))) => {
           collisions.push(Collision::Terrain(id));
           collided = true;
 
           // Step to the top of whatever we hit.
-          step_height = collision_bounds.max.y - init_bounds.min.y;
+          let step_height = collision_bounds.max.y - requested_bounds.min.y;
           assert!(step_height > 0.0);
 
           if step_height > MAX_STEP_HEIGHT {
@@ -126,29 +124,29 @@ impl T {
             break
           }
 
-          new_bounds =
-            Aabb3::new(
-              init_bounds.min + Vector3::new(0.0, step_height, 0.0),
-              init_bounds.max + Vector3::new(0.0, step_height, 0.0),
-            );
+          shift += Vector3::new(0.0, step_height, 0.0);
         },
       }
     }
 
+    let shifted = *physics.get_bounds(self.physics_id).unwrap();
+    self.position += shifted.min - init_bounds.min;
+
     if collided {
-      if v.y < 0.0 {
+      if requested_shift.y < 0.0 {
         self.jump_fuel = MAX_JUMP_FUEL;
       }
 
-      self.speed += -v;
+      self.speed.y -= requested_shift.y;
     } else {
-      if v.y < 0.0 {
+      if requested_shift.y < 0.0 {
         self.jump_fuel = 0;
       }
     }
 
-    (*bounds, collisions)
+    (shifted, collisions)
   }
+
 
   pub fn update<RequestBlock>(
     &mut self,
@@ -171,7 +169,7 @@ impl T {
         match load_type {
           surroundings_loader::LoadType::Load | surroundings_loader::LoadType::Downgrade => {
             server.terrain_loader.load(
-              &server.id_allocator,
+              &server.misc_allocator,
               &server.physics,
               &pos,
               lod::Full,
@@ -213,7 +211,7 @@ impl T {
     }
 
     let delta_p = self.speed;
-    let mut new_bounds = *server.physics.lock().unwrap().bounds.get_mut(&self.entity_id).unwrap();
+    let mut new_bounds = *server.physics.lock().unwrap().get_bounds(self.physics_id).unwrap();
     let mut collisions = Vec::new();
     if delta_p.x != 0.0 {
       let (b, c) = self.translate(&server.physics, Vector3::new(delta_p.x, 0.0, 0.0));

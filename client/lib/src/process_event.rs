@@ -7,7 +7,7 @@ use sdl2::mouse::Mouse;
 use std::f32::consts::PI;
 use stopwatch;
 
-use common::entity_id;
+use common::entity;
 use common::protocol;
 
 use client;
@@ -133,7 +133,7 @@ fn key_press<UpdateServer>(
 }
 
 fn mouse_press<UpdateServer>(
-  player_id: entity_id::T,
+  player_id: entity::id::Player,
   update_server: &mut UpdateServer,
   mouse_btn: Mouse,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
@@ -156,7 +156,7 @@ fn mouse_press<UpdateServer>(
 }
 
 fn key_release<UpdateServer>(
-  player_id: entity_id::T,
+  player_id: entity::id::Player,
   update_server: &mut UpdateServer,
   key: Keycode,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
@@ -186,7 +186,7 @@ fn key_release<UpdateServer>(
 
 // x and y are relative to last position.
 fn mouse_move<UpdateServer>(
-  player_id: entity_id::T,
+  player_id: entity::id::Player,
   update_server: &mut UpdateServer,
   view: &mut view::T,
   dx: i32, dy: i32,

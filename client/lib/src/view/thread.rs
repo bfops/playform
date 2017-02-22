@@ -18,7 +18,8 @@ use client;
 use hud::make_hud;
 use process_event::process_event;
 use view;
-use view::update;
+
+use super::update;
 
 #[allow(missing_docs)]
 pub const FRAMES_PER_SECOND: u64 = 30;
@@ -56,9 +57,8 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   let mut window =
     video.window(
       "Playform",
-      0, 0,
+      800, 600,
     );
-  let window = window.fullscreen_desktop();
   let window = window.opengl();
   let window = window.build().unwrap();
 

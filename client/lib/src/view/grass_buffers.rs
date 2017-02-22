@@ -9,10 +9,10 @@ use std::f32;
 use yaglw;
 use yaglw::gl_context::GLContext;
 
-use common::entity_id;
 use common::fnv_map;
 
-use terrain_mesh;
+use super::entity;
+use super::terrain_buffers;
 
 // VRAM bytes
 const BYTE_BUDGET: usize = 64_000_000;
@@ -31,11 +31,11 @@ pub struct Entry {
 
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
 pub struct T<'a> {
-  id_to_index: fnv_map::T<entity_id::T, usize>,
-  index_to_id: Vec<entity_id::T>,
+  id_to_index: fnv_map::T<entity::id::Grass, usize>,
+  index_to_id: Vec<entity::id::Grass>,
 
-  to_polygon_id: fnv_map::T<entity_id::T, entity_id::T>,
-  of_polygon_id: fnv_map::T<entity_id::T, entity_id::T>,
+  to_polygon_idx: fnv_map::T<entity::id::Grass, u32>,
+  of_polygon_idx: fnv_map::T<u32, entity::id::Grass>,
 
   gl_array: yaglw::vertex_buffer::ArrayHandle<'a>,
   _instance_vertices: yaglw::vertex_buffer::GLBuffer<'a, Vertex>,
@@ -159,14 +159,14 @@ pub fn new<'a, 'b:'a>(
       gl,
       shader,
     );
-  assert!(attrib_span == std::mem::size_of::<terrain_mesh::Grass>() as u32);
+  assert!(attrib_span == std::mem::size_of::<Entry>() as u32);
 
   T {
     id_to_index: fnv_map::new(),
     index_to_id: Vec::new(),
 
-    to_polygon_id: fnv_map::new(),
-    of_polygon_id: fnv_map::new(),
+    to_polygon_idx: fnv_map::new(),
+    of_polygon_idx: fnv_map::new(),
 
     gl_array: gl_array,
     _instance_vertices: instance_vertices,
@@ -180,10 +180,8 @@ impl<'a> T<'a> {
     &mut self,
     gl: &mut GLContext,
     grass: &[Entry],
-    polygon_ids: &[entity_id::T],
-    grass_ids: &[entity_id::T],
+    grass_ids: &[entity::id::Grass],
   ) {
-    assert!(grass.len() == polygon_ids.len());
     assert!(grass.len() == grass_ids.len());
 
     self.per_tuft.byte_buffer.bind(gl);
@@ -193,20 +191,24 @@ impl<'a> T<'a> {
     }
 
     for id in grass_ids {
-      self.id_to_index.insert(*id, self.index_to_id.len());
+      let previous = self.id_to_index.insert(*id, self.index_to_id.len());
+      assert!(previous.is_none());
       self.index_to_id.push(*id);
     }
 
-    for (id, polygon_id) in grass_ids.iter().zip(polygon_ids.iter()) {
-      self.to_polygon_id.insert(*id, *polygon_id);
-      self.of_polygon_id.insert(*polygon_id, *id);
+    for (id, grass) in grass_ids.iter().zip(grass.iter()) {
+      debug!("Insert {:?} {:?}", *id, grass.polygon_idx);
+      let previous = self.to_polygon_idx.insert(*id, grass.polygon_idx);
+      assert!(previous.is_none());
+      let previous = self.of_polygon_idx.insert(grass.polygon_idx, *id);
+      assert!(previous.is_none());
     }
   }
 
   // TODO: Make this take many ids as a parameter, to reduce `bind`s.
   // Note: `id` must be present in the buffers.
   /// Remove some entity from VRAM.
-  pub fn swap_remove(&mut self, gl: &mut GLContext, id: entity_id::T) {
+  pub fn swap_remove(&mut self, gl: &mut GLContext, id: entity::id::Grass) {
     let idx = (*self).id_to_index[&id];
     let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
     self.index_to_id.swap_remove(idx);
@@ -219,23 +221,27 @@ impl<'a> T<'a> {
     self.per_tuft.byte_buffer.bind(gl);
     self.per_tuft.swap_remove(gl, idx, 1);
 
-    let polygon_id = self.to_polygon_id.remove(&id).unwrap();
-    self.of_polygon_id.remove(&polygon_id).unwrap();
+    let polygon_idx = self.to_polygon_idx.remove(&id).unwrap();
+    self.of_polygon_idx.remove(&polygon_idx).unwrap();
+    debug!("Swap-remove {:?} {:?} with {:?}", id, polygon_idx, swapped_id);
   }
 
   /// Update the index of the underlying polygon that a grass tuft is associated with.
   pub fn update_polygon_index(
-    &self,
-    gl: &mut GLContext,
-    polygon_id: entity_id::T,
-    new_index: u32,
+    &mut self,
+    gl          : &mut GLContext,
+    polygon_idx : terrain_buffers::PolygonIndex,
+    new_index   : terrain_buffers::PolygonIndex,
   ) {
     let grass_id =
-      match self.of_polygon_id.get(&polygon_id) {
+      match self.of_polygon_idx.remove(&polygon_idx.to_u32()) {
         None => return,
         Some(id) => id,
       };
-    let entry_idx = self.id_to_index[grass_id];
+    debug!("Update {:?} {:?} to {:?}", grass_id, polygon_idx, new_index);
+    self.of_polygon_idx.insert(new_index.to_u32(), grass_id);
+    self.to_polygon_idx.insert(grass_id, new_index.to_u32());
+    let entry_idx = self.id_to_index[&grass_id];
     // update the underlying byte buffer directly and only touch the polygon
     // index field.
     self.per_tuft.byte_buffer.bind(gl);
@@ -243,7 +249,7 @@ impl<'a> T<'a> {
       self.per_tuft.byte_buffer.update(
         gl,
         std::mem::size_of::<Entry>() * entry_idx,
-        &new_index as *const u32 as *const u8,
+        &new_index as *const _ as *const u8,
         std::mem::size_of::<u32>(),
       );
     }

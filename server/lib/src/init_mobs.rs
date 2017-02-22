@@ -1,10 +1,9 @@
 use cgmath::{Point3, EuclideanSpace, InnerSpace, Vector3};
 use collision::{Aabb3};
 
-use common::entity_id;
-use common::id_allocator;
 use common::surroundings_loader;
 
+use entity;
 use mob;
 use server;
 
@@ -20,9 +19,9 @@ pub fn init_mobs(
 ) {
   fn mob_behavior(world: &server::T, mob: &mut mob::Mob) {
     fn to_player(world: &server::T, mob: &mob::Mob) -> Option<Vector3<f32>> {
-      let mob_posn = center(world.physics.lock().unwrap().get_bounds(mob.entity_id).unwrap());
+      let mob_posn = center(world.physics.lock().unwrap().get_bounds(mob.physics_id).unwrap());
 
-      let players: Vec<entity_id::T> = world.players.lock().unwrap().keys().cloned().collect();
+      let players: Vec<entity::id::Misc> = world.players.lock().unwrap().values().map(|player| player.physics_id).collect();
       let mut players = players.into_iter();
 
       players.next().map(|id| {
@@ -103,18 +102,20 @@ fn add_mob(
   behavior: mob::Behavior,
 ) {
   let bounds = Aabb3::new(low_corner, low_corner + (&Vector3::new(1.0, 2.0, 1.0 as f32)));
-  let entity_id = id_allocator::allocate(&server.id_allocator);
+  let entity_id = server.mob_allocator.lock().unwrap().allocate();
+  let physics_id = server.misc_allocator.lock().unwrap().allocate();
 
   let mob =
     mob::Mob {
-      position: (bounds.min + bounds.max.to_vec()) * 0.5,
-      speed: Vector3::new(0.0, 0.0, 0.0),
-      behavior: behavior,
-      entity_id: entity_id,
-      owner_id: id_allocator::allocate(&server.owner_allocator),
-      surroundings_loader: surroundings_loader::new(8, Vec::new()),
+      position            : (bounds.min + bounds.max.to_vec()) * 0.5,
+      speed               : Vector3::new(0.0, 0.0, 0.0),
+      behavior            : behavior,
+      entity_id           : entity_id,
+      physics_id          : physics_id,
+      owner_id            : server.owner_allocator.lock().unwrap().allocate(),
+      surroundings_loader : surroundings_loader::new(8, Vec::new()),
     };
 
-  server.physics.lock().unwrap().insert_misc(entity_id, &bounds);
+  server.physics.lock().unwrap().insert_misc(physics_id, &bounds);
   server.mobs.lock().unwrap().insert(entity_id, mob);
 }

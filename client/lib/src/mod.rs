@@ -36,6 +36,7 @@ pub mod audio;
 pub mod audio_loader;
 pub mod audio_thread;
 pub mod chunk;
+pub mod chunk_stats;
 pub mod client;
 pub mod hud;
 pub mod lod;

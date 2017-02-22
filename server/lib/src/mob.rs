@@ -1,8 +1,8 @@
 use cgmath::{Point3, Vector3};
 
-use common::entity_id;
 use common::surroundings_loader;
 
+use entity;
 use lod;
 use server;
 
@@ -13,7 +13,8 @@ pub struct Mob {
   pub speed               : Vector3<f32>,
   pub behavior            : Behavior,
 
-  pub entity_id           : entity_id::T,
+  pub entity_id           : entity::id::Mob,
+  pub physics_id          : entity::id::Misc,
   pub owner_id            : lod::OwnerId,
   pub surroundings_loader : surroundings_loader::T,
 }

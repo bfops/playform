@@ -3,14 +3,17 @@
 use cgmath::Point3;
 use stopwatch;
 
-use common::entity_id;
-
 use terrain_mesh;
 use vertex::ColoredVertex;
 use view;
-use view::light;
-use view::mob_buffers::VERTICES_PER_MOB;
-use view::player_buffers::VERTICES_PER_PLAYER;
+
+use common::index;
+
+use super::chunked_terrain;
+use super::entity;
+use super::light;
+use super::mob_buffers::VERTICES_PER_MOB;
+use super::player_buffers::VERTICES_PER_PLAYER;
 
 /// Messages from the client to the view.
 pub enum T {
@@ -18,15 +21,15 @@ pub enum T {
   MoveCamera(Point3<f32>),
 
   /// Update a player mesh.
-  UpdatePlayer(entity_id::T, [ColoredVertex; VERTICES_PER_PLAYER]),
+  UpdatePlayer(entity::id::Player, [ColoredVertex; VERTICES_PER_PLAYER]),
   /// Update a mob mesh.
-  UpdateMob(entity_id::T, [ColoredVertex; VERTICES_PER_MOB]),
+  UpdateMob(entity::id::Mob, [ColoredVertex; VERTICES_PER_MOB]),
 
   /// Update the sun.
   SetSun(light::Sun),
 
   /// Add a terrain chunk to the view.
-  LoadMesh (Box<terrain_mesh::T>),
+  LoadMesh (Box<chunked_terrain::T>),
   /// Remove a terrain entity.
   UnloadMesh(terrain_mesh::Ids),
   /// Treat a series of updates as an atomic operation.
@@ -58,48 +61,55 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
       }
     },
     T::LoadMesh(mesh) => {
-      stopwatch::time("add_chunk", || {
-        view.terrain_buffers.push(
-          &mut view.gl,
-          mesh.vertex_coordinates.as_ref(),
-          mesh.normals.as_ref(),
-          mesh.ids.terrain_ids.as_ref(),
-          mesh.materials.as_ref(),
-        );
-        let mut grass = Vec::with_capacity(mesh.grass.len());
-        let mut polygon_indices = Vec::with_capacity(mesh.grass.len());
-        for g in &mesh.grass {
-          grass.push(
+      stopwatch::time("add_chunk", move || {
+        let mesh = *mesh;
+        for i in 0 .. mesh.len() {
+          view.terrain_buffers.push(
+            &mut view.gl,
+            mesh.ids[i],
+            &mesh.vertex_coordinates[i],
+            &mesh.normals[i],
+            &mesh.materials[i],
+          );
+        }
+        let mut grass_entries = Vec::with_capacity(mesh.grass.len());
+        for i in 0 .. mesh.grass.len() {
+          let chunk_id = mesh.grass.polygon_chunk_ids[i];
+          let polygon_offset = mesh.grass.polygon_offsets[i];
+          let chunk_idx = view.terrain_buffers.lookup_opengl_index(chunk_id).unwrap();
+          let polygon_idx = chunk_idx.subindex(polygon_offset);
+          grass_entries.push(
             view::grass_buffers::Entry {
-              polygon_idx : view.terrain_buffers.lookup_opengl_index(g.polygon_id).unwrap(),
-              tex_id      : g.tex_id,
+              polygon_idx : polygon_idx.to_u32(),
+              tex_id      : mesh.grass.tex_ids[i],
             }
           );
-          polygon_indices.push(g.polygon_id);
         }
         view.grass_buffers.push(
           &mut view.gl,
-          grass.as_ref(),
-          polygon_indices.as_ref(),
-          mesh.ids.grass_ids.as_ref(),
+          grass_entries.as_ref(),
+          mesh.grass.ids.as_ref(),
         );
       })
     },
-    T::UnloadMesh(terrain_mesh::Ids { terrain_ids, grass_ids }) => {
-      for id in terrain_ids {
-        match view.terrain_buffers.swap_remove(&mut view.gl, id) {
-          None => {},
-          Some((swapped_id, idx)) => {
-            view.grass_buffers.update_polygon_index(
-              &mut view.gl,
-              swapped_id,
-              idx as u32,
-            );
-          },
-        }
-      }
+    T::UnloadMesh(terrain_mesh::Ids { chunk_ids, grass_ids }) => {
+      // Removing grass needs to happen before the calls to [update_polygon_index], or we will remove the wrong things.
       for id in grass_ids {
         view.grass_buffers.swap_remove(&mut view.gl, id);
+      }
+      for chunk_id in chunk_ids {
+        match view.terrain_buffers.swap_remove(&mut view.gl, chunk_id) {
+          None => {},
+          Some((idx, swapped_idx)) => {
+            for i in index::all() {
+              view.grass_buffers.update_polygon_index(
+                &mut view.gl,
+                swapped_idx.subindex(i),
+                idx.subindex(i),
+              );
+            }
+          }
+        }
       }
     },
     T::Atomic(updates) => {

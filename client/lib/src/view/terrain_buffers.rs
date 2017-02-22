@@ -3,21 +3,24 @@
 use gl;
 use gl::types::*;
 use cgmath::{Point3, Vector3};
+use std;
 use yaglw;
 use yaglw::gl_context::GLContext;
 use yaglw::texture::BufferTexture;
 use yaglw::texture::TextureUnit;
 
-use common::entity_id;
+use common::index;
 use common::fnv_map;
 use common::id_allocator;
 
 use terrain_mesh::Triangle;
 
-const VERTICES_PER_TRIANGLE: u32 = 3;
+use super::entity;
 
 #[cfg(test)]
 use std::mem;
+
+const VERTICES_PER_TRIANGLE: usize = 3;
 
 /// Maximum number of bytes to be used in VRAM
 pub const BYTE_BUDGET: usize = 64_000_000;
@@ -25,21 +28,47 @@ const POLYGON_COST: usize = 100;
 /// Maximum number of polygons to be used in VRAM
 pub const POLYGON_BUDGET: usize = BYTE_BUDGET / POLYGON_COST;
 
+/// Number of elements in a chunk in vram.
+pub const CHUNK_LENGTH: usize = 1 << 5;
+/// The number of polygons loaded contiguously into VRAM.
+const CHUNK_BUDGET: usize = POLYGON_BUDGET / CHUNK_LENGTH;
+/// Instead of storing individual vertices, normals, etc. in VRAM, store them in chunks.
+/// This makes it much faster to unload things.
+pub struct Chunk<V>([V; CHUNK_LENGTH]);
+
+impl<V> Chunk<V> {
+  #[allow(missing_docs)]
+  pub fn as_ptr(&self) -> *const V {
+    self.0.as_ptr()
+  }
+}
+
 /// Struct for loading/unloading/maintaining terrain data in VRAM.
 pub struct T<'a> {
-  id_to_index: fnv_map::T<entity_id::T, usize>,
-  index_to_id: Vec<entity_id::T>,
+  id_to_index: fnv_map::T<entity::id::Terrain, usize>,
+  index_to_id: Vec<entity::id::Terrain>,
 
   // TODO: Use yaglw's ArrayHandle.
   empty_array: GLuint,
-  length: usize,
+  length: u32,
 
   // Per-triangle buffers
 
-  vertex_positions: BufferTexture<'a, Triangle<Point3<GLfloat>>>,
-  normals: BufferTexture<'a, Triangle<Vector3<GLfloat>>>,
-  materials: BufferTexture<'a, GLint>,
+  vertex_positions: BufferTexture<'a, Chunk<Triangle<Point3<GLfloat>>>>,
+  normals: BufferTexture<'a, Chunk<Triangle<Vector3<GLfloat>>>>,
+  materials: BufferTexture<'a, Chunk<GLint>>,
 }
+
+/// Phantom type for this buffer.
+#[derive(Debug)]
+pub struct IndexPhantom;
+/// Phantom type for Polygons
+#[derive(Debug)]
+pub struct Polygon([u8; 1]);
+#[allow(missing_docs)]
+pub type ChunkIndex = index::T<IndexPhantom, Chunk<Polygon>>;
+#[allow(missing_docs)]
+pub type PolygonIndex = index::T<IndexPhantom, Polygon>;
 
 #[test]
 fn correct_size() {
@@ -66,9 +95,9 @@ pub fn new<'a, 'b>(
       empty_array
     },
     length: 0,
-    vertex_positions: BufferTexture::new(gl, gl::R32F, POLYGON_BUDGET),
-    normals: BufferTexture::new(gl, gl::R32F, POLYGON_BUDGET),
-    materials: BufferTexture::new(gl, gl::R32UI, POLYGON_BUDGET),
+    vertex_positions: BufferTexture::new(gl, gl::R32F, CHUNK_BUDGET),
+    normals: BufferTexture::new(gl, gl::R32F, CHUNK_BUDGET),
+    materials: BufferTexture::new(gl, gl::R32UI, CHUNK_BUDGET),
   }
 }
 
@@ -76,9 +105,9 @@ impl<'a> T<'a> {
   /// Lookup the OpenGL index for an entity.
   pub fn lookup_opengl_index(
     &self,
-    id: entity_id::T,
-  ) -> Option<u32> {
-    self.id_to_index.get(&id).map(|&x| x as u32)
+    id: entity::id::Terrain,
+  ) -> Option<ChunkIndex> {
+    self.id_to_index.get(&id).map(|&x| x as u32).map(|i| index::of_u32(i))
   }
 
   fn bind(
@@ -135,15 +164,17 @@ impl<'a> T<'a> {
   /// Add a series of entites into VRAM.
   pub fn push(
     &mut self,
-    gl: &mut GLContext,
-    vertices: &[Triangle<Point3<GLfloat>>],
-    normals: &[Triangle<Vector3<GLfloat>>],
-    ids: &[entity_id::T],
-    materials: &[GLint],
+    gl        : &mut GLContext,
+    chunk_id  : entity::id::Terrain,
+    vertices  : &Chunk<Triangle<Point3<GLfloat>>>,
+    normals   : &Chunk<Triangle<Vector3<GLfloat>>>,
+    materials : &Chunk<GLint>,
   ) {
-    assert_eq!(vertices.len(), ids.len());
-    assert_eq!(normals.len(), ids.len());
-    assert_eq!(materials.len(), ids.len());
+    debug!("Insert {:?}", chunk_id);
+
+    let vertices  = unsafe { std::slice::from_raw_parts(vertices.as_ptr()  as *const _, 1) };
+    let normals   = unsafe { std::slice::from_raw_parts(normals.as_ptr()   as *const _, 1) };
+    let materials = unsafe { std::slice::from_raw_parts(materials.as_ptr() as *const _, 1) };
 
     self.vertex_positions.buffer.byte_buffer.bind(gl);
     let success = self.vertex_positions.buffer.push(gl, vertices);
@@ -153,41 +184,43 @@ impl<'a> T<'a> {
     let success = self.normals.buffer.push(gl, normals);
     assert!(success);
 
-    for &id in ids.iter() {
-      self.id_to_index.insert(id, self.index_to_id.len());
-      self.index_to_id.push(id);
-    }
+    let previous = self.id_to_index.insert(chunk_id, self.index_to_id.len());
+    assert!(previous.is_none());
+    self.index_to_id.push(chunk_id);
+    assert_eq!(self.id_to_index.len(), self.index_to_id.len());
 
     self.materials.buffer.byte_buffer.bind(gl);
     let success = self.materials.buffer.push(gl, materials);
     assert!(success);
 
-    self.length += VERTICES_PER_TRIANGLE as usize * ids.len();
+    self.length += 1;
   }
 
-  // Note: `id` must be present in the buffers.
   /// Remove some entity from VRAM.
   /// Returns the swapped ID and its VRAM index, if any.
   pub fn swap_remove(
     &mut self,
     gl: &mut GLContext,
-    id: entity_id::T,
-  ) -> Option<(entity_id::T, usize)>
+    id: entity::id::Terrain,
+  ) -> Option<(ChunkIndex, ChunkIndex)>
   {
-    let idx = (*self).id_to_index[&id];
-    let swapped_id = self.index_to_id[self.index_to_id.len() - 1];
+    let idx = self.id_to_index[&id];
+    let swapped_idx = self.index_to_id.len() - 1;
+    let swapped_id = self.index_to_id[swapped_idx];
     self.index_to_id.swap_remove(idx);
     self.id_to_index.remove(&id);
+
+    debug!("Swap-remove {:?} {:?} with {:?} {:?}", id, idx, swapped_id, swapped_idx);
 
     let r =
       if id == swapped_id {
         None
       } else {
         self.id_to_index.insert(swapped_id, idx);
-        Some((swapped_id, idx))
+        Some((index::of_u32(idx as u32), index::of_u32(swapped_idx as u32)))
       };
 
-    self.length -= 3;
+    self.length -= 1;
 
     self.vertex_positions.buffer.byte_buffer.bind(gl);
     self.vertex_positions.buffer.swap_remove(gl, idx, 1);
@@ -205,7 +238,7 @@ impl<'a> T<'a> {
   pub fn draw(&self, _gl: &mut GLContext) {
     unsafe {
       gl::BindVertexArray(self.empty_array);
-      gl::DrawArrays(gl::TRIANGLES, 0, self.length as GLint);
+      gl::DrawArrays(gl::TRIANGLES, 0, (self.length * CHUNK_LENGTH as u32 * VERTICES_PER_TRIANGLE as u32) as GLint);
     }
   }
 }

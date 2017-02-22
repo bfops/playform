@@ -3,14 +3,14 @@ use std::sync::Mutex;
 use stopwatch;
 use time;
 
-use common::entity_id;
 use common::fnv_map;
 use common::id_allocator;
 use common::voxel;
 
+use entity;
 use in_progress_terrain;
 use lod;
-use physics::Physics;
+use physics;
 use terrain;
 use update_gaia;
 use update_gaia::LoadDestination;
@@ -24,7 +24,7 @@ pub struct T {
   pub terrain             : terrain::T,
   pub in_progress_terrain : Mutex<in_progress_terrain::T>,
   pub lod_map             : Mutex<lod::Map>,
-  pub loaded              : Mutex<fnv_map::T<voxel::bounds::T, Vec<entity_id::T>>>,
+  pub loaded              : Mutex<fnv_map::T<voxel::bounds::T, Vec<entity::id::Terrain>>>,
 }
 
 impl T {
@@ -41,8 +41,8 @@ impl T {
 
   pub fn load<LoadBlock>(
     &self,
-    id_allocator : &Mutex<id_allocator::T<entity_id::T>>,
-    physics      : &Mutex<Physics>,
+    id_allocator : &Mutex<id_allocator::T<entity::id::Misc>>,
+    physics      : &Mutex<physics::T>,
     position     : &voxel::bounds::T,
     new_lod      : lod::T,
     owner        : lod::OwnerId,
@@ -93,13 +93,10 @@ impl T {
         in_progress_terrain.insert(id_allocator, physics, position);
       },
       lod::Full => {
-        let mut generate_block = || {
-          debug!("{:?} requested from gaia", position);
-          load_block(
-            update_gaia::Message::Load(time::precise_time_ns(), vec!(*position), LoadDestination::Local(owner))
-          );
-        };
-        generate_block();
+        debug!("{:?} requested from gaia", position);
+        load_block(
+          update_gaia::Message::Load(time::precise_time_ns(), vec!(*position), LoadDestination::Local(owner))
+        );
       },
     };
   }
@@ -108,10 +105,10 @@ impl T {
     block               : &LoadedTerrain,
     position            : &voxel::bounds::T,
     owner               : lod::OwnerId,
-    physics             : &Mutex<Physics>,
+    physics             : &Mutex<physics::T>,
     lod_map             : &mut lod::Map,
     in_progress_terrain : &mut in_progress_terrain::T,
-    loaded              : &mut fnv_map::T<voxel::bounds::T, Vec<entity_id::T>>,
+    loaded              : &mut fnv_map::T<voxel::bounds::T, Vec<entity::id::Terrain>>,
   ) {
     let lod = lod::Full;
     let (_, change) = lod_map.insert(*position, lod, owner);
@@ -142,15 +139,19 @@ impl T {
 
     stopwatch::time("terrain_loader.load.physics", || {
       let mut physics = physics.lock().unwrap();
+      let mut ids = Vec::with_capacity(block.bounds.len());
       for &(ref id, ref bounds) in &block.bounds {
         physics.insert_terrain(*id, bounds);
+        ids.push(*id);
       }
+      let prev = loaded.insert(*position, ids);
+      assert!(prev.is_none());
     });
   }
 
   pub fn unload(
     &self,
-    physics  : &Mutex<Physics>,
+    physics  : &Mutex<physics::T>,
     position : &voxel::bounds::T,
     owner    : lod::OwnerId,
   ) {
@@ -167,14 +168,14 @@ impl T {
         }
         lod::Full => {
           stopwatch::time("terrain_loader.unload", || {
-            match self.loaded.lock().unwrap().get(position) {
+            match self.loaded.lock().unwrap().remove(position) {
               None => {
                 // Unloaded before the load request completed.
               },
               Some(ids) => {
                 let mut physics = physics.lock().unwrap();
                 for id in ids {
-                  physics.remove_terrain(*id);
+                  physics.remove_terrain(id);
                 }
               },
             }
@@ -186,5 +187,5 @@ impl T {
 }
 
 pub struct LoadedTerrain {
-  pub bounds: Vec<(entity_id::T, Aabb3<f32>)>,
+  pub bounds: Vec<(entity::id::Terrain, Aabb3<f32>)>,
 }

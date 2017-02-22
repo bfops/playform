@@ -6,13 +6,13 @@ use rand;
 use std;
 use time;
 
-use common::entity_id;
 use common::{fnv_set, fnv_map};
 use common::id_allocator;
 use common::surroundings_loader;
 use common::voxel;
 
 use chunk;
+use chunk_stats;
 use lod;
 use record_book;
 use terrain_mesh;
@@ -90,10 +90,12 @@ impl T {
   /// Iterate through some enqueued voxel loads and load any updated chunks.
   pub fn tick<Rng, UpdateView>(
     &mut self,
-    id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
-    rng             : &mut Rng,
-    update_view     : &mut UpdateView,
-    player_position : &cgmath::Point3<f32>,
+    terrain_allocator : &std::sync::Mutex<id_allocator::T<view::entity::id::Terrain>>,
+    grass_allocator   : &std::sync::Mutex<id_allocator::T<view::entity::id::Grass>>,
+    rng               : &mut Rng,
+    chunk_stats       : &mut chunk_stats::T,
+    update_view       : &mut UpdateView,
+    player_position   : &cgmath::Point3<f32>,
   ) where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
@@ -103,8 +105,10 @@ impl T {
       match msg {
         Load::Voxels { voxels, time_requested } => {
           self.load_voxels(
-            id_allocator,
+            terrain_allocator,
+            grass_allocator,
             rng,
+            chunk_stats,
             update_view,
             player_position,
             voxels,
@@ -122,28 +126,37 @@ impl T {
   #[inline(never)]
   fn force_load_chunk<Rng, UpdateView>(
     &mut self,
-    id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
-    rng            : &mut Rng,
-    update_view    : &mut UpdateView,
-    chunk_position : &chunk::position::T,
-    lod            : lod::T,
+    terrain_allocator : &std::sync::Mutex<id_allocator::T<view::entity::id::Terrain>>,
+    grass_allocator   : &std::sync::Mutex<id_allocator::T<view::entity::id::Grass>>,
+    rng               : &mut Rng,
+    chunk_stats       : &mut chunk_stats::T,
+    update_view       : &mut UpdateView,
+    chunk_position    : &chunk::position::T,
+    lod               : lod::T,
   ) where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
   {
     debug!("generate {:?} at {:?}", chunk_position, lod);
-    let mesh_chunk = terrain_mesh::generate(&self.voxels, &chunk_position, lod, id_allocator, rng);
+    let mesh_chunk: view::chunked_terrain::T =
+      terrain_mesh::generate(&self.voxels, chunk_stats, &chunk_position, lod, terrain_allocator, grass_allocator, rng);
 
     let mut updates = Vec::new();
+
+    let ids =
+      terrain_mesh::Ids {
+        chunk_ids: mesh_chunk.ids.clone(),
+        grass_ids: mesh_chunk.grass.ids.clone(),
+      };
 
     use std::collections::hash_map::Entry::*;
     // TODO: Rc instead of clone.
     match self.loaded_chunks.entry(*chunk_position) {
       Vacant(entry) => {
-        entry.insert((mesh_chunk.ids.clone(), lod));
+        entry.insert((ids, lod));
       },
       Occupied(mut entry) => {
-        let (ids, _) = entry.insert((mesh_chunk.ids.clone(), lod));
+        let (ids, _) = entry.insert((ids, lod));
         updates.push(view::update::UnloadMesh(ids));
       },
     };
@@ -159,11 +172,13 @@ impl T {
   /// if some voxels are missing, returns an Err of all the voxels that need to be fetched from the server.
   pub fn load_chunk<Rng, UpdateView>(
     &mut self,
-    id_allocator   : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
-    rng            : &mut Rng,
-    update_view    : &mut UpdateView,
-    chunk_position : &chunk::position::T,
-    lod            : lod::T,
+    terrain_allocator : &std::sync::Mutex<id_allocator::T<view::entity::id::Terrain>>,
+    grass_allocator   : &std::sync::Mutex<id_allocator::T<view::entity::id::Grass>>,
+    rng               : &mut Rng,
+    chunk_stats       : &mut chunk_stats::T,
+    update_view       : &mut UpdateView,
+    chunk_position    : &chunk::position::T,
+    lod               : lod::T,
   ) -> Result<(), Vec<voxel::bounds::T>> where
     UpdateView : FnMut(view::update::T),
     Rng        : rand::Rng,
@@ -175,8 +190,10 @@ impl T {
       );
     if all_voxels_loaded {
       self.force_load_chunk(
-        id_allocator,
+        terrain_allocator,
+        grass_allocator,
         rng,
+        chunk_stats,
         update_view,
         chunk_position,
         lod,
@@ -290,11 +307,13 @@ impl T {
   #[inline(never)]
   fn load_voxels<Rng, UpdateView>(
     &mut self,
-    id_allocator    : &std::sync::Mutex<id_allocator::T<entity_id::T>>,
-    rng             : &mut Rng,
-    update_view     : &mut UpdateView,
-    player_position : &cgmath::Point3<f32>,
-    voxel_updates   : Vec<(voxel::bounds::T, voxel::T)>,
+    terrain_allocator : &std::sync::Mutex<id_allocator::T<view::entity::id::Terrain>>,
+    grass_allocator   : &std::sync::Mutex<id_allocator::T<view::entity::id::Grass>>,
+    rng               : &mut Rng,
+    chunk_stats       : &mut chunk_stats::T,
+    update_view       : &mut UpdateView,
+    player_position   : &cgmath::Point3<f32>,
+    voxel_updates     : Vec<(voxel::bounds::T, voxel::T)>,
     time_requested    : Option<u64>,
   ) where
     UpdateView : FnMut(view::update::T),
@@ -316,8 +335,10 @@ impl T {
     for (chunk, lod) in update_chunks {
       let _ =
         self.load_chunk(
-          id_allocator,
+          terrain_allocator,
+          grass_allocator,
           rng,
+          chunk_stats,
           update_view,
           &chunk,
           lod,
