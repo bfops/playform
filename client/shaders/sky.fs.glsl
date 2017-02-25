@@ -77,15 +77,17 @@ float optical_depth(vec3 a, vec3 b) {
   vec3 d = normalize(b - a);
   float a_theta;
   float b_theta;
-  {
-    vec3 a_d = a - planet_center;
-    a_theta = 3.14 - acos(dot(a_d, d) / length(a_d));
+  vec3 a_d = a - planet_center;
+  vec3 b_d = b - planet_center;
+  float a_l = length(a_d);
+  float b_l = length(b_d);
+  a_theta = acos(dot(a_d, d) / a_l);
+  b_theta = acos(dot(b_d, d) / b_l);
+  if (a_l < b_l) {
+    return optical_ray_depth(a, 3.14-a_theta) - optical_ray_depth(b, 3.14-b_theta);
+  } else {
+    return optical_ray_depth(b, b_theta) - optical_ray_depth(a, a_theta);
   }
-  {
-    vec3 b_d = b - planet_center;
-    b_theta = 3.14 - acos(dot(b_d, d) / length(b_d));
-  }
-  return optical_ray_depth(a, a_theta) - optical_ray_depth(b, b_theta);
 }
 
 float phase(float cos_angle, float g) {
@@ -94,16 +96,36 @@ float phase(float cos_angle, float g) {
   return 3*(1-g2)*(1+c*c) / (2*(2+g2)*pow(1+g2-2*g*c, 3.0/2.0));
 }
 
+vec2 line_sphere_intersect(vec3 origin, vec3 look, vec3 sphere_center, float radius) {
+  origin -= sphere_center;
+  float loc = dot(look, origin);
+  float s = loc*loc - dot(origin, origin) + radius*radius;
+  if (s < 0) {
+    return vec2(0);
+  }
+  vec2 t = vec2(-1, 1) * sqrt(s) - loc;
+  return max(t, 0);
+}
+
+void clip_ray(vec3 origin, vec3 look, out vec3 ray_start, out float ray_length, vec3 sphere_center, float radius) {
+  vec2 t = line_sphere_intersect(origin, look, sphere_center, radius);
+  ray_start = origin + look * t[0];
+  ray_length = t[1] - t[0];
+}
+
 float in_scatter(vec3 camera, vec3 look, float k, float g) {
   vec3 sun_position = planet_center + sun.direction * sun_distance;
 
   const int samples = 5;
-  const float l = atmos_thickness / samples;
+  vec3 start;
+  float ray_length;
+  clip_ray(camera, look, start, ray_length, planet_center, planet_radius + atmos_thickness);
+  float l = ray_length / samples;
   float r = 0;
   for (int i = 1; i <= samples; ++i) {
-    vec3 point = camera + look * i * l;
-    float out_scattering = 4*3.14 * k * (optical_depth(camera, point) + optical_depth(point, sun_position));
-    float cos_angle = dot(sun_position - camera, camera - point) / (length(camera - point) * length(sun_position - camera));
+    vec3 point = start + look * i * l;
+    float out_scattering = 4*3.14 * k * (optical_depth(start, point) + optical_depth(point, sun_position));
+    float cos_angle = dot(sun_position - start, start - point) / (length(start - point) * length(sun_position - start));
     r += phase(cos_angle, g) * atmos_density(point) * exp(-out_scattering) * l;
   }
   return k * r;
