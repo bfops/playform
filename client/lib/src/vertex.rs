@@ -36,7 +36,7 @@ impl ColoredVertex {
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 /// A point in the world with corresponding texture data.
 ///
 /// The texture position is [0, 1].

@@ -147,7 +147,7 @@ fn network_listen<'a, ToGaia>(
       common::socket::Result::Empty => closure_series::Continue,
       common::socket::Result::Terminating => closure_series::Quit,
       common::socket::Result::Success(up) => {
-        let up = bincode::rustc_serialize::decode(up.as_ref()).unwrap();
+        let up = bincode::deserialize(up.as_ref()).unwrap();
         apply_client_update(server, &mut to_gaia, up);
         closure_series::Restart
       },
@@ -182,9 +182,9 @@ fn load_terrain(terrain: &terrain::T, path: &std::path::Path) {
       Ok(file) => file,
     };
   let loaded =
-    bincode::rustc_serialize::decode_from(
+    bincode::deserialize_from(
       &mut file,
-      bincode::SizeLimit::Infinite,
+      bincode::Infinite,
     );
   let loaded =
     match loaded {
@@ -199,10 +199,10 @@ fn load_terrain(terrain: &terrain::T, path: &std::path::Path) {
 
 fn save_terrain(terrain: &terrain::T, path: &std::path::Path) {
   let mut file = std::fs::File::create(path).unwrap();
-  bincode::rustc_serialize::encode_into(
+  bincode::serialize_into(
     &*terrain.voxels.lock().unwrap(),
     &mut file,
-    bincode::SizeLimit::Infinite,
+    bincode::Infinite,
   ).unwrap();
 }
 

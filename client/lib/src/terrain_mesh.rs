@@ -20,7 +20,7 @@ use terrain_mesh;
 use view;
 use view::chunked_terrain;
 
-#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 /// [T; 3], but serializable.
 pub struct Triangle<T> {
   #[allow(missing_docs)]

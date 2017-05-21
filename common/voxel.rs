@@ -11,7 +11,7 @@ pub use voxel_data::impls::surface_vertex::unwrap;
 #[allow(missing_docs)]
 pub type T = voxel_data::impls::surface_vertex::T<Material>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[allow(missing_docs)]
 /// Terrain materials
 pub enum Material {

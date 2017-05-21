@@ -26,9 +26,8 @@ pub mod send {
 
   impl T {
     pub fn tell(&self, msg: &protocol::ClientToServer) {
-      use bincode::rustc_serialize::encode;
-      use bincode::SizeLimit;
-      let msg = encode(msg, SizeLimit::Infinite).unwrap();
+      use bincode::serialize;
+      let msg = serialize(msg, bincode::Infinite).unwrap();
       *self.bytes_sent.lock().unwrap() += msg.len() as u64;
       self.sender.send(msg).unwrap();
     }
@@ -50,7 +49,7 @@ pub mod recv {
   impl T {
     pub fn try(&self) -> Option<protocol::ServerToClient> {
       match self.0.try_recv() {
-        Ok(msg) => Some(bincode::rustc_serialize::decode(&msg).unwrap()),
+        Ok(msg) => Some(bincode::deserialize(&msg).unwrap()),
         Err(TryRecvError::Empty) => None,
         e => {
           e.unwrap();
@@ -61,7 +60,7 @@ pub mod recv {
 
     pub fn wait(&self) -> protocol::ServerToClient {
       let msg = self.0.recv().unwrap();
-      bincode::rustc_serialize::decode(msg.as_ref()).unwrap()
+      bincode::deserialize(msg.as_ref()).unwrap()
     }
   }
 }

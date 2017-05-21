@@ -9,15 +9,15 @@ name = "terrain"
 path = "mod.rs"
 
 [dependencies]
-cgmath = "0.12.*"
-collision = "*"
-fnv = "*"
-log = "*"
+cgmath    = "0.12.*"
+collision = "0.10.*"
+fnv       = "*"
+log       = "*"
 lru-cache = "*"
-rand = "*"
-time = "*"
-noise = "0.1.5"
-num = "*"
+rand      = "*"
+time      = "*"
+noise     = "0.1.5"
+num       = "*"
 
 [dependencies.playform-common]
 path = "../../../common"

@@ -13,14 +13,14 @@ name = "common"
 path = "mod.rs"
 
 [dependencies]
-cgmath          = "0.12.*"
-collision       = "*"
-fnv             = "*"
-log             = "*"
-nanomsg         = "*"
-num             = "*"
-rustc-serialize = "*"
-time            = "*"
+cgmath    = "0.12.*"
+collision = "0.10.*"
+fnv       = "*"
+log       = "*"
+nanomsg   = "*"
+num       = "*"
+serde     = "*"
+time      = "*"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"

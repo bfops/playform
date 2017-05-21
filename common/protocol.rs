@@ -8,7 +8,7 @@ use std::ops::Add;
 use entity;
 use voxel;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
 /// Unique client ID.
 pub struct ClientId(u32);
 
@@ -27,7 +27,7 @@ impl Add<u32> for ClientId {
   }
 }
 
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 /// Messages the client sends to the server.
 pub enum ClientToServer {
   /// Notify the server that the client exists, and provide a "return address".
@@ -60,7 +60,7 @@ pub enum ClientToServer {
 }
 
 /// Why a block is being sent to a client.
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum VoxelReason {
   /// The client asked for it.
   Requested {
@@ -71,7 +71,7 @@ pub enum VoxelReason {
   Updated,
 }
 
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 /// Collision events. First ID is "collider", rest of IDs are collidee(s).
 #[allow(missing_docs)]
 pub enum Collision {
@@ -79,7 +79,7 @@ pub enum Collision {
   PlayerMisc(entity::id::Player),
 }
 
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 /// Messages the server sends to the client.
 pub enum ServerToClient {
   /// Provide the client a unique id to tag its messages.
