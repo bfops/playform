@@ -26,6 +26,7 @@ pub mod send {
 
   impl T {
     pub fn tell(&self, msg: &protocol::ClientToServer) {
+      use bincode;
       use bincode::serialize;
       let msg = serialize(msg, bincode::Infinite).unwrap();
       *self.bytes_sent.lock().unwrap() += msg.len() as u64;

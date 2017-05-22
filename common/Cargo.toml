@@ -13,14 +13,15 @@ name = "common"
 path = "mod.rs"
 
 [dependencies]
-cgmath    = "0.12.*"
-collision = "0.10.*"
-fnv       = "*"
-log       = "*"
-nanomsg   = "*"
-num       = "*"
-serde     = "*"
-time      = "*"
+cgmath         = { version = "0.14.*", features = ["eders"] }
+collision      = { version = "0.10.*", features = ["eders"] }
+fnv            = "*"
+log            = "*"
+nanomsg        = "*"
+num            = "*"
+serde          = "*"
+serde_derive   = "*"
+time           = "*"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"

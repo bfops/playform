@@ -15,7 +15,9 @@ extern crate isosurface_extraction;
 extern crate log;
 extern crate nanomsg;
 extern crate num;
-extern crate rustc_serialize;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate stopwatch;
 extern crate test;
 extern crate time;

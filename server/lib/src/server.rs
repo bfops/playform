@@ -28,9 +28,9 @@ pub struct Client {
 
 impl Client {
   pub fn send(&mut self, msg: protocol::ServerToClient) {
-    use bincode::SizeLimit;
+    use bincode;
     use bincode::serialize;
-    let msg = serialize(&msg, SizeLimit::Infinite).unwrap();
+    let msg = serialize(&msg, bincode::Infinite).unwrap();
     match self.socket.write(msg.as_ref()) {
       Ok(()) => {},
       Err(err) => warn!("Error sending to client: {:?}", err),

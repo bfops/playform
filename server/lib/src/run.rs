@@ -200,8 +200,8 @@ fn load_terrain(terrain: &terrain::T, path: &std::path::Path) {
 fn save_terrain(terrain: &terrain::T, path: &std::path::Path) {
   let mut file = std::fs::File::create(path).unwrap();
   bincode::serialize_into(
-    &*terrain.voxels.lock().unwrap(),
     &mut file,
+    &*terrain.voxels.lock().unwrap(),
     bincode::Infinite,
   ).unwrap();
 }

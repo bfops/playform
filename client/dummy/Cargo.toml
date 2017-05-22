@@ -9,10 +9,10 @@ name = "dummy_client_lib"
 path = "./mod.rs"
 
 [dependencies]
-cgmath = "0.12.*"
-log = "*"
+cgmath        = "0.14.*"
+log           = "*"
 thread-scoped = "*"
-time = "*"
+time          = "*"
 
 [dependencies.client-lib]
 path = "../lib"
@@ -22,3 +22,6 @@ path = "../../common"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
+
+[replace]
+"collision:0.10.0" = { git = "https://github.com/bfops/collision-rs-1" }

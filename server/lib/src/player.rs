@@ -20,7 +20,7 @@ use update_world::load_placeholders;
 const MAX_JUMP_FUEL: u32 = 4;
 const MAX_STEP_HEIGHT: f32 = 1.0;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum Collision {
   Terrain(entity::id::Terrain),
   Misc(entity::id::Misc),
