@@ -24,6 +24,3 @@ path = "../lib"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
-
-[replace]
-"collision:0.10.0" = { git = "https://github.com/bfops/collision-rs-1" }
