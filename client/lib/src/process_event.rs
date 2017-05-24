@@ -3,7 +3,7 @@
 use cgmath::{Vector2, Vector3};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::mouse::Mouse;
+use sdl2::mouse::MouseButton;
 use std::f32::consts::PI;
 use stopwatch;
 
@@ -135,17 +135,17 @@ fn key_press<UpdateServer>(
 fn mouse_press<UpdateServer>(
   player_id: entity::id::Player,
   update_server: &mut UpdateServer,
-  mouse_btn: Mouse,
+  mouse_btn: MouseButton,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
 {
   stopwatch::time("event.mouse_press", || {
     match mouse_btn {
-      Mouse::Left => {
+      MouseButton::Left => {
         update_server(
           protocol::ClientToServer::Add(player_id)
         );
       },
-      Mouse::Right => {
+      MouseButton::Right => {
         update_server(
           protocol::ClientToServer::Remove(player_id)
         );
