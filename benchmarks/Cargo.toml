@@ -4,14 +4,15 @@ version = "0.0.0"
 authors = []
 
 [[bin]]
-name = "generatea-terrain-throughput"
+name = "generate-terrain-throughput"
 path = "./generate_terrain_throughput.rs"
 
 [dependencies]
-cgmath    = "*"
-collision = "*"
-num       = "*"
-log       = "*"
+cgmath     = "*"
+collision  = "*"
+env_logger = "*"
+num        = "*"
+log        = "*"
 
 [dependencies.playform-common]
 path = "../common"

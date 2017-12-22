@@ -80,7 +80,11 @@ fn load(
   let mut lod_map = server.terrain_loader.lod_map.lock().unwrap();
   let mut in_progress_terrain = server.terrain_loader.in_progress_terrain.lock().unwrap();
   match load_reason {
-    LoadDestination::None => {},
+    LoadDestination::None => {
+      for voxel_bounds in voxel_bounds {
+        server.terrain_loader.terrain.load(&voxel_bounds);
+      }
+    },
     LoadDestination::Local(owner) => {
       for voxel_bounds in voxel_bounds {
         let block = server.terrain_loader.terrain.load(&voxel_bounds);

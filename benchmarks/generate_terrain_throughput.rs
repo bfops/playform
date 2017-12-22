@@ -10,6 +10,7 @@ extern crate server_lib;
 extern crate cgmath;
 extern crate collision;
 
+extern crate env_logger;
 #[macro_use]
 extern crate log;
 extern crate stopwatch;
@@ -21,6 +22,8 @@ use server_lib::{server, update_gaia};
 use update_gaia::LoadDestination;
 
 fn main() {
+  env_logger::init().unwrap();
+
   let server = server::new();
 
   let load_position = cgmath::Point3::new(0.0, 512.0, 0.0);
@@ -38,14 +41,14 @@ fn main() {
     let chunk_position;
     let load_type;
     match updates.next() {
-      None => return,
+      None => break,
       Some((b, l)) => {
         chunk_position = chunk::position::of_pnt(&b);
         load_type = l;
       },
     }
 
-    debug!("chunk surroundings");
+    debug!("chunk {:?}", chunk_position);
     let distance =
       surroundings_loader::distance_between(
         load_position.as_pnt(),
