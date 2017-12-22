@@ -18,4 +18,4 @@ install:
   - ( cd nanomsg-1.1.2 && mkdir build && cd build && cmake .. && sudo cmake --build . --target install && sudo ldconfig )
 
 script:
-  - ( for dir in $(find . -name  'Cargo.toml' | sed 's/Cargo\.toml$//'); do ( echo "$dir" && cd "$dir" && cargo build --verbose ); done )
+  - ( for file in $(find . -name  'Cargo.toml'); do ( echo "Building $file" && cd "$(dirname $file)" && cargo build --verbose ); done )
