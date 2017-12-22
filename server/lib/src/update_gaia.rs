@@ -1,4 +1,4 @@
-/// Creator of the earth.
+//! Creator of the earth.
 
 use collision::{Aabb3};
 use stopwatch;
@@ -13,17 +13,26 @@ use terrain_loader;
 use voxel_data;
 
 #[derive(Debug, Clone, Copy)]
+/// What to do with a loaded block
 pub enum LoadDestination {
+  /// The server requested this block. Load it into local state.
   Local(lod::OwnerId),
+  /// A client requested this block. Send it to them.
   Client(protocol::ClientId),
+  /// Drop the loaded voxels on the floor.
+  None
 }
 
+#[allow(missing_docs)]
 pub enum Message {
+  /// Load some voxels
   Load(u64, Vec<voxel::bounds::T>, LoadDestination),
+  /// Apply a brush operation
   Brush(voxel_data::brush::T<Box<voxel_data::mosaic::T<common::voxel::Material> + Send>>),
 }
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.
+#[allow(missing_docs)]
 pub fn update_gaia(
   server: &server::T,
   update: Message,
@@ -71,6 +80,7 @@ fn load(
   let mut lod_map = server.terrain_loader.lod_map.lock().unwrap();
   let mut in_progress_terrain = server.terrain_loader.in_progress_terrain.lock().unwrap();
   match load_reason {
+    LoadDestination::None => {},
     LoadDestination::Local(owner) => {
       for voxel_bounds in voxel_bounds {
         let block = server.terrain_loader.terrain.load(&voxel_bounds);

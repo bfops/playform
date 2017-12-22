@@ -32,10 +32,10 @@ mod octree;
 mod physics;
 mod player;
 mod run;
-mod server;
+pub mod server;
 mod sun;
 mod terrain_loader;
-mod update_gaia;
+pub mod update_gaia;
 mod update_world;
 
 pub use run::run;

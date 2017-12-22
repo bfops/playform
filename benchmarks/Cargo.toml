@@ -1,0 +1,26 @@
+[package]
+name = "benchmarks"
+version = "0.0.0"
+authors = []
+
+[[bin]]
+name = "generatea-terrain-throughput"
+path = "./generate_terrain_throughput.rs"
+
+[dependencies]
+cgmath    = "*"
+collision = "*"
+num       = "*"
+log       = "*"
+
+[dependencies.playform-common]
+path = "../common"
+
+[dependencies.client-lib]
+path = "../client/lib"
+
+[dependencies.server-lib]
+path = "../server/lib"
+
+[dependencies.stopwatch]
+git = "https://github.com/bfops/stopwatch-rs"

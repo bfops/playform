@@ -1,3 +1,5 @@
+//! Server state
+
 use cgmath::{Point3};
 use collision::{Aabb3};
 use rand;
@@ -22,11 +24,14 @@ use terrain_loader;
 const UPDATES_PER_SECOND: u64 = 30;
 const SUN_TICK_NS: u64 = 1600000;
 
+/// Client handle
 pub struct Client {
+  /// Socket to the client
   pub socket: SendSocket,
 }
 
 impl Client {
+  #[allow(missing_docs)]
   pub fn send(&mut self, msg: protocol::ServerToClient) {
     use bincode;
     use bincode::serialize;
@@ -39,6 +44,7 @@ impl Client {
 }
 
 // TODO: Audit for s/Mutex/RwLock.
+#[allow(missing_docs)]
 pub struct T {
   pub players           : Mutex<fnv_map::T<entity::id::Player, player::T>>,
   pub mobs              : Mutex<fnv_map::T<entity::id::Mob, mob::Mob>>,
