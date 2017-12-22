@@ -10,6 +10,7 @@ addons:
     - libsdl2-dev
     - libsdl2-mixer-dev
     - libsdl2-ttf-dev
+    - cmake
 
 install:
   - wget https://github.com/nanomsg/nanomsg/archive/1.1.2.tar.gz
