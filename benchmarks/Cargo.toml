@@ -8,11 +8,12 @@ name = "generate-terrain-throughput"
 path = "./generate_terrain_throughput.rs"
 
 [dependencies]
-cgmath     = "*"
-collision  = "*"
+cgmath     = "0.14.*"
+collision  = "0.10.*"
 env_logger = "*"
 num        = "*"
 log        = "*"
+time       = "*"
 
 [dependencies.playform-common]
 path = "../common"
@@ -22,6 +23,3 @@ path = "../client/lib"
 
 [dependencies.server-lib]
 path = "../server/lib"
-
-[dependencies.stopwatch]
-git = "https://github.com/bfops/stopwatch-rs"

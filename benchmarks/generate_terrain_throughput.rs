@@ -13,7 +13,7 @@ extern crate collision;
 extern crate env_logger;
 #[macro_use]
 extern crate log;
-extern crate stopwatch;
+extern crate time;
 
 use common::surroundings_loader;
 use common::surroundings_loader::LoadType;
@@ -36,6 +36,8 @@ fn main() {
     )
   };
   let mut updates = surroundings_loader.updates(load_position.as_pnt());
+
+  let start = time::precise_time_ns();
 
   loop {
     let chunk_position;
@@ -88,4 +90,7 @@ fn main() {
 
     update_gaia::update_gaia(&server, update_gaia::Message::Load(0, voxels, LoadDestination::None));
   }
+
+  let now = time::precise_time_ns();
+  println!("Completed in {:.1}s", ((now-start) as f32)/1e9);
 }
