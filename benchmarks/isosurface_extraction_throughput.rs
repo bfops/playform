@@ -1,4 +1,4 @@
-//! Benchmarks for throughput of terrain generation.
+//! Benchmarks for throughput of isosurface extraction.
 
 #![deny(missing_docs)]
 #![deny(warnings)]
@@ -15,16 +15,22 @@ extern crate env_logger;
 extern crate log;
 extern crate time;
 
-mod generate_terrain;
+use common::surroundings_loader;
+use common::surroundings_loader::LoadType;
+use client_lib::{chunk, lod, terrain_mesh};
+use server_lib::{server, update_gaia};
+use update_gaia::LoadDestination;
 
 fn main() {
-  env_logger::init().unwrap();
+  println!("Loading terrain..");
+  for voxels in generate_all_terrain() {
+    terrain.enqueue(voxels);
+  }
 
   println!("Starting..");
   let start = time::precise_time_ns();
 
-  generate_terrain::generate_all_terrain();
-
   let now = time::precise_time_ns();
+
   println!("Completed in {:.1}s", ((now-start) as f32)/1e9);
 }

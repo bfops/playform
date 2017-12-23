@@ -12,21 +12,23 @@ use server;
 use terrain_loader;
 use voxel_data;
 
-#[derive(Debug, Clone, Copy)]
 /// What to do with a loaded block
-pub enum LoadDestination {
+pub enum LoadDestination<'a> {
   /// The server requested this block. Load it into local state.
   Local(lod::OwnerId),
   /// A client requested this block. Send it to them.
   Client(protocol::ClientId),
-  /// Drop the loaded voxels on the floor.
-  None
+  /// Invoke a callback for each voxel
+  Callback(Box<'a + FnMut(Vec<(voxel::bounds::T, voxel::T)>)>),
 }
 
+unsafe impl<'a> Sync for LoadDestination<'a> {}
+unsafe impl<'a> Send for LoadDestination<'a> {}
+
 #[allow(missing_docs)]
-pub enum Message {
+pub enum Message<'a> {
   /// Load some voxels
-  Load(u64, Vec<voxel::bounds::T>, LoadDestination),
+  Load(u64, Vec<voxel::bounds::T>, LoadDestination<'a>),
   /// Apply a brush operation
   Brush(voxel_data::brush::T<Box<voxel_data::mosaic::T<common::voxel::Material> + Send>>),
 }
@@ -80,10 +82,13 @@ fn load(
   let mut lod_map = server.terrain_loader.lod_map.lock().unwrap();
   let mut in_progress_terrain = server.terrain_loader.in_progress_terrain.lock().unwrap();
   match load_reason {
-    LoadDestination::None => {
+    LoadDestination::Callback(mut f) => {
+      let mut voxels = Vec::new();
       for voxel_bounds in voxel_bounds {
-        server.terrain_loader.terrain.load(&voxel_bounds);
+        let voxel = server.terrain_loader.terrain.load(&voxel_bounds);
+        voxels.push((voxel_bounds, voxel));
       }
+      f(voxels);
     },
     LoadDestination::Local(owner) => {
       for voxel_bounds in voxel_bounds {

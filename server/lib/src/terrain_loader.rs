@@ -39,7 +39,7 @@ impl T {
 
   // TODO: Avoid the double-lookup when unload and load the same index.
 
-  pub fn load<LoadBlock>(
+  pub fn load<'a, LoadBlock>(
     &self,
     id_allocator : &Mutex<id_allocator::T<entity::id::Misc>>,
     physics      : &Mutex<physics::T>,
@@ -47,7 +47,7 @@ impl T {
     new_lod      : lod::T,
     owner        : lod::OwnerId,
     load_block   : &mut LoadBlock,
-  ) where LoadBlock: FnMut(update_gaia::Message)
+  ) where LoadBlock: FnMut(update_gaia::Message<'a>)
   {
     let prev_lod;
     let max_lod_changed: bool;

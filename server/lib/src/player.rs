@@ -148,12 +148,12 @@ impl T {
   }
 
 
-  pub fn update<RequestBlock>(
+  pub fn update<'a, RequestBlock>(
     &mut self,
     server: &server::T,
     request_block: &mut RequestBlock,
   ) -> (Aabb3<f32>, Vec<Collision>) where
-    RequestBlock: FnMut(update_gaia::Message),
+    RequestBlock: FnMut(update_gaia::Message<'a>),
   {
     let player_position =
       Point3::new(

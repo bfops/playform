@@ -14,11 +14,11 @@ use update_gaia;
 
 // TODO: Consider removing the IntervalTimer.
 
-pub fn update_world<RequestBlock>(
+pub fn update_world<'a, RequestBlock>(
   server: &server::T,
   request_block: &mut RequestBlock,
 ) where
-  RequestBlock: FnMut(update_gaia::Message),
+  RequestBlock: FnMut(update_gaia::Message<'a>),
 {
   stopwatch::time("update_world", || {
     stopwatch::time("update_world.player", || {
@@ -123,14 +123,14 @@ fn translate_mob(
   }
 }
 
-pub fn load_placeholders<RequestBlock>(
+pub fn load_placeholders<'a, RequestBlock>(
   owner: lod::OwnerId,
   server: &server::T,
   request_block: &mut RequestBlock,
   pos: &voxel::bounds::T,
   load_type: LoadType,
 ) where
-  RequestBlock: FnMut(update_gaia::Message),
+  RequestBlock: FnMut(update_gaia::Message<'a>),
 {
   match load_type {
     LoadType::Load | LoadType::Downgrade => {

@@ -47,12 +47,12 @@ fn cast(
   )
 }
 
-pub fn apply_client_update<UpdateGaia>(
+pub fn apply_client_update<'a, UpdateGaia>(
   server: &server::T,
   update_gaia: &mut UpdateGaia,
   update: protocol::ClientToServer,
 ) where
-  UpdateGaia: FnMut(update_gaia::Message),
+  UpdateGaia: FnMut(update_gaia::Message<'a>),
 {
   stopwatch::time("apply_client_update", move || {
     match update {

@@ -116,11 +116,11 @@ fn quit_upon(signal: &Mutex<bool>) -> closure_series::Closure {
   }
 }
 
-fn consider_world_update<'a, ToGaia>(
+fn consider_world_update<'a, 'b, ToGaia>(
   server: &'a server::T,
   mut to_gaia: ToGaia,
 ) -> closure_series::Closure<'a> where
-  ToGaia: FnMut(update_gaia::Message) + 'a,
+  ToGaia: FnMut(update_gaia::Message<'b>) + 'a,
 {
   box move || {
     if server.update_timer.lock().unwrap().update(time::precise_time_ns()) > 0 {
@@ -135,12 +135,12 @@ fn consider_world_update<'a, ToGaia>(
   }
 }
 
-fn network_listen<'a, ToGaia>(
+fn network_listen<'a, 'b, ToGaia>(
   socket: &'a Mutex<ReceiveSocket>,
   server: &'a server::T,
   mut to_gaia: ToGaia,
 ) -> closure_series::Closure<'a> where
-  ToGaia: FnMut(update_gaia::Message) + 'a,
+  ToGaia: FnMut(update_gaia::Message<'b>) + 'a,
 {
   box move || {
     match socket.lock().unwrap().try_read() {
@@ -155,11 +155,11 @@ fn network_listen<'a, ToGaia>(
   }
 }
 
-fn consider_gaia_update<'a, Get>(
+fn consider_gaia_update<'a, 'b, Get>(
   server: &'a server::T,
   mut get_update: Get,
 ) -> closure_series::Closure<'a> where
-  Get: FnMut() -> Option<update_gaia::Message> + 'a,
+  Get: FnMut() -> Option<update_gaia::Message<'b>> + 'a,
 {
   box move || {
     match get_update() {
