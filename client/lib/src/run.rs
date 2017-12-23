@@ -1,15 +1,10 @@
 //! entry point
 
-use std;
-use std::io::Write;
 use std::sync::{Mutex};
-use stopwatch;
-use thread_scoped;
 
 use common::protocol;
 
 use client;
-use record_book;
 use server;
 use terrain;
 use update_thread::update_thread;
@@ -26,47 +21,24 @@ pub fn run(listen_url: &str, server_url: &str) {
 
   let client = &client;
   let server = server.clone();
-  unsafe {
-    let _update_thread =
-      thread_scoped::scoped(move || {
-        update_thread(
-          quit,
-          client,
-          &mut || { server.listen.try() },
-          &mut |_| { },
-          &mut |_| { },
-          &mut |_| { },
-          &mut |up| { server.talk.tell(&up) },
-          &mut |msg| {
-            match msg {
-              terrain::Load::Voxels { time_requested: None, .. } => {},
-              terrain::Load::Voxels { time_requested: Some(_), .. } => {
-                *client.pending_terrain_requests.lock().unwrap() -= 1;
-              }
-            };
-            client.terrain.lock().unwrap().enqueue(msg);
-          },
-          );
-
-        let mut recorded = record_book::thread_local::clone();
-        recorded.chunk_loads.sort_by(|x, y| x.loaded_time_ns.cmp(&y.loaded_time_ns));
-
-        let mut file = std::fs::File::create("chunk_loads.out").unwrap();
-
-        file.write_all(b"records = [").unwrap();
-        for (i, record) in recorded.chunk_loads.iter().enumerate() {
-          if i > 0 {
-            file.write_all(b", ").unwrap();
-          }
-          let record_book::ChunkLoad { time_requested_ns, response_time_ns, stored_time_ns, loaded_time_ns } = *record;
-          file.write_fmt(format_args!("[{}; {}; {}; {}]", time_requested_ns, response_time_ns, stored_time_ns, loaded_time_ns)).unwrap();
+  update_thread(
+    quit,
+    client,
+    &mut || { server.listen.try() },
+    &mut |_| { },
+    &mut |_| { },
+    &mut |_| { },
+    &mut |up| { server.talk.tell(&up) },
+    &mut |msg| {
+      match msg {
+        terrain::Load::Voxels { time_requested: None, .. } => {},
+        terrain::Load::Voxels { time_requested: Some(_), .. } => {
+          *client.pending_terrain_requests.lock().unwrap() -= 1;
         }
-        file.write_all(b"];\n").unwrap();
-        file.write_fmt(format_args!("plot([1:{}], records);", recorded.chunk_loads.len())).unwrap();
-
-        stopwatch::clone()
-      });
-  }
+      };
+      client.terrain.lock().unwrap().enqueue(msg);
+    },
+  );
 }
 
 fn connect_client(listen_url: &str, server: &server::T) -> client::T {
