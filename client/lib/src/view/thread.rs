@@ -5,21 +5,15 @@ use gl;
 use sdl2;
 use sdl2::event::Event;
 use sdl2::video;
-use sdl2_sys;
 use std;
 use stopwatch;
-use time;
 use yaglw::gl_context::GLContext;
 
-use common::interval_timer::IntervalTimer;
 use common::protocol;
 
 use client;
-use hud::make_hud;
 use process_event::process_event;
 use view;
-
-use super::update;
 
 #[allow(missing_docs)]
 pub const FRAMES_PER_SECOND: u64 = 30;
@@ -35,14 +29,10 @@ enum ViewIteration {
 }
 
 #[allow(missing_docs)]
-pub fn view_thread<Recv0, Recv1, UpdateServer>(
+pub fn view_thread<UpdateServer>(
   client: &client::T,
-  recv0: &mut Recv0,
-  recv1: &mut Recv1,
   update_server: &mut UpdateServer,
 ) where
-  Recv0: FnMut() -> Option<update::T>,
-  Recv1: FnMut() -> Option<update::T>,
   UpdateServer: FnMut(protocol::ClientToServer),
 {
   let sdl = sdl2::init().unwrap();
@@ -85,31 +75,9 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
 
   let mut view = view::new(gl, window_size);
 
-  sdl.mouse().set_relative_mouse_mode(true);
-
-  make_hud(&mut view);
-
-  let render_interval = {
-    let nanoseconds_per_second = 1000000000;
-    nanoseconds_per_second / FRAMES_PER_SECOND
-  };
-  let mut render_timer;
-  {
-    let now = time::precise_time_ns();
-    render_timer = IntervalTimer::new(render_interval, now);
-  }
-
-  let mut last_update = time::precise_time_ns();
-
   loop {
     let view_iteration =
       stopwatch::time("view_iteration", || {
-        let now = time::precise_time_ns();
-        if now - last_update >= render_interval {
-          warn!("{:?}ms since last view update", (now - last_update) / 1000000);
-        }
-        last_update = now;
-
         event_pump.pump_events();
         let events: Vec<Event> = sdl_event.peek_events(1 << 6);
         sdl_event.flush_events(0, std::u32::MAX);
@@ -130,37 +98,6 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
               );
             },
           }
-        }
-
-        if window.window_flags() & (sdl2_sys::video::SDL_WindowFlags::SDL_WINDOW_MOUSE_FOCUS as u32) != 0 {
-          sdl.mouse().warp_mouse_in_window(&window, window_size.x / 2, window_size.y / 2);
-        }
-
-        stopwatch::time("apply_updates", || {
-          let start = time::precise_time_ns();
-          loop {
-            if let Some(update) = recv0() {
-              update::apply_client_to_view(&mut view, update);
-            } else if let Some(update) = recv1() {
-              update::apply_client_to_view(&mut view, update);
-            } else {
-              info!("Out of view updates");
-              break
-            }
-
-            if time::precise_time_ns() - start >= 1_000_000 {
-              break
-            }
-          }
-        });
-
-        let renders = render_timer.update(time::precise_time_ns());
-        if renders > 0 {
-          stopwatch::time("render", || {
-            view::render::render(&mut view);
-            // swap buffers
-            window.gl_swap_window();
-          });
         }
 
         ViewIteration::Continue

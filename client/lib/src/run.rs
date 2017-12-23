@@ -19,8 +19,6 @@ use view::thread::view_thread;
 
 #[allow(missing_docs)]
 pub fn run(listen_url: &str, server_url: &str) {
-  let view_updates0 = Mutex::new(std::collections::VecDeque::new());
-  let view_updates1 = Mutex::new(std::collections::VecDeque::new());
   let audio_updates = Mutex::new(std::collections::VecDeque::new());
 
   let quit = Mutex::new(false);
@@ -38,8 +36,6 @@ pub fn run(listen_url: &str, server_url: &str) {
           while !*quit.lock().unwrap() {
             info!("Outstanding terrain requests: {}", *client.pending_terrain_requests.lock().unwrap());
             info!("Outstanding voxel updates: {}", client.terrain.lock().unwrap().queued_update_count());
-            info!("Outstanding view0 updates: {}", view_updates0.lock().unwrap().len());
-            info!("Outstanding view1 updates: {}", view_updates1.lock().unwrap().len());
             std::thread::sleep(std::time::Duration::from_secs(1));
           }
         })
@@ -64,8 +60,6 @@ pub fn run(listen_url: &str, server_url: &str) {
 
     let update_thread = {
       let client = &client;
-      let view_updates0 = &view_updates0;
-      let view_updates1 = &view_updates1;
       let audio_updates = &audio_updates;
       let server = server.clone();
       unsafe {
@@ -74,8 +68,8 @@ pub fn run(listen_url: &str, server_url: &str) {
             quit,
             client,
             &mut || { server.listen.try() },
-            &mut |up| { view_updates0.lock().unwrap().push_back(up) },
-            &mut |up| { view_updates1.lock().unwrap().push_back(up) },
+            &mut |_| { },
+            &mut |_| { },
             &mut |up| { audio_updates.lock().unwrap().push_back(up) },
   	        &mut |up| { server.talk.tell(&up) },
             &mut |msg| {
@@ -110,18 +104,6 @@ pub fn run(listen_url: &str, server_url: &str) {
       }
     };
 
-    {
-      let client = &client;
-      let server = server.clone();
-      view_thread(
-        client,
-        &mut || { view_updates0.lock().unwrap().pop_front() },
-        &mut || { view_updates1.lock().unwrap().pop_front() },
-        &mut |server_update| { server.talk.tell(&server_update) },
-      );
-
-      stopwatch::clone().print();
-    }
 
     // View thread returned, so we got a quit event.
     *quit.lock().unwrap() = true;

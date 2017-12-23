@@ -40,6 +40,7 @@ pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateSe
   let mut chunk_stats = chunk_stats::new();
 
   'update_loop: loop {
+    println!("{:?} still running", time::now());
     let should_quit = *quit.lock().unwrap();
     if should_quit {
       break 'update_loop

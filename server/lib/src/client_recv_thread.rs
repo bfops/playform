@@ -123,12 +123,12 @@ pub fn apply_client_update<UpdateGaia>(
       },
       protocol::ClientToServer::Walk(player_id, v) => {
         let mut players = server.players.lock().unwrap();
-        let mut player = players.get_mut(&player_id).unwrap();
+        let player = players.get_mut(&player_id).unwrap();
         player.walk(v);
       },
       protocol::ClientToServer::RotatePlayer(player_id, v) => {
         let mut players = server.players.lock().unwrap();
-        let mut player = players.get_mut(&player_id).unwrap();
+        let player = players.get_mut(&player_id).unwrap();
         player.rotate_lateral(v.x);
         player.rotate_vertical(v.y);
       },
