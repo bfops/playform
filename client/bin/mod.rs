@@ -2,6 +2,11 @@
 
 #![deny(missing_docs)]
 #![deny(warnings)]
+#![feature(global_allocator)]
+#![feature(allocator_api)]
+
+#[global_allocator]
+static ALLOCATOR: std::heap::System = std::heap::System;
 
 extern crate env_logger;
 #[macro_use]

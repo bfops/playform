@@ -3,9 +3,11 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 #![feature(stmt_expr_attributes)]
+#![feature(global_allocator)]
+#![feature(allocator_api)]
 
-#![feature(alloc_system)]
-extern crate alloc_system;
+#[global_allocator]
+static ALLOCATOR: std::heap::System = std::heap::System;
 
 extern crate env_logger;
 extern crate nanomsg;
