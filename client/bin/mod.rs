@@ -2,6 +2,8 @@
 
 #![deny(missing_docs)]
 #![deny(warnings)]
+#![feature(global_allocator)]
+#![feature(allocator_api)]
 
 extern crate env_logger;
 #[macro_use]
@@ -11,6 +13,9 @@ extern crate client_lib;
 
 use std::borrow::Borrow;
 use std::env;
+
+#[global_allocator]
+static ALLOCATOR: std::heap::System = std::heap::System;
 
 fn main() {
   env_logger::init().unwrap();

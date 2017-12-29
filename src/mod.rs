@@ -3,9 +3,8 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 #![feature(stmt_expr_attributes)]
-
-#![feature(alloc_system)]
-extern crate alloc_system;
+#![feature(global_allocator)]
+#![feature(allocator_api)]
 
 extern crate env_logger;
 extern crate nanomsg;
@@ -19,6 +18,9 @@ extern crate server_lib;
 
 use std::borrow::Borrow;
 use std::sync::Mutex;
+
+#[global_allocator]
+static ALLOCATOR: std::heap::System = std::heap::System;
 
 fn main() {
   env_logger::init().unwrap();
