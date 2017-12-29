@@ -19,6 +19,7 @@ extern crate server_lib;
 use std::borrow::Borrow;
 use std::sync::Mutex;
 
+// Use the system allocator because if we use jemalloc then we deadlock pretty quickly in a jemalloc mutex.
 #[global_allocator]
 static ALLOCATOR: std::heap::System = std::heap::System;
 
