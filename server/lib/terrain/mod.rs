@@ -3,10 +3,6 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-#![feature(main)]
-#![feature(test)]
-#![feature(unboxed_closures)]
-
 extern crate cgmath;
 extern crate collision;
 extern crate common;
@@ -16,7 +12,6 @@ extern crate lru_cache;
 extern crate noise;
 extern crate rand;
 extern crate stopwatch;
-extern crate test;
 extern crate time;
 extern crate voxel_data;
 extern crate num;

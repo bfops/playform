@@ -7,43 +7,10 @@ use std::cmp::max;
 use std::collections::VecDeque;
 use stopwatch;
 
-use cube_shell::cube_diff;
+use cube_shell::{cube_diff, cube_shell};
 
-mod surroundings_iter {
-  use cgmath::{Point3};
-  use std;
-
-  use cube_shell::cube_shell;
-
-  pub struct CubeShellClosure {
-    center: Point3<i32>,
-  }
-
-  impl FnOnce<(i32,)> for CubeShellClosure {
-    type Output = std::vec::IntoIter<Point3<i32>>;
-    extern "rust-call" fn call_once(self, radius: (i32,)) -> Self::Output {
-      cube_shell(&self.center, radius.0).into_iter()
-    }
-  }
-
-  impl FnMut<(i32,)> for CubeShellClosure {
-    extern "rust-call" fn call_mut(&mut self, radius: (i32,)) -> Self::Output {
-      cube_shell(&self.center, radius.0).into_iter()
-    }
-  }
-
-  pub type T =
-    std::iter::FlatMap<
-      std::ops::Range<i32>,
-      std::vec::IntoIter<Point3<i32>>,
-      CubeShellClosure,
-    >;
-
-  pub fn new(center: &Point3<i32>, max_distance: i32) -> T {
-    (0 .. max_distance).flat_map(CubeShellClosure {
-      center: *center,
-    })
-  }
+fn surroundings_iter(center: Point3<i32>, max_distance: i32) -> Box<Iterator<Item=Point3<i32>>> {
+  Box::new((0 .. max_distance).flat_map(move |radius| cube_shell(&center, radius)))
 }
 
 #[allow(missing_docs)]
@@ -63,7 +30,7 @@ pub struct T {
   last_position: Option<Point3<i32>>,
 
   max_load_distance: u32,
-  to_load: Option<surroundings_iter::T>,
+  to_load: Option<Box<Iterator<Item=Point3<i32>>>>,
 
   to_recheck: VecDeque<Point3<i32>>,
   // The distances to the switches between LODs.
@@ -92,7 +59,7 @@ impl T {
     let position_changed = self.last_position != Some(*position);
     if position_changed {
       stopwatch::time("surroundings_loader.extend", || {
-        self.to_load = Some(surroundings_iter::new(&position, self.max_load_distance as i32));
+        self.to_load = Some(surroundings_iter((*position).clone(), self.max_load_distance as i32));
         self.last_position.map(|last_position| {
           for &distance in &self.lod_thresholds {
             self.to_recheck.extend(
