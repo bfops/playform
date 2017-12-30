@@ -36,8 +36,6 @@ pub enum T {
   Atomic(Vec<T>),
 }
 
-unsafe impl Send for T {}
-
 pub use self::T::*;
 
 #[allow(missing_docs)]

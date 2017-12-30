@@ -77,7 +77,7 @@ pub fn run(listen_url: &str, server_url: &str) {
     std::thread::sleep(std::time::Duration::from_secs(1));
   }
 
-  println!("{} bytes sent", *server.talk.bytes_sent.lock().unwrap());
+  println!("{} bytes sent", server.talk.bytes_sent.load(::std::sync::atomic::Ordering::SeqCst));
 
   // View thread returned, so we got a quit event.
   *quit.lock().unwrap() = true;

@@ -9,7 +9,7 @@ use stopwatch;
 
 use cube_shell::{cube_diff, cube_shell};
 
-fn surroundings_iter(center: Point3<i32>, max_distance: i32) -> Box<Iterator<Item=Point3<i32>>> {
+fn surroundings_iter(center: Point3<i32>, max_distance: i32) -> Box<Iterator<Item=Point3<i32>> + Send> {
   Box::new((0 .. max_distance).flat_map(move |radius| cube_shell(&center, radius)))
 }
 
@@ -26,11 +26,11 @@ pub enum LoadType {
 /// Iteratively load points cube-shaped layers around the some point.
 /// That point can be updated with calls to `update`.
 /// What "load" exactly means depends on the closures provided.
-pub struct T {
+pub struct SurroundingsLoader {
   last_position: Option<Point3<i32>>,
 
   max_load_distance: u32,
-  to_load: Option<Box<Iterator<Item=Point3<i32>>>>,
+  to_load: Option<Box<Iterator<Item=Point3<i32>> + Send>>,
 
   to_recheck: VecDeque<Point3<i32>>,
   // The distances to the switches between LODs.
@@ -41,8 +41,8 @@ pub struct T {
 pub fn new(
   max_load_distance: u32,
   lod_thresholds: Vec<i32>,
-) -> T {
-  T {
+) -> SurroundingsLoader {
+  SurroundingsLoader {
     last_position: None,
 
     to_load: None,
@@ -53,7 +53,7 @@ pub fn new(
   }
 }
 
-impl T {
+impl SurroundingsLoader {
   /// Update the center point around which we load, and load some more blocks.
   pub fn updates(&mut self, position: &Point3<i32>) -> Updates {
     let position_changed = self.last_position != Some(*position);
@@ -82,11 +82,9 @@ impl T {
   }
 }
 
-unsafe impl Send for T {}
-
 /// Iterator for the updates from a T.
 pub struct Updates<'a> {
-  loader: &'a mut T,
+  loader: &'a mut SurroundingsLoader,
   position: Point3<i32>,
 }
 

@@ -1,79 +1,69 @@
+#![allow(missing_docs)]
+
 //! A low-level interface to send and receive server-client protocol messages
 
 use std;
 
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc::{Sender, Receiver, TryRecvError};
+use std::sync::atomic::{Ordering, AtomicUsize};
+
+use bincode;
+
+use common::protocol;
 use common::socket::{SendSocket, ReceiveSocket};
 
-#[allow(missing_docs)]
-pub mod send {
-  use std;
-  use std::sync::mpsc::Sender;
+#[derive(Clone)]
+pub struct SSender {
+  // A boxed slice is used to reduce the sent size
+  pub sender: Sender<Box<[u8]>>,
+  // Please replace with AtomicU64 when it becomes stable
+  pub bytes_sent: Arc<AtomicUsize>,
+}
 
-  use common::protocol;
-
-  #[derive(Clone)]
-  pub struct T {
-    pub sender     : Sender<Vec<u8>>,
-    pub bytes_sent : std::sync::Arc<std::sync::Mutex<u64>>,
-  }
-
-  pub fn new(sender: Sender<Vec<u8>>) -> T {
-    T {
-      sender     : sender,
-      bytes_sent : std::sync::Arc::new(std::sync::Mutex::new(0)),
+impl SSender {
+  pub fn new(sender: Sender<Box<[u8]>>) -> SSender {
+    SSender {
+      sender: sender,
+      bytes_sent: Arc::new(AtomicUsize::new(0)),
     }
   }
 
-  impl T {
-    pub fn tell(&self, msg: &protocol::ClientToServer) {
-      use bincode;
-      use bincode::serialize;
-      let msg = serialize(msg, bincode::Infinite).unwrap();
-      *self.bytes_sent.lock().unwrap() += msg.len() as u64;
-      self.sender.send(msg).unwrap();
-    }
+  pub fn tell(&self, msg: &protocol::ClientToServer) {
+    let msg = bincode::serialize(msg, bincode::Infinite).unwrap();
+    // We aren't reading this until long after the write, so we use `Relaxed`
+    self.bytes_sent.fetch_add(msg.len() as usize, Ordering::Relaxed);
+    self.sender.send(msg.into_boxed_slice()).unwrap();
   }
 }
 
-#[allow(missing_docs)]
-pub mod recv {
-  use bincode;
-  use std;
-  use std::sync::mpsc::Receiver;
-  use std::sync::mpsc::TryRecvError;
+#[derive(Clone)]
+pub struct SReceiver (Arc<Mutex<Receiver<Box<[u8]>>>>);
 
-  use common::protocol;
-
-  #[derive(Clone)]
-  pub struct T (pub std::sync::Arc<Receiver<Vec<u8>>>);
-
-  impl T {
-    pub fn try(&self) -> Option<protocol::ServerToClient> {
-      match self.0.try_recv() {
-        Ok(msg) => Some(bincode::deserialize(&msg).unwrap()),
-        Err(TryRecvError::Empty) => None,
-        e => {
-          e.unwrap();
-          unreachable!();
-        },
-      }
+impl SReceiver {
+  pub fn try(&self) -> Option<protocol::ServerToClient> {
+    match self.0.lock().unwrap().try_recv() {
+      Ok(msg) => Some(bincode::deserialize(&Vec::from(msg)).unwrap()),
+      Err(TryRecvError::Empty) => None,
+      e => {
+        e.unwrap();
+        unreachable!();
+      },
     }
+  }
 
-    pub fn wait(&self) -> protocol::ServerToClient {
-      let msg = self.0.recv().unwrap();
-      bincode::deserialize(msg.as_ref()).unwrap()
-    }
+  pub fn wait(&self) -> protocol::ServerToClient {
+    let msg = self.0.lock().unwrap().recv().unwrap();
+    bincode::deserialize(msg.as_ref()).unwrap()
   }
 }
 
 #[allow(missing_docs)]
 #[derive(Clone)]
 pub struct T {
-  pub talk   : send::T,
-  pub listen : recv::T,
+  pub talk   : SSender,
+  pub listen : SReceiver,
 }
-
-unsafe impl Send for T {}
 
 #[allow(missing_docs)]
 pub fn new(
@@ -96,7 +86,7 @@ pub fn new(
         match listen_socket.read() {
           None => break,
           Some(msg) => {
-            recv_send.send(msg).unwrap()
+            recv_send.send(msg.into_boxed_slice()).unwrap()
           },
         }
       }
@@ -115,7 +105,7 @@ pub fn new(
         match send_recv.recv() {
           Err(_) => break,
           Ok(msg) => {
-            let msg: Vec<u8> = msg;
+            let msg = Vec::from(msg);
             talk_socket.write(msg.as_ref()).unwrap();
           },
         }
@@ -124,7 +114,7 @@ pub fn new(
   };
 
   T {
-    talk: send::new(send_send),
-    listen: recv::T (std::sync::Arc::new(recv_recv)),
+    talk: SSender::new(send_send),
+    listen: SReceiver(Arc::new(Mutex::new(recv_recv))),
   }
 }

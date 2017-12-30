@@ -18,8 +18,6 @@ mod pillar {
     pub radius: f32,
   }
 
-  unsafe impl Send for T {}
-
   impl field::T for T {
     fn density(&mut self, p: &Point3<f32>) -> f32 {
       let mut p = *p;
@@ -39,8 +37,6 @@ mod pillar {
 pub struct T {
   union: voxel_data::mosaic::union::T<voxel::Material>,
 }
-
-unsafe impl Send for T {}
 
 fn inside_sphere<Rng>(
   rng: &mut Rng,

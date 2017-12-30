@@ -34,7 +34,7 @@ pub struct T {
   #[allow(missing_docs)]
   pub grass_allocator          : Mutex<id_allocator::T<view::entity::id::Grass>>,
   #[allow(missing_docs)]
-  pub surroundings_loader      : Mutex<surroundings_loader::T>,
+  pub surroundings_loader      : Mutex<surroundings_loader::SurroundingsLoader>,
   #[allow(missing_docs)]
   pub max_load_distance        : u32,
   #[allow(missing_docs)]
@@ -130,5 +130,3 @@ pub fn new(client_id: protocol::ClientId, player_id: view::entity::id::Player, p
     rng                      : Mutex::new(rng),
   }
 }
-
-unsafe impl Sync for T {}

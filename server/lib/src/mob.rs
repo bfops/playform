@@ -16,5 +16,5 @@ pub struct Mob {
   pub entity_id           : entity::id::Mob,
   pub physics_id          : entity::id::Misc,
   pub owner_id            : lod::OwnerId,
-  pub surroundings_loader : surroundings_loader::T,
+  pub surroundings_loader : surroundings_loader::SurroundingsLoader,
 }

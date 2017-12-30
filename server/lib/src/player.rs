@@ -46,10 +46,10 @@ pub struct T {
   // "pitch", in radians
   pub vertical_rotation: f32,
 
-  surroundings_loader: surroundings_loader::T,
+  surroundings_loader: surroundings_loader::SurroundingsLoader,
   surroundings_owner: lod::OwnerId,
   // Nearby blocks should be made solid if they aren't loaded yet.
-  solid_boundary: surroundings_loader::T,
+  solid_boundary: surroundings_loader::SurroundingsLoader,
   solid_owner: lod::OwnerId,
 }
 
