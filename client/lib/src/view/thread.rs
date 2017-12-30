@@ -3,7 +3,7 @@
 use cgmath::{Vector2};
 use gl;
 use sdl2;
-use sdl2::event::Event;
+use sdl2::event::{Event, WindowEvent};
 use sdl2::video;
 use sdl2_sys;
 use std;
@@ -115,12 +115,9 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
         sdl_event.flush_events(0, std::u32::MAX);
         for event in events {
           match event {
-            Event::Quit{..} => {
-              return ViewIteration::Quit
-            }
-            Event::AppTerminating{..} => {
-              return ViewIteration::Quit
-            }
+            Event::Quit{..} => return ViewIteration::Quit,
+            Event::AppTerminating{..} => return ViewIteration::Quit,
+            Event::Window { win_event: WindowEvent::Close, .. } => return ViewIteration::Quit,
             event => {
               process_event(
                 update_server,
