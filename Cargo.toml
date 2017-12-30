@@ -35,3 +35,15 @@ path = "server/lib"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
+
+[patch.'https://github.com/bfops/rust-voxel-data']
+voxel-data = { git = "https://github.com/bjorn3/rust-voxel-data", branch = "no_nightly_rustc" }
+
+[patch.'https://github.com/bfops/stopwatch-rs']
+stopwatch = { git = "https://github.com/bjorn3/stopwatch-rs", branch = "no_nightly_rustc" }
+
+[patch.'https://github.com/bfops/rust-isosurface-extraction']
+isosurface-extraction = { git = "https://github.com/bjorn3/rust-isosurface-extraction", branch = "no_nightly_rustc" }
+
+[patch.'https://github.com/bfops/yaglw']
+yaglw = { git = "https://github.com/bjorn3/yaglw", branch = "no_nightly_rustc" }
