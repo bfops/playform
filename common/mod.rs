@@ -18,7 +18,6 @@ extern crate num;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate stopwatch;
 extern crate test;
 extern crate time;
 extern crate voxel_data;

@@ -1,7 +1,6 @@
 //! The main thread that processes updates from the client and the server and dispatches updates to other systems.
 
 use std::sync::Mutex;
-use stopwatch;
 use time;
 
 use common::protocol;
@@ -44,19 +43,9 @@ pub fn update_thread<RecvServer, UpdateView0, UpdateView1, UpdateAudio, UpdateSe
     if should_quit {
       break 'update_loop
     } else {
-      stopwatch::time("update_iteration", || {
-        stopwatch::time("process_server_updates", || {
-          process_server_updates(client, recv_server, update_view0, update_audio, update_server, enqueue_terrain_load);
-        });
-
-        stopwatch::time("update_surroundings", || {
-          update_surroundings(client, &mut chunk_stats, update_view1, update_server);
-        });
-
-        stopwatch::time("process_voxel_updates", || {
-          process_voxel_updates(client, &mut chunk_stats, update_view1);
-        });
-      })
+      process_server_updates(client, recv_server, update_view0, update_audio, update_server, enqueue_terrain_load);
+      update_surroundings(client, &mut chunk_stats, update_view1, update_server);
+      process_voxel_updates(client, &mut chunk_stats, update_view1);
     }
   }
 
@@ -107,33 +96,27 @@ fn update_surroundings<UpdateView, UpdateServer>(
       );
     match load_type {
       LoadType::Load => {
-        stopwatch::time("update_thread.load_chunk", || {
-          trace!("Loading distance {}", distance);
-          let new_lod = lod::of_distance(distance as u32);
-          let load_state = client.terrain.lock().unwrap().load_state(&chunk_position);
-          if load_state == Some(new_lod) {
-            debug!("Not re-loading {:?} at {:?}", chunk_position, new_lod);
-          } else {
-            load_or_request_chunk(client, chunk_stats, update_server, update_view, &chunk_position, new_lod);
-          }
-        })
+        trace!("Loading distance {}", distance);
+        let new_lod = lod::of_distance(distance as u32);
+        let load_state = client.terrain.lock().unwrap().load_state(&chunk_position);
+        if load_state == Some(new_lod) {
+          debug!("Not re-loading {:?} at {:?}", chunk_position, new_lod);
+        } else {
+          load_or_request_chunk(client, chunk_stats, update_server, update_view, &chunk_position, new_lod);
+        }
       },
       LoadType::Downgrade => {
-        stopwatch::time("update_thread.update_chunk", || {
-          let new_lod = lod::of_distance(distance as u32);
-          let load_state = client.terrain.lock().unwrap().load_state(&chunk_position);
-          let is_downgrade = load_state.map(|lod| new_lod < lod) == Some(true);
-          if is_downgrade {
-            load_or_request_chunk(client, chunk_stats, update_server, update_view, &chunk_position, new_lod);
-          } else {
-            trace!("Not updating {:?} at {:?}", chunk_position, new_lod);
-          }
-        })
+        let new_lod = lod::of_distance(distance as u32);
+        let load_state = client.terrain.lock().unwrap().load_state(&chunk_position);
+        let is_downgrade = load_state.map(|lod| new_lod < lod) == Some(true);
+        if is_downgrade {
+          load_or_request_chunk(client, chunk_stats, update_server, update_view, &chunk_position, new_lod);
+        } else {
+          trace!("Not updating {:?} at {:?}", chunk_position, new_lod);
+        }
       },
       LoadType::Unload => {
-        stopwatch::time("update_thread.unload", || {
-          client.terrain.lock().unwrap().unload(update_view, &chunk_position);
-        })
+        client.terrain.lock().unwrap().unload(update_view, &chunk_position);
       },
     };
 

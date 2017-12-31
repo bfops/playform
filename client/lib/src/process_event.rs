@@ -5,7 +5,6 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
 use std::f32::consts::PI;
-use stopwatch;
 
 use common::entity;
 use common::protocol;
@@ -81,55 +80,53 @@ fn key_press<UpdateServer>(
     }
   };
 
-  stopwatch::time("event.key_press", || {
-    match key {
-      Keycode::A => {
-        update_server(Walk(client.player_id, Vector3::new(-1.0, 0.0, 0.0)));
-      },
-      Keycode::D => {
-        update_server(Walk(client.player_id, Vector3::new(1.0, 0.0, 0.0)));
-      },
-      Keycode::Space => {
-        update_server(StartJump(client.player_id));
-      },
-      Keycode::W => {
-        update_server(Walk(client.player_id, Vector3::new(0.0, 0.0, -1.0)));
-      },
-      Keycode::S => {
-        update_server(Walk(client.player_id, Vector3::new(0.0, 0.0, 1.0)));
-      },
-      Keycode::Left => {
-        lr(update_server, view, 1.0);
-      },
-      Keycode::Right => {
-        lr(update_server, view, -1.0);
-      },
-      Keycode::Up => {
-        ud(update_server, view, 1.0);
-      },
-      Keycode::Down => {
-        ud(update_server, view, -1.0);
-      },
-      Keycode::H => {
-        view.show_hud = !view.show_hud;
-      },
-      Keycode::M => {
-        view.input_mode =
-          match view.input_mode {
-            view::InputMode::Camera => view::InputMode::Sun,
-            view::InputMode::Sun => view::InputMode::Camera,
-          };
-      },
-      Keycode::P => {
-        let mut load_position = client.load_position.lock().unwrap();
-        match *load_position {
-          None => *load_position = Some(*client.player_position.lock().unwrap()),
-          Some(_) => *load_position = None,
-        }
-      },
-      _ => {},
-    }
-  })
+  match key {
+    Keycode::A => {
+      update_server(Walk(client.player_id, Vector3::new(-1.0, 0.0, 0.0)));
+    },
+    Keycode::D => {
+      update_server(Walk(client.player_id, Vector3::new(1.0, 0.0, 0.0)));
+    },
+    Keycode::Space => {
+      update_server(StartJump(client.player_id));
+    },
+    Keycode::W => {
+      update_server(Walk(client.player_id, Vector3::new(0.0, 0.0, -1.0)));
+    },
+    Keycode::S => {
+      update_server(Walk(client.player_id, Vector3::new(0.0, 0.0, 1.0)));
+    },
+    Keycode::Left => {
+      lr(update_server, view, 1.0);
+    },
+    Keycode::Right => {
+      lr(update_server, view, -1.0);
+    },
+    Keycode::Up => {
+      ud(update_server, view, 1.0);
+    },
+    Keycode::Down => {
+      ud(update_server, view, -1.0);
+    },
+    Keycode::H => {
+      view.show_hud = !view.show_hud;
+    },
+    Keycode::M => {
+      view.input_mode =
+        match view.input_mode {
+          view::InputMode::Camera => view::InputMode::Sun,
+          view::InputMode::Sun => view::InputMode::Camera,
+        };
+    },
+    Keycode::P => {
+      let mut load_position = client.load_position.lock().unwrap();
+      match *load_position {
+        None => *load_position = Some(*client.player_position.lock().unwrap()),
+        Some(_) => *load_position = None,
+      }
+    },
+    _ => {},
+  }
 }
 
 fn mouse_press<UpdateServer>(
@@ -138,21 +135,19 @@ fn mouse_press<UpdateServer>(
   mouse_btn: MouseButton,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
 {
-  stopwatch::time("event.mouse_press", || {
-    match mouse_btn {
-      MouseButton::Left => {
-        update_server(
-          protocol::ClientToServer::Add(player_id)
+  match mouse_btn {
+    MouseButton::Left => {
+      update_server(
+        protocol::ClientToServer::Add(player_id)
         );
-      },
-      MouseButton::Right => {
-        update_server(
-          protocol::ClientToServer::Remove(player_id)
+    },
+    MouseButton::Right => {
+      update_server(
+        protocol::ClientToServer::Remove(player_id)
         );
-      },
-      _ => {},
-    }
-  })
+    },
+    _ => {},
+  }
 }
 
 fn key_release<UpdateServer>(
@@ -161,27 +156,25 @@ fn key_release<UpdateServer>(
   key: Keycode,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
 {
-  stopwatch::time("event.key_release", || {
-    match key {
-      // accelerations are negated from those in key_press.
-      Keycode::A => {
-        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(1.0, 0.0, 0.0)));
-      },
-      Keycode::D => {
-        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(-1.0, 0.0, 0.0)));
-      },
-      Keycode::Space => {
-        update_server(protocol::ClientToServer::StopJump(player_id));
-      },
-      Keycode::W => {
-        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(0.0, 0.0, 1.0)));
-      },
-      Keycode::S => {
-        update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(0.0, 0.0, -1.0)));
-      },
-      _ => {}
-    }
-  })
+  match key {
+    // accelerations are negated from those in key_press.
+    Keycode::A => {
+      update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(1.0, 0.0, 0.0)));
+    },
+    Keycode::D => {
+      update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(-1.0, 0.0, 0.0)));
+    },
+    Keycode::Space => {
+      update_server(protocol::ClientToServer::StopJump(player_id));
+    },
+    Keycode::W => {
+      update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(0.0, 0.0, 1.0)));
+    },
+    Keycode::S => {
+      update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(0.0, 0.0, -1.0)));
+    },
+    _ => {}
+  }
 }
 
 // x and y are relative to last position.
@@ -192,14 +185,12 @@ fn mouse_move<UpdateServer>(
   dx: i32, dy: i32,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
 {
-  stopwatch::time("event.mouse_move", || {
-    let d = Vector2::new(dx, dy);
-    // To-radians coefficient. Numbers closer to zero dull the mouse movement more.
-    let to_radians = Vector2::new(-1.0 / 1000.0, -1.0 / 1600.0);
-    let r = Vector2::new(d.x as f32 * to_radians.x, d.y as f32 * to_radians.y);
+  let d = Vector2::new(dx, dy);
+  // To-radians coefficient. Numbers closer to zero dull the mouse movement more.
+  let to_radians = Vector2::new(-1.0 / 1000.0, -1.0 / 1600.0);
+  let r = Vector2::new(d.x as f32 * to_radians.x, d.y as f32 * to_radians.y);
 
-    update_server(protocol::ClientToServer::RotatePlayer(player_id, r));
-    view.camera.rotate_lateral(r.x);
-    view.camera.rotate_vertical(r.y);
-  })
+  update_server(protocol::ClientToServer::RotatePlayer(player_id, r));
+  view.camera.rotate_lateral(r.x);
+  view.camera.rotate_vertical(r.y);
 }

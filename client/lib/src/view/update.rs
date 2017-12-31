@@ -1,7 +1,6 @@
 //! Define the updates passed from the client to the view.
 
 use cgmath::Point3;
-use stopwatch;
 
 use terrain_mesh;
 use vertex::ColoredVertex;
@@ -61,36 +60,34 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
       }
     },
     T::LoadMesh(mesh) => {
-      stopwatch::time("add_chunk", move || {
-        let mesh = *mesh;
-        for i in 0 .. mesh.len() {
-          view.terrain_buffers.push(
-            &mut view.gl,
-            mesh.ids[i],
-            &mesh.vertex_coordinates[i],
-            &mesh.normals[i],
-            &mesh.materials[i],
-          );
-        }
-        let mut grass_entries = Vec::with_capacity(mesh.grass.len());
-        for i in 0 .. mesh.grass.len() {
-          let chunk_id = mesh.grass.polygon_chunk_ids[i];
-          let polygon_offset = mesh.grass.polygon_offsets[i];
-          let chunk_idx = view.terrain_buffers.lookup_opengl_index(chunk_id).unwrap();
-          let polygon_idx = chunk_idx.subindex(polygon_offset);
-          grass_entries.push(
-            view::grass_buffers::Entry {
-              polygon_idx : polygon_idx.to_u32(),
-              tex_id      : mesh.grass.tex_ids[i],
-            }
-          );
-        }
-        view.grass_buffers.push(
+      let mesh = *mesh;
+      for i in 0 .. mesh.len() {
+        view.terrain_buffers.push(
           &mut view.gl,
-          grass_entries.as_ref(),
-          mesh.grass.ids.as_ref(),
+          mesh.ids[i],
+          &mesh.vertex_coordinates[i],
+          &mesh.normals[i],
+          &mesh.materials[i],
         );
-      })
+      }
+      let mut grass_entries = Vec::with_capacity(mesh.grass.len());
+      for i in 0 .. mesh.grass.len() {
+        let chunk_id = mesh.grass.polygon_chunk_ids[i];
+        let polygon_offset = mesh.grass.polygon_offsets[i];
+        let chunk_idx = view.terrain_buffers.lookup_opengl_index(chunk_id).unwrap();
+        let polygon_idx = chunk_idx.subindex(polygon_offset);
+        grass_entries.push(
+          view::grass_buffers::Entry {
+            polygon_idx : polygon_idx.to_u32(),
+            tex_id      : mesh.grass.tex_ids[i],
+          }
+        );
+      }
+      view.grass_buffers.push(
+        &mut view.gl,
+        grass_entries.as_ref(),
+        mesh.grass.ids.as_ref(),
+      );
     },
     T::UnloadMesh(terrain_mesh::Ids { chunk_ids, grass_ids }) => {
       // Removing grass needs to happen before the calls to [update_polygon_index], or we will remove the wrong things.

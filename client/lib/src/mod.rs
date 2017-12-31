@@ -24,7 +24,6 @@ extern crate portaudio;
 extern crate rand;
 extern crate sdl2;
 extern crate sdl2_sys;
-extern crate stopwatch;
 extern crate test;
 extern crate thread_scoped;
 extern crate time;

@@ -5,7 +5,6 @@
 use cgmath::Point3;
 use std::cmp::max;
 use std::collections::VecDeque;
-use stopwatch;
 
 use cube_shell::cube_diff;
 
@@ -91,21 +90,19 @@ impl T {
   pub fn updates(&mut self, position: &Point3<i32>) -> Updates {
     let position_changed = self.last_position != Some(*position);
     if position_changed {
-      stopwatch::time("surroundings_loader.extend", || {
-        self.to_load = Some(surroundings_iter::new(&position, self.max_load_distance as i32));
-        self.last_position.map(|last_position| {
-          for &distance in &self.lod_thresholds {
-            self.to_recheck.extend(
-              cube_diff(&last_position, &position, distance).into_iter()
-            );
-          }
+      self.to_load = Some(surroundings_iter::new(&position, self.max_load_distance as i32));
+      self.last_position.map(|last_position| {
+        for &distance in &self.lod_thresholds {
           self.to_recheck.extend(
-            cube_diff(&last_position, &position, self.max_load_distance as i32).into_iter()
+            cube_diff(&last_position, &position, distance).into_iter()
+            );
+        }
+        self.to_recheck.extend(
+          cube_diff(&last_position, &position, self.max_load_distance as i32).into_iter()
           );
-        });
+      });
 
-        self.last_position = Some(*position);
-      })
+      self.last_position = Some(*position);
     }
 
     Updates {
@@ -135,18 +132,16 @@ impl<'a> Iterator for Updates<'a> {
   type Item = (Point3<i32>, LoadType);
 
   fn next(&mut self) -> Option<Self::Item> {
-    stopwatch::time("surroundings_loader.next", || {
-      if let Some(position) = self.loader.to_recheck.pop_front() {
-        let distance = distance_between(&self.position, &position);
-        if distance > self.loader.max_load_distance {
-          Some((position, LoadType::Unload))
-        } else {
-          Some((position, LoadType::Downgrade))
-        }
+    if let Some(position) = self.loader.to_recheck.pop_front() {
+      let distance = distance_between(&self.position, &position);
+      if distance > self.loader.max_load_distance {
+        Some((position, LoadType::Unload))
       } else {
-        self.loader.to_load.as_mut().unwrap().next()
-          .map(|position| (position, LoadType::Load))
+        Some((position, LoadType::Downgrade))
       }
-    })
+    } else {
+      self.loader.to_load.as_mut().unwrap().next()
+        .map(|position| (position, LoadType::Load))
+    }
   }
 }

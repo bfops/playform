@@ -4,7 +4,6 @@ use cgmath;
 use cgmath::{Point3, EuclideanSpace, InnerSpace, ElementWise};
 use collision::{Aabb3};
 use rand::Rng;
-use stopwatch;
 use time;
 
 use common::color::Color4;
@@ -35,79 +34,77 @@ pub fn apply_server_update<UpdateView, UpdateAudio, UpdateServer, EnqueueTerrain
   UpdateServer       : FnMut(protocol::ClientToServer),
   EnqueueTerrainLoad : FnMut(terrain::Load),
 {
-  stopwatch::time("apply_server_update", move || {
-    match update {
-      protocol::ServerToClient::LeaseId(_) => {
-        warn!("Client ID has already been leased.");
-      },
-      protocol::ServerToClient::Ping => {
-        update_server(protocol::ClientToServer::Ping(client.id));
-      },
-      protocol::ServerToClient::PlayerAdded(id, _) => {
-        warn!("Unexpected PlayerAdded event: {:?}.", id);
-      },
-      protocol::ServerToClient::UpdatePlayer(player_id, bounds) => {
-        let mesh = to_triangles(&bounds, &Color4::of_rgba(0.0, 0.0, 1.0, 1.0));
-        update_view(view::update::UpdatePlayer(player_id, mesh));
+  match update {
+    protocol::ServerToClient::LeaseId(_) => {
+      warn!("Client ID has already been leased.");
+    },
+    protocol::ServerToClient::Ping => {
+      update_server(protocol::ClientToServer::Ping(client.id));
+    },
+    protocol::ServerToClient::PlayerAdded(id, _) => {
+      warn!("Unexpected PlayerAdded event: {:?}.", id);
+    },
+    protocol::ServerToClient::UpdatePlayer(player_id, bounds) => {
+      let mesh = to_triangles(&bounds, &Color4::of_rgba(0.0, 0.0, 1.0, 1.0));
+      update_view(view::update::UpdatePlayer(player_id, mesh));
 
-        // We "lock" the client to client.player_id, so for updates to that player only,
-        // there is more client-specific logic.
-        if player_id != client.player_id {
-          return
-        }
+      // We "lock" the client to client.player_id, so for updates to that player only,
+      // there is more client-specific logic.
+      if player_id != client.player_id {
+        return
+      }
 
-        let position =
-          (bounds.min.to_vec().mul_element_wise(cgmath::Vector3::new(0.5, 0.1, 0.5))) +
-          (bounds.max.to_vec().mul_element_wise(cgmath::Vector3::new(0.5, 0.9, 0.5)));
-        let position = Point3::from_vec(position);
+      let position =
+        (bounds.min.to_vec().mul_element_wise(cgmath::Vector3::new(0.5, 0.1, 0.5))) +
+        (bounds.max.to_vec().mul_element_wise(cgmath::Vector3::new(0.5, 0.9, 0.5)));
+      let position = Point3::from_vec(position);
 
-        *client.player_position.lock().unwrap() = position;
-        update_view(view::update::MoveCamera(position));
-      },
-      protocol::ServerToClient::UpdateMob(id, bounds) => {
-        let mesh = to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0));
-        update_view(view::update::UpdateMob(id, mesh));
-      },
-      protocol::ServerToClient::UpdateSun(fraction) => {
-        update_view(view::update::SetSun(
+      *client.player_position.lock().unwrap() = position;
+      update_view(view::update::MoveCamera(position));
+    },
+    protocol::ServerToClient::UpdateMob(id, bounds) => {
+      let mesh = to_triangles(&bounds, &Color4::of_rgba(1.0, 0.0, 0.0, 1.0));
+      update_view(view::update::UpdateMob(id, mesh));
+    },
+    protocol::ServerToClient::UpdateSun(fraction) => {
+      update_view(view::update::SetSun(
           view::light::Sun {
             progression: fraction,
             rotation: 0.0,
           }
-        ));
-      },
-      protocol::ServerToClient::Voxels { voxels, reason } => {
-        let time_requested;
-        match reason {
-          protocol::VoxelReason::Updated => {
-            time_requested = None;
-          },
-          protocol::VoxelReason::Requested { at } => {
-            time_requested = Some(at);
-            debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - at);
-          },
-        }
+          ));
+    },
+    protocol::ServerToClient::Voxels { voxels, reason } => {
+      let time_requested;
+      match reason {
+        protocol::VoxelReason::Updated => {
+          time_requested = None;
+        },
+        protocol::VoxelReason::Requested { at } => {
+          time_requested = Some(at);
+          debug!("Receiving a voxel request after {}ns", time::precise_time_ns() - at);
+        },
+      }
 
-        enqueue_terrain_load(
-          terrain::Load::Voxels {
-            voxels       : voxels,
-            time_requested : time_requested,
-          }
+      enqueue_terrain_load(
+        terrain::Load::Voxels {
+          voxels       : voxels,
+          time_requested : time_requested,
+        }
         );
-      },
-      protocol::ServerToClient::Collision(collision_type) => {
-        if let protocol::Collision::PlayerTerrain(..) = collision_type {
-          let player_position = *client.player_position.lock().unwrap();
-          let mut last_footstep = client.last_footstep.lock().unwrap();
-          if (player_position - *last_footstep).magnitude() >= 4.0 {
-            *last_footstep = player_position;
-            let idx = client.rng.lock().unwrap().gen_range(1, 17 + 1);
-            update_audio(audio_thread::Message::PlayOneShot(audio_loader::SoundId::Footstep(idx)));
-          }
+    },
+    protocol::ServerToClient::Collision(collision_type) => {
+      if let protocol::Collision::PlayerTerrain(..) = collision_type {
+        let player_position = *client.player_position.lock().unwrap();
+        let mut last_footstep = client.last_footstep.lock().unwrap();
+        if (player_position - *last_footstep).magnitude() >= 4.0 {
+          *last_footstep = player_position;
+          let idx = client.rng.lock().unwrap().gen_range(1, 17 + 1);
+          update_audio(audio_thread::Message::PlayOneShot(audio_loader::SoundId::Footstep(idx)));
         }
       }
     }
-  })
+  }
 }
 
 fn to_triangles(

@@ -15,7 +15,6 @@ extern crate log;
 extern crate lru_cache;
 extern crate noise;
 extern crate rand;
-extern crate stopwatch;
 extern crate test;
 extern crate time;
 extern crate voxel_data;

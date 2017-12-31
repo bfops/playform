@@ -3,7 +3,6 @@
 use std;
 use std::io::Write;
 use std::sync::{Mutex};
-use stopwatch;
 use thread_scoped;
 
 use common::protocol;
@@ -104,8 +103,6 @@ pub fn run(listen_url: &str, server_url: &str) {
           }
           file.write_all(b"];\n").unwrap();
           file.write_fmt(format_args!("plot([1:{}], records);", recorded.chunk_loads.len())).unwrap();
-
-          stopwatch::clone()
         })
       }
     };
@@ -119,8 +116,6 @@ pub fn run(listen_url: &str, server_url: &str) {
         &mut || { view_updates1.lock().unwrap().pop_front() },
         &mut |server_update| { server.talk.tell(&server_update) },
       );
-
-      stopwatch::clone().print();
     }
 
     // View thread returned, so we got a quit event.
@@ -128,10 +123,7 @@ pub fn run(listen_url: &str, server_url: &str) {
 
     audio_thread.join();
     monitor_thread.join();
-
-    let stopwatch = update_thread.join();
-
-    stopwatch.print();
+    update_thread.join();
   }
 }
 
