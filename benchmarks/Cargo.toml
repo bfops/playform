@@ -7,12 +7,17 @@ authors = []
 name = "generate-terrain-throughput"
 path = "./generate_terrain_throughput.rs"
 
+[[bin]]
+name = "isosurface-extraction-throughput"
+path = "./isosurface_extraction_throughput.rs"
+
 [dependencies]
 cgmath     = "0.14.*"
 collision  = "0.10.*"
 env_logger = "*"
 num        = "*"
 log        = "*"
+rand       = "*"
 time       = "*"
 
 [dependencies.playform-common]

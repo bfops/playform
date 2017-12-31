@@ -7,17 +7,24 @@ use client_lib::{chunk, lod, terrain_mesh};
 use server_lib::{server, update_gaia};
 use server_lib::update_gaia::LoadDestination;
 
+pub fn max_load_distance() -> u32 {
+  80
+}
+
+pub fn player_position() -> cgmath::Point3<f32> {
+  cgmath::Point3::new(0.0, 512.0, 0.0)
+}
+
 pub fn generate_all_terrain() -> Vec<Vec<(voxel::bounds::T, voxel::T)>> {
   let mut r = Vec::new();
 
   let server = server::new();
 
-  let load_position = cgmath::Point3::new(0.0, 512.0, 0.0);
-  let load_position = chunk::position::of_world_position(&load_position);
+  let load_position = chunk::position::of_world_position(&player_position());
 
   let mut surroundings_loader = {
     surroundings_loader::new(
-      80,
+      max_load_distance(),
       lod::THRESHOLDS.iter().map(|&x| x as i32).collect(),
     )
   };

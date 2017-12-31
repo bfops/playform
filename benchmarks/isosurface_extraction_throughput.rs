@@ -13,22 +13,42 @@ extern crate collision;
 extern crate env_logger;
 #[macro_use]
 extern crate log;
+extern crate rand;
 extern crate time;
 
-use common::surroundings_loader;
-use common::surroundings_loader::LoadType;
-use client_lib::{chunk, lod, terrain_mesh};
-use server_lib::{server, update_gaia};
-use update_gaia::LoadDestination;
+mod generate_terrain;
+
+use common::{id_allocator};
+use client_lib::{chunk_stats, terrain};
+use std::sync::Mutex;
 
 fn main() {
   println!("Loading terrain..");
-  for voxels in generate_all_terrain() {
-    terrain.enqueue(voxels);
+
+  let mut terrain = terrain::new(generate_terrain::max_load_distance());
+
+  for voxels in generate_terrain::generate_all_terrain() {
+    terrain.enqueue(terrain::Load::Voxels { voxels, time_requested: None });
   }
 
   println!("Starting..");
   let start = time::precise_time_ns();
+
+  let terrain_allocator = Mutex::new(id_allocator::new());
+  let grass_allocator = Mutex::new(id_allocator::new());
+  let mut rng: rand::XorShiftRng = rand::SeedableRng::from_seed([1, 2, 3, 4]);
+  let mut chunk_stats = chunk_stats::new();
+
+  while terrain.queued_update_count() > 0 {
+    terrain.tick(
+      &terrain_allocator,
+      &grass_allocator,
+      &mut rng,
+      &mut chunk_stats,
+      &mut |_| {},
+      &generate_terrain::player_position(),
+    );
+  }
 
   let now = time::precise_time_ns();
 
