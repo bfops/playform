@@ -42,6 +42,3 @@ git = "https://github.com/bfops/rust-voxel-data"
 
 [dependencies.isosurface-extraction]
 git = "https://github.com/bfops/rust-isosurface-extraction"
-
-[dependencies.stopwatch]
-git = "https://github.com/bfops/stopwatch-rs"

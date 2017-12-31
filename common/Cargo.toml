@@ -23,9 +23,6 @@ serde          = "*"
 serde_derive   = "*"
 time           = "*"
 
-[dependencies.stopwatch]
-git = "https://github.com/bfops/stopwatch-rs"
-
 [dependencies.voxel-data]
 git = "https://github.com/bfops/rust-voxel-data"
 

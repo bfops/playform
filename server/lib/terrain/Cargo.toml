@@ -25,7 +25,3 @@ version = "*"
 
 [dependencies.voxel-data]
 git = "https://github.com/bfops/rust-voxel-data"
-
-[dependencies.stopwatch]
-git = "https://github.com/bfops/stopwatch-rs"
-

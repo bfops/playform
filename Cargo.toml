@@ -32,6 +32,3 @@ optional = true
 
 [dependencies.server-lib]
 path = "server/lib"
-
-[dependencies.stopwatch]
-git = "https://github.com/bfops/stopwatch-rs"

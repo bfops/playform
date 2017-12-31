@@ -19,6 +19,3 @@ path = "../lib"
 
 [dependencies.playform-common]
 path = "../../common"
-
-[dependencies.stopwatch]
-git = "https://github.com/bfops/stopwatch-rs"

@@ -29,6 +29,3 @@ git = "https://github.com/bfops/rust-voxel-data"
 [dependencies.terrain]
 path = "./terrain"
 version = "*"
-
-[dependencies.stopwatch]
-git = "https://github.com/bfops/stopwatch-rs"
