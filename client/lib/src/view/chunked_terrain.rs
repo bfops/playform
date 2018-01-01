@@ -2,7 +2,6 @@
 
 use gl::types::*;
 use cgmath::{Point3, Vector3};
-use std;
 use terrain_mesh;
 
 use common::id_allocator;
@@ -60,12 +59,16 @@ pub struct T {
   next_idx_inside_chunks: usize,
 }
 
+#[allow(missing_docs)]
 pub struct PushGrass {
-  tex_id : u32,
-  id     : entity::id::Grass,
+  #[allow(missing_docs)]
+  pub tex_id : u32,
+  #[allow(missing_docs)]
+  pub id     : entity::id::Grass,
 }
 
 impl T {
+  /// Number of polygons pushed. Note that this may not divide cleanly into a number of chunks.
   pub fn polygon_count(&self) -> usize {
     if self.next_idx_inside_chunks > 0 {
       terrain_buffers::CHUNK_LENGTH * (self.ids.len() - 1) + self.next_idx_inside_chunks
@@ -74,6 +77,7 @@ impl T {
     }
   }
 
+  /// Number of chunks pushed. Note that this does not naively translate to a polygon count.
   pub fn chunk_count(&self) -> usize {
     self.ids.len()
   }
@@ -101,35 +105,24 @@ impl T {
       let zero = Vector3::new(0.0, 0.0, 0.0);
       self.normals.push(terrain_buffers::Chunk([terrain_mesh::tri(zero, zero, zero); terrain_buffers::CHUNK_LENGTH]));
       self.materials.push(terrain_buffers::Chunk([0; terrain_buffers::CHUNK_LENGTH]));
+      let id = id_allocator.allocate();
+      self.ids.push(id);
     }
+
+    let chunk_id = *self.ids.last().unwrap();
 
     self.vertex_coordinates.last_mut().unwrap().0[self.next_idx_inside_chunks] = vertices;
     self.normals.last_mut().unwrap().0[self.next_idx_inside_chunks] = normals;
     self.materials.last_mut().unwrap().0[self.next_idx_inside_chunks] = material;
 
-    let id = id_allocator.allocate();
     grass.map(|grass| {
-      self.grass.polygon_chunk_ids.push(id);
-      self.grass.polygon_offsets.push(index::of_u32(self.next_idx_inside_chunks));
+      self.grass.polygon_chunk_ids.push(chunk_id);
+      self.grass.polygon_offsets.push(index::of_u32(self.next_idx_inside_chunks as u32));
       self.grass.tex_ids.push(grass.tex_id);
       self.grass.ids.push(grass.id);
     });
 
-    self.next_idx_inside_chunks += 1;
-  }
-}
-
-fn round_up(x: usize, nearest: usize) -> usize {
-  ((x + (nearest - 1)) / nearest) * nearest
-}
-
-fn zero_pad_to<T>(v: &mut Vec<T>, len: usize) {
-  let orig_len = v.len();
-  let diff = len - orig_len;
-  v.reserve_exact(diff);
-  unsafe {
-    v.set_len(len);
-    std::ptr::write_bytes(v.as_mut_ptr().offset(orig_len as isize), 0, diff);
+    self.next_idx_inside_chunks = (self.next_idx_inside_chunks + 1) % terrain_buffers::CHUNK_LENGTH;
   }
 }
 

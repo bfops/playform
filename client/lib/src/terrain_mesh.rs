@@ -129,7 +129,7 @@ pub fn generate<Rng: rand::Rng>(
     let lg_edge_samples = lod.lg_edge_samples();
     let lg_sample_size = lod.lg_sample_size();
 
-    let chunked_terrain = chunked_terrain::empty();
+    let mut chunked_terrain = chunked_terrain::empty();
 
     let low = *chunk_position.as_pnt();
     let high = low + (&Vector3::new(1, 1, 1));
@@ -213,7 +213,6 @@ pub fn generate<Rng: rand::Rng>(
       );
     }
 
-    let chunk_allocator = &mut *chunk_allocator.lock().unwrap();
     chunk_stats.add(chunked_terrain.polygon_count());
     chunked_terrain
   })
