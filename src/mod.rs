@@ -3,8 +3,6 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 #![feature(stmt_expr_attributes)]
-#![feature(global_allocator)]
-#![feature(allocator_api)]
 
 extern crate env_logger;
 extern crate nanomsg;
@@ -18,10 +16,6 @@ extern crate server_lib;
 
 use std::borrow::Borrow;
 use std::sync::Mutex;
-
-// Use the system allocator because if we use jemalloc then we deadlock pretty quickly in a jemalloc mutex.
-#[global_allocator]
-static ALLOCATOR: std::heap::System = std::heap::System;
 
 fn main() {
   env_logger::init().unwrap();
