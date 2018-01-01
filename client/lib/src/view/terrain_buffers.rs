@@ -34,7 +34,7 @@ pub const CHUNK_LENGTH: usize = 1 << 5;
 const CHUNK_BUDGET: usize = POLYGON_BUDGET / CHUNK_LENGTH;
 /// Instead of storing individual vertices, normals, etc. in VRAM, store them in chunks.
 /// This makes it much faster to unload things.
-pub struct Chunk<V>([V; CHUNK_LENGTH]);
+pub struct Chunk<V>(pub [V; CHUNK_LENGTH]);
 
 impl<V> Chunk<V> {
   #[allow(missing_docs)]

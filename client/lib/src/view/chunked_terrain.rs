@@ -13,6 +13,7 @@ use super::terrain_buffers::Chunk;
 use super::entity;
 
 /// Information required to load a grass tuft into vram, transformed to refer to vram terrain chunks.
+// TODO: Consider making fields non-pub and exposing read-only accessors.
 pub struct Grass {
   /// subtexture indices
   pub tex_ids : Vec<u32>,
@@ -25,6 +26,15 @@ pub struct Grass {
 }
 
 impl Grass {
+  fn empty() -> Self {
+    Grass {
+      tex_ids           : Vec::new(),
+      ids               : Vec::new(),
+      polygon_chunk_ids : Vec::new(),
+      polygon_offsets   : Vec::new(),
+    }
+  }
+
   #[allow(missing_docs)]
   pub fn len(&self) -> usize {
     self.ids.len()
@@ -32,6 +42,7 @@ impl Grass {
 }
 
 #[allow(missing_docs)]
+// TODO: Consider making fields non-pub and exposing read-only accessors.
 pub struct T {
   // Every vector should be the same length
 
@@ -44,17 +55,67 @@ pub struct T {
   /// per-chunk ids
   pub ids: Vec<entity::id::Terrain>,
   pub grass : Grass,
+
+  /// The index within each `Chunk` that we should write to next when pushing new data.
+  next_idx_inside_chunks: usize,
+}
+
+pub struct PushGrass {
+  tex_id : u32,
+  id     : entity::id::Grass,
 }
 
 impl T {
-  /// is there nothing to be loaded in this chunk?
-  pub fn len(&self) -> usize {
+  pub fn polygon_count(&self) -> usize {
+    if self.next_idx_inside_chunks > 0 {
+      terrain_buffers::CHUNK_LENGTH * (self.ids.len() - 1) + self.next_idx_inside_chunks
+    } else {
+      terrain_buffers::CHUNK_LENGTH * self.ids.len()
+    }
+  }
+
+  pub fn chunk_count(&self) -> usize {
     self.ids.len()
   }
 
   /// is there nothing to be loaded in this chunk?
   pub fn is_empty(&self) -> bool {
-    self.len() == 0
+    self.chunk_count() == 0
+  }
+
+  #[allow(missing_docs)]
+  pub fn push(
+    &mut self,
+    id_allocator : &mut id_allocator::T<entity::id::Terrain>,
+    vertices     : terrain_mesh::Triangle<Point3<GLfloat>>,
+    normals      : terrain_mesh::Triangle<Vector3<GLfloat>>,
+    material     : GLint,
+    grass        : Option<PushGrass>,
+  ) {
+    // After this block executes, then it is unconditionally true that we write to the last chunk in every `Vec` at this index.
+    // We only allocate a new chunk when we know we will actually write data to it, to avoid conceptual ambiguity between the
+    // lack of a pushed chunk vs an empty pushed chunk (e.g. for the return value of `len`)
+    if self.next_idx_inside_chunks == 0 {
+      let zero = Point3::new(0.0, 0.0, 0.0);
+      self.vertex_coordinates.push(terrain_buffers::Chunk([terrain_mesh::tri(zero, zero, zero); terrain_buffers::CHUNK_LENGTH]));
+      let zero = Vector3::new(0.0, 0.0, 0.0);
+      self.normals.push(terrain_buffers::Chunk([terrain_mesh::tri(zero, zero, zero); terrain_buffers::CHUNK_LENGTH]));
+      self.materials.push(terrain_buffers::Chunk([0; terrain_buffers::CHUNK_LENGTH]));
+    }
+
+    self.vertex_coordinates.last_mut().unwrap().0[self.next_idx_inside_chunks] = vertices;
+    self.normals.last_mut().unwrap().0[self.next_idx_inside_chunks] = normals;
+    self.materials.last_mut().unwrap().0[self.next_idx_inside_chunks] = material;
+
+    let id = id_allocator.allocate();
+    grass.map(|grass| {
+      self.grass.polygon_chunk_ids.push(id);
+      self.grass.polygon_offsets.push(index::of_u32(self.next_idx_inside_chunks));
+      self.grass.tex_ids.push(grass.tex_id);
+      self.grass.ids.push(grass.id);
+    });
+
+    self.next_idx_inside_chunks += 1;
   }
 }
 
@@ -73,46 +134,13 @@ fn zero_pad_to<T>(v: &mut Vec<T>, len: usize) {
 }
 
 #[allow(missing_docs)]
-pub fn of_parts(
-  id_allocator  : &mut id_allocator::T<entity::id::Terrain>,
-  mut vertices  : Vec<terrain_mesh::Triangle<Point3<GLfloat>>>,
-  mut normals   : Vec<terrain_mesh::Triangle<Vector3<GLfloat>>>,
-  mut materials : Vec<GLint>,
-  grass         : terrain_mesh::Grass,
-) -> T {
-  assert_eq!(vertices.len(), normals.len());
-  assert_eq!(vertices.len(), materials.len());
-  let len = round_up(vertices.len(), terrain_buffers::CHUNK_LENGTH);
-  zero_pad_to(&mut vertices, len);
-  zero_pad_to(&mut normals, len);
-  zero_pad_to(&mut materials, len);
-  let vec_len = len / terrain_buffers::CHUNK_LENGTH;
-  let vertices_ptr  = vertices.as_mut_ptr();
-  let normals_ptr   = normals.as_mut_ptr();
-  let materials_ptr = materials.as_mut_ptr();
-  std::mem::forget(vertices);
-  std::mem::forget(normals);
-  std::mem::forget(materials);
-  let ids: Vec<_> = (0..vec_len).map(|_| id_allocator.allocate()).collect();
-  let grass = {
-    let mut polygon_chunk_ids = Vec::with_capacity(grass.len());
-    let mut polygon_offsets = Vec::with_capacity(grass.len());
-    for i in grass.polygon_offsets {
-      polygon_chunk_ids.push(ids[i / terrain_buffers::CHUNK_LENGTH]);
-      polygon_offsets.push(index::of_u32((i % terrain_buffers::CHUNK_LENGTH) as u32));
-    }
-    Grass {
-      tex_ids           : grass.tex_ids,
-      ids               : grass.ids,
-      polygon_offsets   : polygon_offsets,
-      polygon_chunk_ids : polygon_chunk_ids,
-    }
-  };
+pub fn empty() -> T {
   T {
-    vertex_coordinates : unsafe { Vec::from_raw_parts(vertices_ptr  as *mut _, vec_len, vec_len) },
-    normals            : unsafe { Vec::from_raw_parts(normals_ptr   as *mut _, vec_len, vec_len) },
-    materials          : unsafe { Vec::from_raw_parts(materials_ptr as *mut _, vec_len, vec_len) },
-    ids                : ids,
-    grass              : grass,
+    vertex_coordinates     : Vec::new(),
+    normals                : Vec::new(),
+    materials              : Vec::new(),
+    ids                    : Vec::new(),
+    grass                  : Grass::empty(),
+    next_idx_inside_chunks : 0
   }
 }

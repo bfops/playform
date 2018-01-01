@@ -63,7 +63,7 @@ pub fn apply_client_to_view(view: &mut view::T, up: T) {
     T::LoadMesh(mesh) => {
       stopwatch::time("add_chunk", move || {
         let mesh = *mesh;
-        for i in 0 .. mesh.len() {
+        for i in 0 .. mesh.chunk_count() {
           view.terrain_buffers.push(
             &mut view.gl,
             mesh.ids[i],

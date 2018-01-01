@@ -15,7 +15,6 @@ use common::voxel;
 use chunk;
 use chunk_stats;
 use lod;
-use terrain_mesh;
 
 use view;
 use view::chunked_terrain;
@@ -130,10 +129,7 @@ pub fn generate<Rng: rand::Rng>(
     let lg_edge_samples = lod.lg_edge_samples();
     let lg_sample_size = lod.lg_sample_size();
 
-    let mut vertex_coordinates = Vec::new();
-    let mut normals = Vec::new();
-    let mut materials = Vec::new();
-    let mut grass = terrain_mesh::Grass::new();
+    let chunked_terrain = chunked_terrain::empty();
 
     let low = *chunk_position.as_pnt();
     let high = low + (&Vector3::new(1, 1, 1));
@@ -171,16 +167,27 @@ pub fn generate<Rng: rand::Rng>(
               &mut voxel_storage::T { voxels: voxels },
               &edge,
               &mut |polygon: dual_contouring::polygon::T<voxel::Material>| {
-                let polygon_offset = vertex_coordinates.len();
-                vertex_coordinates.push(tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
-                normals.push(tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]));
-                materials.push(polygon.material as i32);
+                let vertices = tri(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]);
+                let normals = tri(polygon.normals[0], polygon.normals[1], polygon.normals[2]);
+                let material = polygon.material as i32;
 
-                if polygon.material == voxel::Material::Terrain && lod <= lod::MAX_GRASS_LOD {
-                  grass.tex_ids.push(rng.gen_range(0, 9));
-                  grass.ids.push(grass_allocator.lock().unwrap().allocate());
-                  grass.polygon_offsets.push(polygon_offset);
-                }
+                let grass =
+                  if polygon.material == voxel::Material::Terrain && lod <= lod::MAX_GRASS_LOD {
+                    Some(chunked_terrain::PushGrass {
+                      tex_id : rng.gen_range(0, 9),
+                      id     : grass_allocator.lock().unwrap().allocate(),
+                    })
+                  } else {
+                    None
+                  };
+
+                chunked_terrain.push(
+                  &mut *chunk_allocator.lock().unwrap(),
+                  vertices,
+                  normals,
+                  material,
+                  grass,
+                );
               }
             );
         }}}
@@ -207,8 +214,8 @@ pub fn generate<Rng: rand::Rng>(
     }
 
     let chunk_allocator = &mut *chunk_allocator.lock().unwrap();
-    chunk_stats.add(vertex_coordinates.len());
-    chunked_terrain::of_parts(chunk_allocator, vertex_coordinates, normals, materials, grass)
+    chunk_stats.add(chunked_terrain.polygon_count());
+    chunked_terrain
   })
 }
 
