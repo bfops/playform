@@ -1,7 +1,6 @@
 //! This crate contains the terrain data structures and generation.
 
 #![deny(missing_docs)]
-#![deny(warnings)]
 
 extern crate cgmath;
 extern crate collision;

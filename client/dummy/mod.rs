@@ -1,7 +1,6 @@
 //! Client binary
 
 #![deny(missing_docs)]
-#![deny(warnings)]
 
 extern crate cgmath;
 #[macro_use]

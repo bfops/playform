@@ -1,7 +1,6 @@
 //! This crate contains client-only components of Playform.
 
 #![deny(missing_docs)]
-#![deny(warnings)]
 
 extern crate bincode;
 extern crate cgmath;
@@ -16,6 +15,7 @@ extern crate isosurface_extraction;
 extern crate log;
 extern crate libc;
 extern crate num;
+#[cfg(feature="audio")]
 extern crate portaudio;
 extern crate rand;
 extern crate sdl2;

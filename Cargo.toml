@@ -16,8 +16,9 @@ name = "playform"
 path = "src/mod.rs"
 
 [features]
-default = []
+default = ["audio"]
 dummy-client = ["dummy-client-lib"]
+audio = ["client-lib/audio"]
 
 [dependencies]
 env_logger= "*"
@@ -28,6 +29,7 @@ time = "*"
 
 [dependencies.client-lib]
 path = "client/lib"
+default-features = false
 
 [dependencies.dummy-client-lib]
 path     = "client/dummy"
