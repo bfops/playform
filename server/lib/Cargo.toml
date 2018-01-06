@@ -10,8 +10,8 @@ path = "./src/mod.rs"
 
 [dependencies]
 bincode        = "*"
-cgmath         = "0.14.*"
-collision      = "0.10.*"
+cgmath         = "0.15"
+collision      = "0.13"
 log            = "*"
 nanomsg        = "*"
 num            = "*"

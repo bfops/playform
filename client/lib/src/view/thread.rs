@@ -5,7 +5,6 @@ use gl;
 use sdl2;
 use sdl2::event::{Event, WindowEvent};
 use sdl2::video;
-use sdl2_sys;
 use std;
 use stopwatch;
 use time;
@@ -129,7 +128,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
           }
         }
 
-        if window.window_flags() & (sdl2_sys::video::SDL_WindowFlags::SDL_WINDOW_MOUSE_FOCUS as u32) != 0 {
+        if window.window_flags() & (::sdl2::sys::video::SDL_WindowFlags::SDL_WINDOW_MOUSE_FOCUS as u32) != 0 {
           sdl.mouse().warp_mouse_in_window(&window, window_size.x / 2, window_size.y / 2);
         }
 
