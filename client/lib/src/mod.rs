@@ -18,12 +18,12 @@ extern crate num;
 #[cfg(feature="audio")]
 extern crate portaudio;
 extern crate rand;
-extern crate sdl2;
 extern crate stopwatch;
 extern crate thread_scoped;
 extern crate time;
 extern crate voxel_data;
 extern crate yaglw;
+extern crate glutin;
 
 pub mod audio;
 pub mod audio_loader;

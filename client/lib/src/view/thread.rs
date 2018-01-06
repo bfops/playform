@@ -2,13 +2,10 @@
 
 use cgmath::{Vector2};
 use gl;
-use sdl2;
-use sdl2::event::{Event, WindowEvent};
-use sdl2::video;
-use std;
 use stopwatch;
 use time;
 use yaglw::gl_context::GLContext;
+use glutin::{self, GlContext, Event, WindowEvent, KeyboardInput, VirtualKeyCode};
 
 use common::interval_timer::IntervalTimer;
 use common::protocol;
@@ -33,6 +30,18 @@ enum ViewIteration {
   Continue,
 }
 
+fn change_cursor_state(window: &glutin::Window, focused: bool) {
+  if focused {
+    let size = window.get_inner_size().expect("Window closed");
+    window.set_cursor_position(size.0 as i32 / 2, size.1 as i32 / 2).unwrap();
+  }
+  window.set_cursor_state(if focused {
+    glutin::CursorState::Grab
+  } else {
+    glutin::CursorState::Normal
+  }).unwrap();
+}
+
 #[allow(missing_docs)]
 pub fn view_thread<Recv0, Recv1, UpdateServer>(
   client: &client::T,
@@ -44,47 +53,31 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   Recv1: FnMut() -> Option<update::T>,
   UpdateServer: FnMut(protocol::ClientToServer),
 {
-  let sdl = sdl2::init().unwrap();
-  let sdl_event = sdl.event().unwrap();
-  let video = sdl.video().unwrap();
-  let gl_attr = video.gl_attr();
+  let mut event_loop = glutin::EventsLoop::new();
+  let window = glutin::WindowBuilder::new()
+    .with_title("Playform")
+    .with_dimensions(800, 600);
+  let context = glutin::ContextBuilder::new()
+    .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGl, (GL_MAJOR_VERSION, GL_MINOR_VERSION)))
+    .with_gl_profile(glutin::GlProfile::Core);
+  let window = glutin::GlWindow::new(window, context, &event_loop).unwrap();
+  //window.set_maximized(true);
+  window.show();
+  change_cursor_state(&*window, true);
 
-  gl_attr.set_context_profile(video::GLProfile::Core);
-  gl_attr.set_context_version(GL_MAJOR_VERSION, GL_MINOR_VERSION);
-
-  // Open the window as fullscreen at the current resolution.
-  let mut window =
-    video.window(
-      "Playform",
-      800, 600,
-    );
-  let window = window.opengl();
-  let window = window.build().unwrap();
-
-  assert_eq!(gl_attr.context_profile(), video::GLProfile::Core);
-  assert_eq!(gl_attr.context_version(), (GL_MAJOR_VERSION, GL_MINOR_VERSION));
-
-  let mut event_pump = sdl.event_pump().unwrap();
-
-  let _sdl_gl_context = window.gl_create_context().unwrap();
-
-  // Load the OpenGL function pointers.
-  gl::load_with(|s| video.gl_get_proc_address(s) as *const _ );
-
-  let gl = unsafe {
-    GLContext::new()
-  };
+  // Initialize OpenGL
+  unsafe { window.make_current().unwrap(); }
+  gl::load_with(|s| window.get_proc_address(s) as *const _ );
+  let gl = unsafe { GLContext::new() };
 
   gl.print_stats();
 
   let window_size = {
-    let (w, h) = window.size();
+    let (w, h) = window.get_inner_size().expect("Window closed");
     Vector2::new(w as i32, h as i32)
   };
 
   let mut view = view::new(gl, window_size);
-
-  sdl.mouse().set_relative_mouse_mode(true);
 
   make_hud(&mut view);
 
@@ -99,37 +92,59 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   }
 
   let mut last_update = time::precise_time_ns();
+  let mut key_repeated = false;
 
   loop {
     let view_iteration =
       stopwatch::time("view_iteration", || {
+        let mut will_quit = false;
         let now = time::precise_time_ns();
         if now - last_update >= render_interval {
           warn!("{:?}ms since last view update", (now - last_update) / 1000000);
         }
         last_update = now;
 
-        event_pump.pump_events();
-        let events: Vec<Event> = sdl_event.peek_events(1 << 6);
-        sdl_event.flush_events(0, std::u32::MAX);
-        for event in events {
+        event_loop.poll_events(|event| {
           match event {
-            Event::Quit{..} => return ViewIteration::Quit,
-            Event::AppTerminating{..} => return ViewIteration::Quit,
-            Event::Window { win_event: WindowEvent::Close, .. } => return ViewIteration::Quit,
-            event => {
-              process_event(
-                update_server,
-                &mut view,
-                &client,
-                event,
-              );
-            },
+            Event::WindowEvent { event: WindowEvent::Focused(focused), .. } => {
+              change_cursor_state(&*window, focused)
+            }
+            Event::WindowEvent { event: WindowEvent::Closed, .. }  => will_quit = true,
+            Event::WindowEvent {
+              event: WindowEvent::KeyboardInput {
+                input: KeyboardInput {
+                  virtual_keycode: Some(key_code),
+                  modifiers,
+                  ..
+                },
+                ..
+              },
+              ..
+            } => match key_code {
+              VirtualKeyCode::Q => will_quit = true,
+              VirtualKeyCode::F4 => {
+                if modifiers.alt {
+                  will_quit = true;
+                }
+              }
+              VirtualKeyCode::Escape => {
+                change_cursor_state(&*window, false);
+              }
+              _ => {}
+            }
+            _ => {}
           }
-        }
+          process_event(
+            update_server,
+            &mut view,
+            &client,
+            event,
+            &mut key_repeated,
+          );
+        });
 
-        if window.window_flags() & (::sdl2::sys::video::SDL_WindowFlags::SDL_WINDOW_MOUSE_FOCUS as u32) != 0 {
-          sdl.mouse().warp_mouse_in_window(&window, window_size.x / 2, window_size.y / 2);
+        if will_quit {
+          return ViewIteration::Quit;
         }
 
         stopwatch::time("apply_updates", || {
@@ -155,7 +170,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
           stopwatch::time("render", || {
             view::render::render(&mut view);
             // swap buffers
-            window.gl_swap_window();
+            window.swap_buffers().unwrap();
           });
         }
 
@@ -167,6 +182,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
       ViewIteration::Continue => {},
     }
   }
+  change_cursor_state(&*window, false);
 
   debug!("view exiting.");
 }
