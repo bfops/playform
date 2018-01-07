@@ -17,31 +17,42 @@ pub fn process_event<UpdateServer>(
   view: &mut view::T,
   client: &client::T,
   event: Event,
-  key_repeated: &mut bool,
+  last_key: &mut Option<VirtualKeyCode>,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
 {
   match event {
     Event::WindowEvent { event: WindowEvent::CursorMoved { .. }, .. } => {}
+    Event::WindowEvent { event: WindowEvent::MouseWheel { .. }, .. } => {}
+    Event::WindowEvent { event: WindowEvent::AxisMotion { .. }, .. } => {}
     Event::DeviceEvent { event: DeviceEvent::Motion { .. }, .. } => {}
     Event::DeviceEvent { event: DeviceEvent::MouseMotion { .. }, .. } => {}
-    _ => debug!("event: {:?}", event),
+    _ => warn!("event: {:?}", event),
   }
 
   match event {
     Event::WindowEvent { event, .. } => {
       match event {
+        WindowEvent::Focused(false) => {
+          if let Some(last_key) = last_key.take() {
+            key_release(client.player_id, update_server, last_key);
+          }
+        }
         WindowEvent::KeyboardInput { input, .. } => {
           if let Some(virt_keycode) = input.virtual_keycode {
             match input.state {
               ElementState::Pressed => {
-                if !*key_repeated {
+                if last_key == &None {
                   key_press(update_server, view, client, virt_keycode);
-                  *key_repeated = true;
+                  *last_key = Some(virt_keycode);
+                } else if last_key.is_some() && last_key != &Some(virt_keycode) {
+                  key_release(client.player_id, update_server, last_key.unwrap());
+                  key_press(update_server, view, client, virt_keycode);
+                  *last_key = Some(virt_keycode);
                 }
               },
               ElementState::Released => {
                 key_release(client.player_id, update_server, virt_keycode);
-                *key_repeated = false;
+                *last_key = None;
               }
             }
           }
