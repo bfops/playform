@@ -24,7 +24,7 @@ pub fn process_event<UpdateServer>(
     Event::WindowEvent { event: WindowEvent::CursorMoved { .. }, .. } => {}
     Event::DeviceEvent { event: DeviceEvent::Motion { .. }, .. } => {}
     Event::DeviceEvent { event: DeviceEvent::MouseMotion { .. }, .. } => {}
-    _ => println!("event: {:?}", event),
+    _ => debug!("event: {:?}", event),
   }
 
   match event {

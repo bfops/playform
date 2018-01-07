@@ -34,7 +34,7 @@ pub struct T {
   #[allow(missing_docs)]
   pub grass_allocator          : Mutex<id_allocator::T<view::entity::id::Grass>>,
   #[allow(missing_docs)]
-  pub surroundings_loader      : Mutex<surroundings_loader::SurroundingsLoader>,
+  pub surroundings_loader      : Mutex<surroundings_loader::T>,
   #[allow(missing_docs)]
   pub max_load_distance        : u32,
   #[allow(missing_docs)]

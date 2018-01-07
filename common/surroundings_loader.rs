@@ -26,7 +26,7 @@ pub enum LoadType {
 /// Iteratively load points cube-shaped layers around the some point.
 /// That point can be updated with calls to `update`.
 /// What "load" exactly means depends on the closures provided.
-pub struct SurroundingsLoader {
+pub struct T {
   last_position: Option<Point3<i32>>,
 
   max_load_distance: u32,
@@ -41,8 +41,8 @@ pub struct SurroundingsLoader {
 pub fn new(
   max_load_distance: u32,
   lod_thresholds: Vec<i32>,
-) -> SurroundingsLoader {
-  SurroundingsLoader {
+) -> T {
+  T {
     last_position: None,
 
     to_load: None,
@@ -53,7 +53,7 @@ pub fn new(
   }
 }
 
-impl SurroundingsLoader {
+impl T {
   /// Update the center point around which we load, and load some more blocks.
   pub fn updates(&mut self, position: &Point3<i32>) -> Updates {
     let position_changed = self.last_position != Some(*position);
@@ -84,7 +84,7 @@ impl SurroundingsLoader {
 
 /// Iterator for the updates from a T.
 pub struct Updates<'a> {
-  loader: &'a mut SurroundingsLoader,
+  loader: &'a mut T,
   position: Point3<i32>,
 }
 

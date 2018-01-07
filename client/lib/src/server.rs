@@ -1,5 +1,3 @@
-#![allow(missing_docs)]
-
 //! A low-level interface to send and receive server-client protocol messages
 
 use std;
@@ -13,6 +11,7 @@ use bincode;
 use common::protocol;
 use common::socket::{SendSocket, ReceiveSocket};
 
+#[allow(missing_docs)]
 #[derive(Clone)]
 pub struct SSender {
   // A boxed slice is used to reduce the sent size
@@ -22,6 +21,7 @@ pub struct SSender {
 }
 
 impl SSender {
+  #[allow(missing_docs)]
   pub fn new(sender: Sender<Box<[u8]>>) -> SSender {
     SSender {
       sender: sender,
@@ -29,6 +29,7 @@ impl SSender {
     }
   }
 
+  #[allow(missing_docs)]
   pub fn tell(&self, msg: &protocol::ClientToServer) {
     let msg = bincode::serialize(msg, bincode::Infinite).unwrap();
     // We aren't reading this until long after the write, so we use `Relaxed`
@@ -37,10 +38,12 @@ impl SSender {
   }
 }
 
+#[allow(missing_docs)]
 #[derive(Clone)]
 pub struct SReceiver (Arc<Mutex<Receiver<Box<[u8]>>>>);
 
 impl SReceiver {
+  #[allow(missing_docs)]
   pub fn try(&self) -> Option<protocol::ServerToClient> {
     match self.0.lock().unwrap().try_recv() {
       Ok(msg) => Some(bincode::deserialize(&Vec::from(msg)).unwrap()),
@@ -52,6 +55,7 @@ impl SReceiver {
     }
   }
 
+  #[allow(missing_docs)]
   pub fn wait(&self) -> protocol::ServerToClient {
     let msg = self.0.lock().unwrap().recv().unwrap();
     bincode::deserialize(msg.as_ref()).unwrap()
