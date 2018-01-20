@@ -1,7 +1,9 @@
 //! SDL input event processing code.
 
 use cgmath::{Vector2, Vector3};
-use glutin::{Event, DeviceEvent, WindowEvent, ElementState, VirtualKeyCode, MouseButton};
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::mouse::MouseButton;
 use std::f32::consts::PI;
 use stopwatch;
 
@@ -17,52 +19,30 @@ pub fn process_event<UpdateServer>(
   view: &mut view::T,
   client: &client::T,
   event: Event,
-  key_repeated: &mut bool,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
 {
   match event {
-    Event::WindowEvent { event: WindowEvent::CursorMoved { .. }, .. } => {}
-    Event::DeviceEvent { event: DeviceEvent::Motion { .. }, .. } => {}
-    Event::DeviceEvent { event: DeviceEvent::MouseMotion { .. }, .. } => {}
-    _ => debug!("event: {:?}", event),
-  }
-
-  match event {
-    Event::WindowEvent { event, .. } => {
-      match event {
-        WindowEvent::KeyboardInput { input, .. } => {
-          if let Some(virt_keycode) = input.virtual_keycode {
-            match input.state {
-              ElementState::Pressed => {
-                if !*key_repeated {
-                  key_press(update_server, view, client, virt_keycode);
-                  *key_repeated = true;
-                }
-              },
-              ElementState::Released => {
-                key_release(client.player_id, update_server, virt_keycode);
-                *key_repeated = false;
-              }
-            }
-          }
+    Event::KeyDown{keycode, repeat, ..} => {
+      keycode.map(|keycode| {
+        if !repeat {
+          key_press(update_server, view, client, keycode);
         }
-        WindowEvent::MouseInput { state, button, .. } => {
-          match state {
-            ElementState::Pressed => mouse_press(client.player_id, update_server, button),
-            ElementState::Released => {}
-          }
+      });
+    },
+    Event::KeyUp{keycode, repeat, ..} => {
+      keycode.map(|keycode| {
+        if !repeat {
+          key_release(client.player_id, update_server, keycode);
         }
-        _ => {},
-      }
-    }
-    Event::DeviceEvent { event, .. } => {
-      match event {
-        DeviceEvent::MouseMotion { delta: (xrel, yrel) } =>
-          mouse_move(client.player_id, update_server, view, xrel as i32, yrel as i32),
-        _ => {}
-      }
-    }
-    _ => {}
+      });
+    },
+    Event::MouseMotion{xrel, yrel, ..} => {
+      mouse_move(client.player_id, update_server, view, xrel, yrel);
+    },
+    Event::MouseButtonDown{mouse_btn, ..} => {
+      mouse_press(client.player_id, update_server, mouse_btn);
+    },
+    _ => {},
   }
 }
 
@@ -70,7 +50,7 @@ fn key_press<UpdateServer>(
   update_server: &mut UpdateServer,
   view: &mut view::T,
   client: &client::T,
-  key: VirtualKeyCode,
+  key: Keycode,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
 {
   use common::protocol::ClientToServer::*;
@@ -103,44 +83,44 @@ fn key_press<UpdateServer>(
 
   stopwatch::time("event.key_press", || {
     match key {
-      VirtualKeyCode::A => {
+      Keycode::A => {
         update_server(Walk(client.player_id, Vector3::new(-1.0, 0.0, 0.0)));
       },
-      VirtualKeyCode::D => {
+      Keycode::D => {
         update_server(Walk(client.player_id, Vector3::new(1.0, 0.0, 0.0)));
       },
-      VirtualKeyCode::Space => {
+      Keycode::Space => {
         update_server(StartJump(client.player_id));
       },
-      VirtualKeyCode::W => {
+      Keycode::W => {
         update_server(Walk(client.player_id, Vector3::new(0.0, 0.0, -1.0)));
       },
-      VirtualKeyCode::S => {
+      Keycode::S => {
         update_server(Walk(client.player_id, Vector3::new(0.0, 0.0, 1.0)));
       },
-      VirtualKeyCode::Left => {
+      Keycode::Left => {
         lr(update_server, view, 1.0);
       },
-      VirtualKeyCode::Right => {
+      Keycode::Right => {
         lr(update_server, view, -1.0);
       },
-      VirtualKeyCode::Up => {
+      Keycode::Up => {
         ud(update_server, view, 1.0);
       },
-      VirtualKeyCode::Down => {
+      Keycode::Down => {
         ud(update_server, view, -1.0);
       },
-      VirtualKeyCode::H => {
+      Keycode::H => {
         view.show_hud = !view.show_hud;
       },
-      VirtualKeyCode::M => {
+      Keycode::M => {
         view.input_mode =
           match view.input_mode {
             view::InputMode::Camera => view::InputMode::Sun,
             view::InputMode::Sun => view::InputMode::Camera,
           };
       },
-      VirtualKeyCode::P => {
+      Keycode::P => {
         let mut load_position = client.load_position.lock().unwrap();
         match *load_position {
           None => *load_position = Some(*client.player_position.lock().unwrap()),
@@ -178,25 +158,25 @@ fn mouse_press<UpdateServer>(
 fn key_release<UpdateServer>(
   player_id: entity::id::Player,
   update_server: &mut UpdateServer,
-  key: VirtualKeyCode,
+  key: Keycode,
 ) where UpdateServer: FnMut(protocol::ClientToServer)
 {
   stopwatch::time("event.key_release", || {
     match key {
       // accelerations are negated from those in key_press.
-      VirtualKeyCode::A => {
+      Keycode::A => {
         update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(1.0, 0.0, 0.0)));
       },
-      VirtualKeyCode::D => {
+      Keycode::D => {
         update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(-1.0, 0.0, 0.0)));
       },
-      VirtualKeyCode::Space => {
+      Keycode::Space => {
         update_server(protocol::ClientToServer::StopJump(player_id));
       },
-      VirtualKeyCode::W => {
+      Keycode::W => {
         update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(0.0, 0.0, 1.0)));
       },
-      VirtualKeyCode::S => {
+      Keycode::S => {
         update_server(protocol::ClientToServer::Walk(player_id, Vector3::new(0.0, 0.0, -1.0)));
       },
       _ => {}

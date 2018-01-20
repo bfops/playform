@@ -24,9 +24,9 @@ log            = "*"
 num            = "*"
 portaudio      = { version = "0.7", optional = true}
 rand           = "*"
+sdl2           = "0.30.*"
 thread-scoped  = "*"
 time           = "*"
-glutin         = "0.12"
 
 [dependencies.image]
 version = "*"
