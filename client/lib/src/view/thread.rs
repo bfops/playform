@@ -35,13 +35,11 @@ fn change_cursor_state(window: &glutin::Window, focused: bool) {
     let size = window.get_inner_size().expect("Window closed");
     window.set_cursor_position(size.0 as i32 / 2, size.1 as i32 / 2).unwrap();
   }
-  if let Err(e) = window.set_cursor_state(if focused {
+  window.set_cursor_state(if focused {
     glutin::CursorState::Grab
   } else {
     glutin::CursorState::Normal
-  }) {
-    println!("Couldn't grab cursor: {:?}", e);
-  }
+  }).unwrap();
 }
 
 #[allow(missing_docs)]
@@ -94,7 +92,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
   }
 
   let mut last_update = time::precise_time_ns();
-  let mut last_key = None;
+  let mut key_repeated = false;
 
   loop {
     let view_iteration =
@@ -141,7 +139,7 @@ pub fn view_thread<Recv0, Recv1, UpdateServer>(
             &mut view,
             &client,
             event,
-            &mut last_key,
+            &mut key_repeated,
           );
         });
 
