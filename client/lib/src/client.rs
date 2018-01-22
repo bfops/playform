@@ -130,5 +130,3 @@ pub fn new(client_id: protocol::ClientId, player_id: view::entity::id::Player, p
     rng                      : Mutex::new(rng),
   }
 }
-
-unsafe impl Sync for T {}

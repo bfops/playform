@@ -1,10 +1,5 @@
 //! This crate contains server-only components of Playform.
 #![deny(missing_docs)]
-#![deny(warnings)]
-
-#![feature(box_syntax)]
-#![feature(test)]
-#![feature(unboxed_closures)]
 
 extern crate bincode;
 extern crate cgmath;
@@ -17,7 +12,6 @@ extern crate num;
 extern crate rand;
 extern crate stopwatch;
 extern crate terrain;
-extern crate test;
 extern crate thread_scoped;
 extern crate time;
 extern crate voxel_data;

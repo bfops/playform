@@ -18,7 +18,5 @@
 target/
 /.rust/
 
-*/lib/*/Cargo.lock
-common/Cargo.lock
 *.out
 *.terrain

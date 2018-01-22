@@ -107,13 +107,13 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
 }
 
 fn quit_upon(signal: &Mutex<bool>) -> closure_series::Closure {
-  box move || {
+  Box::new(move || {
     if *signal.lock().unwrap() {
       closure_series::Quit
     } else {
       closure_series::Continue
     }
-  }
+  })
 }
 
 fn consider_world_update<'a, ToGaia>(
@@ -122,7 +122,7 @@ fn consider_world_update<'a, ToGaia>(
 ) -> closure_series::Closure<'a> where
   ToGaia: FnMut(update_gaia::Message) + 'a,
 {
-  box move || {
+  Box::new(move || {
     if server.update_timer.lock().unwrap().update(time::precise_time_ns()) > 0 {
       update_world(
         server,
@@ -132,7 +132,7 @@ fn consider_world_update<'a, ToGaia>(
     } else {
       closure_series::Continue
     }
-  }
+  })
 }
 
 fn network_listen<'a, ToGaia>(
@@ -142,7 +142,7 @@ fn network_listen<'a, ToGaia>(
 ) -> closure_series::Closure<'a> where
   ToGaia: FnMut(update_gaia::Message) + 'a,
 {
-  box move || {
+  Box::new(move || {
     match socket.lock().unwrap().try_read() {
       common::socket::Result::Empty => closure_series::Continue,
       common::socket::Result::Terminating => closure_series::Quit,
@@ -152,7 +152,7 @@ fn network_listen<'a, ToGaia>(
         closure_series::Restart
       },
     }
-  }
+  })
 }
 
 fn consider_gaia_update<'a, Get>(
@@ -161,7 +161,7 @@ fn consider_gaia_update<'a, Get>(
 ) -> closure_series::Closure<'a> where
   Get: FnMut() -> Option<update_gaia::Message> + 'a,
 {
-  box move || {
+  Box::new(move || {
     match get_update() {
       Some(up) => {
         update_gaia(server, up);
@@ -169,7 +169,7 @@ fn consider_gaia_update<'a, Get>(
       },
       None => closure_series::Continue,
     }
-  }
+  })
 }
 
 fn load_terrain(terrain: &terrain::T, path: &std::path::Path) {

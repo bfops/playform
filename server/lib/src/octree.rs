@@ -91,7 +91,15 @@ pub struct Octree<V> {
   contents: OctreeContents<V>,
 }
 
-unsafe impl<V: 'static> Send for Octree<V> {}
+unsafe impl<V: Send + 'static> Send for Octree<V> {}
+#[allow(missing_docs, dead_code)]
+/// Make sure `impl Send for Octree` is safe
+fn impl_send_for_octree_is_safe<V: Send + 'static>() {
+  fn assert_is_send<T: Send>() {}
+  assert_is_send::<Dimension>();
+  assert_is_send::<Aabb3<f32>>();
+  assert_is_send::<OctreeContents<V>>();
+}
 
 // TODO: fix shaky octree outline insertion/removal conditions.
 

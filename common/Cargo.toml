@@ -13,14 +13,14 @@ name = "common"
 path = "mod.rs"
 
 [dependencies]
-cgmath         = { version = "0.14.*", features = ["eders"] }
-collision      = { version = "0.10.*", features = ["eders"] }
+cgmath         = { version = "0.15", features = ["serde"] }
+collision      = { version = "0.13", features = ["eders"] }
 fnv            = "*"
 log            = "*"
 nanomsg        = "*"
 num            = "*"
-serde          = "*"
-serde_derive   = "*"
+serde          = "1.0"
+serde_derive   = "1.0"
 time           = "*"
 
 [dependencies.stopwatch]

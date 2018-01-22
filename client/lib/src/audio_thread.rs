@@ -1,7 +1,7 @@
 //! thread for playing audio messages
 
+#[cfg(feature="audio")]
 use portaudio;
-use std;
 use std::sync::{Mutex};
 
 use audio;
@@ -16,6 +16,16 @@ pub enum Message {
 }
 
 #[allow(missing_docs)]
+#[cfg(not(feature="audio"))]
+pub fn audio_thread<RecvMessage>(
+  _quit: &Mutex<bool>,
+  _recv_message: &mut RecvMessage,
+) where
+  RecvMessage: FnMut() -> Option<Message>,
+{}
+
+#[allow(missing_docs)]
+#[cfg(feature="audio")]
 pub fn audio_thread<RecvMessage>(
   quit: &Mutex<bool>,
   recv_message: &mut RecvMessage,
@@ -65,7 +75,7 @@ pub fn audio_thread<RecvMessage>(
         },
       }
     } else {
-      std::thread::sleep(std::time::Duration::from_millis(1));
+      ::std::thread::sleep(::std::time::Duration::from_millis(1));
     }
 
     tracks_playing.refresh_buffer();

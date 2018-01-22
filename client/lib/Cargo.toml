@@ -8,20 +8,23 @@ authors = []
 name = "client_lib"
 path = "src/mod.rs"
 
+[features]
+default = ["audio"]
+audio = ["portaudio"]
+
 [dependencies]
 bincode        = "*"
-cgmath         = "0.14.*"
-collision      = "0.10.*"
+cgmath         = "0.15"
+collision      = "0.13"
 fnv            = "*"
 gl             = "0.5.*"
 hound          = "*"
 libc           = "*"
 log            = "*"
 num            = "*"
-portaudio      = "*"
+portaudio      = { version = "0.7", optional = true}
 rand           = "*"
 sdl2           = "0.30.*"
-sdl2-sys       = "0.30.*"
 thread-scoped  = "*"
 time           = "*"
 

@@ -1,5 +1,4 @@
 [package]
-
 name = "playform"
 version = "0.0.0"
 authors = [
@@ -8,13 +7,18 @@ authors = [
   "Elijah Andrews <elijahcandrews@gmail.com>",
 ]
 
+[workspace]
+members = ["benchmarks", "client/bin", "client/dummy", "client/lib", "common", "server/bin", "server/lib", "server/lib/terrain"]
+exclude = ["stopwatch-rs"]
+
 [[bin]]
 name = "playform"
 path = "src/mod.rs"
 
 [features]
-default = []
+default = ["audio"]
 dummy-client = ["dummy-client-lib"]
+audio = ["client-lib/audio"]
 
 [dependencies]
 env_logger= "*"
@@ -25,6 +29,7 @@ time = "*"
 
 [dependencies.client-lib]
 path = "client/lib"
+default-features = false
 
 [dependencies.dummy-client-lib]
 path     = "client/dummy"
@@ -35,3 +40,6 @@ path = "server/lib"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
+
+[patch.'https://github.com/bfops/stopwatch-rs']
+stopwatch = { git = "https://github.com/bjorn3/stopwatch-rs", branch = "no_nightly_rustc" }

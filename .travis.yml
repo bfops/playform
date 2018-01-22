@@ -3,6 +3,8 @@ dist: trusty
 rust: nightly
 sudo: required
 
+cache: cargo
+
 addons:
   apt:
     packages:

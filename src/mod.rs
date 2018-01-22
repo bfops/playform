@@ -1,8 +1,6 @@
 //! Standalone Playform binary to run the server and client.
 
 #![deny(missing_docs)]
-#![deny(warnings)]
-#![feature(stmt_expr_attributes)]
 
 extern crate env_logger;
 extern crate nanomsg;
