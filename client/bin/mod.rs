@@ -1,6 +1,7 @@
 //! Client binary
 
 #![deny(missing_docs)]
+#![deny(warnings)]
 
 extern crate env_logger;
 #[macro_use]

@@ -1,6 +1,7 @@
 //! Benchmarks for throughput of terrain generation.
 
 #![deny(missing_docs)]
+#![deny(warnings)]
 
 extern crate common;
 extern crate client_lib;

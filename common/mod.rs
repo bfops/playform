@@ -1,6 +1,7 @@
 //! Data structures and functions shared between server and client.
 
 #![deny(missing_docs)]
+#![deny(warnings)]
 
 extern crate cgmath;
 extern crate collision;

@@ -1,5 +1,7 @@
 //! This crate contains server-only components of Playform.
+
 #![deny(missing_docs)]
+#![deny(warnings)]
 
 extern crate bincode;
 extern crate cgmath;

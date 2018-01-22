@@ -9,7 +9,6 @@ authors = [
 
 [workspace]
 members = ["benchmarks", "client/bin", "client/dummy", "client/lib", "common", "server/bin", "server/lib", "server/lib/terrain"]
-exclude = ["stopwatch-rs"]
 
 [[bin]]
 name = "playform"
@@ -40,6 +39,3 @@ path = "server/lib"
 
 [dependencies.stopwatch]
 git = "https://github.com/bfops/stopwatch-rs"
-
-[patch.'https://github.com/bfops/stopwatch-rs']
-stopwatch = { git = "https://github.com/bjorn3/stopwatch-rs", branch = "no_nightly_rustc" }
