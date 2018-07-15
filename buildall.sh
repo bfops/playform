@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 R=0;
 for file in $(find . -name 'Cargo.toml'); do
