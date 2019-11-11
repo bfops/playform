@@ -33,7 +33,6 @@ pub struct Client {
 impl Client {
   #[allow(missing_docs)]
   pub fn send(&mut self, msg: protocol::ServerToClient) {
-    use bincode;
     use bincode::serialize;
     let msg = serialize(&msg, bincode::Infinite).unwrap();
     match self.socket.write(msg.as_ref()) {
