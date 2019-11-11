@@ -9,7 +9,7 @@ use stopwatch;
 
 use cube_shell::{cube_diff, cube_shell};
 
-fn surroundings_iter(center: Point3<i32>, max_distance: i32) -> Box<Iterator<Item=Point3<i32>> + Send> {
+fn surroundings_iter(center: Point3<i32>, max_distance: i32) -> Box<dyn Iterator<Item=Point3<i32>> + Send> {
   Box::new((0 .. max_distance).flat_map(move |radius| cube_shell(&center, radius)))
 }
 
@@ -30,7 +30,7 @@ pub struct T {
   last_position: Option<Point3<i32>>,
 
   max_load_distance: u32,
-  to_load: Option<Box<Iterator<Item=Point3<i32>> + Send>>,
+  to_load: Option<Box<dyn Iterator<Item=Point3<i32>> + Send>>,
 
   to_recheck: VecDeque<Point3<i32>>,
   // The distances to the switches between LODs.

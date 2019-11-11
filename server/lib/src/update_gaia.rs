@@ -28,7 +28,7 @@ pub enum Message {
   /// Load some voxels
   Load(u64, Vec<voxel::bounds::T>, LoadDestination),
   /// Apply a brush operation
-  Brush(voxel_data::brush::T<Box<voxel_data::mosaic::T<common::voxel::Material> + Send>>),
+  Brush(voxel_data::brush::T<Box<dyn voxel_data::mosaic::T<common::voxel::Material> + Send>>),
 }
 
 // TODO: Consider adding terrain loads to a thread pool instead of having one monolithic separate thread.

@@ -13,7 +13,7 @@ pub enum Return {
 pub use self::Return::*;
 
 /// The closure type used.
-pub type Closure<'a> = Box<FnMut() -> Return + 'a>;
+pub type Closure<'a> = Box<dyn FnMut() -> Return + 'a>;
 
 #[allow(missing_docs)]
 pub struct T<'a> {
